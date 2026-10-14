@@ -111,6 +111,20 @@ LINK router1-switch1
     BANDWIDTH 1G
 ```
 
+### Sizing and layout
+
+| Setting | Effect |
+|---------|--------|
+| `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 12 px for 400G |
+| `SET link_width_table 1G:2 10G:4 100G:9` | The map's own speed → width table for `WIDTH auto` |
+| `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium); an aggregated link adds up its members. Falls back to 1G when unknown |
+| `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
+
+Resizing a map in the editor (by dragging its border, or in Map Properties)
+asks whether to **scale the content** with it (nodes, VIA points, legend, title
+and timestamp move proportionally, optionally keeping proportions and scaling
+link widths) or only extend/crop the canvas.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |

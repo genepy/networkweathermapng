@@ -91,6 +91,7 @@ class WeatherMapLink extends WeatherMapItem {
 
 	var $inherit_fieldlist;
 	var $vialist = array();
+	var $parallel_offset = array(0, 0); // set by WeatherMap::SpreadParallelLinks()
 	var $viastyle;
 	var $usescale;
 	var $duplex;
@@ -363,6 +364,21 @@ class WeatherMapLink extends WeatherMapItem {
 		}
 	}
 
+	/**
+	 * Width in pixels; "WIDTH auto" follows the link's bandwidth.
+	 */
+	function EffectiveWidth(&$map) {
+		if (strtolower((string) $this->width) == 'auto') {
+			return wm_auto_link_width(
+				max($this->max_bandwidth_in, $this->max_bandwidth_out),
+				$map->get_hint('link_width_table'),
+				$map->kilo
+			);
+		}
+
+		return $this->width;
+	}
+
 	function Draw($image, &$map) {
 		// Get the positions of the end-points
 		$x1 = $map->nodes[$this->a->name]->x;
@@ -404,6 +420,13 @@ class WeatherMapLink extends WeatherMapItem {
 
 		$x2 += $dx;
 		$y2 += $dy;
+
+		// Several links between the same two nodes are drawn side by side
+		list($px, $py) = $this->parallel_offset;
+		$x1 += $px;
+		$y1 += $py;
+		$x2 += $px;
+		$y2 += $py;
 
 		if (($x1 == $x2) && ($y1 == $y2) && sizeof($this->vialist) == 0) {
 			wm_warn('Zero-length link ' . $this->name . ' skipped. [WMWARN45]');
@@ -448,11 +471,11 @@ class WeatherMapLink extends WeatherMapItem {
 	//	$map->links[$this->name]->inscalekey = $link_in_scalekey;
 	//	$map->links[$this->name]->outscalekey = $link_out_scalekey;
 
-		$link_width = $this->width;
+		$link_width = $this->EffectiveWidth($map);
 
 		// these will replace the one above, ultimately.
-		$link_in_width  = $this->width;
-		$link_out_width = $this->width;
+		$link_in_width  = $link_width;
+		$link_out_width = $link_width;
 
 		// for bulging animations
 		if (($map->widthmod) || ($map->get_hint('link_bulge') == 1)) {
@@ -815,7 +838,9 @@ class WeatherMapLink extends WeatherMapItem {
 				}
 			}
 
-			if ($this->max_bandwidth_in != $dd->max_bandwidth_in || $this->max_bandwidth_out != $dd->max_bandwidth_out || $this->name == 'DEFAULT') {
+			if ($this->max_bandwidth_in != $dd->max_bandwidth_in || $this->max_bandwidth_out != $dd->max_bandwidth_out
+				|| $this->max_bandwidth_in_cfg != $dd->max_bandwidth_in_cfg || $this->max_bandwidth_out_cfg != $dd->max_bandwidth_out_cfg
+				|| $this->name == 'DEFAULT') {
 				if ($this->max_bandwidth_in == $this->max_bandwidth_out) {
 					$output .= TAB . 'BANDWIDTH ' . $this->max_bandwidth_in_cfg . EOL;
 				} else {

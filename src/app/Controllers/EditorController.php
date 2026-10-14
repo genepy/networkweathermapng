@@ -848,8 +848,23 @@ class EditorController extends BaseController
         $wmap->title = wm_editor_sanitize_string($_REQUEST['map_title'] ?? $wmap->title);
         $wmap->keytext['DEFAULT'] = wm_editor_sanitize_string($_REQUEST['map_legend'] ?? '');
         $wmap->stamptext = wm_editor_sanitize_string($_REQUEST['map_stamp'] ?? '');
-        $wmap->width = (int) ($_REQUEST['map_width'] ?? $wmap->width);
-        $wmap->height = (int) ($_REQUEST['map_height'] ?? $wmap->height);
+        $newWidth = max(1, (int) ($_REQUEST['map_width'] ?? $wmap->width));
+        $newHeight = max(1, (int) ($_REQUEST['map_height'] ?? $wmap->height));
+
+        if (($_REQUEST['resize_mode'] ?? 'extend') === 'scale' && ($newWidth != $wmap->width || $newHeight != $wmap->height)) {
+            // Move and size everything with the map, nothing to place again
+            \WeatherMapScaler::scale(
+                $wmap,
+                $newWidth,
+                $newHeight,
+                !empty($_REQUEST['resize_keep_aspect']),
+                !empty($_REQUEST['resize_scale_sizes'])
+            );
+        } else {
+            // Bigger or smaller canvas, objects stay where they are
+            $wmap->width = $newWidth;
+            $wmap->height = $newHeight;
+        }
         
         $bgfile = $_REQUEST['map_bgfile'] ?? '';
         if ($bgfile == '--NONE--') {

@@ -1461,6 +1461,52 @@ function simplify_spine(&$input, $epsilon=1e-8) {
 	return $output;
 }
 
+define('WM_AUTO_BANDWIDTH_FALLBACK', '1G');
+define('WM_DEFAULT_LINK_WIDTH_TABLE', '1G:2 10G:4 25G:5 40G:6 100G:9 400G:12');
+
+/**
+ * BANDWIDTH value to use before the data is read: "auto" links start at the
+ * fallback speed until a data source tells their real speed.
+ */
+function wm_bandwidth_cfg($cfg) {
+	return strtolower((string) $cfg) == 'auto' ? WM_AUTO_BANDWIDTH_FALLBACK : $cfg;
+}
+
+/**
+ * Width in pixels of a "WIDTH auto" link, from its bandwidth.
+ *
+ * $table lists "speed:width" pairs, e.g. "1G:2 10G:4 100G:9" (the map can set
+ * its own with SET link_width_table). A link takes the width of the largest
+ * speed it reaches, and the first width when it is slower than all of them.
+ */
+function wm_auto_link_width($bandwidth, $table = '', $kilo = 1000) {
+	$table = trim((string) $table) != '' ? $table : WM_DEFAULT_LINK_WIDTH_TABLE;
+
+	$steps = array();
+	foreach (preg_split('/[\s,;]+/', trim($table)) as $pair) {
+		if (preg_match('/^(\d+\.?\d*[KMGT]?):(\d+\.?\d*)$/i', $pair, $m)) {
+			$steps[] = array(unformat_number(strtoupper($m[1]), $kilo), (float) $m[2]);
+		}
+	}
+
+	if (count($steps) == 0) {
+		return 7;
+	}
+
+	usort($steps, function ($a, $b) {
+		return $a[0] <=> $b[0];
+	});
+
+	$width = $steps[0][1];
+	foreach ($steps as $step) {
+		if ($bandwidth >= $step[0]) {
+			$width = $step[1];
+		}
+	}
+
+	return $width;
+}
+
 function unformat_number($instring, $kilo = 1000) {
 	$matches = 0;
 	$number  = 0;
