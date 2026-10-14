@@ -150,6 +150,7 @@ class WeatherMapPostProcessor {
 // Links, Nodes and the Map object inherit from this class ultimately.
 // Just to make some common code common.
 class WeatherMapBase {
+	var $name;
 	var $notes = array();
 	var $hints = array();
 	var $inherit_fieldlist;
@@ -230,6 +231,7 @@ class WeatherMap extends WeatherMapBase {
 	var $imap;
 	var $colours;
 	var $configfile;
+	var $keycache = array();
 	var $imagefile;
 	var $imageuri;
 	var $rrdtool;
@@ -3345,7 +3347,7 @@ class WeatherMap extends WeatherMapBase {
 
 	function WriteConfig($filename) {
 		$fd     = false;
-		if (is_writable($filename)) {
+		if (is_writable($filename) || (!file_exists($filename) && is_writable(dirname($filename)))) {
 			$fd     = @fopen($filename, 'w');
 		}
 		$output = '';
@@ -3615,7 +3617,7 @@ class WeatherMap extends WeatherMapBase {
 			if (file_exists($this->configfile)) {
 				$this->cachefile_version = crc32(file_get_contents($this->configfile));
 			} else {
-				wm_warn('Failed to find configuration file: ' . $this->configFile);
+				wm_warn('Failed to find configuration file: ' . $this->configfile);
 			}
 		}
 

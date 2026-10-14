@@ -91,3 +91,10 @@ if (!function_exists('rotateAboutPoint')) {
 	}
 }
 
+
+/**
+ * Raised by the geometry helpers when a calculation has no valid answer
+ * (for example, the crossing point of two parallel lines).
+ */
+class WeathermapInternalFail extends Exception {
+}
