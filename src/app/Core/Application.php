@@ -67,7 +67,13 @@ class Application
         
         // Editor - Visual Map Editor
         $this->router->get('/editor', 'EditorController@index');
-        $this->router->get('/editor/edit/{id}', 'EditorController@edit');
+        $this->router->get('/editor/edit/{id}', 'SvgEditorController@edit');
+        $this->router->get('/editor/render/{id}', 'SvgEditorController@renderMap');
+        $this->router->post('/editor/ops/{id}', 'SvgEditorController@ops');
+        $this->router->post('/editor/undo/{id}', 'SvgEditorController@undo');
+        $this->router->post('/editor/redo/{id}', 'SvgEditorController@redo');
+        $this->router->get('/editor/font/{id}/{n}', 'SvgEditorController@font');
+        $this->router->get('/editor/classic/{id}', 'EditorController@edit');
         $this->router->get('/editor/draw/{id}', 'EditorController@draw');
         $this->router->get('/editor/area/{id}', 'EditorController@getAreaData');
         $this->router->get('/editor/mapjs/{id}', 'EditorController@getMapJS');

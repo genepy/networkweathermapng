@@ -60,6 +60,7 @@ require_once __DIR__ . '/WeatherMapLink.class.php';
 
 // Map resizing that keeps the layout
 require_once __DIR__ . '/WeatherMapScaler.class.php';
+require_once __DIR__ . '/WeatherMapSvg.class.php';
 
 /**
  * Helper function to enable WeatherMap debugging
