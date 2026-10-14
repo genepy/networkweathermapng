@@ -465,7 +465,12 @@ class MapService
      */
     private function generateConfigFilename(string $title): string
     {
-        $base = preg_replace('/[^a-z0-9]+/i', '_', strtolower($title));
+        // "Réseau cœur" becomes "reseau_coeur"
+        $ascii = strtr($title, ['œ' => 'oe', 'Œ' => 'OE', 'æ' => 'ae', 'Æ' => 'AE', 'ß' => 'ss']);
+        if (class_exists('Normalizer')) {
+            $ascii = preg_replace('/\p{Mn}+/u', '', (string) \Normalizer::normalize($ascii, \Normalizer::FORM_D));
+        }
+        $base = preg_replace('/[^a-z0-9]+/i', '_', strtolower((string) $ascii));
         $base = trim($base, '_');
         
         if (empty($base)) {

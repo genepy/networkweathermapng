@@ -488,11 +488,15 @@ class WeatherMapNode extends WeatherMapItem {
 			} else {
 				$this->iconfile = $map->ProcessString($this->iconfile, $this);
 
-				if (is_readable($this->iconfile)) {
+				// an SVG icon is drawn from its PNG twin (GD can't read SVG)
+				$icon_raster = WeatherMapSvg::rasterFor($this->iconfile);
+
+				if (is_readable($icon_raster)) {
 					imagealphablending($image, true);
 					// draw the supplied icon, instead of the labelled box
 
-					$icon_im = imagecreatefromfile($this->iconfile);
+					$icon_im = imagecreatefromfile($icon_raster);
+					$icon_vector = isset($colicon) ? null : WeatherMapSvg::vectorFor($this->iconfile);
 					# $icon_im = imagecreatefrompng($this->iconfile);
 
 					if (function_exists('imagefilter') && isset($colicon) && $this->get_hint('use_imagefilter') == 1) {
@@ -630,7 +634,7 @@ class WeatherMapNode extends WeatherMapItem {
 				$this->svgparts['icon'] = array(
 					'x' => $icon_x1 + $bbox_x1, 'y' => $icon_y1 + $bbox_y1,
 					'w' => imagesx($icon_im), 'h' => imagesy($icon_im),
-					'href' => WeatherMapSvg::gdToDataUri($icon_im),
+					'href' => !empty($icon_vector) ? WeatherMapSvg::dataUri($icon_vector) : WeatherMapSvg::gdToDataUri($icon_im),
 				);
 			}
 

@@ -41,6 +41,8 @@ final class MapServiceTest extends TestCase
         $this->assertStringContainsString("TITLE Core NODE evil\n", $conf);
         $this->assertStringNotContainsString("\nNODE evil", $conf);
         $this->assertStringContainsString('WIDTH 100', $conf);
+
+        $this->assertSame('reseau_coeur_paris.conf', $this->maps->getMap($this->maps->createMap(['name' => 'Réseau cœur Paris']))['config_file']);
     }
 
     public function testRename(): void

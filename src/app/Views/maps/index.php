@@ -1,15 +1,15 @@
 <div class="maps-page">
     <div class="page-header">
-        <h1>Network Weathermaps</h1>
+        <h1><?= e__('Network Weathermaps') ?></h1>
         <div class="page-actions">
-            <a href="/cycle" class="btn btn-primary">Cycle Maps</a>
+            <a href="/cycle" class="btn btn-primary"><?= e__('Cycle Maps') ?></a>
         </div>
     </div>
     
     <?php if (count($groups) > 1): ?>
     <div class="map-groups-tabs">
         <ul class="tabs">
-            <li><a href="?group_id=0" class="<?= $currentGroup === 0 ? 'active' : '' ?>">All</a></li>
+            <li><a href="?group_id=0" class="<?= $currentGroup === 0 ? 'active' : '' ?>"><?= e__('All') ?></a></li>
             <?php foreach ($groups as $group): ?>
             <li>
                 <a href="?group_id=<?= $group['id'] ?>" 
@@ -24,9 +24,9 @@
     
     <?php if (empty($maps)): ?>
     <div class="empty-state">
-        <p>No maps available.</p>
+        <p><?= e__('No maps available.') ?></p>
         <?php if ($auth->isAdmin()): ?>
-        <p><a href="/admin/maps">Create your first map</a></p>
+        <p><a href="/admin/maps"><?= e__('Create your first map') ?></a></p>
         <?php endif; ?>
     </div>
     <?php else: ?>
@@ -45,7 +45,7 @@
                     <span class="map-group"><?= htmlspecialchars($map['group_name']) ?></span>
                     <?php endif; ?>
                     <?php if ($auth->isAdmin()): ?>
-                    <button class="btn-icon move-map-btn" data-map-id="<?= $map['id'] ?>" data-current-group="<?= $map['group_id'] ?>" title="Move to another group">
+                    <button class="btn-icon move-map-btn" data-map-id="<?= $map['id'] ?>" data-current-group="<?= $map['group_id'] ?>" title="<?= e__('Move to another group') ?>" aria-label="<?= e__('Move to another group') ?>">
                         ↔️
                     </button>
                     <?php endif; ?>
@@ -61,13 +61,13 @@
 <div id="moveMapModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Move Map</h3>
-            <button type="button" class="close-btn" onclick="closeMoveModal()">&times;</button>
+            <h3><?= e__('Move Map') ?></h3>
+            <button type="button" class="close-btn" onclick="closeMoveModal()" aria-label="<?= e__('Close') ?>">&times;</button>
         </div>
         <form id="moveMapForm">
             <input type="hidden" id="moveMapId" name="map_id">
             <div class="form-group">
-                <label for="moveMapGroup">Select Destination Group:</label>
+                <label for="moveMapGroup"><?= e__('Select destination group:') ?></label>
                 <select id="moveMapGroup" name="group_id" class="form-control" required>
                     <?php foreach ($groups as $group): ?>
                     <option value="<?= $group['id'] ?>"><?= htmlspecialchars($group['name']) ?></option>
@@ -75,14 +75,17 @@
                 </select>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" onclick="closeMoveModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Move Map</button>
+                <button type="button" class="btn btn-secondary" onclick="closeMoveModal()"><?= e__('Cancel') ?></button>
+                <button type="submit" class="btn btn-primary"><?= e__('Move Map') ?></button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['Error: :msg', 'Failed to move map', 'An error occurred while moving the map'])) ?>);
+function t(s) { return (window.WM_T && window.WM_T[s]) || s; }
+
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('moveMapModal');
     const form = document.getElementById('moveMapForm');
@@ -121,12 +124,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 location.reload();
             } else {
-                alert('Error: ' + (data.error || 'Failed to move map'));
+                alert(t('Error: :msg').replace(':msg', data.error || t('Failed to move map')));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while moving the map');
+            alert(t('An error occurred while moving the map'));
         });
     });
     
@@ -181,7 +184,8 @@ function closeMoveModal() {
 }
 
 .modal-content {
-    background-color: #fff;
+    background-color: var(--card-bg);
+    color: var(--text-color);
     padding: 20px;
     border-radius: 8px;
     width: 100%;
@@ -205,7 +209,7 @@ function closeMoveModal() {
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .modal-actions {
@@ -216,11 +220,12 @@ function closeMoveModal() {
 }
 
 .btn-secondary {
-    background-color: #6c757d;
+    background-color: var(--secondary-color);
     color: white;
 }
 
 .btn-secondary:hover {
-    background-color: #5a6268;
+    background-color: var(--secondary-color);
+    filter: brightness(0.9);
 }
 </style>

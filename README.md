@@ -22,7 +22,11 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Map Cycling** - Auto-rotate through maps for NOC displays
+- **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
+- **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
+- **English and French** - Chosen in the header, or with `APP_LOCALE`
+- **Light and dark themes** - Automatic (system setting) or chosen in the header
 - **Responsive UI** - Modern, mobile-friendly interface
 
 ## Quick Start
@@ -31,7 +35,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/nchekwa/networkweathermapng.git
+   git clone https://github.com/genepy/networkweathermapng.git
    cd networkweathermapng
    ```
 
@@ -54,6 +58,13 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
    Default credentials: `admin` / `admin`
 
+Everything that changes is kept in the `/app/data` volume: the database,
+map configurations, rendered images, editor history, migrations, and the
+icons and backgrounds (`/app/public/objects` and `/app/public/backgrounds`
+point there; the images shipped with the application are copied in at
+start, without replacing yours). Uploads, a migration zip included, are
+limited to 64 MB.
+
 ## Configuration
 
 ### Environment Variables
@@ -71,6 +82,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
 | `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`) | `png` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds | `300` |
+| `APP_LOCALE` | Interface language when the browser's doesn't decide (`en`, `fr`) | browser language |
 
 ### Data sources (Zabbix and more)
 
@@ -190,6 +202,42 @@ and saves each change straight into the map's `.conf` file.
 
 The previous editor is still available at `/editor/classic/<map id>`.
 
+### Icons
+
+`objects/net/` holds a set of network icons (router, switches, firewall,
+server, cloud, internet, Wi-Fi, load balancer, storage, workstation,
+virtualisation host, site, VPN) as SVG with a PNG twin. Maps reference the
+`.png` (or the `.svg`): the PNG output is drawn from the PNG, and the SVG
+output and the editor use the vector file, so icons stay sharp when zoomed.
+Any icon with an `.svg` next to it gets the same treatment, unless it is
+coloured by `USEICONSCALE`.
+
+## Managing maps
+
+Admin > Maps lists every map:
+
+- **New map**: empty (size of your choice) or a copy of an existing map.
+- **Properties**: name (the `TITLE` follows), group, visibility, and
+  optionally renaming the `.conf` file after the name.
+- **Duplicate**: choose the copy's name, group and visibility.
+- **.conf** / **Export all**: download one configuration, or a zip of every
+  map with its icons and backgrounds, which Admin > Migration imports back.
+- **Delete**: removes the map and everything kept for it: configuration and
+  backup, rendered images and pages, link graphs, editor history,
+  permissions and settings.
+- Tick several maps to activate, deactivate, move, export or delete them at
+  once.
+
+## Language and theme
+
+The header has a language menu (English, French) and a theme button
+(automatic, light, dark); both are remembered in cookies. Without a choice,
+the language follows the browser, then `APP_LOCALE`. Translations live in
+`src/app/Lang/<locale>/*.php`, one file per part of the application, as
+`'English text' => 'translation'`; `*-js.php` files hold the texts of a
+browser script. In code, wrap texts with `__('…')` (or `e__('…')` to print
+them escaped) and add them to the catalogue.
+
 ## Directory Structure
 
 ```
@@ -307,7 +355,8 @@ goes back to it, and **Restore original** on the review page puts it back.
 Positions, VIAs and every other setting are kept as they are. Live data is
 never read while migrating.
 
-Many maps at once, from the command line (in the Docker image, from `/app`):
+Many maps at once, from the command line (in the Docker image, from `/app`,
+e.g. `docker exec -it networkweathermapng php bin/migrate.php …`):
 
 ```bash
 php bin/migrate.php maps/*.conf                    # analyse only

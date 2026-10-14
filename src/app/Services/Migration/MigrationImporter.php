@@ -39,7 +39,7 @@ class MigrationImporter
             } elseif (filesize($path) <= self::MAX_CONF && $this->looksLikeConf((string) file_get_contents($path))) {
                 $confs[basename($name)] = (string) file_get_contents($path);
             } else {
-                $skipped[] = basename($name) . ': not a Weathermap file';
+                $skipped[] = __(':file: not a Weathermap file', ['file' => basename($name)]);
             }
         }
 
@@ -77,11 +77,11 @@ class MigrationImporter
     {
         $zip = new \ZipArchive();
         if ($zip->open($path) !== true) {
-            $skipped[] = 'The zip file could not be opened';
+            $skipped[] = __('The zip file could not be opened');
             return;
         }
         if ($zip->numFiles > self::MAX_ZIP_ENTRIES) {
-            $skipped[] = 'The zip file holds too many files';
+            $skipped[] = __('The zip file holds too many files');
             $zip->close();
             return;
         }
@@ -101,7 +101,7 @@ class MigrationImporter
             $limit = $isImage ? self::MAX_IMAGE : self::MAX_CONF;
 
             if ($stat['size'] > $limit || ($total += $stat['size']) > self::MAX_ZIP_TOTAL) {
-                $skipped[] = $name . ': too large';
+                $skipped[] = __(':file: too large', ['file' => $name]);
                 continue;
             }
             if (!$isImage && !in_array($ext, ['conf', 'cfg', 'txt', ''], true)) {
@@ -110,7 +110,7 @@ class MigrationImporter
 
             $data = $zip->getFromIndex($i, $limit + 1);
             if ($data === false || strlen($data) > $limit) {
-                $skipped[] = $name . ': could not be read';
+                $skipped[] = __(':file: could not be read', ['file' => $name]);
                 continue;
             }
 
@@ -127,22 +127,22 @@ class MigrationImporter
     private function placeImage(string $folder, string $name, string $data): bool|string|null
     {
         if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._ -]*$/', $name)) {
-            return 'unsupported file name';
+            return __('unsupported file name');
         }
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
         $info = @getimagesizefromstring($data);
         if (!$info || $info[2] !== self::IMAGE_TYPES[$ext]) {
-            return 'not a valid image';
+            return __('not a valid image');
         }
 
         $target = $this->publicPath . '/' . $folder . '/' . $name;
         if (is_file($target)) {
-            return hash_file('sha256', $target) === hash('sha256', $data) ? null : 'a different file with this name is already there';
+            return hash_file('sha256', $target) === hash('sha256', $data) ? null : __('a different file with this name is already there');
         }
         if (!is_dir(dirname($target))) {
             @mkdir(dirname($target), 0775, true);
         }
-        return file_put_contents($target, $data) !== false ? true : 'could not be written';
+        return file_put_contents($target, $data) !== false ? true : __('could not be written');
     }
 
     private function looksLikeConf(string $text): bool

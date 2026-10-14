@@ -1,28 +1,28 @@
 <div class="content-header">
-    <h1><?= htmlspecialchars($title ?? 'Change Password') ?></h1>
+    <h1><?= htmlspecialchars($title ?? __('Change password')) ?></h1>
 </div>
 
 <div class="card">
     <div class="card-body">
         <form method="POST" action="/account/password">
             <div class="form-group">
-                <label for="current_password">Current Password *</label>
+                <label for="current_password"><?= e__('Current password') ?> *</label>
                 <input type="password" id="current_password" name="current_password" class="form-control" required>
             </div>
 
             <div class="form-group">
-                <label for="new_password">New Password *</label>
+                <label for="new_password"><?= e__('New password') ?> *</label>
                 <input type="password" id="new_password" name="new_password" class="form-control" required>
             </div>
 
             <div class="form-group">
-                <label for="confirm_password">Confirm New Password *</label>
+                <label for="confirm_password"><?= e__('Confirm new password') ?> *</label>
                 <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Change Password</button>
-                <a href="/" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary"><?= e__('Change password') ?></button>
+                <a href="/" class="btn btn-secondary"><?= e__('Cancel') ?></a>
             </div>
         </form>
     </div>
@@ -44,14 +44,16 @@
     max-width: 500px;
     padding: 0.5rem 0.75rem;
     font-size: 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .form-actions {

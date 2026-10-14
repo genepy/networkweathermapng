@@ -35,7 +35,7 @@
                     <td><?= htmlspecialchars($m['created']) ?></td>
                     <td>
                         <?php if ($m['mapId']): ?>
-                            <span class="status-badge status-active"><?= e__('Created') ?></span>
+                            <span class="status-badge status-active"><?= e__('Map created') ?></span>
                         <?php else: ?>
                             <span class="status-badge status-inactive"><?= e__('To review') ?></span>
                         <?php endif; ?>

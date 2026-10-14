@@ -1,7 +1,10 @@
 <?php
 /**
  * Interface translations. Strings are written in English in the code and
- * looked up in app/Lang/<locale>.php; a missing entry shows the English.
+ * looked up in app/Lang/<locale>/*.php (one file per part of the
+ * application, each returning [English => translation]); a missing entry
+ * shows the English. Files named *-js.php hold the texts of a browser
+ * script and are only read through section().
  *
  * The language comes from, in order: the "lang" cookie (the menu in the
  * header), APP_LOCALE, the browser's Accept-Language.
@@ -29,8 +32,27 @@ class I18n
     public static function setLocale(string $locale): void
     {
         self::$locale = isset(self::LOCALES[$locale]) ? $locale : 'en';
-        $file = dirname(__DIR__) . '/Lang/' . self::$locale . '.php';
-        self::$catalog = self::$locale !== 'en' && is_file($file) ? (array) require $file : [];
+        self::$catalog = [];
+        if (self::$locale !== 'en') {
+            foreach (glob(self::dir() . '/*.php') ?: [] as $file) {
+                // *-js.php files only go to the browser scripts (see section())
+                if (!str_ends_with($file, '-js.php')) {
+                    self::$catalog += (array) require $file;
+                }
+            }
+        }
+    }
+
+    /** The translations of one file of app/Lang/<locale>/, for the browser scripts */
+    public static function section(string $name): array
+    {
+        $file = self::dir() . '/' . basename($name) . '.php';
+        return self::locale() !== 'en' && is_file($file) ? (array) require $file : [];
+    }
+
+    private static function dir(): string
+    {
+        return dirname(__DIR__) . '/Lang/' . self::$locale;
     }
 
     /** @param array<string, string|int|float> $params replaces :name in the text */

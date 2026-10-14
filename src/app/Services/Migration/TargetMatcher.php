@@ -25,18 +25,18 @@ class TargetMatcher
         $result = ['status' => 'unmatched', 'host' => null, 'choice' => null, 'candidates' => [], 'note' => ''];
 
         if ($parsed['host'] === '') {
-            $result['note'] = 'The old target does not name a device.';
+            $result['note'] = __('The old target does not name a device.');
             return $result;
         }
 
         $hosts = $this->findHost($parsed['host']);
         if (!$hosts) {
-            $result['note'] = 'No device called ' . $parsed['host'] . '.';
+            $result['note'] = __('No device called :host.', ['host' => $parsed['host']]);
             return $result;
         }
         if (count($hosts) > 1) {
             $result['status'] = 'ambiguous';
-            $result['note'] = count($hosts) . ' devices could be ' . $parsed['host'] . '.';
+            $result['note'] = __(':n devices could be :host.', ['n' => count($hosts), 'host' => $parsed['host']]);
             foreach ($hosts as $h) {
                 foreach ($this->interfacesOf($h['id']) as $i) {
                     if ($this->sameInterface($i, $parsed)) {
@@ -53,7 +53,7 @@ class TargetMatcher
 
         if ($parsed['ifIndex'] === null && $parsed['ifName'] === '') {
             $result['status'] = 'ambiguous';
-            $result['note'] = 'The old target does not say which interface of ' . $host['name'] . '.';
+            $result['note'] = __('The old target does not say which interface of :host.', ['host' => $host['name']]);
             $result['candidates'] = array_map(fn ($i) => $i + ['host' => $host['name']], $interfaces);
             return $result;
         }
@@ -67,8 +67,8 @@ class TargetMatcher
 
         $result['status'] = $found ? 'ambiguous' : 'unmatched';
         $result['note'] = $found
-            ? 'Several interfaces of ' . $host['name'] . ' fit.'
-            : 'No interface ' . ($parsed['ifName'] ?: '#' . $parsed['ifIndex']) . ' on ' . $host['name'] . '.';
+            ? __('Several interfaces of :host fit.', ['host' => $host['name']])
+            : __('No interface :interface on :host.', ['interface' => $parsed['ifName'] ?: '#' . $parsed['ifIndex'], 'host' => $host['name']]);
         $result['candidates'] = array_map(fn ($i) => $i + ['host' => $host['name']], $found ?: $interfaces);
 
         return $result;

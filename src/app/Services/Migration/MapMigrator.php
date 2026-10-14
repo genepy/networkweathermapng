@@ -70,7 +70,7 @@ class MapMigrator
         }
 
         if ((string) $map->background !== '') {
-            $report['images'][] = $this->image('background', 'Map background', (string) $map->background);
+            $report['images'][] = $this->image('background', __('Map background'), (string) $map->background);
         }
 
         foreach ($map->nodes as $name => $node) {
@@ -322,11 +322,11 @@ class MapMigrator
             $match = ['status' => $parsed['convert'] ? 'unmatched' : 'keep', 'choice' => null, 'candidates' => [], 'note' => ''];
 
             if ($parsed['kind'] === 'external') {
-                $match['note'] = 'Runs a command on the old server: replace it by hand.';
+                $match['note'] = __('Runs a command on the old server: replace it by hand.');
             } elseif ($parsed['convert'] && $this->matcher) {
                 $match = $this->matcher->match($parsed);
             } elseif ($parsed['convert']) {
-                $match['note'] = 'Choose a data source to look for the interface.';
+                $match['note'] = __('Choose a data source to look for the interface.');
             }
 
             $report['targets'][] = [

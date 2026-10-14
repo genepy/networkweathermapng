@@ -132,7 +132,7 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
                         <td><?= $h($t['kind']) ?> <strong><?= $h($t['name']) ?></strong></td>
                         <td><code><?= $h($t['raw']) ?></code><div class="text-muted small"><?= $h($t['parsed']['kind']) ?><?= $t['parsed']['host'] !== '' ? ' · ' . $h($t['parsed']['host']) : '' ?><?= $t['parsed']['ifIndex'] !== null ? ' · ifIndex ' . (int) $t['parsed']['ifIndex'] : '' ?></div></td>
                         <td><span class="match match-<?= $h($m['status']) ?>"><?= $h($statusLabel[$m['status']] ?? $m['status']) ?></span>
-                            <?php if ($m['note'] !== ''): ?><div class="text-muted small"><?= $h(__($m['note'])) ?></div><?php endif; ?></td>
+                            <?php if ($m['note'] !== ''): ?><div class="text-muted small"><?= $h($m['note']) ?></div><?php endif; ?></td>
                         <td>
                             <?php if ($t['parsed']['convert'] && $t['parsed']['kind'] !== 'external'): ?>
                             <select name="target[<?= $h($key) ?>]">

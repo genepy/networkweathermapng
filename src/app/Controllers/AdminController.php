@@ -48,7 +48,7 @@ class AdminController extends BaseController
         
         $this->render('admin/index', [
             'stats' => $stats,
-            'title' => 'Administration',
+            'title' => __('Administration'),
         ]);
     }
     
@@ -68,7 +68,7 @@ class AdminController extends BaseController
         $this->render('admin/maps', [
             'maps' => $maps,
             'groups' => $groups,
-            'title' => 'Manage Maps',
+            'title' => __('Manage Maps'),
         ]);
     }
     
@@ -138,7 +138,7 @@ class AdminController extends BaseController
         $map = $this->mapService->getMap($id);
         
         if (!$map) {
-            $this->flash('error', 'Map not found');
+            $this->flash('error', __('Map not found'));
             $this->redirect('/admin/maps');
             return;
         }
@@ -191,7 +191,7 @@ class AdminController extends BaseController
         $map = $this->mapService->getMap($id);
         
         if (!$map) {
-            $this->flash('error', 'Map not found');
+            $this->flash('error', __('Map not found'));
             $this->redirect('/admin/maps');
             return;
         }
@@ -217,7 +217,7 @@ class AdminController extends BaseController
         $map = $this->mapService->getMap($id);
         
         if (!$map) {
-            $this->flash('error', 'Map not found');
+            $this->flash('error', __('Map not found'));
             $this->redirect('/admin/maps');
             return;
         }
@@ -278,7 +278,8 @@ class AdminController extends BaseController
             $done += $ok ? 1 : 0;
         }
 
-        $this->flash($done ? 'success' : 'error', __(':n map(s) updated', ['n' => $done]));
+        $message = $action === 'delete' ? __(':n map(s) deleted with all their data', ['n' => $done]) : __(':n map(s) updated', ['n' => $done]);
+        $this->flash($done ? 'success' : 'error', $message);
         $this->redirect('/admin/maps');
     }
 
@@ -331,7 +332,7 @@ class AdminController extends BaseController
         $map = $this->mapService->getMap($id);
         
         if (!$map) {
-            $this->json(['success' => false, 'error' => 'Map not found'], 404);
+            $this->json(['success' => false, 'error' => __('Map not found')], 404);
             return;
         }
         
@@ -341,14 +342,14 @@ class AdminController extends BaseController
             $groupId = (int) ($input['group_id'] ?? 0);
             
             if ($groupId <= 0) {
-                $this->json(['success' => false, 'error' => 'Invalid group ID'], 400);
+                $this->json(['success' => false, 'error' => __('Invalid group ID')], 400);
                 return;
             }
             
             // Verify group exists
             $group = $this->groupService->getGroup($groupId);
             if (!$group) {
-                $this->json(['success' => false, 'error' => 'Group not found'], 404);
+                $this->json(['success' => false, 'error' => __('Group not found')], 404);
                 return;
             }
             
@@ -361,7 +362,7 @@ class AdminController extends BaseController
             return;
         }
         
-        $this->json(['success' => false, 'error' => 'Invalid request method'], 405);
+        $this->json(['success' => false, 'error' => __('Invalid request method')], 405);
     }
     
     public function groups(array $params): void
@@ -372,7 +373,7 @@ class AdminController extends BaseController
         
         $this->render('admin/groups', [
             'groups' => $groups,
-            'title' => 'Manage Groups',
+            'title' => __('Manage Groups'),
         ]);
     }
     
@@ -387,7 +388,7 @@ class AdminController extends BaseController
             $name = trim($_POST['name'] ?? '');
             
             if (empty($name)) {
-                $this->flash('error', 'Group name is required');
+                $this->flash('error', __('Group name is required'));
                 $this->redirect('/admin/groups');
                 return;
             }
@@ -401,9 +402,9 @@ class AdminController extends BaseController
                     $this->groupService->updateGroupUsers($groupId, $userIds);
                 }
                 
-                $this->flash('success', "Group '{$name}' created successfully");
+                $this->flash('success', __('Group ":name" created successfully', ['name' => $name]));
             } catch (\Exception $e) {
-                $this->flash('error', 'Failed to create group: ' . $e->getMessage());
+                $this->flash('error', __('Failed to create group: :error', ['error' => $e->getMessage()]));
             }
             
             $this->redirect('/admin/groups');
@@ -417,7 +418,7 @@ class AdminController extends BaseController
             'group' => null,
             'users' => $users,
             'groupUsers' => [],
-            'title' => 'Create New Group',
+            'title' => __('Create New Group'),
             'action' => 'create'
         ]);
     }
@@ -433,7 +434,7 @@ class AdminController extends BaseController
         $group = $this->groupService->getGroup($id);
         
         if (!$group) {
-            $this->flash('error', 'Group not found');
+            $this->flash('error', __('Group not found'));
             $this->redirect('/admin/groups');
             return;
         }
@@ -442,7 +443,7 @@ class AdminController extends BaseController
             $name = trim($_POST['name'] ?? '');
             
             if (empty($name)) {
-                $this->flash('error', 'Group name is required');
+                $this->flash('error', __('Group name is required'));
                 $this->redirect('/admin/groups/edit/' . $id);
                 return;
             }
@@ -457,9 +458,9 @@ class AdminController extends BaseController
                 }
                 $this->groupService->updateGroupUsers($id, $userIds);
                 
-                $this->flash('success', "Group '{$name}' updated successfully");
+                $this->flash('success', __('Group ":name" updated successfully', ['name' => $name]));
             } catch (\Exception $e) {
-                $this->flash('error', 'Failed to update group: ' . $e->getMessage());
+                $this->flash('error', __('Failed to update group: :error', ['error' => $e->getMessage()]));
             }
             
             $this->redirect('/admin/groups');
@@ -474,7 +475,7 @@ class AdminController extends BaseController
             'group' => $group,
             'users' => $users,
             'groupUsers' => $groupUsers,
-            'title' => 'Edit Group: ' . $group['name'],
+            'title' => __('Edit Group: :name', ['name' => $group['name']]),
             'action' => 'edit'
         ]);
     }
@@ -489,7 +490,7 @@ class AdminController extends BaseController
         $id = (int) ($params['id'] ?? 0);
         
         if ($id === 1) {
-            $this->flash('error', 'Cannot delete the default group');
+            $this->flash('error', __('Cannot delete the default group'));
             $this->redirect('/admin/groups');
             return;
         }
@@ -497,16 +498,16 @@ class AdminController extends BaseController
         $group = $this->groupService->getGroup($id);
         
         if (!$group) {
-            $this->flash('error', 'Group not found');
+            $this->flash('error', __('Group not found'));
             $this->redirect('/admin/groups');
             return;
         }
         
         try {
             $this->groupService->deleteGroup($id);
-            $this->flash('success', "Group '{$group['name']}' deleted successfully");
+            $this->flash('success', __('Group ":name" deleted successfully', ['name' => $group['name']]));
         } catch (\Exception $e) {
-            $this->flash('error', 'Failed to delete group: ' . $e->getMessage());
+            $this->flash('error', __('Failed to delete group: :error', ['error' => $e->getMessage()]));
         }
         
         $this->redirect('/admin/groups');
@@ -522,7 +523,7 @@ class AdminController extends BaseController
         
         $this->render('admin/users', [
             'users' => $users,
-            'title' => 'Manage Users',
+            'title' => __('Manage Users'),
         ]);
     }
 
@@ -539,38 +540,38 @@ class AdminController extends BaseController
             $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
             if ($username === '') {
-                $this->flash('error', 'Username is required');
+                $this->flash('error', __('Username is required'));
                 $this->redirect('/admin/users/create');
                 return;
             }
 
             if (!in_array($role, ['admin', 'viewer'], true)) {
-                $this->flash('error', 'Invalid role');
+                $this->flash('error', __('Invalid role'));
                 $this->redirect('/admin/users/create');
                 return;
             }
 
             if ($password === '' || $confirmPassword === '') {
-                $this->flash('error', 'Password and confirmation are required');
+                $this->flash('error', __('Password and confirmation are required'));
                 $this->redirect('/admin/users/create');
                 return;
             }
 
             if ($password !== $confirmPassword) {
-                $this->flash('error', 'Password and confirmation do not match');
+                $this->flash('error', __('Password and confirmation do not match'));
                 $this->redirect('/admin/users/create');
                 return;
             }
 
             if (strlen($password) < 8) {
-                $this->flash('error', 'Password must be at least 8 characters');
+                $this->flash('error', __('Password must be at least 8 characters'));
                 $this->redirect('/admin/users/create');
                 return;
             }
 
             $existing = $this->database->queryOne('SELECT id FROM users WHERE username = ?', [$username]);
             if ($existing) {
-                $this->flash('error', 'Username already exists');
+                $this->flash('error', __('Username already exists'));
                 $this->redirect('/admin/users/create');
                 return;
             }
@@ -590,10 +591,10 @@ class AdminController extends BaseController
                     $this->groupService->updateUserGroups($userId, $groupIds);
                 }
 
-                $this->flash('success', "User '{$username}' created successfully");
+                $this->flash('success', __('User ":name" created successfully', ['name' => $username]));
                 $this->redirect('/admin/users');
             } catch (\Exception $e) {
-                $this->flash('error', 'Failed to create user: ' . $e->getMessage());
+                $this->flash('error', __('Failed to create user: :error', ['error' => $e->getMessage()]));
                 $this->redirect('/admin/users/create');
             }
             return;
@@ -605,7 +606,7 @@ class AdminController extends BaseController
             'userData' => null,
             'userGroups' => [],
             'groups' => $groups,
-            'title' => 'Add User',
+            'title' => __('Add User'),
             'action' => 'create',
         ]);
     }
@@ -621,7 +622,7 @@ class AdminController extends BaseController
         );
 
         if (!$userData) {
-            $this->flash('error', 'User not found');
+            $this->flash('error', __('User not found'));
             $this->redirect('/admin/users');
             return;
         }
@@ -634,7 +635,7 @@ class AdminController extends BaseController
             $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
             if (!in_array($role, ['admin', 'viewer'], true)) {
-                $this->flash('error', 'Invalid role');
+                $this->flash('error', __('Invalid role'));
                 $this->redirect('/admin/users/edit/' . $id);
                 return;
             }
@@ -646,19 +647,19 @@ class AdminController extends BaseController
 
             if (($password !== '') || ($confirmPassword !== '')) {
                 if ($password === '' || $confirmPassword === '') {
-                    $this->flash('error', 'Password and confirmation are required');
+                    $this->flash('error', __('Password and confirmation are required'));
                     $this->redirect('/admin/users/edit/' . $id);
                     return;
                 }
 
                 if ($password !== $confirmPassword) {
-                    $this->flash('error', 'Password and confirmation do not match');
+                    $this->flash('error', __('Password and confirmation do not match'));
                     $this->redirect('/admin/users/edit/' . $id);
                     return;
                 }
 
                 if (strlen($password) < 8) {
-                    $this->flash('error', 'Password must be at least 8 characters');
+                    $this->flash('error', __('Password must be at least 8 characters'));
                     $this->redirect('/admin/users/edit/' . $id);
                     return;
                 }
@@ -684,10 +685,10 @@ class AdminController extends BaseController
                 }
                 $this->groupService->updateUserGroups($id, $groupIds);
 
-                $this->flash('success', "User '{$userData['username']}' updated successfully");
+                $this->flash('success', __('User ":name" updated successfully', ['name' => $userData['username']]));
                 $this->redirect('/admin/users');
             } catch (\Exception $e) {
-                $this->flash('error', 'Failed to update user: ' . $e->getMessage());
+                $this->flash('error', __('Failed to update user: :error', ['error' => $e->getMessage()]));
                 $this->redirect('/admin/users/edit/' . $id);
             }
             return;
@@ -700,7 +701,7 @@ class AdminController extends BaseController
             'userData' => $userData,
             'userGroups' => $userGroups,
             'groups' => $groups,
-            'title' => 'Edit User: ' . $userData['username'],
+            'title' => __('Edit User: :name', ['name' => $userData['username']]),
             'action' => 'edit',
         ]);
     }
@@ -713,13 +714,13 @@ class AdminController extends BaseController
         $userData = $this->database->queryOne('SELECT id, username FROM users WHERE id = ?', [$id]);
 
         if (!$userData) {
-            $this->flash('error', 'User not found');
+            $this->flash('error', __('User not found'));
             $this->redirect('/admin/users');
             return;
         }
 
         if ($userData['username'] === 'admin') {
-            $this->flash('error', 'Cannot delete the admin user');
+            $this->flash('error', __('Cannot delete the admin user'));
             $this->redirect('/admin/users');
             return;
         }
@@ -728,9 +729,9 @@ class AdminController extends BaseController
             $this->database->delete('user_map_permissions', 'user_id = ?', [$id]);
             $this->database->delete('user_group_permissions', 'user_id = ?', [$id]);
             $this->database->delete('users', 'id = ?', [$id]);
-            $this->flash('success', "User '{$userData['username']}' deleted successfully");
+            $this->flash('success', __('User ":name" deleted successfully', ['name' => $userData['username']]));
         } catch (\Exception $e) {
-            $this->flash('error', 'Failed to delete user: ' . $e->getMessage());
+            $this->flash('error', __('Failed to delete user: :error', ['error' => $e->getMessage()]));
         }
 
         $this->redirect('/admin/users');
@@ -744,7 +745,7 @@ class AdminController extends BaseController
         
         $this->render('admin/settings', [
             'settings' => $settings,
-            'title' => 'Settings',
+            'title' => __('Settings'),
         ]);
     }
     
@@ -758,7 +759,7 @@ class AdminController extends BaseController
         
         $this->render('admin/data_sources', [
             'sources' => $sources,
-            'title' => 'Data Sources',
+            'title' => __('Data Sources'),
         ]);
     }
     
@@ -799,12 +800,12 @@ class AdminController extends BaseController
             $apiToken = trim($_POST['api_token'] ?? '');
             
             if (empty($name) || ($type === 'zabbix' && empty($url))) {
-                $this->flash('error', $type === 'zabbix' ? 'Name and URL are required' : 'Name is required');
+                $this->flash('error', $type === 'zabbix' ? __('Name and URL are required') : __('Name is required'));
                 $this->redirect('/admin/data-sources/create');
                 return;
             }
             if (!isset(self::DATA_SOURCE_TYPES[$type])) {
-                $this->flash('error', 'Unknown data source type');
+                $this->flash('error', __('Unknown data source type'));
                 $this->redirect('/admin/data-sources/create');
                 return;
             }
@@ -821,10 +822,10 @@ class AdminController extends BaseController
                     'settings' => $this->dataSourceSettings($type, []),
                 ]);
                 
-                $this->flash('success', "Data source '{$name}' created successfully");
+                $this->flash('success', __('Data source ":name" created successfully', ['name' => $name]));
                 $this->redirect('/admin/data-sources');
             } catch (\Exception $e) {
-                $this->flash('error', 'Failed to create data source: ' . $e->getMessage());
+                $this->flash('error', __('Failed to create data source: :error', ['error' => $e->getMessage()]));
                 $this->redirect('/admin/data-sources/create');
             }
             return;
@@ -832,7 +833,7 @@ class AdminController extends BaseController
         
         $this->render('admin/data_source_form', [
             'source' => null,
-            'title' => 'Add Data Source',
+            'title' => __('Add Data Source'),
             'action' => 'create',
             'types' => self::DATA_SOURCE_TYPES,
         ]);
@@ -846,7 +847,7 @@ class AdminController extends BaseController
         $source = $this->dataSourceService->getSource($id);
         
         if (!$source) {
-            $this->flash('error', 'Data source not found');
+            $this->flash('error', __('Data source not found'));
             $this->redirect('/admin/data-sources');
             return;
         }
@@ -861,12 +862,12 @@ class AdminController extends BaseController
             $active = isset($_POST['active']) ? 1 : 0;
             
             if (empty($name) || ($type === 'zabbix' && empty($url))) {
-                $this->flash('error', $type === 'zabbix' ? 'Name and URL are required' : 'Name is required');
+                $this->flash('error', $type === 'zabbix' ? __('Name and URL are required') : __('Name is required'));
                 $this->redirect('/admin/data-sources/edit/' . $id);
                 return;
             }
             if (!isset(self::DATA_SOURCE_TYPES[$type])) {
-                $this->flash('error', 'Unknown data source type');
+                $this->flash('error', __('Unknown data source type'));
                 $this->redirect('/admin/data-sources/edit/' . $id);
                 return;
             }
@@ -883,10 +884,10 @@ class AdminController extends BaseController
                     'settings' => $this->dataSourceSettings($type, json_decode((string) ($source['settings'] ?? ''), true) ?: []),
                 ]);
                 
-                $this->flash('success', "Data source '{$name}' updated successfully");
+                $this->flash('success', __('Data source ":name" updated successfully', ['name' => $name]));
                 $this->redirect('/admin/data-sources');
             } catch (\Exception $e) {
-                $this->flash('error', 'Failed to update data source: ' . $e->getMessage());
+                $this->flash('error', __('Failed to update data source: :error', ['error' => $e->getMessage()]));
                 $this->redirect('/admin/data-sources/edit/' . $id);
             }
             return;
@@ -894,7 +895,7 @@ class AdminController extends BaseController
         
         $this->render('admin/data_source_form', [
             'source' => $source,
-            'title' => 'Edit Data Source: ' . $source['name'],
+            'title' => __('Edit Data Source: :name', ['name' => $source['name']]),
             'action' => 'edit',
             'types' => self::DATA_SOURCE_TYPES,
         ]);
@@ -908,16 +909,16 @@ class AdminController extends BaseController
         $source = $this->dataSourceService->getSource($id);
         
         if (!$source) {
-            $this->flash('error', 'Data source not found');
+            $this->flash('error', __('Data source not found'));
             $this->redirect('/admin/data-sources');
             return;
         }
         
         try {
             $this->dataSourceService->deleteSource($id);
-            $this->flash('success', "Data source '{$source['name']}' deleted successfully");
+            $this->flash('success', __('Data source ":name" deleted successfully', ['name' => $source['name']]));
         } catch (\Exception $e) {
-            $this->flash('error', 'Failed to delete data source: ' . $e->getMessage());
+            $this->flash('error', __('Failed to delete data source: :error', ['error' => $e->getMessage()]));
         }
         
         $this->redirect('/admin/data-sources');
@@ -947,9 +948,9 @@ class AdminController extends BaseController
                     // This is a bit of a hack since we can't easily access the private method
                     // But we can re-instantiate the database connection which triggers it
                     $db = new \App\Core\Database($this->config);
-                    $this->flash('success', 'Database schema update attempted.');
+                    $this->flash('success', __('Database schema update attempted.'));
                 } catch (\Exception $e) {
-                    $this->flash('error', 'Database update failed: ' . $e->getMessage());
+                    $this->flash('error', __('Database update failed: :error', ['error' => $e->getMessage()]));
                 }
                 $this->redirect('/admin/check-db');
                 return;
@@ -960,7 +961,7 @@ class AdminController extends BaseController
         
         $this->render('admin/check_db', [
             'results' => $results,
-            'title' => 'Database Integrity Check',
+            'title' => __('Database Integrity Check'),
         ]);
     }
 }

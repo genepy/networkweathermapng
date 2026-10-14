@@ -1,49 +1,49 @@
 <div class="admin-page">
     <div class="page-header">
-        <h1>Administration</h1>
+        <h1><?= e__('Administration') ?></h1>
     </div>
     
     <div class="admin-dashboard">
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['maps'] ?></div>
-                <div class="stat-label">Maps</div>
-                <a href="/admin/maps" class="stat-link">Manage Maps</a>
+                <div class="stat-label"><?= e__('Maps') ?></div>
+                <a href="/admin/maps" class="stat-link"><?= e__('Manage Maps') ?></a>
             </div>
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['groups'] ?></div>
-                <div class="stat-label">Groups</div>
-                <a href="/admin/groups" class="stat-link">Manage Groups</a>
+                <div class="stat-label"><?= e__('Groups') ?></div>
+                <a href="/admin/groups" class="stat-link"><?= e__('Manage Groups') ?></a>
             </div>
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['users'] ?></div>
-                <div class="stat-label">Users</div>
-                <a href="/admin/users" class="stat-link">Manage Users</a>
+                <div class="stat-label"><?= e__('Users') ?></div>
+                <a href="/admin/users" class="stat-link"><?= e__('Manage Users') ?></a>
             </div>
         </div>
         
         <div class="admin-menu">
-            <h2>Quick Actions</h2>
+            <h2><?= e__('Quick Actions') ?></h2>
             <div class="menu-grid">
                 <a href="/admin/maps" class="menu-item">
                     <span class="menu-icon">🗺️</span>
-                    <span class="menu-title">Maps</span>
-                    <span class="menu-desc">Add, edit, and manage weathermaps</span>
+                    <span class="menu-title"><?= e__('Maps') ?></span>
+                    <span class="menu-desc"><?= e__('Add, edit, and manage weathermaps') ?></span>
                 </a>
                 <a href="/admin/groups" class="menu-item">
                     <span class="menu-icon">📁</span>
-                    <span class="menu-title">Groups</span>
-                    <span class="menu-desc">Organize maps into groups</span>
+                    <span class="menu-title"><?= e__('Groups') ?></span>
+                    <span class="menu-desc"><?= e__('Organize maps into groups') ?></span>
                 </a>
                 <a href="/admin/users" class="menu-item">
                     <span class="menu-icon">👥</span>
-                    <span class="menu-title">Users</span>
-                    <span class="menu-desc">Manage user accounts and permissions</span>
+                    <span class="menu-title"><?= e__('Users') ?></span>
+                    <span class="menu-desc"><?= e__('Manage user accounts and permissions') ?></span>
                 </a>
                 <a href="/admin/data-sources" class="menu-item">
                     <span class="menu-icon">🔌</span>
-                    <span class="menu-title">Data Sources</span>
-                    <span class="menu-desc">Configure Zabbix and other data sources</span>
+                    <span class="menu-title"><?= e__('Data Sources') ?></span>
+                    <span class="menu-desc"><?= e__('Configure Zabbix and other data sources') ?></span>
                 </a>
                 <a href="/admin/migration" class="menu-item">
                     <span class="menu-icon">📦</span>
@@ -52,18 +52,18 @@
                 </a>
                 <a href="/admin/settings" class="menu-item">
                     <span class="menu-icon">⚙️</span>
-                    <span class="menu-title">Settings</span>
-                    <span class="menu-desc">Configure application settings</span>
+                    <span class="menu-title"><?= e__('Settings') ?></span>
+                    <span class="menu-desc"><?= e__('Configure application settings') ?></span>
                 </a>
                 <a href="/admin/check-db" class="menu-item">
                     <span class="menu-icon">🛡️</span>
-                    <span class="menu-title">Check DB</span>
-                    <span class="menu-desc">Verify database integrity</span>
+                    <span class="menu-title"><?= e__('Check DB') ?></span>
+                    <span class="menu-desc"><?= e__('Verify database integrity') ?></span>
                 </a>
                 <a href="/editor" class="menu-item">
                     <span class="menu-icon">✏️</span>
-                    <span class="menu-title">Editor</span>
-                    <span class="menu-desc">Visual map editor</span>
+                    <span class="menu-title"><?= e__('Editor') ?></span>
+                    <span class="menu-desc"><?= e__('Visual map editor') ?></span>
                 </a>
             </div>
         </div>

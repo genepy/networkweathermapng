@@ -63,6 +63,12 @@ WORKDIR /app
 # Copy application source
 COPY src/ /app/
 
+# Icons and backgrounds are kept in the data volume (see docker/init-data.sh)
+COPY docker/init-data.sh /usr/local/bin/weathermap-init
+RUN for dir in objects backgrounds; do \
+        mv /app/public/$dir /app/public/$dir.dist && ln -s /app/data/$dir /app/public/$dir; \
+    done
+
 # Copy composer files and install dependencies
 COPY docker/composer.docker.json /app/composer.json
 COPY composer.lock* /app/
