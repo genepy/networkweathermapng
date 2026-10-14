@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?= \App\Core\Csrf::metaTag() ?>
+    <script src="/assets/js/csrf.js"></script>
     <title>Login - Zabbix Weathermap</title>
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <style>

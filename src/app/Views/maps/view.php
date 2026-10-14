@@ -162,6 +162,42 @@
 </script>
 <?php endif; ?>
 
+<script>
+// Show edits right away: when the map's configuration changes, reload the
+// image (or the whole page when it carries a clickable imagemap).
+(function() {
+    const versionUrl = '/map/<?= (int) $map['id'] ?>/version';
+    const reloadPage = <?= $mapHtml ? 'true' : 'false' ?>;
+    let current = null;
+
+    function check() {
+        if (document.hidden) return;
+        fetch(versionUrl, {cache: 'no-store'})
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (!data || !data.version) return;
+                if (current !== null && data.version !== current) {
+                    if (reloadPage) {
+                        window.location.reload();
+                        return;
+                    }
+                    document.querySelectorAll('.map-image').forEach(function(img) {
+                        const next = new Image();
+                        next.onload = function() { img.src = this.src; };
+                        next.src = img.src.split('?')[0] + '?t=' + Date.now();
+                    });
+                }
+                current = data.version;
+            })
+            .catch(function() {});
+    }
+
+    check();
+    setInterval(check, 10000);
+    document.addEventListener('visibilitychange', check);
+})();
+</script>
+
 <?php if ($mode === 'preview'): ?>
 <script>
 (function() {

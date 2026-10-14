@@ -42,9 +42,9 @@
                         <a href="/editor/edit/<?= $map['id'] ?>" class="btn btn-sm" title="Edit Config">Config</a>
                         <a href="/admin/maps/edit/<?= $map['id'] ?>" class="btn btn-sm" title="Edit Properties">Edit</a>
                         <a href="/map/<?= $map['id'] ?>" class="btn btn-sm" title="View Map">View</a>
-                        <a href="/admin/maps/duplicate/<?= $map['id'] ?>" class="btn btn-sm" title="Duplicate">Copy</a>
+                        <a href="/admin/maps/duplicate/<?= $map['id'] ?>" data-method="post" class="btn btn-sm" title="Duplicate">Copy</a>
                         <a href="/admin/maps/delete/<?= $map['id'] ?>" class="btn btn-sm btn-danger" 
-                           onclick="return confirm('Are you sure you want to delete this map?')" title="Delete">Delete</a>
+                           data-method="post" data-confirm="Are you sure you want to delete this map?" title="Delete">Delete</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>

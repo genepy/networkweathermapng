@@ -68,6 +68,7 @@ class AccountController extends BaseController
             'password_hash' => password_hash($newPassword, PASSWORD_DEFAULT),
         ], 'id = ?', [$userId]);
 
+        $this->auth->passwordChanged();
         $this->flash('success', 'Password changed successfully');
         $this->redirect('/account/password');
     }
