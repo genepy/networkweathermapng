@@ -1645,8 +1645,21 @@
             };
 
             document.getElementById('link_datasource').value = JSON.stringify(selection);
-            const target = 'zabbix:hostid:' + selection.hostId + ':key:' + selection.inKey + ':' + selection.outKey;
+            // Sources that know their own TARGET syntax (Observium) send it with each option
+            const target = selected.target
+                || ('zabbix:hostid:' + selection.hostId + ':key:' + selection.inKey + ':' + selection.outKey);
             document.getElementById('link_target').value = target;
+
+            // Pre-fill the bandwidth with the interface speed when the source knows it
+            if (selected.bandwidth) {
+                document.getElementById('link_bandwidth_out_cb').checked = true;
+                document.getElementById('link_bandwidth_in').value = selected.bandwidth;
+                document.getElementById('link_bandwidth_in_sep').value = selected.bandwidth;
+                document.getElementById('link_bandwidth_out').value = selected.bandwidth;
+                document.getElementById('bw_row_combined').style.display = '';
+                document.getElementById('bw_row_in').style.display = 'none';
+                document.getElementById('bw_row_out').style.display = 'none';
+            }
         }
 
         try {
@@ -1685,7 +1698,7 @@
             try {
                 const ifaces = await dsFetchJson('/api/data-sources/' + encodeURIComponent(sourceId) + '/hosts/' + encodeURIComponent(hostId) + '/bandwidths');
                 if (!ifaces || !ifaces.length) {
-                    dsFillSelect(elIface, [], 'interfaceId', 'label', 'No net.if.in/out items on host');
+                    dsFillSelect(elIface, [], 'interfaceId', 'label', 'No interfaces with traffic data on this host');
                     elIface.disabled = true;
                     elIface.dataset.items = '[]';
                     return;
