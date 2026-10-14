@@ -24,7 +24,10 @@
             "App\\": "app/",
             "WeatherMap\\": "lib/WeatherMap/",
             "Zabbix\\": "lib/Zabbix/"
-        }
+        },
+        "files": [
+            "app/Core/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

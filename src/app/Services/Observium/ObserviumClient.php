@@ -112,6 +112,8 @@ final class ObserviumClient implements DataSourceClientInterface
                 'bandwidth' => $port['speed'] ? self::formatSpeed($port['speed']) : '',
                 'rxKey' => '',
                 'txKey' => '',
+                'ifIndex' => isset($port['ifIndex']) ? (int) $port['ifIndex'] : null,
+                'names' => array_values(array_filter([$port['ifName'] ?? '', $port['ifDescr'] ?? '', $port['ifAlias'] ?? ''])),
             ];
         }
 

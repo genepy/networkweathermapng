@@ -45,6 +45,11 @@
                     <span class="menu-title">Data Sources</span>
                     <span class="menu-desc">Configure Zabbix and other data sources</span>
                 </a>
+                <a href="/admin/migration" class="menu-item">
+                    <span class="menu-icon">📦</span>
+                    <span class="menu-title"><?= e__('Migration') ?></span>
+                    <span class="menu-desc"><?= e__('Import maps from an existing Weathermap') ?></span>
+                </a>
                 <a href="/admin/settings" class="menu-item">
                     <span class="menu-icon">⚙️</span>
                     <span class="menu-title">Settings</span>

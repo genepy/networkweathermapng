@@ -276,16 +276,47 @@ Render tests draw every map in `tests/fixtures/maps/` and compare it with
 references with `UPDATE_REFERENCE=1 vendor/bin/phpunit` and review the images
 before committing them.
 
-## Migration from Cacti Weathermap
+## Migration from an existing Weathermap
 
-If you're migrating from Cacti Weathermap:
+Maps from the Cacti plugin or from older Weathermap versions are imported in
+**Admin → Migration**: upload one or more `.conf` files, or a `.zip` holding
+the `.conf` files with their icons and backgrounds.
 
-1. Export your map configuration files
-2. Update TARGET strings from RRD format to Zabbix format
-3. Copy configuration files to `data/configs/`
-4. Import maps through the admin interface
+For each map the review page shows:
 
-See `docs/migration_plan.md` for detailed migration instructions.
+- **Checks**: `INCLUDE` lines are removed (they read files on the old server),
+  the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
+- **Images**: found, found under `objects/` or `backgrounds/` by file name, or
+  missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
+  uses them as `BACKGROUND`); an existing file with the same name is never
+  replaced. Only PNG, JPEG and GIF are accepted.
+- **Targets**: pick a data source and the old RRD, SNMP and MRTG targets are
+  matched to its interfaces by device name and ifIndex or interface name
+  (Observium `rrd/<host>/port-<ifIndex>.rrd`, `snmp:community:host:oid:oid`,
+  Cacti `host_traffic_in_N.rrd`, MRTG `host_N.log`). One match is selected
+  for you; when several devices or interfaces fit, choose in the list, or type
+  a target. `-` and `N*` in front of the old target are kept. Commands
+  (`!…`) are never carried over: replace them in the editor.
+- **Fonts**: the GD bitmap fonts 1–5 can be replaced by DejaVu Sans Mono
+  TrueType fonts of the same size (`FONTDEFINE 101`–`105`).
+
+**Compare old and new** shows the old engine's PNG next to the new SVG, or
+overlaid with the differences highlighted. **Create the map** saves it and
+opens the editor; the original file is kept in the map's history, so undo
+goes back to it, and **Restore original** on the review page puts it back.
+Positions, VIAs and every other setting are kept as they are. Live data is
+never read while migrating.
+
+Many maps at once, from the command line (in the Docker image, from `/app`):
+
+```bash
+php bin/migrate.php maps/*.conf                    # analyse only
+php bin/migrate.php --source=1 --apply maps.zip    # create the maps
+php bin/migrate.php --source=1 --no-fonts --group=2 --apply configs/
+```
+
+Targets with a single match are converted; the others keep their old value
+and are listed with a link to their review page.
 
 ## Requirements
 

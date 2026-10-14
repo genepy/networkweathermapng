@@ -195,6 +195,12 @@ function wm_warn($string, $notice_only = false) {
 
 	$message .= ($weathermap_map == '' ? '':$weathermap_map . ': ') . rtrim($string);
 
+	// a caller that wants the warnings (the migration report) collects them here
+	if (isset($GLOBALS['weathermap_warnings']) && is_array($GLOBALS['weathermap_warnings'])) {
+		$GLOBALS['weathermap_warnings'][] = rtrim($string);
+		return;
+	}
+
 	// use Cacti's debug log, if we are running from the poller
 	if (function_exists('cacti_log') && (!function_exists('show_editor_startpage'))) {
 		cacti_log($message, true, 'WEATHERMAP');
