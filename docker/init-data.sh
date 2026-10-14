@@ -10,7 +10,13 @@ mkdir -p /app/data /app/logs
 for dir in objects backgrounds; do
     mkdir -p "/app/data/$dir"
     if [ -d "/app/public/$dir.dist" ]; then
-        cp -Rn "/app/public/$dir.dist/." "/app/data/$dir/" 2>/dev/null || true
+        (
+            cd "/app/public/$dir.dist"
+            find . -type d -exec mkdir -p "/app/data/$dir/{}" \;
+            find . -type f | while IFS= read -r f; do
+                [ -e "/app/data/$dir/$f" ] || cp -p "$f" "/app/data/$dir/$f"
+            done
+        )
     fi
 done
 
