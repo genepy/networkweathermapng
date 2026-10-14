@@ -112,7 +112,11 @@ class Application
         $this->router->get('/admin/maps/edit/{id}', 'AdminController@editMap');
         $this->router->post('/admin/maps/edit/{id}', 'AdminController@editMap');
         $this->router->post('/admin/maps/delete/{id}', 'AdminController@deleteMap');
+        $this->router->get('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
         $this->router->post('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
+        $this->router->post('/admin/maps/bulk', 'AdminController@bulkMaps');
+        $this->router->get('/admin/maps/export', 'AdminController@exportMaps');
+        $this->router->get('/admin/maps/export/{id}', 'AdminController@exportMap');
         $this->router->post('/admin/maps/move/{id}', 'AdminController@moveMap');
         
         $this->router->get('/admin/groups', 'AdminController@groups');

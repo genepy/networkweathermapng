@@ -107,7 +107,8 @@ class MapService
      */
     public function createMap(array $data): int
     {
-        $name = $data['name'] ?? $data['title'] ?? 'New Map';
+        $name = self::cleanName((string) ($data['name'] ?? $data['title'] ?? '')) ?: 'New Map';
+        $data['name'] = $name;
         
         // Generate a unique filename if not provided
         if (empty($data['config_file'])) {
@@ -170,7 +171,9 @@ class MapService
     }
     
     /**
-     * Delete a map
+     * Delete a map and everything kept for it: its configuration and backup,
+     * rendered images and pages, link graphs, editor history, permissions and
+     * settings. Migrations that created it forget it.
      */
     public function deleteMap(int $id): bool
     {
@@ -178,26 +181,149 @@ class MapService
         if (!$map) {
             return false;
         }
-        
-        // Delete config file
+
         $configPath = $this->configPath . '/' . $map['config_file'];
-        if (file_exists($configPath)) {
-            unlink($configPath);
-        }
-        
-        // Delete output files
-        $outputBase = $this->outputPath . '/' . pathinfo($map['config_file'], PATHINFO_FILENAME);
-        foreach (['png', 'html', 'json'] as $ext) {
-            $file = $outputBase . '.' . $ext;
-            if (file_exists($file)) {
+        foreach ([$configPath, $configPath . '.bak'] as $file) {
+            if (is_file($file)) {
                 unlink($file);
             }
         }
-        
-        // Delete from database
+
+        $this->removeOutputs($map);
+        foreach (glob($this->outputPath . '/graphs/map_' . $id . '_link_*') ?: [] as $file) {
+            @unlink($file);
+        }
+        self::removeTree($this->config->getDataRoot() . '/history/' . $id);
+        (new Migration\MigrationStore($this->config->getDataRoot() . '/migration'))->forgetMap($id);
+
+        $this->db->delete('user_map_permissions', 'map_id = ?', [$id]);
+        $this->db->delete('settings', 'map_id = ?', [$id]);
         return $this->db->delete('maps', 'id = ?', [$id]) > 0;
     }
-    
+
+    /**
+     * New name for a map. The TITLE in its configuration follows; with
+     * $renameFile the configuration file takes a name made from it too.
+     */
+    public function renameMap(int $id, string $name, bool $renameFile = false): bool
+    {
+        $map = $this->getMap($id);
+        $name = self::cleanName($name);
+        if (!$map || $name === '') {
+            return false;
+        }
+
+        $configPath = $this->configPath . '/' . $map['config_file'];
+        if (is_file($configPath)) {
+            $content = (string) file_get_contents($configPath);
+            $this->saveMapConfig($id, self::withTitle($content, $name));
+        }
+
+        $update = ['name' => $name, 'title_cache' => $name];
+
+        if ($renameFile) {
+            $wanted = $this->generateConfigFilename($name);
+            $current = $map['config_file'];
+            if (pathinfo($current, PATHINFO_FILENAME) !== preg_replace('/(_\d+)?\.conf$/', '', $wanted) && $wanted !== $current) {
+                $this->removeOutputs($map);
+                foreach (['', '.bak'] as $ext) {
+                    if (is_file($configPath . $ext)) {
+                        rename($configPath . $ext, $this->configPath . '/' . $wanted . $ext);
+                    }
+                }
+                $update['config_file'] = $wanted;
+            }
+        }
+
+        $update['updated_at'] = date('Y-m-d H:i:s');
+        return $this->db->update('maps', $update, 'id = ?', [$id]) >= 0;
+    }
+
+    /** One line, no control characters: it goes into the TITLE line of the file */
+    public static function cleanName(string $name): string
+    {
+        return trim((string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $name));
+    }
+
+    /** $content with its TITLE set to $title (added at the top when missing) */
+    public static function withTitle(string $content, string $title): string
+    {
+        $title = self::cleanName($title);
+        $count = 0;
+        $content = (string) preg_replace_callback('/^([ \t]*)TITLE[ \t]+.*$/mi', function ($m) use ($title, &$count) {
+            return $count++ === 0 ? $m[1] . 'TITLE ' . $title : $m[0];
+        }, $content, 1);
+        return $count ? $content : 'TITLE ' . $title . "\n" . $content;
+    }
+
+    /**
+     * A zip of the given maps' configurations and the images they use, in
+     * the layout Admin > Migration imports.
+     *
+     * @param list<int> $ids empty for every map
+     */
+    public function exportZip(array $ids, string $zipFile): int
+    {
+        $maps = $ids ? array_filter(array_map([$this, 'getMap'], $ids)) : $this->getAllMaps();
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFile, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Cannot write ' . $zipFile);
+        }
+
+        $public = $this->config->getPublicPath();
+        $count = 0;
+        foreach ($maps as $map) {
+            $file = $this->configPath . '/' . $map['config_file'];
+            if (!is_file($file)) {
+                continue;
+            }
+            $content = (string) file_get_contents($file);
+            $zip->addFromString('configs/' . $map['config_file'], $content);
+            $count++;
+
+            if (preg_match_all('/^\s*(?:ICON(?:\s+\d+\s+\d+)?|BACKGROUND)\s+(\S+)\s*$/mi', $content, $m)) {
+                foreach ($m[1] as $image) {
+                    if (preg_match('#^(objects|backgrounds)/[A-Za-z0-9._ -]+$#', $image) && is_file($public . '/' . $image)) {
+                        $zip->addFile($public . '/' . $image, 'images/' . $image);
+                    }
+                }
+            }
+        }
+        $zip->close();
+        return $count;
+    }
+
+    /** Rendered images and pages of a map; they are made again when needed */
+    private function removeOutputs(array $map): void
+    {
+        $base = pathinfo($map['config_file'], PATHINFO_FILENAME);
+        foreach (glob($this->outputPath . '/' . self::globEscape($base) . '.*') ?: [] as $file) {
+            if (is_file($file)) {
+                unlink($file);
+            }
+        }
+    }
+
+    private static function globEscape(string $s): string
+    {
+        return (string) preg_replace('/([*?\[\]])/', '[$1]', $s);
+    }
+
+    private static function removeTree(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($it as $f) {
+            $f->isDir() ? rmdir($f->getPathname()) : unlink($f->getPathname());
+        }
+        rmdir($dir);
+    }
+
     /**
      * Get map configuration content
      */
@@ -363,8 +489,8 @@ class MapService
     private function generateDefaultConfig(array $data): string
     {
         $title = $data['name'] ?? $data['title'] ?? 'New Map';
-        $width = $data['width'] ?? 800;
-        $height = $data['height'] ?? 600;
+        $width = max(100, min(10000, (int) ($data['width'] ?? 800)));
+        $height = max(100, min(10000, (int) ($data['height'] ?? 600)));
 
         $fontRegular = $this->findFirstExistingPath([
             '/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf',
@@ -453,37 +579,32 @@ CONFIG;
     }
     
     /**
-     * Duplicate a map
+     * Copy of a map, its configuration included. It starts inactive unless
+     * $active says otherwise.
      */
-    public function duplicateMap(int $id): ?int
+    public function duplicateMap(int $id, ?string $name = null, ?int $groupId = null, bool $active = false): ?int
     {
         $map = $this->getMap($id);
         if (!$map) {
             return null;
         }
-        
-        // Get original config
+
         $config = $this->getMapConfig($id);
-        
-        // Create new map with modified title
-        $newData = [
-            'name' => $map['name'] . ' (Copy)',
-            'active' => 0, // Start as inactive
-            'group_id' => $map['group_id']
-        ];
-        
-        $newId = $this->createMap($newData);
-        
-        // Copy the config content
+        $name = self::cleanName((string) $name) ?: $map['name'] . ' (copy)';
+
+        $newId = $this->createMap([
+            'name' => $name,
+            'active' => $active ? 1 : 0,
+            'group_id' => $groupId ?: $map['group_id'],
+        ]);
+
         if ($config) {
-            // Update title in config
-            $config = preg_replace('/^TITLE\s+.+$/m', 'TITLE ' . $newData['name'], $config);
-            $this->saveMapConfig($newId, $config);
+            $this->saveMapConfig($newId, self::withTitle($config, $name));
         }
-        
+
         return $newId;
     }
-    
+
     /**
      * Get map statistics
      */

@@ -638,3 +638,24 @@ button.btn {
 .migration-page .compare.mode-diff figcaption, .migration-page .compare.mode-fade figcaption { visibility: hidden; }
 .migration-page .compare.mode-diff figure:last-child { mix-blend-mode: difference; }
 .migration-page .compare.mode-diff figure:last-child img { background: transparent; }
+
+/* Forms */
+.form-card { background: var(--wm-panel, #fff); border: 1px solid var(--wm-border, #dde1e7); border-radius: 6px; padding: 20px 24px; max-width: 640px; }
+.form-group { margin-bottom: 1.25rem; }
+.form-group > label { display: block; margin-bottom: 0.4rem; font-weight: 500; }
+.form-control { width: 100%; max-width: 500px; padding: 0.5rem 0.75rem; font: inherit; color: inherit; background: var(--wm-input, #fff); border: 1px solid var(--wm-border, #ccd); border-radius: 4px; }
+.form-control:focus { outline: none; border-color: var(--wm-accent, #1f6feb); box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.25); }
+.form-control:disabled { opacity: .7; cursor: not-allowed; }
+.form-pair { display: flex; gap: 12px; }
+.form-pair label { flex: 1; max-width: 200px; font-weight: 500; }
+.checkbox-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 6px; }
+.checkbox-label input[type="checkbox"] { width: 16px; height: 16px; }
+.form-actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; align-items: center; }
+.form-actions .push-right { margin-left: auto; }
+.form-group small { display: block; margin-top: 4px; }
+
+/* Map list: selection */
+.bulk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; margin-bottom: 8px; border-radius: 6px; background: var(--wm-accent-soft, #e7f0fe); border: 1px solid var(--wm-border, #c9dafc); }
+.bulk-bar .bulk-count { font-weight: 600; margin-right: 8px; }
+.bulk-bar select { padding: 4px; font: inherit; border-radius: 4px; border: 1px solid var(--wm-border, #ccd); background: var(--wm-input, #fff); color: inherit; }
+.data-table .col-check { width: 32px; text-align: center; }

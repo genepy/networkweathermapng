@@ -87,6 +87,16 @@ class MigrationStore
         @rmdir($this->path($id));
     }
 
+    /** The map was deleted: the migrations that created it can create it again */
+    public function forgetMap(int $mapId): void
+    {
+        foreach ($this->all() as $meta) {
+            if ((int) ($meta['mapId'] ?? 0) === $mapId) {
+                $this->update($meta['id'], ['mapId' => null, 'applied' => null]);
+            }
+        }
+    }
+
     public static function validId(string $id): bool
     {
         return (bool) preg_match('/^[a-f0-9]{12}$/', $id);
