@@ -55,8 +55,15 @@ COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docker/php/php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
 
+COPY docker/nginx-start.sh /usr/local/bin/nginx-start
+
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Defaults so a plain "docker run" works without docker-compose
+ENV APP_ROOT=/app \
+    DATA_ROOT=/app/data \
+    DB_PATH=/app/data/weathermap.db
 
 # Set working directory
 WORKDIR /app
