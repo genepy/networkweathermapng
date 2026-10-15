@@ -1,0 +1,8 @@
+# Apache installs (the Docker image uses nginx, see docker/nginx/default.conf).
+# An icon or background SVG opened on its own must not run anything.
+<IfModule mod_headers.c>
+    <If "%{REQUEST_URI} =~ m#^/(objects|backgrounds)/.+\.svg$#i">
+        Header always set Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'"
+        Header always set X-Content-Type-Options "nosniff"
+    </If>
+</IfModule>

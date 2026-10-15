@@ -141,7 +141,11 @@ class Application
         $this->router->get('/admin/maps/edit/{id}', 'AdminController@editMap');
         $this->router->post('/admin/maps/edit/{id}', 'AdminController@editMap');
         $this->router->post('/admin/maps/delete/{id}', 'AdminController@deleteMap');
+        $this->router->get('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
         $this->router->post('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
+        $this->router->post('/admin/maps/bulk', 'AdminController@bulkMaps');
+        $this->router->get('/admin/maps/export', 'AdminController@exportMaps');
+        $this->router->get('/admin/maps/export/{id}', 'AdminController@exportMap');
         $this->router->post('/admin/maps/move/{id}', 'AdminController@moveMap');
         
         $this->router->get('/admin/groups', 'AdminController@groups');
@@ -162,6 +166,16 @@ class Application
         $this->router->post('/admin/check-db', 'AdminController@checkDatabase');
         
         // Data Sources
+        // Migration of existing Weathermap maps
+        $this->router->get('/admin/migration', 'MigrationController@index');
+        $this->router->post('/admin/migration/upload', 'MigrationController@upload');
+        $this->router->get('/admin/migration/{id}', 'MigrationController@review');
+        $this->router->post('/admin/migration/{id}', 'MigrationController@save');
+        $this->router->get('/admin/migration/{id}/compare', 'MigrationController@compare');
+        $this->router->get('/admin/migration/{id}/image/{kind}', 'MigrationController@image');
+        $this->router->post('/admin/migration/{id}/rollback', 'MigrationController@rollback');
+        $this->router->post('/admin/migration/{id}/delete', 'MigrationController@delete');
+
         $this->router->get('/admin/data-sources', 'AdminController@dataSources');
         $this->router->get('/admin/data-sources/create', 'AdminController@createDataSource');
         $this->router->post('/admin/data-sources/create', 'AdminController@createDataSource');

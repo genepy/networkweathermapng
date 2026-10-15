@@ -1,16 +1,16 @@
 <div class="admin-settings-page">
     <div class="page-header">
         <div class="breadcrumb">
-            <a href="/admin">Admin</a> &raquo; Settings
+            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Settings') ?>
         </div>
     </div>
     
     <div class="settings-container">
         <form method="POST" action="/admin/settings/save" class="settings-form">
             <div class="settings-section">
-                <h2>Map Settings</h2>
+                <h2><?= e__('Map Settings') ?></h2>
                 <div class="form-group">
-                    <label>Output Format</label>
+                    <label><?= e__('Output Format') ?></label>
                     <select name="map_output_format">
                         <option value="png" <?= getenv('MAP_OUTPUT_FORMAT') === 'png' ? 'selected' : '' ?>>PNG</option>
                         <option value="jpg" <?= getenv('MAP_OUTPUT_FORMAT') === 'jpg' ? 'selected' : '' ?>>JPEG</option>
@@ -18,13 +18,13 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Thumbnail Size (px)</label>
+                    <label><?= e__('Thumbnail Size (px)') ?></label>
                     <input type="number" name="map_thumb_size" 
                            value="<?= htmlspecialchars(getenv('MAP_THUMB_SIZE') ?: '250') ?>" 
                            min="100" max="500">
                 </div>
                 <div class="form-group">
-                    <label>Refresh Interval (seconds)</label>
+                    <label><?= e__('Refresh Interval (seconds)') ?></label>
                     <input type="number" name="map_refresh_interval" 
                            value="<?= htmlspecialchars(getenv('MAP_REFRESH_INTERVAL') ?: '300') ?>" 
                            min="60" max="3600">
@@ -32,14 +32,14 @@
             </div>
             
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <button type="submit" class="btn btn-primary"><?= e__('Save Settings') ?></button>
             </div>
         </form>
         
         <div class="settings-info">
-            <h3>Environment Variables</h3>
-            <p>Most settings are configured via environment variables in the <code>.env</code> file or Docker environment.</p>
-            <p>Changes made here will only persist until the application restarts. For permanent changes, update your environment configuration.</p>
+            <h3><?= e__('Environment Variables') ?></h3>
+            <p><?= e__('Most settings are configured via environment variables in the :file file or Docker environment.', ['file' => '.env']) ?></p>
+            <p><?= e__('Changes made here will only persist until the application restarts. For permanent changes, update your environment configuration.') ?></p>
         </div>
     </div>
 </div>
@@ -75,6 +75,8 @@
     border: 1px solid var(--border-color);
     border-radius: 4px;
     font-size: 14px;
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 .form-group small {
     display: block;
@@ -86,7 +88,8 @@
     margin-top: 20px;
 }
 .settings-info {
-    background: #e8f4fd;
+    background: var(--info-bg);
+    color: var(--info-text);
     padding: 20px;
     border-radius: 8px;
     border-left: 4px solid var(--info-color);

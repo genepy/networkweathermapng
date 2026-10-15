@@ -21,7 +21,7 @@ class AuthController extends BaseController
         
         $this->render('auth/login', [
             'error' => $error,
-            'title' => 'Login',
+            'title' => __('Login'),
         ], false);
     }
     
@@ -31,7 +31,7 @@ class AuthController extends BaseController
         $password = $this->getInput('password', '');
         
         if (empty($username) || empty($password)) {
-            $_SESSION['login_error'] = 'Please enter username and password';
+            $_SESSION['login_error'] = __('Please enter username and password');
             $this->redirect('/login');
             return;
         }
@@ -39,7 +39,7 @@ class AuthController extends BaseController
         if ($this->auth->attempt($username, $password)) {
             $this->redirect('/');
         } else {
-            $_SESSION['login_error'] = 'Invalid username or password';
+            $_SESSION['login_error'] = __('Invalid username or password');
             $this->redirect('/login');
         }
     }

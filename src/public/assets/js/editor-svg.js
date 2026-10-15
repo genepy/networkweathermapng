@@ -13,6 +13,15 @@
     var GRID = 10;
     var ANCHORS = ['NW', 'N', 'NE', 'W', 'C', 'E', 'SW', 'S', 'SE'];
 
+    /** Translation of an interface text (window.WM_T), :name placeholders replaced */
+    function t(s, params) {
+        var out = (window.WM_T && window.WM_T[s]) || s;
+        if (params) {
+            Object.keys(params).forEach(function (k) { out = out.split(':' + k).join(String(params[k])); });
+        }
+        return out;
+    }
+
     function $(sel, root) { return (root || document).querySelector(sel); }
     function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
@@ -57,7 +66,7 @@
         return fetch(url, opt).then(function (r) {
             return r.json().catch(function () { return null; }).then(function (data) {
                 if (!r.ok) {
-                    throw new Error((data && data.error) || ('The server answered ' + r.status));
+                    throw new Error((data && data.error) || t('The server answered :status', { status: r.status }));
                 }
                 return data;
             });
@@ -110,7 +119,7 @@
         var doc = new DOMParser().parseFromString(d.svg, 'image/svg+xml');
         var root = doc.documentElement;
         if (root.nodeName !== 'svg') {
-            throw new Error('The map could not be drawn');
+            throw new Error(t('The map could not be drawn'));
         }
         var children = Array.prototype.map.call(root.childNodes, function (n) { return document.importNode(n, true); });
         mapLayer.replaceChildren.apply(mapLayer, children);
@@ -203,12 +212,12 @@
 
     var toastTimer = null;
     function toast(msg, isError) {
-        var t = $('#toast');
-        t.textContent = msg;
-        t.className = isError ? 'error' : '';
-        t.hidden = false;
+        var box = $('#toast');
+        box.textContent = msg;
+        box.className = isError ? 'error' : '';
+        box.hidden = false;
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(function () { t.hidden = true; }, isError ? 6000 : 2500);
+        toastTimer = setTimeout(function () { box.hidden = true; }, isError ? 6000 : 2500);
     }
 
     function groupOf(item) { return item && item.group ? item.group : ''; }
@@ -371,8 +380,8 @@
                     width: n.box[2] - n.box[0] + 6, height: n.box[3] - n.box[1] + 6
                 }, overlay);
                 if (n.locked) {
-                    var t = el('text', { 'class': 'lock-mark', x: n.box[2] + 2 + dx, y: n.box[1] + dy }, overlay);
-                    t.textContent = '🔒';
+                    var mark = el('text', { 'class': 'lock-mark', x: n.box[2] + 2 + dx, y: n.box[1] + dy }, overlay);
+                    mark.textContent = '🔒';
                 }
             } else {
                 var l = state.links.get(p.name);
@@ -393,7 +402,7 @@
         if (nodes.length === 1 && links.length === 0 && !moved && state.tool === 'select') {
             var n1 = nodes[0];
             el('circle', { 'class': 'connector', cx: n1.box[2] + 8 / state.zoom, cy: (n1.box[1] + n1.box[3]) / 2, r: 5 / state.zoom, 'data-handle': 'connector' }, overlay)
-                .appendChild(el('title', {})).textContent = 'Drag to another node to link them';
+                .appendChild(el('title', {})).textContent = t('Drag to another node to link them');
         }
 
         if (state.linkFrom) {
@@ -431,12 +440,12 @@
             el('circle', {
                 'class': 'via-add', cx: (pts[i][0] + pts[i + 1][0]) / 2, cy: (pts[i][1] + pts[i + 1][1]) / 2,
                 r: r * 0.9, 'data-handle': 'via-add', 'data-index': i
-            }, overlay).appendChild(el('title', {})).textContent = 'Drag to bend the link here';
+            }, overlay).appendChild(el('title', {})).textContent = t('Drag to bend the link here');
         }
 
         link.via.forEach(function (v, idx) {
             el('circle', { 'class': 'via', cx: v[0], cy: v[1], r: r, 'data-handle': 'via', 'data-index': idx }, overlay)
-                .appendChild(el('title', {})).textContent = 'Drag to move, double-click to remove';
+                .appendChild(el('title', {})).textContent = t('Drag to move, double-click to remove');
         });
 
         [['a', link.a, link.a_offset], ['b', link.b, link.b_offset]].forEach(function (end) {
@@ -447,7 +456,7 @@
                 el('rect', {
                     'class': 'anchor' + (current ? ' current' : ''), x: p[0] - r * 0.7, y: p[1] - r * 0.7,
                     width: r * 1.4, height: r * 1.4, 'data-handle': 'anchor', 'data-end': end[0], 'data-anchor': a
-                }, overlay).appendChild(el('title', {})).textContent = 'Attach this end ' + (a === 'C' ? 'at the centre' : 'to ' + a);
+                }, overlay).appendChild(el('title', {})).textContent = a === 'C' ? t('Attach this end at the centre') : t('Attach this end to :anchor', { anchor: a });
             });
         });
     }
@@ -571,7 +580,7 @@
         if (item.kind === 'node') {
             var movable = selected('node').filter(function (n) { return !n.locked; });
             if (!movable.length) {
-                if (state.nodes.get(item.name).locked) { toast('This node is locked. Unlock it to move it.'); }
+                if (state.nodes.get(item.name).locked) { toast(t('This node is locked. Unlock it to move it.')); }
                 return;
             }
             var moved = { dx: 0, dy: 0 };
@@ -839,7 +848,7 @@
         var nodes = selected('node'), links = selected('link');
         var locked = nodes.concat(links).filter(function (i) { return i.locked; });
         if (locked.length) {
-            toast('Locked items are not deleted. Unlock them first.', true);
+            toast(t('Locked items are not deleted. Unlock them first.'), true);
         }
         nodes = nodes.filter(function (n) { return !n.locked; });
         links = links.filter(function (l) { return !l.locked; });
@@ -913,7 +922,7 @@
 
     function group() {
         if (state.selection.size < 2) {
-            toast('Select at least two items to group them.');
+            toast(t('Select at least two items to group them.'));
             return;
         }
         send(hintOps('editor_group', 'g' + Date.now().toString(36)));
@@ -953,7 +962,7 @@
         updateToolbar();
         renderOverlay();
         if (tool === 'link') {
-            toast('Click a node, then a second one, to link them. Esc to stop.');
+            toast(t('Click a node, then a second one, to link them. Esc to stop.'));
         }
     }
 
@@ -987,8 +996,8 @@
             if (pp === 0) {
                 if (qq < 0) { return false; }
             } else {
-                var t = qq / pp;
-                if (pp < 0) { if (t > t1) { return false; } if (t > t0) { t0 = t; } } else { if (t < t0) { return false; } if (t < t1) { t1 = t; } }
+                var tt = qq / pp;
+                if (pp < 0) { if (tt > t1) { return false; } if (tt > t0) { t0 = tt; } } else { if (tt < t0) { return false; } if (tt < t1) { t1 = tt; } }
             }
         }
         return t0 < t1;
@@ -1048,10 +1057,10 @@
         });
 
         if (!ops.length) {
-            toast('Nothing to reroute: no link crosses a node.');
+            toast(t('Nothing to reroute: no link crosses a node.'));
             return;
         }
-        send(ops).then(function () { toast(ops.length + ' link(s) rerouted. Ctrl+Z to undo.'); });
+        send(ops).then(function () { toast(t(':n link(s) rerouted. Ctrl+Z to undo.', { n: ops.length })); });
     }
 
     // ------------------------------------------------------------------
@@ -1065,8 +1074,8 @@
         var target = lens[lens.length - 1] * pct / 100;
         for (var j = 1; j < spine.length; j++) {
             if (lens[j] >= target) {
-                var t = (target - lens[j - 1]) / ((lens[j] - lens[j - 1]) || 1);
-                return [spine[j - 1][0] + (spine[j][0] - spine[j - 1][0]) * t, spine[j - 1][1] + (spine[j][1] - spine[j - 1][1]) * t];
+                var frac = (target - lens[j - 1]) / ((lens[j] - lens[j - 1]) || 1);
+                return [spine[j - 1][0] + (spine[j][0] - spine[j - 1][0]) * frac, spine[j - 1][1] + (spine[j][1] - spine[j - 1][1]) * frac];
             }
         }
         return spine[spine.length - 1];
@@ -1130,10 +1139,10 @@
             return { op: 'set_link', names: [name], props: { labelpos_in: Math.round(changes[name].in), labelpos_out: Math.round(changes[name].out) } };
         });
         if (!ops.length) {
-            toast('No overlapping labels found.');
+            toast(t('No overlapping labels found.'));
             return;
         }
-        send(ops).then(function () { toast(ops.length + ' link label(s) moved. Ctrl+Z to undo.'); });
+        send(ops).then(function () { toast(t(':n link label(s) moved. Ctrl+Z to undo.', { n: ops.length })); });
     }
 
     // ------------------------------------------------------------------
@@ -1172,7 +1181,7 @@
         var count = dlg.querySelector('.find-count');
         function update() {
             var m = findMatches(f);
-            count.textContent = m === null ? 'Invalid regular expression' : m.length + ' item(s) match';
+            count.textContent = m === null ? t('Invalid regular expression') : t(':n item(s) match', { n: m.length });
         }
         f.oninput = update;
         update();
@@ -1185,7 +1194,7 @@
             if (f.add.checked) { m = m.concat(Array.from(state.selection)); }
             state.selection = new Set(m);
             refresh();
-            toast(m.length + ' item(s) selected');
+            toast(t(':n item(s) selected', { n: m.length }));
         };
     }
 
@@ -1208,13 +1217,13 @@
         var c = common(items, name);
         var input;
         if (opts.options) {
-            input = h('select', { name: name }, (c.mixed ? [h('option', { value: '', text: '(mixed)' })] : []).concat(opts.options.map(function (o) {
+            input = h('select', { name: name }, (c.mixed ? [h('option', { value: '', text: t('(mixed)') })] : []).concat(opts.options.map(function (o) {
                 var val = Array.isArray(o) ? o[0] : o, text = Array.isArray(o) ? o[1] : o;
                 return h('option', { value: val, text: text, selected: !c.mixed && String(c.value) === String(val) });
             })));
         } else {
             input = h('input', {
-                name: name, type: opts.type || 'text', value: c.value, placeholder: c.mixed ? '(mixed)' : (opts.placeholder || ''),
+                name: name, type: opts.type || 'text', value: c.value, placeholder: c.mixed ? t('(mixed)') : (opts.placeholder || ''),
                 'class': c.mixed ? 'mixed' : '', list: opts.list || null
             });
         }
@@ -1229,8 +1238,8 @@
 
     function colourField(items, name, kind, allowContrast) {
         var c = common(items, name);
-        var text = h('input', { name: name, value: c.value, placeholder: c.mixed ? '(mixed)' : 'none', 'class': c.mixed ? 'mixed' : '' });
-        var swatch = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(c.value) ? c.value : '#ffffff', title: 'Pick a colour' });
+        var text = h('input', { name: name, value: c.value, placeholder: c.mixed ? t('(mixed)') : t('none'), 'class': c.mixed ? 'mixed' : '' });
+        var swatch = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(c.value) ? c.value : '#ffffff', title: t('Pick a colour') });
         function save(v) {
             var props = {};
             props[name] = v;
@@ -1238,9 +1247,9 @@
         }
         swatch.addEventListener('change', function () { text.value = swatch.value; save(swatch.value); });
         text.addEventListener('change', function () { save(text.value); });
-        var buttons = [h('button', { type: 'button', text: 'none', title: 'No colour', onclick: function () { save('none'); } })];
+        var buttons = [h('button', { type: 'button', text: t('none'), title: t('No colour'), onclick: function () { save('none'); } })];
         if (allowContrast) {
-            buttons.push(h('button', { type: 'button', text: 'auto', title: 'Black or white, whichever reads best', onclick: function () { save('contrast'); } }));
+            buttons.push(h('button', { type: 'button', text: t('auto'), title: t('Black or white, whichever reads best'), onclick: function () { save('contrast'); } }));
         }
         return h('div', { 'class': 'pair' }, [swatch, text].concat(buttons));
     }
@@ -1261,8 +1270,8 @@
             if (nodes.length) { parts = parts.concat(nodePanel(nodes)); }
             if (links.length) { parts = parts.concat(linkPanel(links)); }
             parts.push(h('div', { 'class': 'actions' }, [
-                h('button', { type: 'button', text: 'Duplicate', title: 'Ctrl+D', onclick: duplicateSelection, disabled: !nodes.length }),
-                h('button', { type: 'button', 'class': 'danger', text: 'Delete', title: 'Delete key', onclick: deleteSelection })
+                h('button', { type: 'button', text: t('Duplicate'), title: 'Ctrl+D', onclick: duplicateSelection, disabled: !nodes.length }),
+                h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection })
             ]));
         }
         inspector.replaceChildren.apply(inspector, parts);
@@ -1287,31 +1296,31 @@
         }
         w.addEventListener('change', size);
         hh.addEventListener('change', size);
-        var bg = h('select', { name: 'background' }, [h('option', { value: '', text: '(none)' })].concat(cfg.backgrounds.map(function (b) {
+        var bg = h('select', { name: 'background' }, [h('option', { value: '', text: t('(none)') })].concat(cfg.backgrounds.map(function (b) {
             return h('option', { value: b, text: b.split('/').pop(), selected: b === m.background });
         })));
         bg.addEventListener('change', function () { send([{ op: 'set_map', background: bg.value }]); });
 
         return [
-            h('h2', { text: 'Map' }),
-            row('Title', title),
-            row('Size', h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
-            row('Background', bg),
-            h('p', { 'class': 'help', text: m.width + ' × ' + m.height + ' px, ' + state.model.nodes.length + ' nodes, ' + state.model.links.length + ' links.' }),
-            h('h3', { text: 'Shortcuts' }),
+            h('h2', { text: t('Map') }),
+            row(t('Title'), title),
+            row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
+            row(t('Background'), bg),
+            h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) }),
+            h('h3', { text: t('Shortcuts') }),
             help([
-                ['Click, Shift+click', 'select, add to selection'],
-                ['Drag on empty space', 'select an area'],
-                ['Alt+click', 'one item of a group'],
-                ['Double-click empty space', 'new node'],
-                ['Ctrl+A / Esc', 'select all / nothing'],
-                ['Arrows, Shift+arrows', 'move by 1 or 10 px'],
-                ['Ctrl+Z, Ctrl+Shift+Z', 'undo, redo'],
-                ['Ctrl+D / Delete', 'duplicate / delete'],
-                ['Ctrl+G / Ctrl+Shift+G', 'group / ungroup'],
-                ['L / V', 'link tool / select tool'],
-                ['Wheel, Space+drag', 'zoom, move the view'],
-                ['F / 0', 'fit / actual size']
+                [t('Click, Shift+click'), t('select, add to selection')],
+                [t('Drag on empty space'), t('select an area')],
+                [t('Alt+click'), t('one item of a group')],
+                [t('Double-click empty space'), t('new node')],
+                ['Ctrl+A / Esc', t('select all / nothing')],
+                [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
+                ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')],
+                [t('Ctrl+D / Delete'), t('duplicate / delete')],
+                ['Ctrl+G / Ctrl+Shift+G', t('group / ungroup')],
+                ['L / V', t('link tool / select tool')],
+                [t('Wheel, Space+drag'), t('zoom, move the view')],
+                ['F / 0', t('fit / actual size')]
             ])
         ];
     }
@@ -1323,52 +1332,52 @@
     }
 
     function iconOptions() {
-        return [['', '(none)'], ['box', 'Box'], ['rbox', 'Rounded box'], ['round', 'Circle']].concat(cfg.icons.map(function (i) {
+        return [['', t('(none)')], ['box', t('Box')], ['rbox', t('Rounded box')], ['round', t('Circle')]].concat(cfg.icons.map(function (i) {
             return [i, i.split('/').pop()];
         }));
     }
 
     function fontOptions() {
-        return state.model.fonts.map(function (f) { return [f, f <= 5 ? 'Built-in ' + f : 'Font ' + f]; });
+        return state.model.fonts.map(function (f) { return [f, f <= 5 ? t('Built-in :n', { n: f }) : t('Font :n', { n: f })]; });
     }
 
     function nodePanel(nodes) {
         var single = nodes.length === 1 ? nodes[0] : null;
-        var out = [h('h2', { text: single ? 'Node' : nodes.length + ' nodes' })];
+        var out = [h('h2', { text: single ? t('Node') : t(':n nodes', { n: nodes.length }) })];
 
         if (single) {
             var name = h('input', { name: 'name', value: single.name });
             name.addEventListener('change', function () {
                 send([{ op: 'rename_node', name: single.name, to: name.value }], function () { return [key('node', name.value.replace(/[^\w.\-:]/g, '_'))]; });
             });
-            out.push(row('Name', name));
+            out.push(row(t('Name'), name));
         }
 
-        out.push(row('Label', field(nodes, 'label', 'node')));
+        out.push(row(t('Label'), field(nodes, 'label', 'node')));
 
         if (single) {
             var x = h('input', { type: 'number', value: single.x }), y = h('input', { type: 'number', value: single.y });
             var pos = function () { send([{ op: 'move', nodes: (function () { var o = {}; o[single.name] = [+x.value, +y.value]; return o; })() }]); };
             x.addEventListener('change', pos);
             y.addEventListener('change', pos);
-            out.push(row('Position', h('div', { 'class': 'pair' }, [x, y])));
+            out.push(row(t('Position'), h('div', { 'class': 'pair' }, [x, y])));
         }
 
         out.push(
-            row('Icon', field(nodes, 'icon', 'node', { options: iconOptions() })),
-            h('h3', { text: 'Label style' }),
-            row('Font', field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
-            row('Background', colourField(nodes, 'labelbgcolour', 'node')),
-            row('Text', colourField(nodes, 'labelfontcolour', 'node', true)),
-            row('Outline', colourField(nodes, 'labeloutlinecolour', 'node')),
-            h('h3', { text: 'Data' }),
-            row('Target', field(nodes, 'target', 'node')),
-            row('Info URL', field(nodes, 'infourl', 'node')),
-            row('Layer', field(nodes, 'zorder', 'node', { type: 'number', number: true }))
+            row(t('Icon'), field(nodes, 'icon', 'node', { options: iconOptions() })),
+            h('h3', { text: t('Label style') }),
+            row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
+            row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
+            row(t('Text'), colourField(nodes, 'labelfontcolour', 'node', true)),
+            row(t('Outline'), colourField(nodes, 'labeloutlinecolour', 'node')),
+            h('h3', { text: t('Data') }),
+            row(t('Target'), field(nodes, 'target', 'node')),
+            row(t('Info URL'), field(nodes, 'infourl', 'node')),
+            row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true }))
         );
 
         if (nodes.some(function (n) { return n.group; })) {
-            out.push(h('p', { 'class': 'help', text: 'Grouped: clicking one selects the whole group. Alt+click picks one.' }));
+            out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
         return out;
     }
@@ -1389,47 +1398,47 @@
 
     function linkPanel(links) {
         var single = links.length === 1 ? links[0] : null;
-        var out = [h('h2', { text: single ? 'Link ' + single.name : links.length + ' links' })];
+        var out = [h('h2', { text: single ? t('Link :name', { name: single.name }) : t(':n links', { n: links.length }) })];
 
         if (single) {
             out.push(h('p', { 'class': 'help', text: single.a + ' → ' + single.b }));
         }
 
         out.push(
-            row('Width', field(links, 'width', 'link', { placeholder: 'auto, or pixels', list: 'width-options' })),
-            row('Bandwidth', field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: 'auto, 1G, 10G...', list: 'bw-options' })),
+            row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
+            row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
             h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12'].map(function (v) { return h('option', { value: v }); })),
             h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '400G'].map(function (v) { return h('option', { value: v }); })),
-            row('Target', field(links, 'target', 'link')),
+            row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
-            h('h3', { text: 'Shape' }),
-            row('Style', field(links, 'viastyle', 'link', { options: [['curved', 'Curved'], ['angled', 'Straight segments']] })),
-            row('Arrows', field(links, 'linkstyle', 'link', { options: [['twoway', 'Both ways'], ['oneway', 'One way']] })),
-            row('Split at %', field(links, 'splitpos', 'link', { type: 'number', number: true })),
-            row('Layer', field(links, 'zorder', 'link', { type: 'number', number: true }))
+            h('h3', { text: t('Shape') }),
+            row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
+            row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
+            row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
+            row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }))
         );
 
         if (single) {
             out.push(
-                row('Ends', h('div', { 'class': 'pair' }, [anchorPicker(single, 'a'), anchorPicker(single, 'b')])),
-                h('p', { 'class': 'help', text: 'Drag the red points on the link to bend it. Double-click a point to remove it.' }),
+                row(t('Ends'), h('div', { 'class': 'pair' }, [anchorPicker(single, 'a'), anchorPicker(single, 'b')])),
+                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it. Double-click a point to remove it.') }),
                 h('div', { 'class': 'actions' }, [
-                    h('button', { type: 'button', text: 'Straighten', disabled: !single.via.length, onclick: function () { send([{ op: 'set_link', names: [single.name], props: { via: [] } }]); } }),
-                    h('button', { type: 'button', text: 'Auto-route', onclick: autoRoute })
+                    h('button', { type: 'button', text: t('Straighten'), disabled: !single.via.length, onclick: function () { send([{ op: 'set_link', names: [single.name], props: { via: [] } }]); } }),
+                    h('button', { type: 'button', text: t('Auto-route'), onclick: autoRoute })
                 ]),
-                h('h3', { text: 'Comments' }),
-                row('Near ' + single.a, field(links, 'comment_out', 'link')),
-                row('Near ' + single.b, field(links, 'comment_in', 'link'))
+                h('h3', { text: t('Comments') }),
+                row(t('Near :node', { node: single.a }), field(links, 'comment_out', 'link')),
+                row(t('Near :node', { node: single.b }), field(links, 'comment_in', 'link'))
             );
         }
         return out;
     }
 
     function interfacePicker(links) {
-        var box = h('details', {}, [h('summary', { text: 'Pick an interface from a data source' })]);
-        var src = h('select', {}, [h('option', { value: '', text: 'Loading…' })]);
-        var host = h('select', { disabled: true }, [h('option', { value: '', text: 'Host' })]);
-        var iface = h('select', { disabled: true }, [h('option', { value: '', text: 'Interface' })]);
+        var box = h('details', {}, [h('summary', { text: t('Pick an interface from a data source') })]);
+        var src = h('select', {}, [h('option', { value: '', text: t('Loading…') })]);
+        var host = h('select', { disabled: true }, [h('option', { value: '', text: t('Host') })]);
+        var iface = h('select', { disabled: true }, [h('option', { value: '', text: t('Interface') })]);
         var items = [];
 
         function fill(sel, list, value, label, placeholder) {
@@ -1443,14 +1452,14 @@
         box.addEventListener('toggle', function once() {
             box.removeEventListener('toggle', once);
             get('/api/data-sources').then(function (list) {
-                fill(src, list, 'id', 'name', list.length ? 'Data source' : 'No data source configured');
+                fill(src, list, 'id', 'name', list.length ? t('Data source') : t('No data source configured'));
             }).catch(function (e) { fill(src, [], 'id', 'name', e.message); });
         });
         src.addEventListener('change', function () {
             host.disabled = iface.disabled = true;
             if (!src.value) { return; }
             get('/api/data-sources/' + encodeURIComponent(src.value) + '/hosts').then(function (list) {
-                fill(host, list, 'hostid', 'name', 'Host');
+                fill(host, list, 'hostid', 'name', t('Host'));
                 host.disabled = false;
             }).catch(function (e) { fill(host, [], 'hostid', 'name', e.message); });
         });
@@ -1459,7 +1468,7 @@
             if (!host.value) { return; }
             get('/api/data-sources/' + encodeURIComponent(src.value) + '/hosts/' + encodeURIComponent(host.value) + '/bandwidths').then(function (list) {
                 items = list;
-                fill(iface, list, 'interfaceId', 'label', list.length ? 'Interface' : 'No interface with traffic data');
+                fill(iface, list, 'interfaceId', 'label', list.length ? t('Interface') : t('No interface with traffic data'));
                 iface.disabled = !list.length;
             }).catch(function (e) { fill(iface, [], 'interfaceId', 'label', e.message); });
         });
@@ -1475,9 +1484,9 @@
             send([{ op: 'set_link', names: links.map(function (l) { return l.name; }), props: props }]);
         });
 
-        box.appendChild(row('Source', src));
-        box.appendChild(row('Host', host));
-        box.appendChild(row('Interface', iface));
+        box.appendChild(row(t('Source'), src));
+        box.appendChild(row(t('Host'), host));
+        box.appendChild(row(t('Interface'), iface));
         return box;
     }
 
@@ -1572,8 +1581,8 @@
     }
 
     document.addEventListener('keydown', function (evt) {
-        var t = evt.target;
-        if (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || $('dialog[open]')) {
+        var tgt = evt.target;
+        if (tgt.tagName === 'INPUT' || tgt.tagName === 'SELECT' || tgt.tagName === 'TEXTAREA' || $('dialog[open]')) {
             return;
         }
         var ctrl = evt.ctrlKey || evt.metaKey, k = evt.key;

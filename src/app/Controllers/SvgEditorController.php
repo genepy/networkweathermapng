@@ -31,7 +31,7 @@ class SvgEditorController extends BaseController
 
         $map = $this->findMap($params);
         if (!$map) {
-            $this->flash('error', 'Map not found');
+            $this->flash('error', __('Map not found'));
             $this->redirect('/editor');
             return;
         }
@@ -44,7 +44,7 @@ class SvgEditorController extends BaseController
             'mapId' => (int) $map['id'],
             'icons' => get_imagelist($publicPath, 'objects'),
             'backgrounds' => get_imagelist($publicPath, 'backgrounds'),
-            'title' => 'Edit Map: ' . $map['name'],
+            'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
     }
 
@@ -55,7 +55,7 @@ class SvgEditorController extends BaseController
 
         $map = $this->findMap($params);
         if (!$map) {
-            $this->json(['error' => 'Map not found'], 404);
+            $this->json(['error' => __('Map not found')], 404);
             return;
         }
 
@@ -69,14 +69,14 @@ class SvgEditorController extends BaseController
 
         $map = $this->findMap($params);
         if (!$map) {
-            $this->json(['error' => 'Map not found'], 404);
+            $this->json(['error' => __('Map not found')], 404);
             return;
         }
 
         $body = json_decode((string) file_get_contents('php://input'), true);
         $ops = is_array($body) ? ($body['ops'] ?? null) : null;
         if (!is_array($ops) || $ops === []) {
-            $this->json(['error' => 'No operations'], 422);
+            $this->json(['error' => __('No operations')], 422);
             return;
         }
 
@@ -92,7 +92,7 @@ class SvgEditorController extends BaseController
             return;
         } catch (\Throwable $e) {
             error_log('SVG editor: ' . $e->getMessage());
-            $this->json(['error' => 'The map could not be saved'], 500);
+            $this->json(['error' => __('The map could not be saved')], 500);
             return;
         }
 
@@ -147,7 +147,7 @@ class SvgEditorController extends BaseController
 
         $map = $this->findMap($params);
         if (!$map) {
-            $this->json(['error' => 'Map not found'], 404);
+            $this->json(['error' => __('Map not found')], 404);
             return;
         }
 
@@ -155,7 +155,7 @@ class SvgEditorController extends BaseController
         $done = $direction === 'undo' ? $history->undo() : $history->redo();
 
         if (!$done) {
-            $this->json(['error' => $direction === 'undo' ? 'Nothing to undo' : 'Nothing to redo'], 409);
+            $this->json(['error' => $direction === 'undo' ? __('Nothing to undo') : __('Nothing to redo')], 409);
             return;
         }
 

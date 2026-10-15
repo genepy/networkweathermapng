@@ -1,13 +1,15 @@
 <?php if ($fullscreen): ?>
+<?php $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''; ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= \App\Core\I18n::locale() ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map Cycle - Zabbix Weathermap</title>
+    <meta name="color-scheme" content="light dark">
+    <title><?= e__('Map Cycle') ?> - NetworkWeathermapNG</title>
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <style>
-        body { margin: 0; padding: 0; background: #1a1a1a; }
+        body { margin: 0; padding: 0; background: var(--bg-color); }
         .cycle-fullscreen { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
         .cycle-controls { background: rgba(0,0,0,0.8); padding: 10px; color: #fff; text-align: center; }
         .cycle-map-container { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -21,17 +23,20 @@
 
 <div class="<?= $fullscreen ? 'cycle-fullscreen' : 'cycle-page' ?>">
     <div class="cycle-controls">
-        <button id="cycle-prev" class="btn btn-sm">&laquo; Prev</button>
-        <button id="cycle-pause" class="btn btn-sm">Pause</button>
-        <button id="cycle-next" class="btn btn-sm">Next &raquo;</button>
+        <button id="cycle-prev" class="btn btn-sm">&laquo; <?= e__('Prev') ?></button>
+        <button id="cycle-pause" class="btn btn-sm" data-play="<?= e__('Play') ?>" data-pause="<?= e__('Pause') ?>"><?= e__('Pause') ?></button>
+        <button id="cycle-next" class="btn btn-sm"><?= e__('Next') ?> &raquo;</button>
         <span class="cycle-info">
-            Map <span id="current-map">1</span> of <span id="total-maps"><?= count($maps) ?></span>
+            <?= __('Map :current of :total', [
+                'current' => '<span id="current-map">1</span>',
+                'total' => '<span id="total-maps">' . count($maps) . '</span>',
+            ]) ?>
         </span>
         <?php if (!$fullscreen): ?>
-        <a href="/cycle?fullscreen=1&group=<?= $groupId ?>" class="btn btn-sm">Fullscreen</a>
-        <a href="/" class="btn btn-sm">Exit</a>
+        <a href="/cycle?fullscreen=1&group=<?= $groupId ?>" class="btn btn-sm"><?= e__('Fullscreen') ?></a>
+        <a href="/" class="btn btn-sm"><?= e__('Exit') ?></a>
         <?php else: ?>
-        <a href="/cycle?group=<?= $groupId ?>" class="btn btn-sm">Exit Fullscreen</a>
+        <a href="/cycle?group=<?= $groupId ?>" class="btn btn-sm"><?= e__('Exit Fullscreen') ?></a>
         <?php endif; ?>
     </div>
     
@@ -95,7 +100,7 @@
     
     document.getElementById('cycle-pause').addEventListener('click', function() {
         isPaused = !isPaused;
-        this.textContent = isPaused ? 'Play' : 'Pause';
+        this.textContent = isPaused ? this.dataset.play : this.dataset.pause;
         if (isPaused) {
             stopCycle();
         } else {

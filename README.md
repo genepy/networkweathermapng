@@ -22,7 +22,11 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Map Cycling** - Auto-rotate through maps for NOC displays
+- **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
+- **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
+- **English and French** - Chosen in the header, or with `APP_LOCALE`
+- **Light and dark themes** - Automatic (system setting) or chosen in the header
 - **Responsive UI** - Modern, mobile-friendly interface
 
 ## Quick Start
@@ -31,7 +35,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/nchekwa/networkweathermapng.git
+   git clone https://github.com/genepy/networkweathermapng.git
    cd networkweathermapng
    ```
 
@@ -54,6 +58,13 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
    Default credentials: `admin` / `admin`
 
+Everything that changes is kept in the `/app/data` volume: the database,
+map configurations, rendered images, editor history, migrations, and the
+icons and backgrounds (`/app/public/objects` and `/app/public/backgrounds`
+point there; the images shipped with the application are copied in at
+start, without replacing yours). Uploads, a migration zip included, are
+limited to 64 MB.
+
 ## Configuration
 
 ### Environment Variables
@@ -72,6 +83,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
 | `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`) | `png` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds | `300` |
+| `APP_LOCALE` | Interface language when the browser's doesn't decide (`en`, `fr`) | browser language |
 
 ### Data sources (Zabbix and more)
 
@@ -191,6 +203,42 @@ and saves each change straight into the map's `.conf` file.
 
 The previous editor is still available at `/editor/classic/<map id>`.
 
+### Icons
+
+`objects/net/` holds a set of network icons (router, switches, firewall,
+server, cloud, internet, Wi-Fi, load balancer, storage, workstation,
+virtualisation host, site, VPN) as SVG with a PNG twin. Maps reference the
+`.png` (or the `.svg`): the PNG output is drawn from the PNG, and the SVG
+output and the editor use the vector file, so icons stay sharp when zoomed.
+Any icon with an `.svg` next to it gets the same treatment, unless it is
+coloured by `USEICONSCALE`.
+
+## Managing maps
+
+Admin > Maps lists every map:
+
+- **New map**: empty (size of your choice) or a copy of an existing map.
+- **Properties**: name (the `TITLE` follows), group, visibility, and
+  optionally renaming the `.conf` file after the name.
+- **Duplicate**: choose the copy's name, group and visibility.
+- **.conf** / **Export all**: download one configuration, or a zip of every
+  map with its icons and backgrounds, which Admin > Migration imports back.
+- **Delete**: removes the map and everything kept for it: configuration and
+  backup, rendered images and pages, link graphs, editor history,
+  permissions and settings.
+- Tick several maps to activate, deactivate, move, export or delete them at
+  once.
+
+## Language and theme
+
+The header has a language menu (English, French) and a theme button
+(automatic, light, dark); both are remembered in cookies. Without a choice,
+the language follows the browser, then `APP_LOCALE`. Translations live in
+`src/app/Lang/<locale>/*.php`, one file per part of the application, as
+`'English text' => 'translation'`; `*-js.php` files hold the texts of a
+browser script. In code, wrap texts with `__('…')` (or `e__('…')` to print
+them escaped) and add them to the catalogue.
+
 ## Directory Structure
 
 ```
@@ -277,16 +325,52 @@ Render tests draw every map in `tests/fixtures/maps/` and compare it with
 references with `UPDATE_REFERENCE=1 vendor/bin/phpunit` and review the images
 before committing them.
 
-## Migration from Cacti Weathermap
+## Migration from an existing Weathermap
 
-If you're migrating from Cacti Weathermap:
+Maps from the Cacti plugin or from older Weathermap versions are imported in
+**Admin → Migration**: upload one or more `.conf` files, or a `.zip` holding
+the `.conf` files with their icons and backgrounds.
 
-1. Export your map configuration files
-2. Update TARGET strings from RRD format to Zabbix format
-3. Copy configuration files to `data/configs/`
-4. Import maps through the admin interface
+For each map the review page shows:
 
-See `docs/migration_plan.md` for detailed migration instructions.
+- **Checks**: `INCLUDE` lines are removed (they read files on the old server),
+  the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
+- **Images**: found, found under `objects/` or `backgrounds/` by file name, or
+  missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
+  uses them as `BACKGROUND`); an existing file with the same name is never
+  replaced. PNG, JPEG, GIF and SVG are accepted. SVG files are cleaned first:
+  only drawing elements and attributes are kept (no scripts, event handlers,
+  `foreignObject` or links out of the file; a `DOCTYPE`/`ENTITY` is refused),
+  then a PNG copy is drawn next to them for the map engine with `rsvg-convert`
+  (in the Docker image) or ImageMagick. Without either, SVG files are skipped.
+- **Targets**: pick a data source and the old RRD, SNMP and MRTG targets are
+  matched to its interfaces by device name and ifIndex or interface name
+  (Observium `rrd/<host>/port-<ifIndex>.rrd`, `snmp:community:host:oid:oid`,
+  Cacti `host_traffic_in_N.rrd`, MRTG `host_N.log`). One match is selected
+  for you; when several devices or interfaces fit, choose in the list, or type
+  a target. `-` and `N*` in front of the old target are kept. Commands
+  (`!…`) are never carried over: replace them in the editor.
+- **Fonts**: the GD bitmap fonts 1–5 can be replaced by DejaVu Sans Mono
+  TrueType fonts of the same size (`FONTDEFINE 101`–`105`).
+
+**Compare old and new** shows the old engine's PNG next to the new SVG, or
+overlaid with the differences highlighted. **Create the map** saves it and
+opens the editor; the original file is kept in the map's history, so undo
+goes back to it, and **Restore original** on the review page puts it back.
+Positions, VIAs and every other setting are kept as they are. Live data is
+never read while migrating.
+
+Many maps at once, from the command line (in the Docker image, from `/app`,
+e.g. `docker exec -it networkweathermapng php bin/migrate.php …`):
+
+```bash
+php bin/migrate.php maps/*.conf                    # analyse only
+php bin/migrate.php --source=1 --apply maps.zip    # create the maps
+php bin/migrate.php --source=1 --no-fonts --group=2 --apply configs/
+```
+
+Targets with a single match are converted; the others keep their old value
+and are listed with a link to their review page.
 
 ## Requirements
 

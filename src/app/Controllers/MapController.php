@@ -77,7 +77,7 @@ class MapController extends BaseController
             'maps' => $maps,
             'groups' => $visibleGroups,
             'currentGroup' => $groupId,
-            'title' => 'Network Weathermaps',
+            'title' => __('Network Weathermaps'),
         ]);
     }
     
@@ -92,7 +92,7 @@ class MapController extends BaseController
         
         if (!$this->auth->canViewMap($mapId)) {
             http_response_code(403);
-            echo '<h1>Access Denied</h1>';
+            echo '<h1>' . e__('Access denied') . '</h1>';
             return;
         }
         
@@ -100,7 +100,7 @@ class MapController extends BaseController
         
         if (!$map) {
             http_response_code(404);
-            echo '<h1>Map Not Found</h1>';
+            echo '<h1>' . e__('Map not found') . '</h1>';
             return;
         }
         
@@ -617,8 +617,8 @@ class MapController extends BaseController
             'groupId' => $groupId,
             'fullscreen' => $fullscreen,
             'refreshInterval' => (int) $this->config->get('MAP_REFRESH_INTERVAL', 300),
-            'title' => 'Map Cycle',
-        ]);
+            'title' => __('Map Cycle'),
+        ], !$fullscreen);
     }
     
     private function getMapsForUser(int $groupId = 0): array

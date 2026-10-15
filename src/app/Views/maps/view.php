@@ -22,7 +22,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: #111;
+            background: var(--map-bg, #111);
         }
         .map-view-page.fullscreen .map-container {
             width: 100vw;
@@ -91,14 +91,14 @@
     <?php if (!$isFullscreen): ?>
         <div class="page-header">
             <div class="breadcrumb">
-                <a href="/">Maps</a> &raquo; <?= htmlspecialchars($map['title_cache'] ?: $map['name']) ?>
+                <a href="/"><?= e__('Maps') ?></a> &raquo; <?= htmlspecialchars($map['title_cache'] ?: $map['name']) ?>
             </div>
             <div class="page-actions">
-                <a href="<?= $fsFitUrl ?>" class="btn btn-secondary">Fullscreen (Fit)</a>
-                <a href="<?= $fsOrigUrl ?>" class="btn btn-secondary">Fullscreen (Original)</a>
-                <a href="<?= $previewUrl ?>" class="btn btn-success">Preview</a>
+                <a href="<?= $fsFitUrl ?>" class="btn btn-secondary"><?= e__('Fullscreen (Fit)') ?></a>
+                <a href="<?= $fsOrigUrl ?>" class="btn btn-secondary"><?= e__('Fullscreen (Original)') ?></a>
+                <a href="<?= $previewUrl ?>" class="btn btn-success"><?= e__('Preview') ?></a>
                 <?php if ($auth->isAdmin()): ?>
-                <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn btn-primary">Edit Map</a>
+                <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn btn-primary"><?= e__('Edit Map') ?></a>
                 <?php endif; ?>
             </div>
         </div>
@@ -118,10 +118,14 @@
     
     <div class="map-meta">
         <?php if ($map['last_run']): ?>
-        <span class="last-updated">Last updated: <?= htmlspecialchars($map['last_run']) ?></span>
+        <span class="last-updated"><?= e__('Last updated:') ?> <?= htmlspecialchars($map['last_run']) ?></span>
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['API request failed', 'Invalid data source', 'Failed to load', 'Loading…', 'Link bandwidth (24h)', 'IN', 'OUT'])) ?>);
+</script>
 
 <?php if (empty($autoRefresh)): ?>
 <script>
@@ -247,7 +251,7 @@
     img.style.display = 'block';
     img.style.width = '520px';
     img.style.height = '180px';
-    img.alt = 'Traffic last <?= (int)$hours ?>h';
+    img.alt = <?= json_encode(__('Traffic last :hours h', ['hours' => (int) $hours])) ?>;
     tooltip.appendChild(img);
     document.body.appendChild(tooltip);
 

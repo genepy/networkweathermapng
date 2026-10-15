@@ -140,6 +140,33 @@ class WeatherMapSvg {
 		return array($c['red'], $c['green'], $c['blue'], round(1 - $c['alpha'] / 127, 3));
 	}
 
+	/**
+	 * The file GD draws for an icon: an .svg icon is drawn from the .png
+	 * next to it.
+	 */
+	static function rasterFor($file) {
+		if (preg_match('/\.svg$/i', $file)) {
+			$png = substr($file, 0, -4) . '.png';
+			return is_readable($png) ? $png : $file;
+		}
+		return $file;
+	}
+
+	/**
+	 * The vector version of an icon, if there is one: the .svg itself, or
+	 * an .svg next to the .png. The SVG output uses it instead of the bitmap.
+	 */
+	static function vectorFor($file) {
+		if (preg_match('/\.svg$/i', $file)) {
+			return is_readable($file) ? $file : null;
+		}
+		if (preg_match('/\.(png|gif|jpe?g)$/i', $file)) {
+			$svg = preg_replace('/\.(png|gif|jpe?g)$/i', '.svg', $file);
+			return is_readable($svg) ? $svg : null;
+		}
+		return null;
+	}
+
 	static function dataUri($file) {
 		if (!is_readable($file)) {
 			return null;

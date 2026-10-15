@@ -47,7 +47,7 @@ class ApiController extends BaseController
         $mapId = (int) ($params['id'] ?? 0);
         
         if (!$this->auth->canViewMap($mapId)) {
-            $this->json(['success' => false, 'error' => 'Access denied'], 403);
+            $this->json(['success' => false, 'error' => __('Access denied')], 403);
             return;
         }
         
@@ -57,7 +57,7 @@ class ApiController extends BaseController
         );
         
         if (!$map) {
-            $this->json(['success' => false, 'error' => 'Map not found'], 404);
+            $this->json(['success' => false, 'error' => __('Map not found')], 404);
             return;
         }
         
@@ -89,7 +89,7 @@ class ApiController extends BaseController
         $search = $this->getInput('search', '');
         
         if ($sourceId <= 0) {
-            $this->json(['success' => false, 'error' => 'Source ID required'], 400);
+            $this->json(['success' => false, 'error' => __('Data source ID required')], 400);
             return;
         }
         
@@ -112,7 +112,7 @@ class ApiController extends BaseController
         $search = $this->getInput('search', '');
         
         if ($sourceId <= 0 || empty($hostId)) {
-            $this->json(['success' => false, 'error' => 'Source ID and Host ID required'], 400);
+            $this->json(['success' => false, 'error' => __('Data source ID and host ID required')], 400);
             return;
         }
         
@@ -134,7 +134,7 @@ class ApiController extends BaseController
         $hostId = $params['hostId'] ?? '';
         
         if ($sourceId <= 0 || empty($hostId)) {
-            $this->json(['success' => false, 'error' => 'Source ID and Host ID required'], 400);
+            $this->json(['success' => false, 'error' => __('Data source ID and host ID required')], 400);
             return;
         }
         
@@ -156,7 +156,7 @@ class ApiController extends BaseController
         $hostId = $params['hostId'] ?? '';
 
         if ($sourceId <= 0 || empty($hostId)) {
-            $this->json(['success' => false, 'error' => 'Source ID and Host ID required'], 400);
+            $this->json(['success' => false, 'error' => __('Data source ID and host ID required')], 400);
             return;
         }
 
@@ -178,19 +178,19 @@ class ApiController extends BaseController
         $sourceId = (int) ($params['sourceId'] ?? 0);
 
         if ($sourceId <= 0) {
-            $this->json(['success' => false, 'error' => 'Source ID required'], 400);
+            $this->json(['success' => false, 'error' => __('Data source ID required')], 400);
             return;
         }
 
         $selectionJson = $this->getInput('selection', '');
         if ($selectionJson === '') {
-            $this->json(['success' => false, 'error' => 'Selection required'], 400);
+            $this->json(['success' => false, 'error' => __('Selection required')], 400);
             return;
         }
 
         $selection = json_decode($selectionJson, true);
         if (!is_array($selection)) {
-            $this->json(['success' => false, 'error' => 'Invalid selection JSON'], 400);
+            $this->json(['success' => false, 'error' => __('Invalid selection JSON')], 400);
             return;
         }
 

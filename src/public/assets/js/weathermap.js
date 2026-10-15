@@ -4,6 +4,9 @@
 
 (function() {
     'use strict';
+
+    // Translations exposed by the page (window.WM_T), English otherwise
+    function t(s) { return (window.WM_T && window.WM_T[s]) || s; }
     
     // Utility functions
     const WM = {
@@ -29,7 +32,7 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || 'API request failed');
+                    throw new Error(data.error || t('API request failed'));
                 }
                 
                 return data;
@@ -177,7 +180,7 @@
     async function wmLoadDatasourceHover(selection) {
         const sourceId = Number(selection.sourceId || 0);
         if (!sourceId) {
-            throw new Error('Invalid sourceId');
+            throw new Error(t('Invalid data source'));
         }
 
         const params = new URLSearchParams();
@@ -191,7 +194,7 @@
         const res = await fetch('/api/data-sources/' + encodeURIComponent(String(sourceId)) + '/link-bandwidth?' + params.toString());
         const data = await res.json();
         if (!res.ok || !data || !data.success) {
-            throw new Error((data && data.error) ? data.error : 'Failed to load');
+            throw new Error((data && data.error) ? data.error : t('Failed to load'));
         }
         return data.data;
     }
@@ -229,7 +232,7 @@
                 lastAbort = new AbortController();
 
                 hover.style.display = 'block';
-                hover.innerHTML = '<div style="opacity:0.85">Loading…</div>';
+                hover.innerHTML = '<div style="opacity:0.85">' + t('Loading…') + '</div>';
 
                 try {
                     const payload = await wmLoadDatasourceHover(selection);
@@ -247,16 +250,16 @@
 
                     hover.innerHTML = `
                         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px;">
-                            <div style="font-weight:600;">Link bandwidth (24h)</div>
+                            <div style="font-weight:600;">${t('Link bandwidth (24h)')}</div>
                             <div style="opacity:0.75;">${new Date().toLocaleString()}</div>
                         </div>
                         <div style="display:flex;gap:10px;align-items:center;margin:6px 0;">
-                            <div style="width:70px;opacity:0.9;">IN</div>
+                            <div style="width:70px;opacity:0.9;">${t('IN')}</div>
                             <div style="font-weight:600;color:#59d185;">${wmFormatNum(inLast)} ${inUnits}</div>
                         </div>
                         <div>${inSvg}</div>
                         <div style="display:flex;gap:10px;align-items:center;margin:10px 0 6px;">
-                            <div style="width:70px;opacity:0.9;">OUT</div>
+                            <div style="width:70px;opacity:0.9;">${t('OUT')}</div>
                             <div style="font-weight:600;color:#6aa7ff;">${wmFormatNum(outLast)} ${outUnits}</div>
                         </div>
                         <div>${outSvg}</div>
