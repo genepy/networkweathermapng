@@ -9,7 +9,7 @@
         <h2><?= e__('Import maps') ?></h2>
         <p class="text-muted"><?= e__('Upload Weathermap .conf files, or a .zip with the .conf files and their icons and backgrounds. Nothing is created until you have reviewed each map.') ?></p>
         <form method="post" action="/admin/migration/upload" enctype="multipart/form-data" class="upload-form">
-            <input type="file" name="files[]" multiple required accept=".conf,.cfg,.txt,.zip,.png,.jpg,.jpeg,.gif">
+            <input type="file" name="files[]" multiple required accept=".conf,.cfg,.txt,.zip,.png,.jpg,.jpeg,.gif,.svg">
             <button type="submit" class="btn btn-primary"><?= e__('Import') ?></button>
         </form>
         <p class="text-muted small"><?= e__('Many maps at once:') ?> <code>php bin/migrate.php --source=1 --apply maps/*.conf</code></p>

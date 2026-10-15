@@ -2,11 +2,16 @@
 /**
  * Takes uploaded files (.conf, or a .zip of .conf files and images) apart:
  * maps go to the MigrationStore, images to the icon and background folders.
+ * SVG images are cleaned (SvgSanitizer) and get the PNG copy the map
+ * engine draws from.
  */
 
 declare(strict_types=1);
 
 namespace App\Services\Migration;
+
+use App\Services\Images\SvgRasterizer;
+use App\Services\Images\SvgSanitizer;
 
 class MigrationImporter
 {
@@ -16,8 +21,11 @@ class MigrationImporter
     public const MAX_ZIP_ENTRIES = 5000;
     private const IMAGE_TYPES = ['png' => IMAGETYPE_PNG, 'jpg' => IMAGETYPE_JPEG, 'jpeg' => IMAGETYPE_JPEG, 'gif' => IMAGETYPE_GIF];
 
-    public function __construct(private MigrationStore $store, private string $publicPath)
+    private SvgRasterizer $rasterizer;
+
+    public function __construct(private MigrationStore $store, private string $publicPath, ?SvgRasterizer $rasterizer = null)
     {
+        $this->rasterizer = $rasterizer ?? new SvgRasterizer();
     }
 
     /**
@@ -34,7 +42,7 @@ class MigrationImporter
             $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
             if ($ext === 'zip') {
                 $this->readZip($path, $confs, $images, $skipped);
-            } elseif (isset(self::IMAGE_TYPES[$ext])) {
+            } elseif ($this->isImage($ext)) {
                 $images[basename($name)] = (string) file_get_contents($path);
             } elseif (filesize($path) <= self::MAX_CONF && $this->looksLikeConf((string) file_get_contents($path))) {
                 $confs[basename($name)] = (string) file_get_contents($path);
@@ -97,7 +105,7 @@ class MigrationImporter
                 continue;
             }
             $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-            $isImage = isset(self::IMAGE_TYPES[$ext]);
+            $isImage = $this->isImage($ext);
             $limit = $isImage ? self::MAX_IMAGE : self::MAX_CONF;
 
             if ($stat['size'] > $limit || ($total += $stat['size']) > self::MAX_ZIP_TOTAL) {
@@ -130,19 +138,79 @@ class MigrationImporter
             return __('unsupported file name');
         }
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        if ($ext === 'svg') {
+            return $this->placeSvg($folder, $name, $data);
+        }
         $info = @getimagesizefromstring($data);
         if (!$info || $info[2] !== self::IMAGE_TYPES[$ext]) {
             return __('not a valid image');
         }
 
-        $target = $this->publicPath . '/' . $folder . '/' . $name;
-        if (is_file($target)) {
-            return hash_file('sha256', $target) === hash('sha256', $data) ? null : __('a different file with this name is already there');
+        return $this->writeFiles([$this->publicPath . '/' . $folder . '/' . $name => $data]);
+    }
+
+    /** The cleaned SVG and its PNG twin, written together or not at all */
+    private function placeSvg(string $folder, string $name, string $data): bool|string|null
+    {
+        try {
+            $clean = (new SvgSanitizer())->sanitize($data);
+        } catch (\RuntimeException $e) {
+            return $e->getMessage();
         }
-        if (!is_dir(dirname($target))) {
-            @mkdir(dirname($target), 0775, true);
+
+        $base = $this->publicPath . '/' . $folder . '/' . substr($name, 0, -4);
+        $svgFile = $base . '.svg';
+        if (is_file($svgFile) && hash_file('sha256', $svgFile) === hash('sha256', $clean)) {
+            return null;
         }
-        return file_put_contents($target, $data) !== false ? true : __('could not be written');
+
+        $png = $this->rasterizer->toPng($clean);
+        if ($png === null) {
+            return $this->rasterizer->available()
+                ? __('the SVG could not be converted to PNG')
+                : __('SVG needs rsvg-convert or ImageMagick on the server to make its PNG copy');
+        }
+
+        return $this->writeFiles([$svgFile => $clean, $base . '.png' => $png]);
+    }
+
+    /**
+     * @param array<string, string> $files path => data
+     * @return true|string|null true when written, null when the same files are there, else why not
+     */
+    private function writeFiles(array $files): bool|string|null
+    {
+        $same = true;
+        foreach ($files as $target => $data) {
+            if (is_file($target)) {
+                if (hash_file('sha256', $target) !== hash('sha256', $data)) {
+                    return __('a different file with this name is already there');
+                }
+            } else {
+                $same = false;
+            }
+        }
+        if ($same) {
+            return null;
+        }
+
+        foreach ($files as $target => $data) {
+            if (is_file($target)) {
+                continue;
+            }
+            if (!is_dir(dirname($target))) {
+                @mkdir(dirname($target), 0775, true);
+            }
+            if (file_put_contents($target, $data) === false) {
+                return __('could not be written');
+            }
+        }
+        return true;
+    }
+
+    private function isImage(string $ext): bool
+    {
+        return isset(self::IMAGE_TYPES[$ext]) || $ext === 'svg';
     }
 
     private function looksLikeConf(string $text): bool

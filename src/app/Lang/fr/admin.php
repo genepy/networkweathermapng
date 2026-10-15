@@ -270,6 +270,11 @@ return [
     ':file: could not be read' => ':file : illisible',
     'unsupported file name' => 'nom de fichier non pris en charge',
     'not a valid image' => 'image non valide',
+    'SVG file too large' => 'fichier SVG trop gros',
+    'SVG with a DOCTYPE or ENTITY declaration is refused' => 'SVG refusé : il contient une déclaration DOCTYPE ou ENTITY',
+    'not a valid SVG file' => 'fichier SVG non valide',
+    'the SVG could not be converted to PNG' => 'le SVG n\'a pas pu être converti en PNG',
+    'SVG needs rsvg-convert or ImageMagick on the server to make its PNG copy' => 'le serveur a besoin de rsvg-convert ou d\'ImageMagick pour créer la copie PNG du SVG',
     'a different file with this name is already there' => 'un autre fichier porte déjà ce nom',
     'could not be written' => 'écriture impossible',
 

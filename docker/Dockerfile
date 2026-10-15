@@ -20,7 +20,8 @@ RUN apk add --no-cache \
     sqlite-dev \
     ttf-dejavu \
     fontconfig \
-    rrdtool
+    rrdtool \
+    rsvg-convert
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
