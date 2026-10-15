@@ -88,6 +88,7 @@ class WeatherMapNode extends WeatherMapItem {
 	var $centre_x, $centre_y;
 	var $relative_to;
 	var $zorder;
+	var $svgparts = array();
 	var $template;
 	var $polar;
 	var $boundingboxes=array();
@@ -487,11 +488,15 @@ class WeatherMapNode extends WeatherMapItem {
 			} else {
 				$this->iconfile = $map->ProcessString($this->iconfile, $this);
 
-				if (is_readable($this->iconfile)) {
+				// an SVG icon is drawn from its PNG twin (GD can't read SVG)
+				$icon_raster = WeatherMapSvg::rasterFor($this->iconfile);
+
+				if (is_readable($icon_raster)) {
 					imagealphablending($image, true);
 					// draw the supplied icon, instead of the labelled box
 
-					$icon_im = imagecreatefromfile($this->iconfile);
+					$icon_im = imagecreatefromfile($icon_raster);
+					$icon_vector = isset($colicon) ? null : WeatherMapSvg::vectorFor($this->iconfile);
 					# $icon_im = imagecreatefrompng($this->iconfile);
 
 					if (function_exists('imagefilter') && isset($colicon) && $this->get_hint('use_imagefilter') == 1) {
@@ -620,8 +625,19 @@ class WeatherMapNode extends WeatherMapItem {
 		$bbox_y1   = intval(round($bbox_y1));
 		$bbox_y2   = intval(round($bbox_y2));
 
+		$svg = WeatherMapSvg::$active;
+		$this->svgparts = array();
+
 		// Draw the icon, if any
 		if (isset($icon_im)) {
+			if ($svg) {
+				$this->svgparts['icon'] = array(
+					'x' => $icon_x1 + $bbox_x1, 'y' => $icon_y1 + $bbox_y1,
+					'w' => imagesx($icon_im), 'h' => imagesy($icon_im),
+					'href' => !empty($icon_vector) ? WeatherMapSvg::dataUri($icon_vector) : WeatherMapSvg::gdToDataUri($icon_im),
+				);
+			}
+
 			imagecopy($node_im, $icon_im, $icon_x1, $icon_y1, 0, 0, imagesx($icon_im), imagesy($icon_im));
 			imagedestroy($icon_im);
 		}
@@ -679,6 +695,17 @@ class WeatherMapNode extends WeatherMapItem {
 			}
 
 			$map->myimagestring($node_im, $this->labelfont, $txt_x, $txt_y, $this->proclabel, $txcol->gdallocate($node_im),$this->labelangle);
+
+			if ($svg) {
+				$this->svgparts['label'] = array(
+					'x1' => $label_x1 + $bbox_x1, 'y1' => $label_y1 + $bbox_y1,
+					'x2' => $label_x2 + $bbox_x1, 'y2' => $label_y2 + $bbox_y1,
+					'tx' => intval(round($txt_x)) + $bbox_x1, 'ty' => intval(round($txt_y)) + $bbox_y1,
+					'text' => $this->proclabel, 'font' => $this->labelfont, 'angle' => $this->labelangle,
+					'bg' => $svg->rgba($col), 'outline' => $svg->rgba($olcol ?? null),
+					'shadow' => $svg->rgba($shcol), 'colour' => $svg->rgba($txcol),
+				);
+			}
 			//$map->myimagestring($node_im, $this->labelfont, $txt_x, $txt_y, $this->proclabel, $txcol->gdallocate($node_im),90);
 		}
 

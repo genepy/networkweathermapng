@@ -1,7 +1,7 @@
 <div class="content-header">
     <h1><?= htmlspecialchars($title) ?></h1>
     <div class="header-actions">
-        <a href="/admin/users" class="btn btn-secondary">← Back to Users</a>
+        <a href="/admin/users" class="btn btn-secondary">← <?= e__('Back to Users') ?></a>
     </div>
 </div>
 
@@ -10,27 +10,27 @@
         <form method="POST" action="<?= $action === 'create' ? '/admin/users/create' : '/admin/users/edit/' . $userData['id'] ?>">
             <?php if ($action === 'create'): ?>
             <div class="form-group">
-                <label for="username">Username *</label>
+                <label for="username"><?= e__('Username') ?> *</label>
                 <input type="text" id="username" name="username" class="form-control" required>
             </div>
             <?php else: ?>
             <div class="form-group">
-                <label>Username</label>
+                <label><?= e__('Username') ?></label>
                 <input type="text" class="form-control" value="<?= htmlspecialchars($userData['username'] ?? '') ?>" disabled>
             </div>
             <?php endif; ?>
 
             <div class="form-group">
-                <label for="email">Email</label>
+                <label for="email"><?= e__('Email') ?></label>
                 <input type="email" id="email" name="email" class="form-control" value="<?= htmlspecialchars($userData['email'] ?? '') ?>">
             </div>
 
             <div class="form-group">
-                <label for="role">Role</label>
+                <label for="role"><?= e__('Role') ?></label>
                 <select id="role" name="role" class="form-control" <?= ($action === 'edit' && ($userData['username'] ?? '') === 'admin') ? 'disabled' : '' ?>>
                     <?php $currentRole = $userData['role'] ?? 'viewer'; ?>
-                    <option value="viewer" <?= $currentRole === 'viewer' ? 'selected' : '' ?>>Viewer</option>
-                    <option value="admin" <?= $currentRole === 'admin' ? 'selected' : '' ?>>Admin</option>
+                    <option value="viewer" <?= $currentRole === 'viewer' ? 'selected' : '' ?>><?= e__('Viewer') ?></option>
+                    <option value="admin" <?= $currentRole === 'admin' ? 'selected' : '' ?>><?= e__('Administrator') ?></option>
                 </select>
                 <?php if ($action === 'edit' && ($userData['username'] ?? '') === 'admin'): ?>
                     <input type="hidden" name="role" value="admin">
@@ -40,7 +40,7 @@
             <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" name="active" value="1" <?= (($userData['active'] ?? 0) ? 'checked' : '') ?> <?= ($action === 'edit' && ($userData['username'] ?? '') === 'admin') ? 'disabled' : '' ?>>
-                    Active
+                    <?= e__('Active') ?>
                 </label>
                 <?php if ($action === 'edit' && ($userData['username'] ?? '') === 'admin'): ?>
                     <input type="hidden" name="active" value="1">
@@ -48,10 +48,10 @@
             </div>
 
             <div class="form-group">
-                <label>Group Access</label>
+                <label><?= e__('Group Access') ?></label>
                 <div class="groups-list">
                     <?php if (empty($groups)): ?>
-                        <p class="text-muted">No groups available.</p>
+                        <p class="text-muted"><?= e__('No groups available.') ?></p>
                     <?php else: ?>
                         <?php foreach ($groups as $group): ?>
                             <label class="checkbox-label">
@@ -62,24 +62,24 @@
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
-                <small class="form-text text-muted">Select map groups this user can access.</small>
+                <small class="form-text text-muted"><?= e__('Select map groups this user can access.') ?></small>
             </div>
 
             <div class="form-group">
-                <label for="password"><?= $action === 'create' ? 'Password *' : 'New Password' ?></label>
+                <label for="password"><?= $action === 'create' ? e__('Password') . ' *' : e__('New Password') ?></label>
                 <input type="password" id="password" name="password" class="form-control" <?= $action === 'create' ? 'required' : '' ?>>
             </div>
 
             <div class="form-group">
-                <label for="confirm_password"><?= $action === 'create' ? 'Confirm Password *' : 'Confirm New Password' ?></label>
+                <label for="confirm_password"><?= $action === 'create' ? e__('Confirm Password') . ' *' : e__('Confirm New Password') ?></label>
                 <input type="password" id="confirm_password" name="confirm_password" class="form-control" <?= $action === 'create' ? 'required' : '' ?>>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
-                    <?= $action === 'create' ? 'Create User' : 'Save Changes' ?>
+                    <?= $action === 'create' ? e__('Create User') : e__('Save Changes') ?>
                 </button>
-                <a href="/admin/users" class="btn btn-secondary">Cancel</a>
+                <a href="/admin/users" class="btn btn-secondary"><?= e__('Cancel') ?></a>
             </div>
         </form>
     </div>
@@ -101,18 +101,20 @@
     max-width: 500px;
     padding: 0.5rem 0.75rem;
     font-size: 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #007bff;
+    border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .form-control:disabled {
-    background-color: #f5f5f5;
+    background-color: var(--light-color);
     cursor: not-allowed;
 }
 

@@ -29,7 +29,7 @@ class EditorController extends BaseController
         
         $this->render('editor/index', [
             'maps' => $maps,
-            'title' => 'Map Editor',
+            'title' => __('Map Editor'),
         ]);
     }
     
@@ -42,14 +42,14 @@ class EditorController extends BaseController
         
         $id = (int) ($params['id'] ?? 0);
         if ($id <= 0) {
-            $this->flash('error', 'Invalid map ID');
+            $this->flash('error', __('Invalid map ID'));
             $this->redirect('/editor');
             return;
         }
         
         $map = $this->mapService->getMap($id);
         if (!$map) {
-            $this->flash('error', 'Map not found');
+            $this->flash('error', __('Map not found'));
             $this->redirect('/editor');
             return;
         }
@@ -88,7 +88,7 @@ class EditorController extends BaseController
             'imageList' => $imageList,
             'bgList' => $bgList,
             'mapConfig' => $mapConfig,
-            'title' => 'Edit Map: ' . $map['name'],
+            'title' => __('Edit map: :name', ['name' => $map['name']]),
         ], false); // No layout - fullscreen editor
     }
 
@@ -98,19 +98,19 @@ class EditorController extends BaseController
 
         $id = (int) ($params['id'] ?? 0);
         if ($id <= 0) {
-            $this->json(['success' => false, 'error' => 'Invalid map ID'], 400);
+            $this->json(['success' => false, 'error' => __('Invalid map ID')], 400);
             return;
         }
 
         $map = $this->mapService->getMap($id);
         if (!$map) {
-            $this->json(['success' => false, 'error' => 'Map not found'], 404);
+            $this->json(['success' => false, 'error' => __('Map not found')], 404);
             return;
         }
 
         $content = $this->mapService->getMapConfig($id);
         if ($content === null) {
-            $this->json(['success' => false, 'error' => 'Config not found'], 404);
+            $this->json(['success' => false, 'error' => __('Configuration not found')], 404);
             return;
         }
 
@@ -329,7 +329,7 @@ class EditorController extends BaseController
         $map = $this->mapService->getMap($id);
         if (!$map) {
             ob_end_clean();
-            $this->json(['success' => false, 'error' => 'Map not found']);
+            $this->json(['success' => false, 'error' => __('Map not found')]);
             return;
         }
         
@@ -337,6 +337,11 @@ class EditorController extends BaseController
         
         require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
         require_once $this->config->getLibPath() . '/WeatherMap/editor.inc.php';
+
+        // Changes made here can be undone from the new editor as well
+        if (!in_array($action, ['load_area_data', 'load_map_javascript'], true)) {
+            (new \App\Services\Editor\ConfigHistory($this->config->getDataRoot() . '/history/' . $id, $mapFile))->record();
+        }
         
         switch ($action) {
             case 'add_node':
@@ -387,7 +392,7 @@ class EditorController extends BaseController
                 break;
             default:
                 ob_end_clean();
-                $this->json(['success' => false, 'error' => 'Unknown action: ' . $action]);
+                $this->json(['success' => false, 'error' => __('Unknown action: :action', ['action' => $action])]);
                 return;
         }
         
@@ -501,7 +506,7 @@ class EditorController extends BaseController
         }
         
         ob_end_clean();
-        $this->json(['success' => false, 'error' => 'Node not found']);
+        $this->json(['success' => false, 'error' => __('Node not found')]);
     }
     
     private function deleteNode(string $mapFile): void
@@ -537,7 +542,7 @@ class EditorController extends BaseController
         }
         
         ob_end_clean();
-        $this->json(['success' => false, 'error' => 'Node not found']);
+        $this->json(['success' => false, 'error' => __('Node not found')]);
     }
     
     private function cloneNode(string $mapFile): void
@@ -724,7 +729,7 @@ class EditorController extends BaseController
         }
 
         ob_end_clean();
-        $this->json(['success' => false, 'error' => 'Failed to create link - invalid nodes']);
+        $this->json(['success' => false, 'error' => __('Failed to create link - invalid nodes')]);
         return;
     }
     
@@ -848,8 +853,23 @@ class EditorController extends BaseController
         $wmap->title = wm_editor_sanitize_string($_REQUEST['map_title'] ?? $wmap->title);
         $wmap->keytext['DEFAULT'] = wm_editor_sanitize_string($_REQUEST['map_legend'] ?? '');
         $wmap->stamptext = wm_editor_sanitize_string($_REQUEST['map_stamp'] ?? '');
-        $wmap->width = (int) ($_REQUEST['map_width'] ?? $wmap->width);
-        $wmap->height = (int) ($_REQUEST['map_height'] ?? $wmap->height);
+        $newWidth = max(1, (int) ($_REQUEST['map_width'] ?? $wmap->width));
+        $newHeight = max(1, (int) ($_REQUEST['map_height'] ?? $wmap->height));
+
+        if (($_REQUEST['resize_mode'] ?? 'extend') === 'scale' && ($newWidth != $wmap->width || $newHeight != $wmap->height)) {
+            // Move and size everything with the map, nothing to place again
+            \WeatherMapScaler::scale(
+                $wmap,
+                $newWidth,
+                $newHeight,
+                !empty($_REQUEST['resize_keep_aspect']),
+                !empty($_REQUEST['resize_scale_sizes'])
+            );
+        } else {
+            // Bigger or smaller canvas, objects stay where they are
+            $wmap->width = $newWidth;
+            $wmap->height = $newHeight;
+        }
         
         $bgfile = $_REQUEST['map_bgfile'] ?? '';
         if ($bgfile == '--NONE--') {
@@ -903,20 +923,20 @@ class EditorController extends BaseController
         $config = $this->getInput('config', '');
         
         if ($id <= 0) {
-            $this->json(['success' => false, 'error' => 'Invalid map ID'], 400);
+            $this->json(['success' => false, 'error' => __('Invalid map ID')], 400);
             return;
         }
         
         $map = $this->mapService->getMap($id);
         if (!$map) {
-            $this->json(['success' => false, 'error' => 'Map not found'], 404);
+            $this->json(['success' => false, 'error' => __('Map not found')], 404);
             return;
         }
         
         if ($this->mapService->saveMapConfig($id, $config)) {
-            $this->json(['success' => true, 'message' => 'Configuration saved successfully']);
+            $this->json(['success' => true, 'message' => __('Configuration saved successfully')]);
         } else {
-            $this->json(['success' => false, 'error' => 'Failed to save configuration'], 500);
+            $this->json(['success' => false, 'error' => __('Failed to save configuration')], 500);
         }
     }
     
@@ -930,7 +950,7 @@ class EditorController extends BaseController
         $id = (int) ($params['id'] ?? 0);
         
         if ($id <= 0) {
-            $this->json(['success' => false, 'error' => 'Invalid map ID'], 400);
+            $this->json(['success' => false, 'error' => __('Invalid map ID')], 400);
             return;
         }
         
@@ -945,7 +965,7 @@ class EditorController extends BaseController
         } else {
             $this->json([
                 'success' => false,
-                'error' => $result['error'] ?? 'Failed to render map'
+                'error' => $result['error'] ?? __('Failed to render map')
             ], 500);
         }
     }

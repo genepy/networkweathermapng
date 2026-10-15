@@ -1,7 +1,7 @@
 <div class="content-header">
-    <h1>Database Integrity Check</h1>
+    <h1><?= e__('Database Integrity Check') ?></h1>
     <div class="header-actions">
-        <a href="/admin" class="btn btn-secondary">← Back to Dashboard</a>
+        <a href="/admin" class="btn btn-secondary">← <?= e__('Back to Dashboard') ?></a>
     </div>
 </div>
 <br>
@@ -9,11 +9,11 @@
     <div class="card-body">
         <?php if ($results['status'] === 'ok'): ?>
             <div class="alert alert-success">
-                <strong>✅ Database integrity check passed.</strong> All required tables and columns are present.
+                <strong>✅ <?= e__('Database integrity check passed.') ?></strong> <?= e__('All required tables and columns are present.') ?>
             </div>
         <?php else: ?>
             <div class="alert alert-danger">
-                <strong>❌ Database integrity check failed.</strong>
+                <strong>❌ <?= e__('Database integrity check failed.') ?></strong>
                 <ul>
                     <?php foreach ($results['errors'] as $error): ?>
                         <li><?= htmlspecialchars($error) ?></li>
@@ -22,20 +22,20 @@
                 <div style="margin-top: 15px;">
                     <form method="POST" action="/admin/check-db">
                         <input type="hidden" name="fix" value="1">
-                        <button type="submit" class="btn btn-primary">Attempt Auto-Fix</button>
+                        <button type="submit" class="btn btn-primary"><?= e__('Attempt Auto-Fix') ?></button>
                     </form>
                 </div>
             </div>
         <?php endif; ?>
 
-        <h3>Table Status</h3>
+        <h3><?= e__('Table Status') ?></h3>
         <div class="table-responsive">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Table Name</th>
-                        <th>Status</th>
-                        <th>Issues</th>
+                        <th><?= e__('Table Name') ?></th>
+                        <th><?= e__('Status') ?></th>
+                        <th><?= e__('Issues') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,18 +46,18 @@
                         </td>
                         <td>
                             <?php if ($table['exists']): ?>
-                                <span class="badge badge-success">Exists</span>
+                                <span class="badge badge-success"><?= e__('Exists') ?></span>
                             <?php else: ?>
-                                <span class="badge badge-danger">Missing</span>
+                                <span class="badge badge-danger"><?= e__('Table missing') ?></span>
                             <?php endif; ?>
                         </td>
                         <td>
                             <?php if (!empty($table['missing_columns'])): ?>
-                                <span class="text-danger">Missing columns: <?= implode(', ', $table['missing_columns']) ?></span>
+                                <span class="text-danger"><?= e__('Missing columns: :columns', ['columns' => implode(', ', $table['missing_columns'])]) ?></span>
                             <?php elseif ($table['exists']): ?>
-                                <span class="text-muted">No issues</span>
+                                <span class="text-muted"><?= e__('No issues') ?></span>
                             <?php else: ?>
-                                <span class="text-danger">Table missing</span>
+                                <span class="text-danger"><?= e__('Table missing') ?></span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -76,14 +76,14 @@
     border-radius: 4px;
 }
 .alert-success {
-    color: #155724;
-    background-color: #d4edda;
-    border-color: #c3e6cb;
+    color: var(--success-text);
+    background-color: var(--success-bg);
+    border-color: var(--success-bg);
 }
 .alert-danger {
-    color: #721c24;
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
+    color: var(--danger-text);
+    background-color: var(--danger-bg);
+    border-color: var(--danger-bg);
 }
 .badge {
     display: inline-block;
@@ -98,27 +98,27 @@
 }
 .badge-success {
     color: #fff;
-    background-color: #28a745;
+    background-color: var(--success-color);
 }
 .badge-danger {
     color: #fff;
-    background-color: #dc3545;
+    background-color: var(--danger-color);
 }
 .table {
     width: 100%;
     margin-bottom: 1rem;
-    color: #212529;
+    color: var(--text-color);
     border-collapse: collapse;
 }
 .table th,
 .table td {
     padding: 0.75rem;
     vertical-align: top;
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid var(--border-color);
     text-align: left;
 }
 .table thead th {
     vertical-align: bottom;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 2px solid var(--border-color);
 }
 </style>

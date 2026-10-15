@@ -8,7 +8,7 @@
 ![Network Weathermap Example 6](img/maps6.png)
 ![Network Weathermap Example 7](img/maps7.png)
 
-Network visualization tool for Zabbix - a standalone PHP application that creates network weathermaps using data from Zabbix monitoring system.
+Network visualization tool for Zabbix and Observium - a standalone PHP application that creates network weathermaps using data from your monitoring system.
 
 ## Overview
 
@@ -18,10 +18,15 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
 - **Standalone Docker Container** - No dependencies on Cacti or other systems
 - **Zabbix API Integration** - Fetches real-time data from Zabbix
+- **Observium Integration** - API, MySQL or RRD, Community edition included
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Map Cycling** - Auto-rotate through maps for NOC displays
+- **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
+- **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
+- **English and French** - Chosen in the header, or with `APP_LOCALE`
+- **Light and dark themes** - Automatic (system setting) or chosen in the header
 - **Responsive UI** - Modern, mobile-friendly interface
 
 ## Quick Start
@@ -30,7 +35,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/nchekwa/networkweathermapng.git
+   git clone https://github.com/genepy/networkweathermapng.git
    cd networkweathermapng
    ```
 
@@ -53,6 +58,13 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
    Default credentials: `admin` / `admin`
 
+Everything that changes is kept in the `/app/data` volume: the database,
+map configurations, rendered images, editor history, migrations, and the
+icons and backgrounds (`/app/public/objects` and `/app/public/backgrounds`
+point there; the images shipped with the application are copied in at
+start, without replacing yours). Uploads, a migration zip included, are
+limited to 64 MB.
+
 ## Configuration
 
 ### Environment Variables
@@ -62,6 +74,8 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
 | `APP_TIMEZONE` | Application timezone | `UTC` |
+| `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
+| `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
 | `APP_ROOT` | Application root path | - |
 | `DATA_ROOT` | Persistent data root path | - |
 | `DB_TYPE` | Database type (`sqlite` or `mysql`) | `sqlite` |
@@ -70,6 +84,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
 | `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`) | `png` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds | `300` |
+| `APP_LOCALE` | Interface language when the browser's doesn't decide (`en`, `fr`) | browser language |
 
 ### Data sources (Zabbix and more)
 
@@ -110,6 +125,22 @@ LINK router1-switch1
     BANDWIDTH 1G
 ```
 
+### Sizing and layout
+
+| Setting | Effect |
+|---------|--------|
+| `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 12 px for 400G |
+| `SET link_width_table 1G:2 10G:4 100G:9` | The map's own speed → width table for `WIDTH auto` |
+| `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium, or Zabbix for links picked in the editor: the `net.if.speed[...]` item of the SNMP templates, or the sysfs speed of the Linux agent); an aggregated link adds up its members. Falls back to 1G when unknown |
+| `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge) |
+| `SET width_legend_title Speed` | Title of that legend (default `Link speed`) |
+| `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
+
+Resizing a map in the editor (by dragging its border, or in Map Properties)
+asks whether to **scale the content** with it (nodes, VIA points, legend, title
+and timestamp move proportionally, optionally keeping proportions and scaling
+link widths) or only extend/crop the canvas.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |
@@ -119,6 +150,120 @@ LINK router1-switch1
 | `zabbix:host:hostname:key:item.key` | Item by hostname and key |
 | `zabbix:hostid:10084:key:item.key` | Item by host ID and key |
 | `zabbix:hostid:10084:key:in.key:out.key` | Two items by host ID and keys |
+
+### Observium TARGET Formats
+
+| Format | Description |
+|--------|-------------|
+| `observium:port:1234` | Port by its Observium `port_id` |
+| `observium:host:core-rtr1:if:xe-0/0/1` | Port by device hostname and interface name (ifName, ifDescr or ifAlias) |
+| `observium:host:core-rtr1:status` | Device status for a node: 0 when up, 100 when down |
+
+Add the source in **Admin → Data Sources** with the type *Observium*. The
+editor's interface picker fills in the TARGET and the link bandwidth from the
+interface speed.
+
+Weathermap reads Observium in one of three ways, and maps work the same with all
+of them:
+
+- **API** (Professional and Enterprise editions): set the Observium URL and an
+  API token, or a user and password.
+- **Database** (every edition, Community included): leave the credentials empty.
+  On the Observium server nothing else is needed, the database settings are read
+  from `/opt/observium/config.php` (the file is parsed, never executed). For a
+  remote Observium, fill in the database host and a read-only MySQL user:
+  `GRANT SELECT ON observium.* TO 'weathermap'@'%' IDENTIFIED BY '...'`.
+- **RRD files**: used for the hover graphs and when no current rate is
+  available. Set the RRD folder, or an rrdcached address for a remote Observium.
+
+With Docker on the Observium server, uncomment the Observium volumes in
+`docker/docker-compose.yml` and use `host.docker.internal` as database host.
+
+## Map editor
+
+The editor (Editor > Edit) draws the map as SVG, so zooming stays sharp,
+and saves each change straight into the map's `.conf` file.
+
+- **Select**: click, Shift+click to add, drag on empty space for an area,
+  Ctrl+A for everything, or *Select…* (Ctrl+F) to pick by name, label,
+  target, group, width or bandwidth.
+- **Move**: drag the selection, or use the arrow keys (Shift for 10 px).
+  *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
+- **Arrange**: align and distribute nodes, group them (Ctrl+G; Alt+click
+  picks one member), lock them (Ctrl+L), bring to front or send to back.
+  Groups and locks are stored as `SET editor_group` and `SET editor_lock`.
+- **Links**: drag from the blue dot next to a selected node to another node,
+  or use the *Link* tool (L). On a selected link, drag the red points to
+  bend it, double-click one to remove it, and click a square around a node
+  to attach that end to a side (`NODES a:N b:E`).
+  *Auto-route* bends links around the nodes in their way; *Untangle labels*
+  moves bandwidth labels that overlap (`BWLABELPOS`).
+- **Add**: drag a node or an icon from the left panel, or double-click an
+  empty spot.
+- **Edit**: the right panel changes every selected item at once.
+- **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
+  the links between them, also into another map open in another tab (the
+  copy is kept in the browser). Pasted items take free names (`name_2`…),
+  land under the mouse or next to the originals, and keep their VIAs and
+  templates. Only NODE and LINK blocks are accepted.
+- **Scale a layout**: with two nodes or more selected, drag the handles of
+  the selection box to spread or tighten them (Shift keeps proportions).
+- **Right-click** (or Shift+F10) opens a menu with the usual actions.
+- **Overlaps**: overlapping nodes are outlined; *Spread apart* moves them
+  (or only the selected ones) at least 10 px apart.
+- **Layers**: hide the background, links, link labels or node labels while
+  editing. This is remembered in the browser, never saved in the map.
+- **Text mode**: edit the `.conf` itself, checked by the engine as you type
+  (warnings with their line). *Apply* saves it as one undo step. INCLUDE and
+  the output paths (`*OUTPUTFILE`, `IMAGEURI`) cannot be changed there.
+- **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
+  `DATA_ROOT/history/<map id>`, so they survive a reload.
+
+The previous editor is still available at `/editor/classic/<map id>`.
+
+### Icons
+
+`objects/net/` holds a set of network icons (router, switches, firewall,
+server, cloud, internet, Wi-Fi, load balancer, storage, workstation,
+virtualisation host, site, VPN) as SVG with a PNG twin. Maps reference the
+`.png` (or the `.svg`): the PNG output is drawn from the PNG, and the SVG
+output and the editor use the vector file, so icons stay sharp when zoomed.
+Any icon with an `.svg` next to it gets the same treatment, unless it is
+coloured by `USEICONSCALE`.
+
+## Managing maps
+
+Admin > Maps lists every map:
+
+- **New map**: empty (size of your choice) or a copy of an existing map.
+- **Properties**: name (the `TITLE` follows), group, visibility, and
+  optionally renaming the `.conf` file after the name.
+- **Duplicate**: choose the copy's name, group and visibility.
+- **.conf** / **Export all**: download one configuration, or a zip of every
+  map with its icons and backgrounds, which Admin > Migration imports back.
+- **Delete**: removes the map and everything kept for it: configuration and
+  backup, rendered images and pages, link graphs, editor history,
+  permissions and settings.
+- Tick several maps to activate, deactivate, move, export or delete them at
+  once.
+
+## Viewing maps
+
+- **Map list** (`/`): type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
+- **Map view** (`/map/{id}`): the map is drawn as SVG and can be zoomed with the mouse wheel or a pinch, moved by dragging, or with the toolbar (+, −, Fit, 100 %) and the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows, `/` to search). "Find a node" centres the map on a node by label or name. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
+- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; clicking a link or node opens its INFOURL in a new tab.
+- The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
+- **Fullscreen** fits the map to the screen for a NOC wall, follows the light/dark theme and hides the toolbar when the mouse is idle; Esc leaves it. The **PNG** button keeps the classic picture (also used for thumbnails, exports and the cycle page).
+
+## Language and theme
+
+The header has a language menu (English, French) and a theme button
+(automatic, light, dark); both are remembered in cookies. Without a choice,
+the language follows the browser, then `APP_LOCALE`. Translations live in
+`src/app/Lang/<locale>/*.php`, one file per part of the application, as
+`'English text' => 'translation'`; `*-js.php` files hold the texts of a
+browser script. In code, wrap texts with `__('…')` (or `e__('…')` to print
+them escaped) and add them to the catalogue.
 
 ## Directory Structure
 
@@ -196,19 +341,62 @@ php -S localhost:8080 -t src/public
 ### Running Tests
 
 ```bash
-composer test
+composer install
+vendor/bin/phpunit                 # engine render tests + application tests
+vendor/bin/phpstan analyse         # static analysis
 ```
 
-## Migration from Cacti Weathermap
+Render tests draw every map in `tests/fixtures/maps/` and compare it with
+`tests/fixtures/reference/`. After an intended visual change, regenerate the
+references with `UPDATE_REFERENCE=1 vendor/bin/phpunit` and review the images
+before committing them.
 
-If you're migrating from Cacti Weathermap:
+## Migration from an existing Weathermap
 
-1. Export your map configuration files
-2. Update TARGET strings from RRD format to Zabbix format
-3. Copy configuration files to `data/configs/`
-4. Import maps through the admin interface
+Maps from the Cacti plugin or from older Weathermap versions are imported in
+**Admin → Migration**: upload one or more `.conf` files, or a `.zip` holding
+the `.conf` files with their icons and backgrounds.
 
-See `docs/migration_plan.md` for detailed migration instructions.
+For each map the review page shows:
+
+- **Checks**: `INCLUDE` lines are removed (they read files on the old server),
+  the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
+- **Images**: found, found under `objects/` or `backgrounds/` by file name, or
+  missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
+  uses them as `BACKGROUND`); an existing file with the same name is never
+  replaced. PNG, JPEG, GIF and SVG are accepted. SVG files are cleaned first:
+  only drawing elements and attributes are kept (no scripts, event handlers,
+  `foreignObject` or links out of the file; a `DOCTYPE`/`ENTITY` is refused),
+  then a PNG copy is drawn next to them for the map engine with `rsvg-convert`
+  (in the Docker image) or ImageMagick. Without either, SVG files are skipped.
+- **Targets**: pick a data source and the old RRD, SNMP and MRTG targets are
+  matched to its interfaces by device name and ifIndex or interface name
+  (Observium `rrd/<host>/port-<ifIndex>.rrd`, `snmp:community:host:oid:oid`,
+  Cacti `host_traffic_in_N.rrd`, MRTG `host_N.log`). One match is selected
+  for you; when several devices or interfaces fit, choose in the list, or type
+  a target. `-` and `N*` in front of the old target are kept. Commands
+  (`!…`) are never carried over: replace them in the editor.
+- **Fonts**: the GD bitmap fonts 1–5 can be replaced by DejaVu Sans Mono
+  TrueType fonts of the same size (`FONTDEFINE 101`–`105`).
+
+**Compare old and new** shows the old engine's PNG next to the new SVG, or
+overlaid with the differences highlighted. **Create the map** saves it and
+opens the editor; the original file is kept in the map's history, so undo
+goes back to it, and **Restore original** on the review page puts it back.
+Positions, VIAs and every other setting are kept as they are. Live data is
+never read while migrating.
+
+Many maps at once, from the command line (in the Docker image, from `/app`,
+e.g. `docker exec -it networkweathermapng php bin/migrate.php …`):
+
+```bash
+php bin/migrate.php maps/*.conf                    # analyse only
+php bin/migrate.php --source=1 --apply maps.zip    # create the maps
+php bin/migrate.php --source=1 --no-fonts --group=2 --apply configs/
+```
+
+Targets with a single match are converted; the others keep their old value
+and are listed with a link to their review page.
 
 ## Requirements
 

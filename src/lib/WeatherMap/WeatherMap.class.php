@@ -150,6 +150,7 @@ class WeatherMapPostProcessor {
 // Links, Nodes and the Map object inherit from this class ultimately.
 // Just to make some common code common.
 class WeatherMapBase {
+	var $name;
 	var $notes = array();
 	var $hints = array();
 	var $inherit_fieldlist;
@@ -230,6 +231,7 @@ class WeatherMap extends WeatherMapBase {
 	var $imap;
 	var $colours;
 	var $configfile;
+	var $keycache = array();
 	var $imagefile;
 	var $imageuri;
 	var $rrdtool;
@@ -582,6 +584,10 @@ class WeatherMap extends WeatherMapBase {
 		 */
 		$x = intval(round($x));
 		$y = intval(round($y));
+
+		if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+			WeatherMapSvg::$active->text($fontnumber, $x, $y, $string, $colour, $angle);
+		}
 
 		if ($fontnumber > 0 && $fontnumber < 6 && $angle == 0) {
 			/**
@@ -995,6 +1001,103 @@ class WeatherMap extends WeatherMapBase {
 		}
 	}
 
+	/**
+	 * Links joining the same two nodes would be drawn on top of each other:
+	 * spread them side by side, centred on the line between the nodes.
+	 * Only links with no VIA and no NODES offset are moved; those are the
+	 * ones that overlap exactly. SET link_spacing <pixels> sets the gap
+	 * between their centres (0 turns spreading off); by default it follows
+	 * the widest link of the group.
+	 */
+	function SpreadParallelLinks() {
+		$groups = array();
+
+		foreach ($this->links as $name => $link) {
+			$this->links[$name]->parallel_offset = array(0, 0);
+
+			if (!isset($link->a) || !isset($link->b) || $link->a->name == $link->b->name) {
+				continue;
+			}
+			if (count($link->vialist) > 0 || $link->a_offset != 'C' || $link->b_offset != 'C') {
+				continue;
+			}
+
+			$ends = array($link->a->name, $link->b->name);
+			sort($ends, SORT_STRING);
+			$groups[implode("\0", $ends)][] = $name;
+		}
+
+		$hint = $this->get_hint('link_spacing');
+
+		foreach ($groups as $key => $names) {
+			$count = count($names);
+			if ($count < 2) {
+				continue;
+			}
+
+			sort($names, SORT_STRING);
+			list($first, $second) = explode("\0", $key);
+
+			$dx  = $this->nodes[$second]->x - $this->nodes[$first]->x;
+			$dy  = $this->nodes[$second]->y - $this->nodes[$first]->y;
+			$len = sqrt($dx * $dx + $dy * $dy);
+			if ($len == 0) {
+				continue;
+			}
+
+			if ($hint !== null && $hint !== '') {
+				$spacing = floatval($hint);
+			} else {
+				// arrow heads are about 2.5 times as wide as the link
+				$widest = 0;
+				foreach ($names as $name) {
+					$widest = max($widest, floatval($this->links[$name]->EffectiveWidth($this)));
+				}
+				$spacing = round($widest * 2.5) + 4;
+			}
+
+			if ($spacing <= 0) {
+				continue;
+			}
+
+			// unit vector perpendicular to the line between the nodes
+			$nx = -$dy / $len;
+			$ny = $dx / $len;
+
+			foreach ($names as $i => $name) {
+				$distance = ($i - ($count - 1) / 2) * $spacing;
+				$this->links[$name]->parallel_offset = array(round($nx * $distance), round($ny * $distance));
+			}
+		}
+	}
+
+	/**
+	 * Interface speed behind a link's targets, in bit/s (0 when unknown).
+	 * Asks each target's data source plugin that implements ReadSpeed().
+	 */
+	function ReadLinkSpeed(&$link) {
+		$total = 0;
+
+		foreach ($link->targets as $target) {
+			if ($target[4] == '' || !isset($this->plugins['data'][$target[5]])) {
+				continue;
+			}
+
+			$plugin = $this->plugins['data'][$target[5]];
+			if (!method_exists($plugin, 'ReadSpeed')) {
+				continue;
+			}
+
+			$targetstring = $this->ProcessString($target[0], $link, false, false);
+			$speed = $plugin->ReadSpeed($targetstring, $this, $link);
+			if ($speed > 0) {
+				$total += $speed;
+			}
+		}
+
+		return $total;
+	}
+
 	function ReadData() {
 		$this->DatasourceInit();
 
@@ -1117,6 +1220,19 @@ class WeatherMap extends WeatherMapBase {
 					wm_debug("ReadData: Skipping $type $name that looks like a template.");
 				}
 
+				// BANDWIDTH auto: the interface speed, read from the data sources
+				// (the sum of the members for an aggregated link)
+				if ($type == 'LINK' && strtolower((string) $myobj->max_bandwidth_in_cfg) == 'auto') {
+					$speed = $this->ReadLinkSpeed($myobj);
+					if ($speed > 0) {
+						$myobj->max_bandwidth_in  = $speed;
+						$myobj->max_bandwidth_out = $speed;
+						wm_debug("ReadData: LINK $name: BANDWIDTH auto is $speed bps");
+					} else {
+						wm_warn("ReadData: LINK $name: BANDWIDTH auto but no data source knows the interface speed, using " . WM_AUTO_BANDWIDTH_FALLBACK . " [WMWARN90]");
+					}
+				}
+
 				# $this->links[$name]->bandwidth_in=$total_in;
 				# $this->links[$name]->bandwidth_out=$total_out;
 				$myobj->bandwidth_in = $total_in;
@@ -1185,6 +1301,10 @@ class WeatherMap extends WeatherMapBase {
 	function DrawLabelRotated($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, &$map, $direction) {
 		list($strwidth, $strheight) = $this->myimagestringsize($font, $text);
 
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
+		}
+
 		if (abs($angle) > 90) {
 			$angle -= 180;
 		}
@@ -1231,6 +1351,10 @@ class WeatherMap extends WeatherMapBase {
 
 		$textcol = myimagecolorallocate($image, $textcolour[0], $textcolour[1], $textcolour[2]);
 		$this->myimagestring($image, $font, $apoints[8], $apoints[9], $text, $textcol, $angle, $strheight);
+
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->role = null;
+		}
 
 		$areaname = 'LINK:L' . $map->links[$linkname]->id . ':' . ($direction + 2);
 
@@ -2187,6 +2311,76 @@ class WeatherMap extends WeatherMapBase {
 		$this->imap->addArea('Rectangle', $which . 'TIMESTAMP', '', array($x, $y, $x + $boxwidth, $y - $boxheight));
 	}
 
+	/**
+	 * Legend of the "WIDTH auto" link widths, one bar per step of the
+	 * link width table. SET width_legend <x> <y> places it (negative values
+	 * count from the right or bottom edge), SET width_legend_title names it.
+	 */
+	function DrawWidthLegend($image) {
+		$where = trim((string) $this->get_hint('width_legend'));
+		if ($where === '' || !preg_match('/^(-?\d+)[\s,]+(-?\d+)$/', $where, $m)) {
+			return;
+		}
+
+		$steps = wm_link_width_steps($this->get_hint('link_width_table'), $this->kilo);
+		if (count($steps) == 0) {
+			return;
+		}
+
+		$font  = $this->keyfont;
+		$title = (string) $this->get_hint('width_legend_title');
+		if ($title === '') {
+			$title = 'Link speed';
+		}
+
+		list($titlewidth, $lineheight) = $this->myimagestringsize($font, $title);
+		$labelwidth = 0;
+		$widest = 0;
+		foreach ($steps as $step) {
+			list($w, $junk) = $this->myimagestringsize($font, $step[2]);
+			$labelwidth = max($labelwidth, $w);
+			$widest = max($widest, $step[1]);
+		}
+
+		$bar     = 40;
+		$row     = max($lineheight, $widest) + 6;
+		$width   = max($titlewidth, $bar + 8 + $labelwidth) + 12;
+		$height  = $lineheight + 10 + $row * count($steps);
+
+		$x = (int) $m[1];
+		$y = (int) $m[2];
+		if ($x < 0) {
+			$x += $this->width - $width;
+		}
+		if ($y < 0) {
+			$y += $this->height - $height;
+		}
+
+		$bg      = $this->colours['DEFAULT']['KEYBG'];
+		$outline = $this->colours['DEFAULT']['KEYOUTLINE'];
+		$text    = $this->colours['DEFAULT']['KEYTEXT']['gdref1'];
+
+		if (!is_none($bg)) {
+			wimagefilledrectangle($image, $x, $y, $x + $width, $y + $height, $bg['gdref1']);
+		}
+		if (!is_none($outline)) {
+			wimagerectangle($image, $x, $y, $x + $width, $y + $height, $outline['gdref1']);
+		}
+
+		$this->myimagestring($image, $font, $x + 6, $y + 4 + $lineheight, $title, $text);
+
+		$cy = $y + $lineheight + 8;
+		foreach ($steps as $step) {
+			$mid  = $cy + $row / 2;
+			$half = max(0.5, $step[1] / 2);
+			wimagefilledrectangle($image, $x + 6, (int) round($mid - $half), $x + 6 + $bar, (int) round($mid + $half - 1), $text);
+			$this->myimagestring($image, $font, $x + 14 + $bar, (int) round($mid + $lineheight / 2), $step[2], $text);
+			$cy += $row;
+		}
+
+		$this->imap->addArea('Rectangle', 'WIDTHLEGEND', '', array($x, $y, $x + $width, $y + $height));
+	}
+
 	function DrawTitle($image, $font, $colour) {
 		$string = $this->ProcessString($this->title, $this);
 
@@ -2421,6 +2615,7 @@ class WeatherMap extends WeatherMapBase {
 				$config_keywords = array(
 					array('LINK','/^\s*(MAXVALUE|BANDWIDTH)\s+(\d+\.?\d*[KMGT]?)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>3)),
 					array('LINK','/^\s*(MAXVALUE|BANDWIDTH)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>2)),
+					array('LINK','/^\s*BANDWIDTH\s+(auto)\s*$/i',array('max_bandwidth_in_cfg'=>'#auto','max_bandwidth_out_cfg'=>'#auto')),
 					array('NODE','/^\s*(MAXVALUE)\s+(\d+\.?\d*[KMGT]?)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>3)),
 					array('NODE','/^\s*(MAXVALUE)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>2)),
 					array('GLOBAL','/^\s*BACKGROUND\s+(.*)\s*$/i',array('background'=>1)),
@@ -2447,6 +2642,7 @@ class WeatherMap extends WeatherMapBase {
 					array('(LINK|GLOBAL)', "/^\s*WIDTH\s+(\d+)\s*$/i", array('width'=>1)),
 					array('(LINK|GLOBAL)', "/^\s*HEIGHT\s+(\d+)\s*$/i", array('height'=>1)),
 					array('LINK', "/^\s*WIDTH\s+(\d+\.\d+)\s*$/i", array('width'=>1)),
+					array('LINK', "/^\s*WIDTH\s+(auto)\s*$/i", array('width'=>'#auto')),
 					array('LINK', '/^\s*ARROWSTYLE\s+(classic|compact)\s*$/i', array('arrowstyle'=>1)),
 					array('LINK', '/^\s*VIASTYLE\s+(curved|angled)\s*$/i', array('viastyle'=>1)),
 					array('LINK', '/^\s*INCOMMENT\s+(.*)\s*$/i', array('comments[IN]'=>1)),
@@ -3177,8 +3373,8 @@ class WeatherMap extends WeatherMapBase {
 
 			// while we're looping through, let's set the real bandwidths
 			if ($item->my_type() == 'LINK') {
-				$this->links[$item->name]->max_bandwidth_in  = unformat_number($item->max_bandwidth_in_cfg, $this->kilo);
-				$this->links[$item->name]->max_bandwidth_out = unformat_number($item->max_bandwidth_out_cfg, $this->kilo);
+				$this->links[$item->name]->max_bandwidth_in  = unformat_number(wm_bandwidth_cfg($item->max_bandwidth_in_cfg), $this->kilo);
+				$this->links[$item->name]->max_bandwidth_out = unformat_number(wm_bandwidth_cfg($item->max_bandwidth_out_cfg), $this->kilo);
 			} elseif ($item->my_type() == 'NODE') {
 				$this->nodes[$item->name]->max_bandwidth_in  = unformat_number($item->max_bandwidth_in_cfg, $this->kilo);
 				$this->nodes[$item->name]->max_bandwidth_out = unformat_number($item->max_bandwidth_out_cfg, $this->kilo);
@@ -3345,7 +3541,7 @@ class WeatherMap extends WeatherMapBase {
 
 	function WriteConfig($filename) {
 		$fd     = false;
-		if (is_writable($filename)) {
+		if (is_writable($filename) || (!file_exists($filename) && is_writable(dirname($filename)))) {
 			$fd     = @fopen($filename, 'w');
 		}
 		$output = '';
@@ -3615,7 +3811,7 @@ class WeatherMap extends WeatherMapBase {
 			if (file_exists($this->configfile)) {
 				$this->cachefile_version = crc32(file_get_contents($this->configfile));
 			} else {
-				wm_warn('Failed to find configuration file: ' . $this->configFile);
+				wm_warn('Failed to find configuration file: ' . $this->configfile);
 			}
 		}
 
@@ -3692,6 +3888,11 @@ class WeatherMap extends WeatherMapBase {
 			// save this away, now
 			$this->image = $image;
 
+			$svg = WeatherMapSvg::$active;
+			if ($svg) {
+				$svg->start($image);
+			}
+
 			$this->white    = myimagecolorallocate($image, 255, 255, 255);
 			$this->black    = myimagecolorallocate($image, 0, 0, 0);
 			$this->grey     = myimagecolorallocate($image, 192, 192, 192);
@@ -3701,6 +3902,10 @@ class WeatherMap extends WeatherMapBase {
 
 			// fill with background colour anyway, in case the background image failed to load
 			wimagefilledrectangle($image, 0, 0, $this->width, $this->height, $this->colours['DEFAULT']['BG']['gdref1']);
+
+			if ($svg) {
+				$svg->background($svg->rgba($this->colours['DEFAULT']['BG']['gdref1']), $bgimage ? $this->background : '');
+			}
 
 			if ($bgimage) {
 				$bg_w = imagesx($bgimage);
@@ -3724,6 +3929,8 @@ class WeatherMap extends WeatherMapBase {
 				}
 			}
 
+			$this->SpreadParallelLinks();
+
 			$all_layers = array_keys($this->seen_zlayers);
 			sort($all_layers);
 
@@ -3734,6 +3941,17 @@ class WeatherMap extends WeatherMapBase {
 
 				// all the map 'furniture' is fixed at z=1000
 				if ($z==1000) {
+					// for SVG output, the furniture goes on its own transparent layer
+					$main_image = $image;
+					if ($svg) {
+						$svg->begin('furniture', 'furniture');
+						$image = imagecreatetruecolor($this->width, $this->height);
+						imagesavealpha($image, true);
+						imagealphablending($image, false);
+						imagefilledrectangle($image, 0, 0, $this->width, $this->height, imagecolorallocatealpha($image, 0, 0, 0, 127));
+						imagealphablending($image, true);
+					}
+
 					foreach ($this->colours as $scalename => $colours) {
 						wm_debug("Drawing KEY for $scalename if necessary.");
 
@@ -3760,6 +3978,8 @@ class WeatherMap extends WeatherMapBase {
 						}
 					}
 
+					$this->DrawWidthLegend($image);
+
 					$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1']);
 
 					if (! is_null($this->min_data_time)) {
@@ -3768,6 +3988,14 @@ class WeatherMap extends WeatherMapBase {
 					}
 
 					$this->DrawTitle($image, $this->titlefont, $this->colours['DEFAULT']['TITLE']['gdref1']);
+
+					if ($svg) {
+						$svg->raster($image);
+						imagecopy($main_image, $image, 0, 0, 0, 0, $this->width, $this->height);
+						imagedestroy($image);
+						$image = $main_image;
+						$svg->begin(null);
+					}
 				}
 
 				if (is_array($z_items)) {
@@ -3777,6 +4005,10 @@ class WeatherMap extends WeatherMapBase {
 							// (also, check if the link still exists - if this is in the editor, it may have been deleted by now)
 							if (isset($this->links[$it->name]) && isset($it->a) && isset($it->b)) {
 								wm_debug("Drawing LINK ".$it->name);
+
+								if ($svg) {
+									$svg->begin('link', $it->name, 'L' . $it->id);
+								}
 
 								$this->links[$it->name]->Draw($image, $this);
 							}
@@ -3790,6 +4022,11 @@ class WeatherMap extends WeatherMapBase {
 									wm_debug('Drawing NODE ' . $it->name);
 
 									$this->nodes[$it->name]->NewDraw($image, $this);
+
+									if ($svg) {
+										$svg->begin('node', $it->name, 'N' . $it->id);
+										$svg->node($this->nodes[$it->name]);
+									}
 
 									$ii=0;
 

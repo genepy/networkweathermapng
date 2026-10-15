@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?= \App\Core\Csrf::metaTag() ?>
+    <script src="/assets/js/csrf.js"></script>
     <title><?= htmlspecialchars($title ?? 'Map Editor') ?></title>
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <link rel="stylesheet" href="/assets/css/editor.css">
@@ -54,6 +56,61 @@
         #tb_manualconfig:hover {
             background: #1f3a68;
         }
+        #tb_preview, #tb_viewmap {
+            background: #13324a;
+        }
+        #tb_preview:hover, #tb_viewmap:hover {
+            background: #1f5070;
+        }
+        .resize-options label { display: block; margin: 2px 0; font-size: 13px; }
+        .resize-options .resize-sub { margin-left: 20px; color: #b8c4e0; }
+        .resize-choice {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1700;
+            background: #16213e;
+            border: 1px solid #2c3e66;
+            border-radius: 8px;
+            padding: 18px 20px;
+            width: 340px;
+            box-shadow: 0 10px 40px rgba(0,0,0,.6);
+        }
+        .resize-choice.active { display: block; }
+        .resize-choice h3 { font-size: 15px; margin-bottom: 12px; }
+        .resize-choice button {
+            display: block;
+            width: 100%;
+            margin: 6px 0;
+            padding: 9px;
+            border: 1px solid #2c3e66;
+            border-radius: 4px;
+            background: #0f3460;
+            color: #fff;
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+        }
+        .resize-choice button.btn-primary { background: #e94560; border-color: #e94560; }
+        .resize-choice button.resize-cancel { background: transparent; color: #8da1cc; }
+        .resize-choice kbd { float: right; font-size: 11px; opacity: .7; }
+        .resize-choice label { display: block; font-size: 13px; margin: 6px 0; color: #b8c4e0; }
+        .map-preview {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1600;
+            background: rgba(5, 8, 20, 0.92);
+            overflow: auto;
+            padding: 48px 16px 16px;
+            text-align: center;
+            cursor: zoom-out;
+        }
+        .map-preview.active { display: block; }
+        .map-preview img { max-width: none; background: #fff; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+        .map-preview .map-preview-hint { position: fixed; top: 12px; left: 0; right: 0; color: #8da1cc; font-size: 13px; }
         
         .mainArea {
             display: flex;
@@ -492,6 +549,8 @@
             <li class="tb_active" id="tb_postime">Position<br>Timestamp</li>
             <li class="tb_active" id="tb_mapprops">Map<br>Properties</li>
             <li class="tb_active" id="tb_manualconfig">Manual<br>Config</li>
+            <li class="tb_active" id="tb_preview" title="Final map with current data, without edit handles (P)">Preview</li>
+            <li class="tb_active" id="tb_viewmap" title="Open the published map in a new tab">View<br>Map</li>
             <li class="tb_coords" id="tb_coords">Position<br>---, ---</li>
             <li class="tb_help">
                 <span id="tb_help">Click on a Node or Link to edit it, or use the toolbar buttons to add new elements</span>
@@ -532,6 +591,18 @@
     
     <div class="overlay" id="overlay"></div>
     <div class="manual-config-overlay" id="manualConfigOverlay"></div>
+    <div class="resize-choice" id="resizeChoice" aria-hidden="true" role="dialog" aria-labelledby="resizeChoiceTitle">
+        <h3 id="resizeChoiceTitle">Resize to <span id="resizeChoiceSize"></span></h3>
+        <button type="button" class="btn-primary" id="resizeChoiceScale">Scale the content <kbd>Enter</kbd></button>
+        <button type="button" id="resizeChoiceExtend">Only extend or crop the canvas</button>
+        <label><input type="checkbox" id="resizeChoiceKeepAspect" /> Keep proportions</label>
+        <label><input type="checkbox" id="resizeChoiceScaleSizes" /> Also scale link widths and icon sizes</label>
+        <button type="button" class="resize-cancel" id="resizeChoiceCancel">Cancel <kbd>Esc</kbd></button>
+    </div>
+    <div class="map-preview" id="mapPreview" aria-hidden="true">
+        <div class="map-preview-hint">Preview of the published map · click or press Esc to close</div>
+        <img id="mapPreviewImage" alt="Map preview">
+    </div>
     <section class="manual-config-panel" id="manualConfigPanel" aria-hidden="true">
         <header>
             <div>
@@ -589,7 +660,7 @@
                         <?php foreach ($imageList as $img): ?>
                         <div class="icon-item" data-icon="<?= htmlspecialchars($img) ?>">
                             <div class="icon-preview">
-                                <img src="/objects/<?= htmlspecialchars(basename($img)) ?>" alt="<?= htmlspecialchars(basename($img)) ?>">
+                                <img src="/<?= htmlspecialchars($img) ?>" alt="<?= htmlspecialchars(basename($img)) ?>">
                             </div>
                             <div class="icon-name"><?= htmlspecialchars(basename($img)) ?></div>
                         </div>
@@ -733,6 +804,15 @@
                 <td>
                     <input id="map_width" name="map_width" type="text" style="width:60px;display:inline" value="<?= $wmap->width ?>" /> x 
                     <input id="map_height" name="map_height" type="text" style="width:60px;display:inline" value="<?= $wmap->height ?>" /> pixels
+                </td>
+            </tr>
+            <tr>
+                <td>When the size changes</td>
+                <td class="resize-options">
+                    <label><input type="radio" name="resize_mode" value="scale" checked /> Scale the content with the map</label>
+                    <label><input type="radio" name="resize_mode" value="extend" /> Only extend or crop the canvas</label>
+                    <label class="resize-sub"><input type="checkbox" id="resize_keep_aspect" /> Keep proportions (content centred)</label>
+                    <label class="resize-sub"><input type="checkbox" id="resize_scale_sizes" /> Also scale link widths and icon sizes</label>
                 </td>
             </tr>
         </table>
@@ -1107,14 +1187,55 @@
         if (wInp) wInp.value = String(newW);
         if (hInp) hInp.value = String(newH);
 
-        // Persist via existing endpoint
+        askResizeMode(newW, newH);
+    }
+
+    // After a drag of the map border: scale the content, or only change the canvas?
+    function askResizeMode(newW, newH) {
+        var box = document.getElementById('resizeChoice');
+        document.getElementById('resizeChoiceSize').textContent = newW + ' × ' + newH;
+        box.classList.add('active');
+        box.setAttribute('aria-hidden', 'false');
+        document.getElementById('resizeChoiceScale').focus();
+
+        function close() {
+            box.classList.remove('active');
+            box.setAttribute('aria-hidden', 'true');
+            document.removeEventListener('keydown', onKey, true);
+        }
+        function apply(mode) {
+            close();
+            saveMapSize(newW, newH, mode,
+                document.getElementById('resizeChoiceKeepAspect').checked,
+                document.getElementById('resizeChoiceScaleSizes').checked);
+        }
+        function cancel() {
+            close();
+            document.getElementById('map_width').value = String(getCurrentMapSize().w);
+            document.getElementById('map_height').value = String(getCurrentMapSize().h);
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancel(); }
+            if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); apply('scale'); }
+        }
+
+        document.getElementById('resizeChoiceScale').onclick = function() { apply('scale'); };
+        document.getElementById('resizeChoiceExtend').onclick = function() { apply('extend'); };
+        document.getElementById('resizeChoiceCancel').onclick = cancel;
+        document.addEventListener('keydown', onKey, true);
+    }
+
+    function saveMapSize(newW, newH, mode, keepAspect, scaleSizes) {
         submitAction('set_map_properties', {
             map_title: document.getElementById('map_title').value,
             map_legend: document.getElementById('map_legend').value,
             map_bgfile: document.getElementById('map_bgfile').value,
             map_stamp: document.getElementById('map_stamp').value,
             map_width: newW,
-            map_height: newH
+            map_height: newH,
+            resize_mode: mode,
+            resize_keep_aspect: keepAspect ? '1' : '',
+            resize_scale_sizes: scaleSizes ? '1' : ''
         });
     }
     
@@ -1617,8 +1738,21 @@
             };
 
             document.getElementById('link_datasource').value = JSON.stringify(selection);
-            const target = 'zabbix:hostid:' + selection.hostId + ':key:' + selection.inKey + ':' + selection.outKey;
+            // Sources that know their own TARGET syntax (Observium) send it with each option
+            const target = selected.target
+                || ('zabbix:hostid:' + selection.hostId + ':key:' + selection.inKey + ':' + selection.outKey);
             document.getElementById('link_target').value = target;
+
+            // Pre-fill the bandwidth with the interface speed when the source knows it
+            if (selected.bandwidth) {
+                document.getElementById('link_bandwidth_out_cb').checked = true;
+                document.getElementById('link_bandwidth_in').value = selected.bandwidth;
+                document.getElementById('link_bandwidth_in_sep').value = selected.bandwidth;
+                document.getElementById('link_bandwidth_out').value = selected.bandwidth;
+                document.getElementById('bw_row_combined').style.display = '';
+                document.getElementById('bw_row_in').style.display = 'none';
+                document.getElementById('bw_row_out').style.display = 'none';
+            }
         }
 
         try {
@@ -1657,7 +1791,7 @@
             try {
                 const ifaces = await dsFetchJson('/api/data-sources/' + encodeURIComponent(sourceId) + '/hosts/' + encodeURIComponent(hostId) + '/bandwidths');
                 if (!ifaces || !ifaces.length) {
-                    dsFillSelect(elIface, [], 'interfaceId', 'label', 'No net.if.in/out items on host');
+                    dsFillSelect(elIface, [], 'interfaceId', 'label', 'No interfaces with traffic data on this host');
                     elIface.disabled = true;
                     elIface.dataset.items = '[]';
                     return;
@@ -1741,6 +1875,38 @@
         e.preventDefault();
         toggleManualConfig(true);
     };
+
+    function showMapPreview(show) {
+        var preview = document.getElementById('mapPreview');
+        if (show) {
+            document.getElementById('mapPreviewImage').src = '/map/<?= (int) $mapId ?>/image?t=' + Date.now();
+        }
+        preview.classList.toggle('active', show);
+        preview.setAttribute('aria-hidden', (!show).toString());
+    }
+
+    document.getElementById('tb_preview').onclick = function(e) {
+        e.preventDefault();
+        showMapPreview(true);
+    };
+
+    document.getElementById('mapPreview').onclick = function() {
+        showMapPreview(false);
+    };
+
+    document.getElementById('tb_viewmap').onclick = function(e) {
+        e.preventDefault();
+        window.open('/map/<?= (int) $mapId ?>', '_blank');
+    };
+
+    document.addEventListener('keydown', function(e) {
+        var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+        if (e.key === 'Escape') {
+            showMapPreview(false);
+        } else if (!typing && (e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey) {
+            showMapPreview(!document.getElementById('mapPreview').classList.contains('active'));
+        }
+    });
     
     // XY capture click
     document.getElementById('xycapture').onclick = function(e) {
@@ -1888,14 +2054,14 @@
     };
     
     document.getElementById('tb_map_submit').onclick = function() {
-        submitAction('set_map_properties', {
-            map_title: document.getElementById('map_title').value,
-            map_legend: document.getElementById('map_legend').value,
-            map_bgfile: document.getElementById('map_bgfile').value,
-            map_stamp: document.getElementById('map_stamp').value,
-            map_width: document.getElementById('map_width').value,
-            map_height: document.getElementById('map_height').value
-        });
+        var mode = document.querySelector('input[name="resize_mode"]:checked');
+        saveMapSize(
+            document.getElementById('map_width').value,
+            document.getElementById('map_height').value,
+            mode ? mode.value : 'extend',
+            document.getElementById('resize_keep_aspect').checked,
+            document.getElementById('resize_scale_sizes').checked
+        );
     };
     
     document.getElementById('node_move').onclick = function() {

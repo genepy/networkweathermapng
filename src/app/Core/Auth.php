@@ -9,6 +9,8 @@ namespace App\Core;
 
 class Auth
 {
+    public const DEFAULT_PASSWORD = 'admin';
+
     private Database $database;
     private Config $config;
     
@@ -33,11 +35,23 @@ class Auth
             return false;
         }
         
+        // New session id on login, so a session id planted before login is useless
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
+
         // Set session
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['logged_in'] = true;
+
+        // The well-known default password must be replaced before anything else
+        if ($password === self::DEFAULT_PASSWORD) {
+            $_SESSION['must_change_password'] = true;
+        } else {
+            unset($_SESSION['must_change_password']);
+        }
         
         return true;
     }
@@ -69,6 +83,16 @@ class Auth
         }
         
         return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+    }
+    
+    public function mustChangePassword(): bool
+    {
+        return $this->check() && !empty($_SESSION['must_change_password']);
+    }
+
+    public function passwordChanged(): void
+    {
+        unset($_SESSION['must_change_password']);
     }
     
     public function user(): ?array

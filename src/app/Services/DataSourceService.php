@@ -8,7 +8,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Config;
 use App\Core\Database;
+use App\Core\SecretBox;
+use App\Services\Observium\ObserviumClient;
 
 class DataSourceException extends \Exception
 {
@@ -29,9 +32,14 @@ class DataSourceException extends \Exception
 class DataSourceService
 {
     private Database $db;
+
+    /** @var array<int, DataSourceClientInterface> */
+    private array $clients = [];
+    private ?SecretBox $secrets;
     
-    public function __construct(Database $db)
+    public function __construct(Database $db, ?SecretBox $secrets = null)
     {
+        $this->secrets = $secrets;
         $this->db = $db;
     }
     
@@ -281,25 +289,124 @@ class DataSourceService
         }
     }
     
+    /** Interface speed in bit/s for a link picked from a Zabbix source */
+    public function getLinkSpeed(int $sourceId, array $selection): ?int
+    {
+        $source = $this->getSource($sourceId);
+        $client = $source ? $this->getClient($source) : null;
+
+        return $client instanceof ZabbixClient ? $client->getInterfaceSpeed($selection) : null;
+    }
+
     private function getClient(array $source): ?DataSourceClientInterface
     {
-        switch ($source['type']) {
-            case 'zabbix':
-                return new ZabbixClient($source, $this);
-            default:
-                return null;
+        // One client per source and request: a map render asks the same
+        // source for many links, and clients cache what they fetched.
+        $id = (int) ($source['id'] ?? 0);
+        if ($id > 0 && isset($this->clients[$id])) {
+            return $this->clients[$id];
         }
+
+        $client = match ($source['type']) {
+            'zabbix' => new ZabbixClient($source, $this),
+            'observium' => new ObserviumClient($source, $this),
+            default => null,
+        };
+
+        if ($client && $id > 0) {
+            $this->clients[$id] = $client;
+        }
+
+        return $client;
+    }
+
+    /**
+     * Current [in, out] values for an Observium TARGET string, read from the
+     * given source, or from the first active Observium source.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    public function readObserviumTarget(string $target, ?int $sourceId = null): ?array
+    {
+        $client = $this->observiumClient($sourceId);
+
+        return $client?->readTarget($target);
+    }
+
+    /** Interface speed in bit/s behind an Observium TARGET string. */
+    public function observiumSpeedForTarget(string $target, ?int $sourceId = null): ?int
+    {
+        $client = $this->observiumClient($sourceId);
+
+        return $client?->speedForTarget($target);
+    }
+
+    private function observiumClient(?int $sourceId): ?ObserviumClient
+    {
+        $source = $sourceId
+            ? $this->getSource($sourceId)
+            : $this->db->queryOne("SELECT * FROM data_sources WHERE type = 'observium' AND active = 1 ORDER BY id LIMIT 1");
+        if (!$source || $source['type'] !== 'observium') {
+            return null;
+        }
+        $client = $this->getClient($source);
+
+        return $client instanceof ObserviumClient ? $client : null;
     }
     
     private function encryptPassword(string $password): string
     {
-        // Simple base64 encoding for now - in production use proper encryption
-        return base64_encode($password);
+        return $this->secrets()->encrypt($password);
     }
     
+    /** Encodes a secret stored in a source's settings (same scheme as passwords). */
+    public function encodeSecret(string $secret): string
+    {
+        return $this->encryptPassword($secret);
+    }
+
     public function decryptPassword(string $encrypted): string
     {
-        return base64_decode($encrypted);
+        return $this->secrets()->decrypt($encrypted);
+    }
+
+    /**
+     * Re-encrypts the passwords still stored in base64 (written before
+     * encryption existed). Returns how many sources were updated.
+     */
+    public function upgradeStoredSecrets(): int
+    {
+        if (!$this->secrets()->canEncrypt()) {
+            return 0;
+        }
+
+        $updated = 0;
+        foreach ($this->db->query('SELECT id, password, settings FROM data_sources') as $row) {
+            $changes = [];
+            $password = (string) ($row['password'] ?? '');
+            if ($password !== '' && !SecretBox::isEncrypted($password)) {
+                $changes['password'] = $this->encryptPassword($this->decryptPassword($password));
+            }
+
+            $settings = json_decode((string) ($row['settings'] ?? ''), true);
+            $dbPassword = is_array($settings) ? (string) ($settings['db_password'] ?? '') : '';
+            if ($dbPassword !== '' && !SecretBox::isEncrypted($dbPassword)) {
+                $settings['db_password'] = $this->encryptPassword($this->decryptPassword($dbPassword));
+                $changes['settings'] = json_encode($settings);
+            }
+
+            if ($changes) {
+                $this->db->update('data_sources', $changes, 'id = ?', [(int) $row['id']]);
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
+    private function secrets(): SecretBox
+    {
+        return $this->secrets ??= SecretBox::fromConfig(new Config());
     }
     
     // Cache methods
@@ -326,19 +433,6 @@ class DataSourceService
     {
         $this->db->delete('data_source_cache', 'source_id = ?', [$sourceId]);
     }
-}
-
-interface DataSourceClientInterface
-{
-    public function testConnection(): array;
-    public function getHosts(array $filters = []): array;
-    public function getHostInterfaces(string $hostId): array;
-    public function getItems(string $hostId, array $filters = []): array;
-    public function getItemValue(string $itemId): ?array;
-    public function getInterfaceBandwidthOptions(string $hostId): array;
-    public function getBandwidthCurrent(array $selection): array;
-    public function getBandwidthData(array $selection, int $minutes = 1440): array;
-    public function getDebugInfo(): array;
 }
 
 class ZabbixClient implements DataSourceClientInterface
@@ -652,6 +746,76 @@ class ZabbixClient implements DataSourceClientInterface
         ];
     }
     
+    /**
+     * Interface speed in bit/s for a link picked in the editor, read from
+     * the speed item the Zabbix templates create next to the traffic items.
+     */
+    public function getInterfaceSpeed(array $selection): ?int
+    {
+        $hostId = (string) ($selection['hostId'] ?? '');
+        $keys = self::speedKeysFor((string) ($selection['inKey'] ?? ''));
+        if ($hostId === '' || !$keys) {
+            return null;
+        }
+
+        $items = $this->apiRequest('item.get', [
+            'output' => ['key_', 'lastvalue', 'units'],
+            'hostids' => $hostId,
+            'filter' => ['key_' => $keys],
+        ]);
+
+        $byKey = [];
+        foreach ((array) $items as $item) {
+            $byKey[(string) ($item['key_'] ?? '')] = $item;
+        }
+        foreach ($keys as $key) {
+            if (isset($byKey[$key])) {
+                $bps = self::speedToBps((float) ($byKey[$key]['lastvalue'] ?? 0), (string) ($byKey[$key]['units'] ?? ''), $key);
+                if ($bps > 0) {
+                    return $bps;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Speed item keys that go with a traffic item key, most precise first.
+     *
+     * @return list<string>
+     */
+    public static function speedKeysFor(string $inKey): array
+    {
+        if (preg_match('/^net\\.if\\.in\\[if(?:HC)?InOctets\\.(\\d+)\\]$/', $inKey, $m)
+            || preg_match('/^net\\.if\\.in(?:\\.block\\.v4\\.bps)?\\[(\\d+)\\]$/', $inKey, $m)) {
+            return ["net.if.speed[ifHighSpeed.{$m[1]}]", "net.if.speed[ifSpeed.{$m[1]}]"];
+        }
+        if (preg_match('/^net\\.if\\.in\\[["\']?([^,"\'\\]]+)/', $inKey, $m)) {
+            $name = trim($m[1]);
+            return [
+                "vfs.file.contents[\"/sys/class/net/{$name}/speed\"]",
+                "net.if.speed[{$name}]",
+            ];
+        }
+
+        return [];
+    }
+
+    /** Zabbix speed values in bit/s; raw ifHighSpeed and sysfs values are in Mbit/s */
+    public static function speedToBps(float $value, string $units, string $key): int
+    {
+        if ($value <= 0) {
+            return 0;
+        }
+        $units = strtolower(trim($units));
+        if ($units === '' && (str_contains($key, 'ifHighSpeed') || str_contains($key, '/sys/class/net/'))) {
+            $value *= 1000000;
+        }
+
+        return (int) round($value);
+    }
+
     private function authenticate(): ?string
     {
         if ($this->authToken) {

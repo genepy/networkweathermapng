@@ -30,6 +30,10 @@ class Config
             'APP_DEBUG' => 'false',
             'APP_TIMEZONE' => 'UTC',
             'APP_SECRET_KEY' => '',
+            // Content-Security-Policy; empty = the default policy, 'off' = none
+            'APP_CSP' => '',
+            // Key that encrypts data source passwords; empty = DATA_ROOT/app.key
+            'APP_KEY' => '',
             'APP_ROOT' => $appRoot,
             'DATA_ROOT' => $appRoot . '/data',
             

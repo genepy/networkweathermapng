@@ -56,6 +56,11 @@ class Router
             }
             
             if (preg_match($route['pattern'], $uri, $matches)) {
+                if ($method !== 'GET' && !Csrf::isValid(Csrf::fromRequest())) {
+                    $this->csrfFailed();
+                    return;
+                }
+
                 // Extract named parameters
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
                 
@@ -106,6 +111,21 @@ class Router
         echo '<p>The requested page was not found.</p>';
     }
     
+    private function csrfFailed(): void
+    {
+        http_response_code(419);
+
+        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        if (isset($_SERVER[Csrf::HEADER]) || str_contains($accept, 'application/json')) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Session expired, reload the page and try again']);
+            return;
+        }
+
+        echo '<h1>Session expired</h1>';
+        echo '<p>The form was sent without a valid security token. <a href="javascript:history.back()">Go back</a>, reload the page and try again.</p>';
+    }
+
     private function serverError(string $message): void
     {
         http_response_code(500);

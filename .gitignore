@@ -53,10 +53,13 @@ composer.lock
 # Docker
 docker-compose.override.yml
 
-
 # Internal Docs
 docs/
 data/
-tests/
+
+# Tests
+/build/
+.phpunit.cache/
+
 # Graphify knowledge graph (rebuilt locally)
 graphify-out/

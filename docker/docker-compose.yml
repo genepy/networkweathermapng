@@ -14,6 +14,8 @@ services:
       - APP_DEBUG=${APP_DEBUG:-false}
       - APP_TIMEZONE=${APP_TIMEZONE:-UTC}
       - APP_SECRET_KEY=${APP_SECRET_KEY:-change_this_secret_key}
+      # Encrypts data source passwords; empty = key generated in /app/data/app.key
+      - APP_KEY=${APP_KEY:-}
       
       # Database Configuration
       - DB_TYPE=${DB_TYPE:-sqlite}
@@ -45,6 +47,13 @@ services:
       - ../src/app:/app/app
       - ../src/public:/app/public
       - ../src/lib:/app/lib
+      # Observium on the same server: read its config.php and RRD files
+      # (Admin > Data Sources > Observium folder: /opt/observium)
+      # - /opt/observium/config.php:/opt/observium/config.php:ro
+      # - /opt/observium/rrd:/opt/observium/rrd:ro
+    # Lets the container reach the host's MySQL as "host.docker.internal"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - weathermap_network
     healthcheck:

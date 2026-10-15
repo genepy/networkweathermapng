@@ -19,7 +19,9 @@ RUN apk add --no-cache \
     oniguruma-dev \
     sqlite-dev \
     ttf-dejavu \
-    fontconfig
+    fontconfig \
+    rrdtool \
+    rsvg-convert
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -34,7 +36,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache
 
 # Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
 # Create app directory structure
 RUN mkdir -p /app/public \
@@ -53,14 +55,27 @@ COPY docker/nginx/default.conf /etc/nginx/http.d/default.conf
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docker/php/php-fpm.conf /usr/local/etc/php-fpm.d/www.conf
 
+COPY docker/nginx-start.sh /usr/local/bin/nginx-start
+
 # Copy supervisor configuration
 COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Defaults so a plain "docker run" works without docker-compose
+ENV APP_ROOT=/app \
+    DATA_ROOT=/app/data \
+    DB_PATH=/app/data/weathermap.db
 
 # Set working directory
 WORKDIR /app
 
 # Copy application source
 COPY src/ /app/
+
+# Icons and backgrounds are kept in the data volume (see docker/init-data.sh)
+COPY docker/init-data.sh /usr/local/bin/weathermap-init
+RUN for dir in objects backgrounds; do \
+        mv /app/public/$dir /app/public/$dir.dist && ln -s /app/data/$dir /app/public/$dir; \
+    done
 
 # Copy composer files and install dependencies
 COPY docker/composer.docker.json /app/composer.json

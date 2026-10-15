@@ -14,7 +14,7 @@ class AccountController extends BaseController
         $this->requireAuth();
 
         $this->render('account/change_password', [
-            'title' => 'Change Password',
+            'title' => __('Change password'),
         ]);
     }
 
@@ -27,19 +27,19 @@ class AccountController extends BaseController
         $confirmPassword = (string) $this->getInput('confirm_password', '');
 
         if ($newPassword === '' || $confirmPassword === '') {
-            $this->flash('error', 'New password and confirmation are required');
+            $this->flash('error', __('New password and confirmation are required'));
             $this->redirect('/account/password');
             return;
         }
 
         if ($newPassword !== $confirmPassword) {
-            $this->flash('error', 'New password and confirmation do not match');
+            $this->flash('error', __('New password and confirmation do not match'));
             $this->redirect('/account/password');
             return;
         }
 
         if (strlen($newPassword) < 8) {
-            $this->flash('error', 'New password must be at least 8 characters');
+            $this->flash('error', __('New password must be at least 8 characters'));
             $this->redirect('/account/password');
             return;
         }
@@ -53,13 +53,13 @@ class AccountController extends BaseController
         );
 
         if (!$dbUser) {
-            $this->flash('error', 'User not found');
+            $this->flash('error', __('User not found'));
             $this->redirect('/account/password');
             return;
         }
 
         if (!password_verify($currentPassword, $dbUser['password_hash'])) {
-            $this->flash('error', 'Current password is incorrect');
+            $this->flash('error', __('Current password is incorrect'));
             $this->redirect('/account/password');
             return;
         }
@@ -68,7 +68,8 @@ class AccountController extends BaseController
             'password_hash' => password_hash($newPassword, PASSWORD_DEFAULT),
         ], 'id = ?', [$userId]);
 
-        $this->flash('success', 'Password changed successfully');
+        $this->auth->passwordChanged();
+        $this->flash('success', __('Password changed successfully'));
         $this->redirect('/account/password');
     }
 }

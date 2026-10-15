@@ -4,6 +4,9 @@
 
 (function() {
     'use strict';
+
+    // Translations exposed by the page (window.WM_T), English otherwise
+    function t(s) { return (window.WM_T && window.WM_T[s]) || s; }
     
     // Utility functions
     const WM = {
@@ -29,7 +32,7 @@
                 const data = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(data.error || 'API request failed');
+                    throw new Error(data.error || t('API request failed'));
                 }
                 
                 return data;
@@ -177,7 +180,7 @@
     async function wmLoadDatasourceHover(selection) {
         const sourceId = Number(selection.sourceId || 0);
         if (!sourceId) {
-            throw new Error('Invalid sourceId');
+            throw new Error(t('Invalid data source'));
         }
 
         const params = new URLSearchParams();
@@ -191,85 +194,145 @@
         const res = await fetch('/api/data-sources/' + encodeURIComponent(String(sourceId)) + '/link-bandwidth?' + params.toString());
         const data = await res.json();
         if (!res.ok || !data || !data.success) {
-            throw new Error((data && data.error) ? data.error : 'Failed to load');
+            throw new Error((data && data.error) ? data.error : t('Failed to load'));
         }
         return data.data;
     }
 
-    function wmAttachDatasourceHover() {
-        const hover = wmCreateHoverPanel();
-        let lastKey = null;
-        let lastAbort = null;
-
-        document.addEventListener('mousemove', function(e) {
-            if (hover.style.display === 'none') return;
-            const x = Math.min(window.innerWidth - 20, e.clientX + 18);
-            const y = Math.min(window.innerHeight - 20, e.clientY + 18);
-            hover.style.left = x + 'px';
-            hover.style.top = y + 'px';
+    function wmEsc(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
         });
+    }
 
-        document.querySelectorAll('area.link').forEach(function(area) {
-            area.addEventListener('mouseenter', async function(e) {
-                const selectionRaw = area.getAttribute('data-datasource') || '';
-                if (!selectionRaw) return;
+    /**
+     * The hover panel of a link: in/out now and the last 24 h.
+     * info: {title, ds (data source selection, JSON text), in, out, inpct,
+     * outpct (values from the last map render), graph (picture URL)}.
+     * Used by the PNG imagemap (area.link) and the SVG view (viewer.js).
+     */
+    const wmHover = (function() {
+        let hover = null;
+        let lastKey = null;
+        let visible = false;
 
-                let selection;
-                try {
-                    selection = JSON.parse(selectionRaw);
-                } catch (err) {
+        function panel() {
+            if (!hover) {
+                hover = wmCreateHoverPanel();
+                document.addEventListener('mousemove', function(e) {
+                    if (!visible) return;
+                    wmHover.move(e);
+                });
+            }
+            return hover;
+        }
+
+        function nowLine(label, value, pct, colour) {
+            if (value === null || value === undefined || !isFinite(Number(value))) return '';
+            const p = (pct !== null && pct !== undefined && isFinite(Number(pct))) ? ` <span style="opacity:0.75">(${Math.round(Number(pct))} %)</span>` : '';
+            return `<div style="display:flex;gap:10px;align-items:center;margin:4px 0;">
+                <div style="width:70px;opacity:0.9;">${label}</div>
+                <div style="font-weight:600;color:${colour};">${wmFormatNum(Number(value))}bit/s${p}</div>
+            </div>`;
+        }
+
+        return {
+            move: function(e) {
+                const el = panel();
+                const w = el.offsetWidth || 340;
+                const h = el.offsetHeight || 120;
+                let x = e.clientX + 18;
+                let y = e.clientY + 18;
+                if (x + w > window.innerWidth - 8) x = Math.max(8, e.clientX - w - 18);
+                if (y + h > window.innerHeight - 8) y = Math.max(8, e.clientY - h - 18);
+                el.style.left = x + 'px';
+                el.style.top = y + 'px';
+            },
+            show: async function(info, e) {
+                const el = panel();
+                const key = JSON.stringify(info);
+                if (visible && key === lastKey) return;
+                lastKey = key;
+
+                const title = info.title ? `<div style="font-weight:600;margin-bottom:4px;">${wmEsc(info.title)}</div>` : '';
+                const now = nowLine(t('IN'), info.in, info.inpct, '#59d185') + nowLine(t('OUT'), info.out, info.outpct, '#6aa7ff');
+
+                let selection = null;
+                if (info.ds) {
+                    try { selection = JSON.parse(info.ds); } catch (err) { selection = null; }
+                }
+
+                if (!selection && !info.graph && !now) {
+                    this.hide();
                     return;
                 }
 
-                const key = selectionRaw;
-                lastKey = key;
-                if (lastAbort) {
-                    lastAbort.abort();
-                }
-                lastAbort = new AbortController();
+                visible = true;
+                el.style.display = 'block';
+                if (e) this.move(e);
 
-                hover.style.display = 'block';
-                hover.innerHTML = '<div style="opacity:0.85">Loading…</div>';
+                if (!selection) {
+                    el.innerHTML = title + now + (info.graph ? `<img src="${wmEsc(info.graph)}" alt="" style="display:block;max-width:500px;margin-top:6px;">` : '');
+                    return;
+                }
+
+                el.innerHTML = title + now + '<div style="opacity:0.85;margin-top:4px;">' + t('Loading…') + '</div>';
 
                 try {
                     const payload = await wmLoadDatasourceHover(selection);
-                    if (lastKey !== key) return;
+                    if (lastKey !== key || !visible) return;
 
                     const inLast = Number(payload?.in?.lastvalue || 0);
                     const outLast = Number(payload?.out?.lastvalue || 0);
-                    const inUnits = payload?.in?.units || '';
-                    const outUnits = payload?.out?.units || '';
+                    const inUnits = wmEsc(payload?.in?.units || '');
+                    const outUnits = wmEsc(payload?.out?.units || '');
 
                     const w = 460;
                     const h = 70;
                     const inSvg = wmSparkline(payload?.in?.series || [], w, h, '#59d185');
                     const outSvg = wmSparkline(payload?.out?.series || [], w, h, '#6aa7ff');
 
-                    hover.innerHTML = `
+                    el.innerHTML = title + `
                         <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:6px;">
-                            <div style="font-weight:600;">Link bandwidth (24h)</div>
+                            <div style="font-weight:600;">${t('Link bandwidth (24h)')}</div>
                             <div style="opacity:0.75;">${new Date().toLocaleString()}</div>
                         </div>
                         <div style="display:flex;gap:10px;align-items:center;margin:6px 0;">
-                            <div style="width:70px;opacity:0.9;">IN</div>
+                            <div style="width:70px;opacity:0.9;">${t('IN')}</div>
                             <div style="font-weight:600;color:#59d185;">${wmFormatNum(inLast)} ${inUnits}</div>
                         </div>
                         <div>${inSvg}</div>
                         <div style="display:flex;gap:10px;align-items:center;margin:10px 0 6px;">
-                            <div style="width:70px;opacity:0.9;">OUT</div>
+                            <div style="width:70px;opacity:0.9;">${t('OUT')}</div>
                             <div style="font-weight:600;color:#6aa7ff;">${wmFormatNum(outLast)} ${outUnits}</div>
                         </div>
                         <div>${outSvg}</div>
                     `;
                 } catch (err) {
-                    if (lastKey !== key) return;
-                    hover.innerHTML = '<div style="color:#ff8b8b">' + String(err.message || err) + '</div>';
+                    if (lastKey !== key || !visible) return;
+                    el.innerHTML = title + now + '<div style="color:#ff8b8b">' + wmEsc(String(err.message || err)) + '</div>';
                 }
-            });
+            },
+            hide: function() {
+                visible = false;
+                lastKey = null;
+                if (hover) {
+                    hover.style.display = 'none';
+                    hover.innerHTML = '';
+                }
+            }
+        };
+    })();
 
+    function wmAttachDatasourceHover() {
+        document.querySelectorAll('area.link').forEach(function(area) {
+            area.addEventListener('mouseenter', function(e) {
+                const selectionRaw = area.getAttribute('data-datasource') || '';
+                if (!selectionRaw) return;
+                wmHover.show({ds: selectionRaw}, e);
+            });
             area.addEventListener('mouseleave', function() {
-                hover.style.display = 'none';
-                hover.innerHTML = '';
+                wmHover.hide();
             });
         });
     }
@@ -281,5 +344,6 @@
     });
     
     // Expose to global scope
+    WM.hover = wmHover;
     window.WM = WM;
 })();
