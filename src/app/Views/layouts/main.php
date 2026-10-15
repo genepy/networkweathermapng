@@ -45,7 +45,7 @@ $uri = $_SERVER['REQUEST_URI'] ?? '/';
                 <?php if ($user): ?>
                     <span class="username"><?= htmlspecialchars($user['username']) ?></span>
                     <a href="/account/password" class="login-btn"><?= e__('Change password') ?></a>
-                    <a href="/logout" class="logout-btn"><?= e__('Logout') ?></a>
+                    <form method="post" action="/logout" class="logout-form"><?= \App\Core\Csrf::field() ?><button type="submit" class="logout-btn"><?= e__('Logout') ?></button></form>
                 <?php else: ?>
                     <a href="/login" class="login-btn"><?= e__('Login') ?></a>
                 <?php endif; ?>
