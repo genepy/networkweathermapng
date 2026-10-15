@@ -25,7 +25,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
-- **English and French** - Chosen in the header, or with `APP_LOCALE`
+- **Translations** - English and French built in, chosen in the header or with `APP_LOCALE`; [add your language](TRANSLATING.md)
 - **Light and dark themes** - Automatic (system setting) or chosen in the header
 - **Responsive UI** - Modern, mobile-friendly interface
 
@@ -84,7 +84,7 @@ limited to 64 MB.
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
 | `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`) | `png` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds | `300` |
-| `APP_LOCALE` | Interface language when the browser's doesn't decide (`en`, `fr`) | browser language |
+| `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the header | browser language |
 
 ### Data sources (Zabbix and more)
 
@@ -257,13 +257,17 @@ Admin > Maps lists every map:
 
 ## Language and theme
 
-The header has a language menu (English, French) and a theme button
-(automatic, light, dark); both are remembered in cookies. Without a choice,
-the language follows the browser, then `APP_LOCALE`. Translations live in
+The header has a language menu and a theme button (automatic, light,
+dark); both are remembered in cookies. Without a choice, the language comes
+from `APP_LOCALE`, then the browser, else English. Translations live in
 `src/app/Lang/<locale>/*.php`, one file per part of the application, as
 `'English text' => 'translation'`; `*-js.php` files hold the texts of a
-browser script. In code, wrap texts with `__('…')` (or `e__('…')` to print
-them escaped) and add them to the catalogue.
+browser script and `_meta.php` gives the language name. Every folder there
+appears in the language menu. In code, wrap texts with `__('…')` (or
+`e__('…')` to print them escaped) and add them to the catalogues;
+`php src/bin/i18n-check.php` lists missing and unused keys.
+
+To add or improve a language, see [TRANSLATING.md](TRANSLATING.md).
 
 ## Directory Structure
 

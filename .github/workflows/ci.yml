@@ -55,6 +55,10 @@ jobs:
       - name: Tests
         run: vendor/bin/phpunit
 
+      - name: Translation catalogues (informative)
+        continue-on-error: true
+        run: php src/bin/i18n-check.php --strict
+
       - name: Keep rendered maps on failure
         if: failure()
         uses: actions/upload-artifact@v4

@@ -6,8 +6,13 @@
  * shows the English. Files named *-js.php hold the texts of a browser
  * script and are only read through section().
  *
+ * Languages are discovered from the folders of app/Lang/: each folder
+ * named after a locale code (fr, de, pt_BR...) holds a _meta.php file
+ * returning ['name' => 'Native language name']. English is built in, as
+ * the source strings are English. See TRANSLATING.md.
+ *
  * The language comes from, in order: the "lang" cookie (the menu in the
- * header), APP_LOCALE, the browser's Accept-Language.
+ * header), APP_LOCALE, the browser's Accept-Language, else English.
  */
 
 declare(strict_types=1);
@@ -16,10 +21,53 @@ namespace App\Core;
 
 class I18n
 {
-    public const LOCALES = ['en' => 'English', 'fr' => 'Français'];
+    /** Built-in language of the source strings */
+    public const DEFAULT_LOCALE = 'en';
+
+    /** Valid names for a folder of app/Lang/: "fr", "ast", "pt_BR"... */
+    public const CODE_PATTERN = '/^[a-z]{2,3}(_[A-Z]{2})?$/';
 
     private static ?string $locale = null;
     private static array $catalog = [];
+
+    /** @var array<string, string>|null discovered languages, cached per request */
+    private static ?array $locales = null;
+
+    /** Folder holding the catalogues; overridable for tests */
+    private static ?string $langDir = null;
+
+    /**
+     * Available languages, code => display name, English first.
+     *
+     * @return array<string, string>
+     */
+    public static function locales(): array
+    {
+        if (self::$locales !== null) {
+            return self::$locales;
+        }
+
+        $found = [];
+        foreach (glob(self::langDir() . '/*', GLOB_ONLYDIR) ?: [] as $dir) {
+            $code = basename($dir);
+            if ($code === self::DEFAULT_LOCALE || !preg_match(self::CODE_PATTERN, $code)) {
+                continue;
+            }
+            $found[$code] = self::displayName($dir, $code);
+        }
+        ksort($found);
+
+        return self::$locales = [self::DEFAULT_LOCALE => 'English'] + $found;
+    }
+
+    /** Use another catalogue folder (null restores the default) and forget the cached state */
+    public static function setLangDir(?string $dir): void
+    {
+        self::$langDir = $dir;
+        self::$locales = null;
+        self::$locale = null;
+        self::$catalog = [];
+    }
 
     public static function locale(): string
     {
@@ -31,12 +79,14 @@ class I18n
 
     public static function setLocale(string $locale): void
     {
-        self::$locale = isset(self::LOCALES[$locale]) ? $locale : 'en';
+        self::$locale = isset(self::locales()[$locale]) ? $locale : self::DEFAULT_LOCALE;
         self::$catalog = [];
-        if (self::$locale !== 'en') {
+        if (self::$locale !== self::DEFAULT_LOCALE) {
             foreach (glob(self::dir() . '/*.php') ?: [] as $file) {
-                // *-js.php files only go to the browser scripts (see section())
-                if (!str_ends_with($file, '-js.php')) {
+                $name = basename($file);
+                // _meta.php describes the language; *-js.php files only go
+                // to the browser scripts (see section())
+                if ($name[0] !== '_' && !str_ends_with($name, '-js.php')) {
                     self::$catalog += (array) require $file;
                 }
             }
@@ -47,12 +97,29 @@ class I18n
     public static function section(string $name): array
     {
         $file = self::dir() . '/' . basename($name) . '.php';
-        return self::locale() !== 'en' && is_file($file) ? (array) require $file : [];
+        return self::locale() !== self::DEFAULT_LOCALE && is_file($file) ? (array) require $file : [];
+    }
+
+    private static function langDir(): string
+    {
+        return self::$langDir ?? dirname(__DIR__) . '/Lang';
     }
 
     private static function dir(): string
     {
-        return dirname(__DIR__) . '/Lang/' . self::$locale;
+        return self::langDir() . '/' . self::$locale;
+    }
+
+    private static function displayName(string $dir, string $code): string
+    {
+        $meta = $dir . '/_meta.php';
+        if (is_file($meta)) {
+            $data = require $meta;
+            if (is_array($data) && is_string($data['name'] ?? null) && trim($data['name']) !== '') {
+                return trim($data['name']);
+            }
+        }
+        return $code;
     }
 
     /** @param array<string, string|int|float> $params replaces :name in the text */
@@ -78,22 +145,30 @@ class I18n
 
     private static function detect(): string
     {
+        $locales = self::locales();
+
         $cookie = $_COOKIE['lang'] ?? '';
-        if (is_string($cookie) && isset(self::LOCALES[$cookie])) {
+        if (is_string($cookie) && isset($locales[$cookie])) {
             return $cookie;
         }
 
         $env = getenv('APP_LOCALE') ?: ($_ENV['APP_LOCALE'] ?? '');
-        if (is_string($env) && isset(self::LOCALES[$env])) {
+        if (is_string($env) && isset($locales[$env])) {
             return $env;
         }
 
         foreach (explode(',', (string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '')) as $part) {
-            $code = strtolower(substr(trim($part), 0, 2));
-            if (isset(self::LOCALES[$code])) {
-                return $code;
+            // "pt-BR;q=0.8" matches pt_BR first, then pt
+            $tag = explode(';', trim($part))[0];
+            $bits = explode('-', str_replace('_', '-', $tag));
+            $lang = strtolower($bits[0]);
+            $full = isset($bits[1]) ? $lang . '_' . strtoupper($bits[1]) : $lang;
+            foreach ([$full, $lang] as $code) {
+                if ($code !== '' && isset($locales[$code])) {
+                    return $code;
+                }
             }
         }
-        return 'en';
+        return self::DEFAULT_LOCALE;
     }
 }
