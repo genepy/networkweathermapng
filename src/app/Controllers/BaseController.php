@@ -80,6 +80,15 @@ abstract class BaseController
             }
             $this->redirect('/login');
         }
+
+        if ($this->auth->mustChangePassword() && !str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/account/password')) {
+            if ($this->isApiRequest()) {
+                $this->json(['error' => 'Password change required'], 403);
+                exit;
+            }
+            $this->flash('error', 'Please replace the default password before continuing');
+            $this->redirect('/account/password');
+        }
     }
     
     protected function requireAdmin(): void

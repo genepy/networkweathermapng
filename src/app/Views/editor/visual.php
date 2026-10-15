@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?= \App\Core\Csrf::metaTag() ?>
+    <script src="/assets/js/csrf.js"></script>
     <title><?= htmlspecialchars($title ?? 'Map Editor') ?></title>
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <link rel="stylesheet" href="/assets/css/editor.css">
@@ -54,6 +56,26 @@
         #tb_manualconfig:hover {
             background: #1f3a68;
         }
+        #tb_preview, #tb_viewmap {
+            background: #13324a;
+        }
+        #tb_preview:hover, #tb_viewmap:hover {
+            background: #1f5070;
+        }
+        .map-preview {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1600;
+            background: rgba(5, 8, 20, 0.92);
+            overflow: auto;
+            padding: 48px 16px 16px;
+            text-align: center;
+            cursor: zoom-out;
+        }
+        .map-preview.active { display: block; }
+        .map-preview img { max-width: none; background: #fff; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+        .map-preview .map-preview-hint { position: fixed; top: 12px; left: 0; right: 0; color: #8da1cc; font-size: 13px; }
         
         .mainArea {
             display: flex;
@@ -492,6 +514,8 @@
             <li class="tb_active" id="tb_postime">Position<br>Timestamp</li>
             <li class="tb_active" id="tb_mapprops">Map<br>Properties</li>
             <li class="tb_active" id="tb_manualconfig">Manual<br>Config</li>
+            <li class="tb_active" id="tb_preview" title="Final map with current data, without edit handles (P)">Preview</li>
+            <li class="tb_active" id="tb_viewmap" title="Open the published map in a new tab">View<br>Map ↗</li>
             <li class="tb_coords" id="tb_coords">Position<br>---, ---</li>
             <li class="tb_help">
                 <span id="tb_help">Click on a Node or Link to edit it, or use the toolbar buttons to add new elements</span>
@@ -532,6 +556,10 @@
     
     <div class="overlay" id="overlay"></div>
     <div class="manual-config-overlay" id="manualConfigOverlay"></div>
+    <div class="map-preview" id="mapPreview" aria-hidden="true">
+        <div class="map-preview-hint">Preview of the published map · click or press Esc to close</div>
+        <img id="mapPreviewImage" alt="Map preview">
+    </div>
     <section class="manual-config-panel" id="manualConfigPanel" aria-hidden="true">
         <header>
             <div>
@@ -1741,6 +1769,38 @@
         e.preventDefault();
         toggleManualConfig(true);
     };
+
+    function showMapPreview(show) {
+        var preview = document.getElementById('mapPreview');
+        if (show) {
+            document.getElementById('mapPreviewImage').src = '/map/<?= (int) $mapId ?>/image?t=' + Date.now();
+        }
+        preview.classList.toggle('active', show);
+        preview.setAttribute('aria-hidden', (!show).toString());
+    }
+
+    document.getElementById('tb_preview').onclick = function(e) {
+        e.preventDefault();
+        showMapPreview(true);
+    };
+
+    document.getElementById('mapPreview').onclick = function() {
+        showMapPreview(false);
+    };
+
+    document.getElementById('tb_viewmap').onclick = function(e) {
+        e.preventDefault();
+        window.open('/map/<?= (int) $mapId ?>', '_blank');
+    };
+
+    document.addEventListener('keydown', function(e) {
+        var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+        if (e.key === 'Escape') {
+            showMapPreview(false);
+        } else if (!typing && (e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey) {
+            showMapPreview(!document.getElementById('mapPreview').classList.contains('active'));
+        }
+    });
     
     // XY capture click
     document.getElementById('xycapture').onclick = function(e) {

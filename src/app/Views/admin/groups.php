@@ -28,7 +28,7 @@
                         <a href="/admin/groups/edit/<?= $group['id'] ?>" class="btn btn-sm">Edit</a>
                         <?php if ($group['id'] != 1): ?>
                         <a href="/admin/groups/delete/<?= $group['id'] ?>" class="btn btn-sm btn-danger"
-                           onclick="return confirm('Are you sure you want to delete this group? Maps will be moved to Default group.')">Delete</a>
+                           data-method="post" data-confirm="Are you sure you want to delete this group? Maps will be moved to Default group.">Delete</a>
                         <?php else: ?>
                         <span class="text-muted">Default</span>
                         <?php endif; ?>

@@ -196,8 +196,15 @@ php -S localhost:8080 -t src/public
 ### Running Tests
 
 ```bash
-composer test
+composer install
+vendor/bin/phpunit                 # engine render tests + application tests
+vendor/bin/phpstan analyse         # static analysis
 ```
+
+Render tests draw every map in `tests/fixtures/maps/` and compare it with
+`tests/fixtures/reference/`. After an intended visual change, regenerate the
+references with `UPDATE_REFERENCE=1 vendor/bin/phpunit` and review the images
+before committing them.
 
 ## Migration from Cacti Weathermap
 

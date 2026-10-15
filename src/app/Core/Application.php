@@ -58,6 +58,7 @@ class Application
         $this->router->get('/map/{id}', 'MapController@view');
         $this->router->get('/map/{id}/image', 'MapController@image');
         $this->router->get('/map/{id}/thumb', 'MapController@thumbnail');
+        $this->router->get('/map/{id}/version', 'MapController@version');
         $this->router->get('/map/{id}/link/{linkId}/graph', 'MapController@linkGraph');
         
         // Map cycling
@@ -104,8 +105,8 @@ class Application
         $this->router->post('/admin/maps/create', 'AdminController@createMap');
         $this->router->get('/admin/maps/edit/{id}', 'AdminController@editMap');
         $this->router->post('/admin/maps/edit/{id}', 'AdminController@editMap');
-        $this->router->get('/admin/maps/delete/{id}', 'AdminController@deleteMap');
-        $this->router->get('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
+        $this->router->post('/admin/maps/delete/{id}', 'AdminController@deleteMap');
+        $this->router->post('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
         $this->router->post('/admin/maps/move/{id}', 'AdminController@moveMap');
         
         $this->router->get('/admin/groups', 'AdminController@groups');
@@ -113,14 +114,14 @@ class Application
         $this->router->post('/admin/groups/create', 'AdminController@createGroup');
         $this->router->get('/admin/groups/edit/{id}', 'AdminController@editGroup');
         $this->router->post('/admin/groups/edit/{id}', 'AdminController@editGroup');
-        $this->router->get('/admin/groups/delete/{id}', 'AdminController@deleteGroup');
+        $this->router->post('/admin/groups/delete/{id}', 'AdminController@deleteGroup');
         
         $this->router->get('/admin/users', 'AdminController@users');
         $this->router->get('/admin/users/create', 'AdminController@createUser');
         $this->router->post('/admin/users/create', 'AdminController@createUser');
         $this->router->get('/admin/users/edit/{id}', 'AdminController@editUser');
         $this->router->post('/admin/users/edit/{id}', 'AdminController@editUser');
-        $this->router->get('/admin/users/delete/{id}', 'AdminController@deleteUser');
+        $this->router->post('/admin/users/delete/{id}', 'AdminController@deleteUser');
         $this->router->get('/admin/settings', 'AdminController@settings');
         $this->router->get('/admin/check-db', 'AdminController@checkDatabase');
         $this->router->post('/admin/check-db', 'AdminController@checkDatabase');
@@ -131,7 +132,7 @@ class Application
         $this->router->post('/admin/data-sources/create', 'AdminController@createDataSource');
         $this->router->get('/admin/data-sources/edit/{id}', 'AdminController@editDataSource');
         $this->router->post('/admin/data-sources/edit/{id}', 'AdminController@editDataSource');
-        $this->router->get('/admin/data-sources/delete/{id}', 'AdminController@deleteDataSource');
+        $this->router->post('/admin/data-sources/delete/{id}', 'AdminController@deleteDataSource');
         $this->router->get('/admin/data-sources/test/{id}', 'AdminController@testDataSource');
     }
     
@@ -139,6 +140,11 @@ class Application
     {
         // Start session
         if (session_status() === PHP_SESSION_NONE) {
+            session_set_cookie_params([
+                'httponly' => true,
+                'samesite' => 'Lax',
+                'secure' => $this->isHttps(),
+            ]);
             session_start();
         }
         
@@ -153,6 +159,12 @@ class Application
         ]);
     }
     
+    private function isHttps(): bool
+    {
+        return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+    }
+
     public function getConfig(): Config
     {
         return $this->config;

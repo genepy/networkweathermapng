@@ -186,6 +186,36 @@ class MapController extends BaseController
         ], !$fullscreen);
     }
 
+    /**
+     * Fingerprint of the map's configuration. Open map pages poll it so an
+     * edit shows up right away instead of at the next refresh cycle.
+     */
+    public function version(array $params): void
+    {
+        $this->requireAuth();
+
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->auth->canViewMap($mapId)) {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        $map = $this->getMap($mapId);
+        if (!$map) {
+            $this->json(['error' => 'Not found'], 404);
+            return;
+        }
+
+        $configFile = $this->config->getConfigsPath() . '/' . $map['config_file'];
+        clearstatcache(true, $configFile);
+        $version = file_exists($configFile)
+            ? filemtime($configFile) . '-' . filesize($configFile)
+            : '0';
+
+        header('Cache-Control: no-store');
+        $this->json(['version' => $version]);
+    }
+
     public function linkGraph(array $params): void
     {
         $mapId = (int) ($params['id'] ?? 0);

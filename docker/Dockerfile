@@ -34,7 +34,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache
 
 # Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
 # Create app directory structure
 RUN mkdir -p /app/public \

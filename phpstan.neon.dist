@@ -1,0 +1,8 @@
+parameters:
+    level: 0
+    paths:
+        - src/app
+        - src/lib
+    excludePaths:
+        # Cacti-only helper, never loaded by the standalone application
+        - src/lib/WeatherMap/ds-common.php

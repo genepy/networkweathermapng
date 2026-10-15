@@ -39,7 +39,7 @@
                     <td class="actions">
                         <a class="btn btn-sm" href="/admin/users/edit/<?= $user['id'] ?>">Edit</a>
                         <?php if ($user['username'] !== 'admin'): ?>
-                        <a class="btn btn-sm btn-danger" href="/admin/users/delete/<?= $user['id'] ?>" onclick="return confirm('Are you sure you want to delete this user?')">Delete</a>
+                        <a class="btn btn-sm btn-danger" href="/admin/users/delete/<?= $user['id'] ?>" data-method="post" data-confirm="Are you sure you want to delete this user?">Delete</a>
                         <?php endif; ?>
                     </td>
                 </tr>

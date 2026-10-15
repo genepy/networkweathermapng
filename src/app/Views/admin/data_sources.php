@@ -89,7 +89,7 @@
                     <a href="/admin/data-sources/edit/<?= $source['id'] ?>" class="btn btn-sm btn-primary">Edit</a>
                     <a href="/admin/data-sources/delete/<?= $source['id'] ?>" 
                        class="btn btn-sm btn-danger"
-                       onclick="return confirm('Are you sure you want to delete this data source?')">Delete</a>
+                       data-method="post" data-confirm="Are you sure you want to delete this data source?">Delete</a>
                 </td>
             </tr>
             <?php endforeach; ?>
