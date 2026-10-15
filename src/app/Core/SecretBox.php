@@ -105,6 +105,7 @@ class SecretBox
 
         $raw = base64_decode(substr($stored, strlen(self::PREFIX)), true);
         if ($this->key === null || $raw === false || strlen($raw) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+            error_log('SecretBox: cannot decrypt a stored secret (' . ($this->key === null ? 'no key or no sodium' : 'malformed value') . ')');
             return '';
         }
 
@@ -114,7 +115,12 @@ class SecretBox
             $this->key
         );
 
-        return $plain === false ? '' : $plain;
+        if ($plain === false) {
+            error_log('SecretBox: cannot decrypt a stored secret: the key (APP_KEY or app.key) is not the one it was encrypted with');
+            return '';
+        }
+
+        return $plain;
     }
 
     public static function isEncrypted(string $stored): bool
