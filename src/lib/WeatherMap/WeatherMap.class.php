@@ -217,6 +217,7 @@ class WeatherMapItem extends WeatherMapBase {
 class WeatherMap extends WeatherMapBase {
 	var $nodes = array(); // an array of WeatherMapNodes
 	var $links = array(); // an array of WeatherMapLinks
+	var $zones = array(); // an array of WeatherMapZones, drawn under everything else
 	var $texts = array(); // an array containing all the extraneous text bits
 
 	var $used_images  = array(); // an array of image filenames referred to (used by editor)
@@ -391,6 +392,7 @@ class WeatherMap extends WeatherMapBase {
 
 		$this->nodes=array(); // an array of WeatherMapNodes
 		$this->links=array(); // an array of WeatherMapLinks
+		$this->zones=array();
 
 		// these are the default defaults
 		// by putting them into a normal object, we can use the
@@ -2497,6 +2499,31 @@ class WeatherMap extends WeatherMapBase {
 
 				$objectlinecount++;
 
+				// ZONE blocks hold their own keywords, so they are read apart from NODEs and LINKs
+				if (preg_match('/^\s*ZONE\s+(\S+)\s*$/i', $buffer, $matches)) {
+					$this->ReadConfig_Commit($curobj);
+
+					if (isset($this->zones[$matches[1]])) {
+						wm_warn('Duplicate zone name ' . $matches[1] . " at line $linecount - only the last one defined is used.");
+					}
+
+					$this->zones[$matches[1]] = new WeatherMapZone($matches[1]);
+					$this->zones[$matches[1]]->configline = $linecount;
+					$this->zones[$matches[1]]->defined_in = $filename;
+					$curzone = $matches[1];
+					$last_seen = 'ZONE';
+
+					continue;
+				}
+
+				if ($last_seen == 'ZONE' && !preg_match('/^\s*(LINK|NODE)\s+\S+\s*$/i', $buffer)) {
+					if ($buffer != '' && !$this->zones[$curzone]->ParseLine($buffer)) {
+						wm_warn("Unrecognised config on line $linecount: $buffer");
+					}
+
+					continue;
+				}
+
 				#if (preg_match("/^\s*(LINK|NODE)\s+([A-Za-z][A-Za-z0-9_\.\-\:]*)\s*$/i", $buffer, $matches))
 				if (preg_match('/^\s*(LINK|NODE)\s+(\S+)\s*$/i', $buffer, $matches)) {
 					$objectlinecount = 0;
@@ -3716,6 +3743,16 @@ class WeatherMap extends WeatherMapBase {
 
 			$output .= "\n# End of global section\n\n";
 
+			if (count($this->zones) > 0) {
+				$output .= "# ZONEs:\n";
+
+				foreach ($this->zones as $zone) {
+					if ($zone->defined_in == $this->configfile) {
+						$output .= $zone->WriteConfig();
+					}
+				}
+			}
+
 			fwrite($fd, $output);
 
 			## fwrite($fd,$this->nodes['DEFAULT']->WriteConfig());
@@ -3930,6 +3967,18 @@ class WeatherMap extends WeatherMapBase {
 			}
 
 			$this->SpreadParallelLinks();
+
+			foreach ($this->zones as $zone) {
+				if ($svg) {
+					$svg->begin('zone', $zone->name, 'Z:' . $zone->name);
+				}
+
+				$zone->Draw($image, $this);
+			}
+
+			if ($svg) {
+				$svg->begin(null);
+			}
 
 			$all_layers = array_keys($this->seen_zlayers);
 			sort($all_layers);

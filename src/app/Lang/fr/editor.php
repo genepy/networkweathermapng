@@ -150,4 +150,13 @@ return [
     'INCLUDE is not allowed: it reads other files on the server' => 'INCLUDE n’est pas autorisé : il lit d’autres fichiers du serveur',
     'Output paths (*OUTPUTFILE, IMAGEURI) cannot be changed here' => 'Les chemins de sortie (*OUTPUTFILE, IMAGEURI) ne peuvent pas être modifiés ici',
     'Line :line: :message' => 'Ligne :line : :message',
+
+    // Zones
+    'Add a zone: a labelled rectangle for a site, around the selected nodes if any' => 'Ajouter une zone : un rectangle avec une étiquette pour un site, autour des nœuds sélectionnés s’il y en a',
+    'Zone' => 'Zone',
+    'Zones' => 'Zones',
+    'Unknown zone: :name' => 'Zone inconnue : :name',
+    'Unknown zone property: :key' => 'Propriété de zone inconnue : :key',
+    'A zone named :name already exists' => 'Une zone nommée :name existe déjà',
+    'Invalid value for :key: :value' => 'Valeur invalide pour :key : :value',
 ];

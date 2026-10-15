@@ -85,6 +85,16 @@ class WeatherMapScaler {
 			}
 		}
 
+		// a zone keeps covering the same nodes
+		foreach ($map->zones as $zone) {
+			$x2 = $px($zone->x + $zone->width);
+			$y2 = $py($zone->y + $zone->height);
+			$zone->x = $px($zone->x);
+			$zone->y = $py($zone->y);
+			$zone->width = max(1, $x2 - $zone->x);
+			$zone->height = max(1, $y2 - $zone->y);
+		}
+
 		foreach ($map->keyx as $scale => $x) {
 			if ($x >= 0 && $map->keyy[$scale] >= 0) {
 				$map->keyx[$scale] = $px($x);

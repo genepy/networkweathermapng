@@ -105,6 +105,21 @@ class WeatherMapSvg {
 		);
 	}
 
+	function zone($zone) {
+		$this->items[] = array(
+			'type'    => 'zone',
+			'owner'   => $this->owner,
+			'x'       => $zone->x,
+			'y'       => $zone->y,
+			'w'       => $zone->width,
+			'h'       => $zone->height,
+			'fill'    => ($zone->fillcolour !== null && $zone->opacity > 0) ? array($zone->fillcolour[0], $zone->fillcolour[1], $zone->fillcolour[2], round($zone->opacity / 100, 3)) : null,
+			'stroke'  => ($zone->outlinecolour !== null && $zone->outlinewidth > 0) ? array($zone->outlinecolour[0], $zone->outlinecolour[1], $zone->outlinecolour[2], 1) : null,
+			'width'   => $zone->outlinewidth,
+			'dashed'  => $zone->outlinestyle == 'dashed',
+		);
+	}
+
 	function node($node) {
 		if (empty($node->svgparts)) {
 			return;
@@ -253,6 +268,21 @@ class WeatherMapSvg {
 
 			case 'node':
 				return $this->nodeElements($item);
+
+			case 'zone':
+				// the stroke sits inside the box, like the GD outline
+				$inset = $item['stroke'] ? $item['width'] / 2 : 0;
+				$s = sprintf('<rect class="wm-zone-box" x="%s" y="%s" width="%s" height="%s"%s/>',
+					self::num($item['x']), self::num($item['y']), self::num($item['w'] + 1), self::num($item['h'] + 1),
+					$item['fill'] ? self::paint('fill', $item['fill']) : ' fill="none"');
+				if ($item['stroke']) {
+					$s .= sprintf('<rect class="wm-zone-outline" pointer-events="none" x="%s" y="%s" width="%s" height="%s" fill="none" stroke-width="%s"%s%s/>',
+						self::num($item['x'] + $inset), self::num($item['y'] + $inset),
+						self::num($item['w'] + 1 - 2 * $inset), self::num($item['h'] + 1 - 2 * $inset),
+						self::num($item['width']), self::paint('stroke', $item['stroke']),
+						$item['dashed'] ? sprintf(' stroke-dasharray="%s"', self::num(6 + 2 * $item['width'])) : '');
+				}
+				return $s;
 
 			case 'raster':
 				return sprintf('<image class="wm-furniture" pointer-events="none" x="0" y="0" width="%d" height="%d" href="%s"/>', $this->map->width, $this->map->height, $item['href']);
