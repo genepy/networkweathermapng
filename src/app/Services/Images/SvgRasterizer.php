@@ -42,7 +42,7 @@ class SvgRasterizer
         file_put_contents($in, $svg);
 
         try {
-            $command = $this->commandFor($in, $out);
+            $command = $this->commandFor($in, $out, self::targetSize($svg));
             if ($command === null || !$this->run($command) || !is_file($out)) {
                 return null;
             }
@@ -59,19 +59,62 @@ class SvgRasterizer
         }
     }
 
-    /** @return list<string>|null */
-    private function commandFor(string $in, string $out): ?array
+    /**
+     * Size to draw at: the SVG's own size, scaled down to fit MAX_SIDE.
+     * Null when the SVG gives no usable size (the converter's default then).
+     *
+     * @return array{int, int}|null
+     */
+    public static function targetSize(string $svg): ?array
+    {
+        if (!preg_match('/<svg\b[^>]*>/is', $svg, $tag)) {
+            return null;
+        }
+        $attr = function (string $name) use ($tag): ?float {
+            if (preg_match('/\s' . $name . '\s*=\s*["\']\s*([0-9.]+(?:e[0-9]+)?)\s*(px)?\s*["\']/i', $tag[0], $m)) {
+                return (float) $m[1];
+            }
+            return null;
+        };
+        $width = $attr('width');
+        $height = $attr('height');
+        if (($width === null || $height === null)
+            && preg_match('/\sviewBox\s*=\s*["\']\s*[-0-9.e]+[\s,]+[-0-9.e]+[\s,]+([0-9.e]+)[\s,]+([0-9.e]+)\s*["\']/i', $tag[0], $m)) {
+            $vw = (float) $m[1];
+            $vh = (float) $m[2];
+            if ($vw > 0 && $vh > 0) {
+                $width ??= $height !== null ? $height * $vw / $vh : $vw;
+                $height ??= $width * $vh / $vw;
+            }
+        }
+        if (!$width || !$height || $width <= 0 || $height <= 0) {
+            return null;
+        }
+
+        $scale = min(1.0, self::MAX_SIDE / max($width, $height));
+
+        return [max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale))];
+    }
+
+    /**
+     * @param array{int, int}|null $size
+     * @return list<string>|null
+     */
+    private function commandFor(string $in, string $out, ?array $size = null): ?array
     {
         if ($this->command !== null) {
             return array_map(fn(string $a): string => str_replace(['{in}', '{out}'], [$in, $out], $a), $this->command);
         }
 
-        $size = (string) self::MAX_SIDE;
+        // the drawing is always bounded: the SVG's own size, scaled down to MAX_SIDE
+        [$w, $h] = $size ?? [self::MAX_SIDE, self::MAX_SIDE];
         if ($bin = self::find('rsvg-convert')) {
-            return [$bin, '--format=png', '--keep-aspect-ratio', '--output=' . $out, $in];
+            return [$bin, '--format=png', '--width=' . $w, '--height=' . $h, '--keep-aspect-ratio', '--output=' . $out, $in];
         }
         if ($bin = self::find('magick') ?? self::find('convert')) {
-            return [$bin, '-background', 'none', 'svg:' . $in, '-resize', $size . 'x' . $size . '>', 'png:' . $out];
+            // ImageMagick draws at full size before resizing: cap what it may allocate
+            return [$bin, '-limit', 'width', '8192', '-limit', 'height', '8192', '-limit', 'area', '64MP',
+                '-background', 'none', 'svg:' . $in, '-resize', $w . 'x' . $h . '>', 'png:' . $out];
         }
 
         return null;
