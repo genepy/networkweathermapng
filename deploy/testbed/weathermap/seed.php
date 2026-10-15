@@ -39,6 +39,8 @@ $source = [
     'name' => SOURCE_NAME,
     'type' => 'observium',
     'url' => '',
+    // the database password lives in settings; the source itself has none
+    'password' => '',
     'settings' => [
         'mode' => 'mysql',
         'db_host' => getenv('TESTBED_OBSERVIUM_DB_HOST') ?: 'db',
