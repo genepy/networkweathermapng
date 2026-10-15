@@ -101,12 +101,20 @@ a:hover {
     opacity: 0.8;
 }
 
+.user-menu .logout-form { display: inline; margin: 0; }
+
 .user-menu .logout-btn,
 .user-menu .login-btn {
     color: #fff;
     padding: 6px 12px;
     border: 1px solid rgba(255,255,255,0.3);
     border-radius: 4px;
+}
+
+.user-menu .logout-btn {
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
 }
 
 .user-menu .logout-btn:hover,

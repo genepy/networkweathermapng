@@ -28,7 +28,7 @@
                 <?php if ($user): ?>
                     <span class="username"><?= htmlspecialchars($user['username']) ?></span>
                     <a href="/account/password" class="login-btn">Change Password</a>
-                    <a href="/logout" class="logout-btn">Logout</a>
+                    <form method="post" action="/logout" class="logout-form"><?= \App\Core\Csrf::field() ?><button type="submit" class="logout-btn">Logout</button></form>
                 <?php else: ?>
                     <a href="/login" class="login-btn">Login</a>
                 <?php endif; ?>
