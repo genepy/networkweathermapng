@@ -8,7 +8,7 @@
 ![Network Weathermap Example 6](img/maps6.png)
 ![Network Weathermap Example 7](img/maps7.png)
 
-Network visualization tool for Zabbix - a standalone PHP application that creates network weathermaps using data from Zabbix monitoring system.
+Network visualization tool for Zabbix and Observium - a standalone PHP application that creates network weathermaps using data from your monitoring system.
 
 ## Overview
 
@@ -18,6 +18,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 
 - **Standalone Docker Container** - No dependencies on Cacti or other systems
 - **Zabbix API Integration** - Fetches real-time data from Zabbix
+- **Observium Integration** - API, MySQL or RRD, Community edition included
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Map Cycling** - Auto-rotate through maps for NOC displays
@@ -119,6 +120,34 @@ LINK router1-switch1
 | `zabbix:host:hostname:key:item.key` | Item by hostname and key |
 | `zabbix:hostid:10084:key:item.key` | Item by host ID and key |
 | `zabbix:hostid:10084:key:in.key:out.key` | Two items by host ID and keys |
+
+### Observium TARGET Formats
+
+| Format | Description |
+|--------|-------------|
+| `observium:port:1234` | Port by its Observium `port_id` |
+| `observium:host:core-rtr1:if:xe-0/0/1` | Port by device hostname and interface name (ifName, ifDescr or ifAlias) |
+| `observium:host:core-rtr1:status` | Device status for a node: 0 when up, 100 when down |
+
+Add the source in **Admin → Data Sources** with the type *Observium*. The
+editor's interface picker fills in the TARGET and the link bandwidth from the
+interface speed.
+
+Weathermap reads Observium in one of three ways, and maps work the same with all
+of them:
+
+- **API** (Professional and Enterprise editions): set the Observium URL and an
+  API token, or a user and password.
+- **Database** (every edition, Community included): leave the credentials empty.
+  On the Observium server nothing else is needed, the database settings are read
+  from `/opt/observium/config.php` (the file is parsed, never executed). For a
+  remote Observium, fill in the database host and a read-only MySQL user:
+  `GRANT SELECT ON observium.* TO 'weathermap'@'%' IDENTIFIED BY '...'`.
+- **RRD files**: used for the hover graphs and when no current rate is
+  available. Set the RRD folder, or an rrdcached address for a remote Observium.
+
+With Docker on the Observium server, uncomment the Observium volumes in
+`docker/docker-compose.yml` and use `host.docker.internal` as database host.
 
 ## Directory Structure
 

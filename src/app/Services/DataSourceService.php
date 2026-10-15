@@ -9,6 +9,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Database;
+use App\Services\Observium\ObserviumClient;
 
 class DataSourceException extends \Exception
 {
@@ -29,6 +30,9 @@ class DataSourceException extends \Exception
 class DataSourceService
 {
     private Database $db;
+
+    /** @var array<int, DataSourceClientInterface> */
+    private array $clients = [];
     
     public function __construct(Database $db)
     {
@@ -283,12 +287,58 @@ class DataSourceService
     
     private function getClient(array $source): ?DataSourceClientInterface
     {
-        switch ($source['type']) {
-            case 'zabbix':
-                return new ZabbixClient($source, $this);
-            default:
-                return null;
+        // One client per source and request: a map render asks the same
+        // source for many links, and clients cache what they fetched.
+        $id = (int) ($source['id'] ?? 0);
+        if ($id > 0 && isset($this->clients[$id])) {
+            return $this->clients[$id];
         }
+
+        $client = match ($source['type']) {
+            'zabbix' => new ZabbixClient($source, $this),
+            'observium' => new ObserviumClient($source, $this),
+            default => null,
+        };
+
+        if ($client && $id > 0) {
+            $this->clients[$id] = $client;
+        }
+
+        return $client;
+    }
+
+    /**
+     * Current [in, out] values for an Observium TARGET string, read from the
+     * given source, or from the first active Observium source.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    public function readObserviumTarget(string $target, ?int $sourceId = null): ?array
+    {
+        $client = $this->observiumClient($sourceId);
+
+        return $client?->readTarget($target);
+    }
+
+    /** Interface speed in bit/s behind an Observium TARGET string. */
+    public function observiumSpeedForTarget(string $target, ?int $sourceId = null): ?int
+    {
+        $client = $this->observiumClient($sourceId);
+
+        return $client?->speedForTarget($target);
+    }
+
+    private function observiumClient(?int $sourceId): ?ObserviumClient
+    {
+        $source = $sourceId
+            ? $this->getSource($sourceId)
+            : $this->db->queryOne("SELECT * FROM data_sources WHERE type = 'observium' AND active = 1 ORDER BY id LIMIT 1");
+        if (!$source || $source['type'] !== 'observium') {
+            return null;
+        }
+        $client = $this->getClient($source);
+
+        return $client instanceof ObserviumClient ? $client : null;
     }
     
     private function encryptPassword(string $password): string
@@ -297,6 +347,12 @@ class DataSourceService
         return base64_encode($password);
     }
     
+    /** Encodes a secret stored in a source's settings (same scheme as passwords). */
+    public function encodeSecret(string $secret): string
+    {
+        return $this->encryptPassword($secret);
+    }
+
     public function decryptPassword(string $encrypted): string
     {
         return base64_decode($encrypted);
@@ -326,19 +382,6 @@ class DataSourceService
     {
         $this->db->delete('data_source_cache', 'source_id = ?', [$sourceId]);
     }
-}
-
-interface DataSourceClientInterface
-{
-    public function testConnection(): array;
-    public function getHosts(array $filters = []): array;
-    public function getHostInterfaces(string $hostId): array;
-    public function getItems(string $hostId, array $filters = []): array;
-    public function getItemValue(string $itemId): ?array;
-    public function getInterfaceBandwidthOptions(string $hostId): array;
-    public function getBandwidthCurrent(array $selection): array;
-    public function getBandwidthData(array $selection, int $minutes = 1440): array;
-    public function getDebugInfo(): array;
 }
 
 class ZabbixClient implements DataSourceClientInterface

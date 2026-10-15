@@ -19,7 +19,8 @@ RUN apk add --no-cache \
     oniguruma-dev \
     sqlite-dev \
     ttf-dejavu \
-    fontconfig
+    fontconfig \
+    rrdtool
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \

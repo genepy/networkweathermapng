@@ -3,20 +3,25 @@
         <h1><?= htmlspecialchars($title) ?></h1>
     </div>
     
-    <form method="post" class="form-container">
+    <?php
+    $settings = json_decode((string) ($source['settings'] ?? ''), true) ?: [];
+    $type = $source['type'] ?? 'zabbix';
+    $setting = static fn(string $key, string $default = ''): string => htmlspecialchars((string) ($settings[$key] ?? $default));
+    ?>
+    <form method="post" class="form-container" data-type="<?= htmlspecialchars($type) ?>">
         <div class="form-group">
             <label for="name">Name *</label>
             <input type="text" id="name" name="name" required
                    value="<?= htmlspecialchars($source['name'] ?? '') ?>"
-                   placeholder="e.g., Production Zabbix">
+                   placeholder="e.g., Production Observium">
             <small>A friendly name to identify this data source</small>
         </div>
         
         <div class="form-group">
             <label for="type">Type *</label>
-            <select id="type" name="type" required onchange="toggleAuthFields()">
+            <select id="type" name="type" required>
                 <?php foreach ($types as $value => $label): ?>
-                <option value="<?= $value ?>" <?= ($source['type'] ?? 'zabbix') === $value ? 'selected' : '' ?>>
+                <option value="<?= $value ?>" <?= $type === $value ? 'selected' : '' ?>>
                     <?= htmlspecialchars($label) ?>
                 </option>
                 <?php endforeach; ?>
@@ -24,11 +29,12 @@
         </div>
         
         <div class="form-group">
-            <label for="url">URL *</label>
-            <input type="url" id="url" name="url" required
+            <label for="url">URL <span class="only-zabbix">*</span></label>
+            <input type="url" id="url" name="url"
                    value="<?= htmlspecialchars($source['url'] ?? '') ?>"
-                   placeholder="https://zabbix.example.com">
-            <small>Base URL of the Zabbix server (without /api_jsonrpc.php)</small>
+                   placeholder="https://monitoring.example.com">
+            <small class="only-zabbix">Base URL of the Zabbix server (without /api_jsonrpc.php)</small>
+            <small class="only-observium">Base URL of Observium. With an API token or a user below, Weathermap reads Observium through its API (Professional and Enterprise editions). Leave the credentials empty to read the database instead (all editions, Community included). The URL is also used for links to port pages.</small>
         </div>
         
         <fieldset class="form-fieldset">
@@ -43,7 +49,7 @@
             
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password"
+                <input type="password" id="password" name="password" autocomplete="new-password"
                        placeholder="<?= $source ? '(unchanged)' : '' ?>">
                 <?php if ($source): ?>
                 <small>Leave empty to keep current password</small>
@@ -58,8 +64,75 @@
                 <label for="api_token">API Token</label>
                 <input type="text" id="api_token" name="api_token"
                        value="<?= htmlspecialchars($source['api_token'] ?? '') ?>"
-                       placeholder="API token for Zabbix 5.4+">
-                <small>For Zabbix 5.4+, you can use an API token instead of username/password</small>
+                       placeholder="API token">
+                <small class="only-zabbix">For Zabbix 5.4+, you can use an API token instead of username/password</small>
+                <small class="only-observium">Observium API token, sent as a Bearer token</small>
+            </div>
+        </fieldset>
+
+        <fieldset class="form-fieldset only-observium">
+            <legend>Observium access</legend>
+
+            <div class="form-group">
+                <label for="obs_mode">Read Observium through</label>
+                <select id="obs_mode" name="settings[mode]">
+                    <?php foreach (['auto' => 'Automatic: API when credentials are set, otherwise the database', 'api' => 'API only', 'mysql' => 'Database only'] as $value => $label): ?>
+                    <option value="<?= $value ?>" <?= ($settings['mode'] ?? 'auto') === $value ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="obs_install_path">Observium folder</label>
+                <input type="text" id="obs_install_path" name="settings[install_path]"
+                       value="<?= $setting('install_path') ?>" placeholder="/opt/observium">
+                <small>When Weathermap runs on the Observium server, the database settings and the RRD folder are read from config.php in this folder. Fill in the fields below only to override them or for a remote Observium.</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="obs_db_host">Database host</label>
+                    <input type="text" id="obs_db_host" name="settings[db_host]" value="<?= $setting('db_host') ?>" placeholder="from config.php">
+                </div>
+                <div class="form-group form-group-small">
+                    <label for="obs_db_port">Port</label>
+                    <input type="number" id="obs_db_port" name="settings[db_port]" value="<?= $setting('db_port') ?>" placeholder="3306">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="obs_db_name">Database name</label>
+                    <input type="text" id="obs_db_name" name="settings[db_name]" value="<?= $setting('db_name') ?>" placeholder="observium">
+                </div>
+                <div class="form-group">
+                    <label for="obs_db_user">Read-only user</label>
+                    <input type="text" id="obs_db_user" name="settings[db_user]" value="<?= $setting('db_user') ?>">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="obs_db_password">Database password</label>
+                <input type="password" id="obs_db_password" name="settings[db_password]" autocomplete="new-password"
+                       placeholder="<?= !empty($settings['db_password']) ? '(unchanged)' : '' ?>">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="obs_rrd_dir">RRD folder</label>
+                    <input type="text" id="obs_rrd_dir" name="settings[rrd_dir]" value="<?= $setting('rrd_dir') ?>" placeholder="from config.php, or /opt/observium/rrd">
+                </div>
+                <div class="form-group">
+                    <label for="obs_rrdcached">rrdcached address</label>
+                    <input type="text" id="obs_rrdcached" name="settings[rrdcached]" value="<?= $setting('rrdcached') ?>" placeholder="optional, e.g. observium:42217">
+                </div>
+            </div>
+            <small>RRD files give the hover graphs their history. For a remote Observium, point rrdcached at it.</small>
+
+            <div class="form-group" style="margin-top:15px">
+                <label class="checkbox-label">
+                    <input type="hidden" name="settings[verify_tls]" value="0">
+                    <input type="checkbox" name="settings[verify_tls]" value="1" <?= ($settings['verify_tls'] ?? true) ? 'checked' : '' ?>>
+                    Verify the HTTPS certificate of the API
+                </label>
             </div>
         </fieldset>
         
@@ -80,6 +153,20 @@
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    var form = document.querySelector('.form-container');
+    var type = document.getElementById('type');
+    var url = document.getElementById('url');
+    function update() {
+        form.setAttribute('data-type', type.value);
+        url.required = type.value === 'zabbix';
+    }
+    type.addEventListener('change', update);
+    update();
+})();
+</script>
 
 <style>
 .form-container {
@@ -163,5 +250,19 @@
 }
 .checkbox-label input {
     width: auto;
+}
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+.form-row .form-group {
+    flex: 1;
+}
+.form-row .form-group-small {
+    flex: 0 0 110px;
+}
+.form-container[data-type="zabbix"] .only-observium,
+.form-container:not([data-type="zabbix"]) .only-zabbix {
+    display: none;
 }
 </style>

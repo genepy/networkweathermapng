@@ -13,6 +13,16 @@ use App\Services\DataSourceService;
 
 class AdminController extends BaseController
 {
+    private const DATA_SOURCE_TYPES = [
+        'zabbix' => 'Zabbix API',
+        'observium' => 'Observium (API, MySQL or RRD)',
+    ];
+
+    private const OBSERVIUM_SETTINGS = [
+        'mode', 'install_path', 'db_host', 'db_port', 'db_name', 'db_user', 'db_password', 'db_socket',
+        'rrd_dir', 'rrdcached', 'verify_tls',
+    ];
+
     private MapService $mapService;
     private GroupService $groupService;
     private DataSourceService $dataSourceService;
@@ -653,6 +663,30 @@ class AdminController extends BaseController
         ]);
     }
     
+    /**
+     * Settings posted with the data source form, limited to the known keys.
+     * An empty password field keeps the stored one.
+     */
+    private function dataSourceSettings(string $type, array $current): array
+    {
+        if ($type !== 'observium') {
+            return $current;
+        }
+
+        $posted = is_array($_POST['settings'] ?? null) ? $_POST['settings'] : [];
+        $settings = [];
+        foreach (self::OBSERVIUM_SETTINGS as $key) {
+            $settings[$key] = trim((string) ($posted[$key] ?? ''));
+        }
+        $settings['verify_tls'] = ($settings['verify_tls'] ?? '1') !== '0';
+
+        $settings['db_password'] = $settings['db_password'] !== ''
+            ? $this->dataSourceService->encodeSecret($settings['db_password'])
+            : (string) ($current['db_password'] ?? '');
+
+        return $settings;
+    }
+
     public function createDataSource(array $params): void
     {
         $this->requireAdmin();
@@ -665,8 +699,13 @@ class AdminController extends BaseController
             $password = $_POST['password'] ?? '';
             $apiToken = trim($_POST['api_token'] ?? '');
             
-            if (empty($name) || empty($url)) {
-                $this->flash('error', 'Name and URL are required');
+            if (empty($name) || ($type === 'zabbix' && empty($url))) {
+                $this->flash('error', $type === 'zabbix' ? 'Name and URL are required' : 'Name is required');
+                $this->redirect('/admin/data-sources/create');
+                return;
+            }
+            if (!isset(self::DATA_SOURCE_TYPES[$type])) {
+                $this->flash('error', 'Unknown data source type');
                 $this->redirect('/admin/data-sources/create');
                 return;
             }
@@ -680,6 +719,7 @@ class AdminController extends BaseController
                     'password' => $password,
                     'api_token' => $apiToken,
                     'active' => 1,
+                    'settings' => $this->dataSourceSettings($type, []),
                 ]);
                 
                 $this->flash('success', "Data source '{$name}' created successfully");
@@ -695,7 +735,7 @@ class AdminController extends BaseController
             'source' => null,
             'title' => 'Add Data Source',
             'action' => 'create',
-            'types' => ['zabbix' => 'Zabbix API'],
+            'types' => self::DATA_SOURCE_TYPES,
         ]);
     }
     
@@ -721,8 +761,13 @@ class AdminController extends BaseController
             $apiToken = trim($_POST['api_token'] ?? '');
             $active = isset($_POST['active']) ? 1 : 0;
             
-            if (empty($name) || empty($url)) {
-                $this->flash('error', 'Name and URL are required');
+            if (empty($name) || ($type === 'zabbix' && empty($url))) {
+                $this->flash('error', $type === 'zabbix' ? 'Name and URL are required' : 'Name is required');
+                $this->redirect('/admin/data-sources/edit/' . $id);
+                return;
+            }
+            if (!isset(self::DATA_SOURCE_TYPES[$type])) {
+                $this->flash('error', 'Unknown data source type');
                 $this->redirect('/admin/data-sources/edit/' . $id);
                 return;
             }
@@ -736,6 +781,7 @@ class AdminController extends BaseController
                     'password' => $password,
                     'api_token' => $apiToken,
                     'active' => $active,
+                    'settings' => $this->dataSourceSettings($type, json_decode((string) ($source['settings'] ?? ''), true) ?: []),
                 ]);
                 
                 $this->flash('success', "Data source '{$name}' updated successfully");
@@ -751,7 +797,7 @@ class AdminController extends BaseController
             'source' => $source,
             'title' => 'Edit Data Source: ' . $source['name'],
             'action' => 'edit',
-            'types' => ['zabbix' => 'Zabbix API'],
+            'types' => self::DATA_SOURCE_TYPES,
         ]);
     }
     
