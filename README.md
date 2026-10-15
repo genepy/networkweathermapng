@@ -75,6 +75,7 @@ limited to 64 MB.
 | `APP_DEBUG` | Enable debug mode | `false` |
 | `APP_TIMEZONE` | Application timezone | `UTC` |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
+| `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
 | `APP_ROOT` | Application root path | - |
 | `DATA_ROOT` | Persistent data root path | - |
 | `DB_TYPE` | Database type (`sqlite` or `mysql`) | `sqlite` |

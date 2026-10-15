@@ -37,11 +37,35 @@ class Application
         
         // Initialize database
         $this->database = new Database($this->config);
+        $this->encryptStoredSecrets();
         
         // Register routes
         $this->registerRoutes();
     }
     
+    /**
+     * Once per install: passwords saved in base64 by older versions are
+     * encrypted in place. A marker file in DATA_ROOT records that it is done.
+     */
+    private function encryptStoredSecrets(): void
+    {
+        $marker = rtrim((string) $this->config->getDataRoot(), '/') . '/.secrets-encrypted';
+        if (is_file($marker)) {
+            return;
+        }
+
+        try {
+            $secrets = SecretBox::fromConfig($this->config);
+            if (!$secrets->canEncrypt()) {
+                return;
+            }
+            (new \App\Services\DataSourceService($this->database, $secrets))->upgradeStoredSecrets();
+            @file_put_contents($marker, date('c') . "\n");
+        } catch (\Throwable $e) {
+            error_log('Encrypting stored secrets: ' . $e->getMessage());
+        }
+    }
+
     private function registerRoutes(): void
     {
         // Health check
@@ -106,7 +130,12 @@ class Application
         // Authentication
         $this->router->get('/login', 'AuthController@loginForm');
         $this->router->post('/login', 'AuthController@login');
-        $this->router->get('/logout', 'AuthController@logout');
+        // Logging out changes state: POST with the CSRF token, so another
+        // site cannot log users out. A GET (old bookmark) just goes home.
+        $this->router->post('/logout', 'AuthController@logout');
+        $this->router->get('/logout', function () {
+            header('Location: /');
+        });
 
         // Account
         $this->router->get('/account/password', 'AccountController@changePasswordForm');

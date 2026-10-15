@@ -1002,10 +1002,6 @@ class WeatherMap extends WeatherMapBase {
 	}
 
 	/**
-	 * Interface speed behind a link's targets, in bit/s (0 when unknown).
-	 * Asks each target's data source plugin that implements ReadSpeed().
-	 */
-	/**
 	 * Links joining the same two nodes would be drawn on top of each other:
 	 * spread them side by side, centred on the line between the nodes.
 	 * Only links with no VIA and no NODES offset are moved; those are the
@@ -1075,6 +1071,10 @@ class WeatherMap extends WeatherMapBase {
 		}
 	}
 
+	/**
+	 * Interface speed behind a link's targets, in bit/s (0 when unknown).
+	 * Asks each target's data source plugin that implements ReadSpeed().
+	 */
 	function ReadLinkSpeed(&$link) {
 		$total = 0;
 

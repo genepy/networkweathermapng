@@ -8,7 +8,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Core\Config;
 use App\Core\Database;
+use App\Core\SecretBox;
 use App\Services\Observium\ObserviumClient;
 
 class DataSourceException extends \Exception
@@ -33,9 +35,11 @@ class DataSourceService
 
     /** @var array<int, DataSourceClientInterface> */
     private array $clients = [];
+    private ?SecretBox $secrets;
     
-    public function __construct(Database $db)
+    public function __construct(Database $db, ?SecretBox $secrets = null)
     {
+        $this->secrets = $secrets;
         $this->db = $db;
     }
     
@@ -352,8 +356,7 @@ class DataSourceService
     
     private function encryptPassword(string $password): string
     {
-        // Simple base64 encoding for now - in production use proper encryption
-        return base64_encode($password);
+        return $this->secrets()->encrypt($password);
     }
     
     /** Encodes a secret stored in a source's settings (same scheme as passwords). */
@@ -364,7 +367,46 @@ class DataSourceService
 
     public function decryptPassword(string $encrypted): string
     {
-        return base64_decode($encrypted);
+        return $this->secrets()->decrypt($encrypted);
+    }
+
+    /**
+     * Re-encrypts the passwords still stored in base64 (written before
+     * encryption existed). Returns how many sources were updated.
+     */
+    public function upgradeStoredSecrets(): int
+    {
+        if (!$this->secrets()->canEncrypt()) {
+            return 0;
+        }
+
+        $updated = 0;
+        foreach ($this->db->query('SELECT id, password, settings FROM data_sources') as $row) {
+            $changes = [];
+            $password = (string) ($row['password'] ?? '');
+            if ($password !== '' && !SecretBox::isEncrypted($password)) {
+                $changes['password'] = $this->encryptPassword($this->decryptPassword($password));
+            }
+
+            $settings = json_decode((string) ($row['settings'] ?? ''), true);
+            $dbPassword = is_array($settings) ? (string) ($settings['db_password'] ?? '') : '';
+            if ($dbPassword !== '' && !SecretBox::isEncrypted($dbPassword)) {
+                $settings['db_password'] = $this->encryptPassword($this->decryptPassword($dbPassword));
+                $changes['settings'] = json_encode($settings);
+            }
+
+            if ($changes) {
+                $this->db->update('data_sources', $changes, 'id = ?', [(int) $row['id']]);
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
+    private function secrets(): SecretBox
+    {
+        return $this->secrets ??= SecretBox::fromConfig(new Config());
     }
     
     // Cache methods
