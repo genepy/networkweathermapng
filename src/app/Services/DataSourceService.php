@@ -285,6 +285,15 @@ class DataSourceService
         }
     }
     
+    /** Interface speed in bit/s for a link picked from a Zabbix source */
+    public function getLinkSpeed(int $sourceId, array $selection): ?int
+    {
+        $source = $this->getSource($sourceId);
+        $client = $source ? $this->getClient($source) : null;
+
+        return $client instanceof ZabbixClient ? $client->getInterfaceSpeed($selection) : null;
+    }
+
     private function getClient(array $source): ?DataSourceClientInterface
     {
         // One client per source and request: a map render asks the same
@@ -695,6 +704,76 @@ class ZabbixClient implements DataSourceClientInterface
         ];
     }
     
+    /**
+     * Interface speed in bit/s for a link picked in the editor, read from
+     * the speed item the Zabbix templates create next to the traffic items.
+     */
+    public function getInterfaceSpeed(array $selection): ?int
+    {
+        $hostId = (string) ($selection['hostId'] ?? '');
+        $keys = self::speedKeysFor((string) ($selection['inKey'] ?? ''));
+        if ($hostId === '' || !$keys) {
+            return null;
+        }
+
+        $items = $this->apiRequest('item.get', [
+            'output' => ['key_', 'lastvalue', 'units'],
+            'hostids' => $hostId,
+            'filter' => ['key_' => $keys],
+        ]);
+
+        $byKey = [];
+        foreach ((array) $items as $item) {
+            $byKey[(string) ($item['key_'] ?? '')] = $item;
+        }
+        foreach ($keys as $key) {
+            if (isset($byKey[$key])) {
+                $bps = self::speedToBps((float) ($byKey[$key]['lastvalue'] ?? 0), (string) ($byKey[$key]['units'] ?? ''), $key);
+                if ($bps > 0) {
+                    return $bps;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Speed item keys that go with a traffic item key, most precise first.
+     *
+     * @return list<string>
+     */
+    public static function speedKeysFor(string $inKey): array
+    {
+        if (preg_match('/^net\\.if\\.in\\[if(?:HC)?InOctets\\.(\\d+)\\]$/', $inKey, $m)
+            || preg_match('/^net\\.if\\.in(?:\\.block\\.v4\\.bps)?\\[(\\d+)\\]$/', $inKey, $m)) {
+            return ["net.if.speed[ifHighSpeed.{$m[1]}]", "net.if.speed[ifSpeed.{$m[1]}]"];
+        }
+        if (preg_match('/^net\\.if\\.in\\[["\']?([^,"\'\\]]+)/', $inKey, $m)) {
+            $name = trim($m[1]);
+            return [
+                "vfs.file.contents[\"/sys/class/net/{$name}/speed\"]",
+                "net.if.speed[{$name}]",
+            ];
+        }
+
+        return [];
+    }
+
+    /** Zabbix speed values in bit/s; raw ifHighSpeed and sysfs values are in Mbit/s */
+    public static function speedToBps(float $value, string $units, string $key): int
+    {
+        if ($value <= 0) {
+            return 0;
+        }
+        $units = strtolower(trim($units));
+        if ($units === '' && (str_contains($key, 'ifHighSpeed') || str_contains($key, '/sys/class/net/'))) {
+            $value *= 1000000;
+        }
+
+        return (int) round($value);
+    }
+
     private function authenticate(): ?string
     {
         if ($this->authToken) {

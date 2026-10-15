@@ -60,6 +60,10 @@ class Application
         $this->router->get('/map/{id}/thumb', 'MapController@thumbnail');
         $this->router->get('/map/{id}/version', 'MapController@version');
         $this->router->get('/map/{id}/link/{linkId}/graph', 'MapController@linkGraph');
+        $this->router->get('/map/{id}/svg', 'MapController@svg');
+        $this->router->get('/map/{id}/status', 'MapController@status');
+        $this->router->get('/map/{id}/font/{n}', 'MapController@font');
+        $this->router->post('/map/{id}/favourite', 'MapController@favourite');
         
         // Map cycling
         $this->router->get('/cycle', 'MapController@cycle');
@@ -156,8 +160,36 @@ class Application
         $this->router->get('/admin/data-sources/test/{id}', 'AdminController@testDataSource');
     }
     
+    /**
+     * Pages only load scripts, styles, images and fonts from this site.
+     * Inline scripts and styles are still allowed: the views use them.
+     * APP_CSP replaces the policy, APP_CSP=off sends none.
+     */
+    public const DEFAULT_CSP = "default-src 'self'; img-src 'self' data: blob:; "
+        . "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; "
+        . "connect-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
+
+    private function sendSecurityHeaders(): void
+    {
+        if (headers_sent()) {
+            return;
+        }
+
+        $csp = trim((string) $this->config->get('APP_CSP', ''));
+        if ($csp === '') {
+            $csp = self::DEFAULT_CSP;
+        }
+        if (strtolower($csp) !== 'off') {
+            header('Content-Security-Policy: ' . $csp);
+        }
+        header('X-Content-Type-Options: nosniff');
+        header('Referrer-Policy: same-origin');
+    }
+
     public function run(): void
     {
+        $this->sendSecurityHeaders();
+
         // Start session
         if (session_status() === PHP_SESSION_NONE) {
             session_set_cookie_params([

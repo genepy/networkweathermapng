@@ -85,6 +85,23 @@ CONF);
         $this->assertStringContainsString("\tWIDTH auto\n", $written);
     }
 
+    public function testWidthLegendIsDrawnWhenAsked(): void
+    {
+        $config = "WIDTH 300\nHEIGHT 200\nSET link_width_table 1G:2 10G:6\n%sNODE a\n\tPOSITION 250 20\n";
+        $pixels = [];
+        foreach (['', "SET width_legend 10 -10\n"] as $hint) {
+            $map = $this->loadString(sprintf($config, $hint));
+            $png = TESTS_OUTPUT . '/width-legend-' . md5($hint) . '.png';
+            $map->DrawMap($png);
+            $image = imagecreatefrompng($png);
+            // middle of the 10G bar: second row, bottom left corner
+            $pixels[] = imagecolorat($image, 30, 200 - 10 - 12);
+        }
+
+        $this->assertNotSame($pixels[0], $pixels[1]);
+        $this->assertSame(['1G', '10G'], array_column(wm_link_width_steps('10G:6 1G:2'), 2));
+    }
+
     private function registerSpeedPlugin(\WeatherMap $map): void
     {
         $class = SpeedTestDataSource::class;
