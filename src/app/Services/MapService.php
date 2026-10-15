@@ -646,14 +646,31 @@ class MapService
     {
         $out = [];
         $info = (string) ($item->infourl[IN] ?? '');
-        if ($info !== '') {
-            $out['url'] = (string) $wmap->ProcessString($info, $item);
+        if ($info !== '' && ($url = self::safeUrl((string) $wmap->ProcessString($info, $item))) !== null) {
+            $out['url'] = $url;
         }
         $graphs = (array) ($item->overliburl[IN] ?? []);
-        if ($graphs && (string) reset($graphs) !== '') {
-            $out['graph'] = (string) $wmap->ProcessString((string) reset($graphs), $item);
+        if ($graphs && (string) reset($graphs) !== ''
+            && ($graph = self::safeUrl((string) $wmap->ProcessString((string) reset($graphs), $item))) !== null) {
+            $out['graph'] = $graph;
         }
         return $out;
+    }
+
+    /**
+     * A link from a map file the viewer may open: http(s) or relative only,
+     * so an imported map cannot run script with INFOURL javascript:...
+     */
+    public static function safeUrl(string $url): ?string
+    {
+        $url = trim($url);
+        if ($url === '' || preg_match('/[\x00-\x1f\x7f\\\\]/', $url)) {
+            return null;
+        }
+        if (preg_match('/^([a-z][a-z0-9+.-]*):/i', $url, $m)) {
+            return in_array(strtolower($m[1]), ['http', 'https'], true) ? $url : null;
+        }
+        return $url;
     }
 
     private static function colourHex(mixed $colour): ?string

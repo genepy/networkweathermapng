@@ -71,6 +71,17 @@ CONF);
         return $id;
     }
 
+    public function testOnlyWebLinksAreKept(): void
+    {
+        foreach (['https://noc.example/port/1', 'http://x/', '/graphs/1.png', 'port.php?id=1', '//cdn.example/a.png'] as $ok) {
+            $this->assertSame($ok, MapService::safeUrl($ok));
+        }
+        foreach (['javascript:alert(1)', ' JavaScript:alert(1)', "java\tscript:alert(1)", 'data:text/html,<script>x</script>',
+            'vbscript:x', 'file:///etc/passwd', '\\\\evil\\x', ''] as $bad) {
+            $this->assertNull(MapService::safeUrl($bad), $bad);
+        }
+    }
+
     public function testFreshness(): void
     {
         $this->assertFalse(MapService::isFresh(null, 100, 200, 300), 'never drawn');
