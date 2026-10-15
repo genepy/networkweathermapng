@@ -200,6 +200,21 @@ and saves each change straight into the map's `.conf` file.
 - **Add**: drag a node or an icon from the left panel, or double-click an
   empty spot.
 - **Edit**: the right panel changes every selected item at once.
+- **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
+  the links between them, also into another map open in another tab (the
+  copy is kept in the browser). Pasted items take free names (`name_2`…),
+  land under the mouse or next to the originals, and keep their VIAs and
+  templates. Only NODE and LINK blocks are accepted.
+- **Scale a layout**: with two nodes or more selected, drag the handles of
+  the selection box to spread or tighten them (Shift keeps proportions).
+- **Right-click** (or Shift+F10) opens a menu with the usual actions.
+- **Overlaps**: overlapping nodes are outlined; *Spread apart* moves them
+  (or only the selected ones) at least 10 px apart.
+- **Layers**: hide the background, links, link labels or node labels while
+  editing. This is remembered in the browser, never saved in the map.
+- **Text mode**: edit the `.conf` itself, checked by the engine as you type
+  (warnings with their line). *Apply* saves it as one undo step. INCLUDE and
+  the output paths (`*OUTPUTFILE`, `IMAGEURI`) cannot be changed there.
 - **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
   `DATA_ROOT/history/<map id>`, so they survive a reload.
 
@@ -230,6 +245,14 @@ Admin > Maps lists every map:
   permissions and settings.
 - Tick several maps to activate, deactivate, move, export or delete them at
   once.
+
+## Viewing maps
+
+- **Map list** (`/`): type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
+- **Map view** (`/map/{id}`): the map is drawn as SVG and can be zoomed with the mouse wheel or a pinch, moved by dragging, or with the toolbar (+, −, Fit, 100 %) and the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows, `/` to search). "Find a node" centres the map on a node by label or name. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
+- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; clicking a link or node opens its INFOURL in a new tab.
+- The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
+- **Fullscreen** fits the map to the screen for a NOC wall, follows the light/dark theme and hides the toolbar when the mouse is idle; Esc leaves it. The **PNG** button keeps the classic picture (also used for thumbnails, exports and the cycle page).
 
 ## Language and theme
 

@@ -76,6 +76,10 @@ class Application
         $this->router->post('/editor/ops/{id}', 'SvgEditorController@ops');
         $this->router->post('/editor/undo/{id}', 'SvgEditorController@undo');
         $this->router->post('/editor/redo/{id}', 'SvgEditorController@redo');
+        $this->router->post('/editor/copy/{id}', 'SvgEditorController@copy');
+        $this->router->get('/editor/source/{id}', 'SvgEditorController@source');
+        $this->router->post('/editor/source/{id}', 'SvgEditorController@saveSource');
+        $this->router->post('/editor/validate/{id}', 'SvgEditorController@validate');
         $this->router->get('/editor/font/{id}/{n}', 'SvgEditorController@font');
         $this->router->get('/editor/classic/{id}', 'EditorController@edit');
         $this->router->get('/editor/draw/{id}', 'EditorController@draw');

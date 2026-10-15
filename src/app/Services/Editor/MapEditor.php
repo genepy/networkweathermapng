@@ -101,6 +101,7 @@ class MapEditor
                 'clone' => $this->cloneNodes($map, (array) ($op['nodes'] ?? []), (int) ($op['dx'] ?? 20), (int) ($op['dy'] ?? 20)),
                 'hint' => $this->hint($map, $op),
                 'set_map' => $this->setMap($map, $op),
+                'paste' => $this->paste($map, $op),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
@@ -438,6 +439,21 @@ class MapEditor
         }
 
         return ['nodes' => array_values($renamed), 'links' => $links];
+    }
+
+    /**
+     * {op: paste, text, at?: [x, y], dx?, dy?}: the text of MapClipboard::copy().
+     * With `at`, the centre of the pasted nodes lands there; otherwise they
+     * move by (dx, dy).
+     */
+    private function paste(\WeatherMap $map, array $op): array
+    {
+        if (!isset($op['text']) || !is_string($op['text'])) {
+            throw new InvalidArgumentException(__('Nothing to paste'));
+        }
+        $at = isset($op['at']) ? $this->point($op['at']) : null;
+
+        return MapClipboard::paste($map, $op['text'], $at, (int) ($op['dx'] ?? 0), (int) ($op['dy'] ?? 0));
     }
 
     /** {op: hint, kind: node|link, names, key, value} - value null removes it */

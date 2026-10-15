@@ -1,0 +1,32 @@
+<?php
+// Map viewer: zoomable SVG view of a map, map list search, favourites and state
+return [
+    // Map view
+    'Show the map as a PNG picture' => 'Afficher la carte en image PNG',
+    'PNG' => 'PNG',
+    'Zoomable view of the map' => 'Vue zoomable de la carte',
+    'Zoomable view' => 'Vue zoomable',
+    'Map :name, zoom with the wheel, drag to move' => 'Carte :name : zoomer avec la molette, faire glisser pour se déplacer',
+    'Loading the map…' => 'Chargement de la carte…',
+    'Map view' => 'Vue de la carte',
+    'Find a node' => 'Trouver un nœud',
+    'Zoom out (-)' => 'Dézoomer (-)',
+    'Zoom out' => 'Dézoomer',
+    'Zoom in (+)' => 'Zoomer (+)',
+    'Zoom in' => 'Zoomer',
+    'Fit the map to the window (0)' => 'Ajuster la carte à la fenêtre (0)',
+    'Fit' => 'Ajuster',
+    'Actual size (1)' => 'Taille réelle (1)',
+    'Leave fullscreen (Esc)' => 'Quitter le plein écran (Échap)',
+    'Exit' => 'Quitter',
+
+    // Map list
+    'Search maps' => 'Rechercher une carte',
+    'No map matches your search.' => 'Aucune carte ne correspond à la recherche.',
+    'No data yet' => 'Pas encore de données',
+    'Max load :pct %' => 'Charge max. :pct %',
+    'Updated :time' => 'Mis à jour le :time',
+    'Remove from favourites' => 'Retirer des favoris',
+    'Add to favourites' => 'Ajouter aux favoris',
+    'Favourite: :name' => 'Favori : :name',
+];
