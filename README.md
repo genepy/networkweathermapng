@@ -363,7 +363,11 @@ For each map the review page shows:
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or
   missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
   uses them as `BACKGROUND`); an existing file with the same name is never
-  replaced. Only PNG, JPEG and GIF are accepted.
+  replaced. PNG, JPEG, GIF and SVG are accepted. SVG files are cleaned first:
+  only drawing elements and attributes are kept (no scripts, event handlers,
+  `foreignObject` or links out of the file; a `DOCTYPE`/`ENTITY` is refused),
+  then a PNG copy is drawn next to them for the map engine with `rsvg-convert`
+  (in the Docker image) or ImageMagick. Without either, SVG files are skipped.
 - **Targets**: pick a data source and the old RRD, SNMP and MRTG targets are
   matched to its interfaces by device name and ifIndex or interface name
   (Observium `rrd/<host>/port-<ifIndex>.rrd`, `snmp:community:host:oid:oid`,

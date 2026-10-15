@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\App\Migration;
 
+use App\Services\Images\SvgRasterizer;
 use App\Services\Migration\MigrationImporter;
 use App\Services\Migration\MigrationStore;
 use PHPUnit\Framework\TestCase;
@@ -81,6 +82,45 @@ final class ImporterTest extends TestCase
 
         $this->assertCount(1, $result['migrations']);
         $this->assertSame(['notes.txt: not a Weathermap file'], $result['skipped']);
+    }
+
+    public function testSvgIsCleanedAndGetsItsPng(): void
+    {
+        $pngFile = $this->root . '/twin.png';
+        file_put_contents($pngFile, $this->png(3));
+        $svg = $this->root . '/router.svg';
+        file_put_contents($svg, '<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3" onload="alert(1)">'
+            . '<script>alert(2)</script><rect width="3" height="3" fill="red"/></svg>');
+
+        $importer = new MigrationImporter(new MigrationStore($this->root . '/migration'), $this->root . '/public',
+            new SvgRasterizer(['cp', $pngFile, '{out}']));
+        $result = $importer->import(['router.svg' => $svg]);
+
+        $this->assertSame(['objects/router.svg'], $result['images']);
+        $stored = (string) file_get_contents($this->root . '/public/objects/router.svg');
+        $this->assertStringNotContainsString('alert', $stored);
+        $this->assertStringContainsString('<rect width="3" height="3" fill="red"/>', $stored);
+        $this->assertSame($this->png(3), file_get_contents($this->root . '/public/objects/router.png'));
+
+        // the same file again changes nothing
+        $this->assertSame([], $importer->import(['router.svg' => $svg])['skipped']);
+    }
+
+    public function testSvgIsRefusedWhenUnsafeOrNotConvertible(): void
+    {
+        $xxe = $this->root . '/xxe.svg';
+        file_put_contents($xxe, '<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg xmlns="http://www.w3.org/2000/svg">&x;</svg>');
+        $plain = $this->root . '/plain.svg';
+        file_put_contents($plain, '<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3"/>');
+
+        $importer = new MigrationImporter(new MigrationStore($this->root . '/migration'), $this->root . '/public',
+            new SvgRasterizer(['false']));
+        $result = $importer->import(['xxe.svg' => $xxe, 'plain.svg' => $plain]);
+
+        $this->assertSame([], $result['images']);
+        $this->assertCount(2, $result['skipped']);
+        $this->assertFileDoesNotExist($this->root . '/public/objects/xxe.svg');
+        $this->assertFileDoesNotExist($this->root . '/public/objects/plain.svg', 'no SVG without its PNG copy');
     }
 
     private function png(int $size = 1): string
