@@ -1,0 +1,11 @@
+# Binary icon/background assets and screenshots: no semantic value for the graph
+img/
+src/public/objects/*.png
+src/public/objects/*.jpg
+src/public/objects/*.gif
+src/public/backgrounds/*.png
+src/public/backgrounds/*.jpg
+src/public/backgrounds/*.gif
+# Tool config, not project code
+.claude/
+graphify-out/

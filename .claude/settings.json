@@ -1,0 +1,59 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./vendor/**)",
+      "Read(./node_modules/**)",
+      "Read(./composer.lock)",
+      "Read(./package-lock.json)",
+      "Read(./graphify-out/graph.json)",
+      "Read(./graphify-out/graph.html)",
+      "Read(./graphify-out/cache/**)",
+      "Read(./graphify-out/manifest.json)",
+      "Read(./data/**)",
+      "Read(./src/data/**)",
+      "Read(./cache/**)",
+      "Read(./logs/**)",
+      "Read(./src/logs/**)",
+      "Read(./coverage/**)",
+      "Read(./tmp/**)",
+      "Read(./img/**)",
+      "Read(./src/public/objects/**/*.png)",
+      "Read(./src/public/objects/**/*.jpg)",
+      "Read(./src/public/objects/**/*.gif)",
+      "Read(./src/public/backgrounds/**/*.png)",
+      "Read(./src/public/backgrounds/**/*.jpg)",
+      "Read(./src/public/backgrounds/**/*.gif)",
+      "Read(./**/*.sqlite)",
+      "Read(./**/*.sqlite3)",
+      "Read(./**/*.db)",
+      "Read(./**/*.log)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v graphify >/dev/null 2>&1; then graphify hook-guard search; fi",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v graphify >/dev/null 2>&1; then graphify hook-guard read; fi",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

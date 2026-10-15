@@ -60,3 +60,6 @@ data/
 # Tests
 /build/
 .phpunit.cache/
+
+# Graphify knowledge graph (rebuilt locally)
+graphify-out/
