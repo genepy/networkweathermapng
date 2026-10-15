@@ -65,6 +65,13 @@ point there; the images shipped with the application are copied in at
 start, without replacing yours). Uploads, a migration zip included, are
 limited to 64 MB.
 
+### Test deployment with Observium
+
+`deploy/testbed` runs Observium, Weathermap and a few simulated SNMP devices
+on one machine (Raspberry Pi 4, Oracle Cloud Ampere, any Linux host with
+Docker), tuned to spare an SD card, and can be deployed from GitHub Actions on
+a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
+
 ## Configuration
 
 ### Environment Variables

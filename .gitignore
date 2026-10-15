@@ -63,3 +63,6 @@ data/
 
 # Graphify knowledge graph (rebuilt locally)
 graphify-out/
+
+# Testbed: Observium tarball for an offline build
+deploy/testbed/observium/observium-community-latest.tar.gz
