@@ -58,3 +58,5 @@ docker-compose.override.yml
 docs/
 data/
 tests/
+# Graphify knowledge graph (rebuilt locally)
+graphify-out/
