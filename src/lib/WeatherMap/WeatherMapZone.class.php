@@ -185,7 +185,12 @@ class WeatherMapZone {
 		$horizontal = ($x2 - $x1) >= ($y2 - $y1);
 		$length = $horizontal ? $x2 - $x1 : $y2 - $y1;
 		$dash = 6 + 2 * $this->outlinewidth;
-		for ($p = 0; $p <= $length; $p += 2 * $dash) {
+		// only the dashes that can land on the canvas, so a huge zone stays cheap
+		$start = $horizontal ? $x1 : $y1;
+		$canvas = $horizontal ? imagesx($image) : imagesy($image);
+		$length = min($length, $canvas - $start);
+		$first = $start < 0 ? intdiv(-$start, 2 * $dash) * 2 * $dash : 0;
+		for ($p = $first; $p <= $length; $p += 2 * $dash) {
 			$end = min($length, $p + $dash - 1);
 			if ($horizontal) {
 				imagefilledrectangle($image, $x1 + $p, $y1, $x1 + $end, $y2, $colour);

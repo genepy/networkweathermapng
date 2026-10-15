@@ -58,7 +58,7 @@ class MapEditor
         'height' => ['height', 'size'],
         'labelfont' => ['labelfont', 'int'],
         'opacity' => ['opacity', 'percent'],
-        'outlinewidth' => ['outlinewidth', 'int'],
+        'outlinewidth' => ['outlinewidth', 'outline'],
         'fillcolour' => ['fillcolour', 'colour'],
         'outlinecolour' => ['outlinecolour', 'colour'],
         'labelfontcolour' => ['labelfontcolour', 'colour'],
@@ -224,6 +224,8 @@ class MapEditor
                         'text' => $this->text($value),
                         'size' => max(1, (int) $value),
                         'percent' => max(0, min(100, (int) $value)),
+                        // same bounds as OUTLINEWIDTH in the .conf
+                        'outline' => max(0, min(20, (int) $value)),
                         'colour' => $this->zoneColour($value),
                         default => (int) $value,
                     };
