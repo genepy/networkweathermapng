@@ -35,7 +35,7 @@ $uri = $_SERVER['REQUEST_URI'] ?? '/';
             </nav>
             <div class="user-menu">
                 <select class="lang-select" aria-label="<?= e__('Language') ?>" data-pref="lang">
-                    <?php foreach (I18n::LOCALES as $code => $label): ?>
+                    <?php foreach (I18n::locales() as $code => $label): ?>
                     <option value="<?= $code ?>" <?= I18n::locale() === $code ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
                     <?php endforeach; ?>
                 </select>
