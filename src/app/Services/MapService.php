@@ -789,7 +789,7 @@ class MapService
      */
     private function generateConfigFilename(string $title): string
     {
-        // "Réseau cœur" becomes "reseau_coeur"
+        // Accents are folded to ASCII: "Café Core Œuvre" becomes "cafe_core_oeuvre"
         $ascii = strtr($title, ['œ' => 'oe', 'Œ' => 'OE', 'æ' => 'ae', 'Æ' => 'AE', 'ß' => 'ss']);
         if (class_exists('Normalizer')) {
             $ascii = preg_replace('/\p{Mn}+/u', '', (string) \Normalizer::normalize($ascii, \Normalizer::FORM_D));
