@@ -534,6 +534,13 @@ class WeatherMapLink extends WeatherMapItem {
 		// This matches the user's expectation of "middle of each directional arrow".
 		$out_percent = $this->splitpos / 2;
 		$in_percent = ($this->splitpos + 100) / 2;
+
+		// BWLABELPOS set to something other than the default wins, so
+		// labels can be moved apart when they overlap
+		if ($this->labeloffset_in != 75 || $this->labeloffset_out != 25) {
+			$in_percent = $this->labeloffset_in;
+			$out_percent = $this->labeloffset_out;
+		}
 		list($q1_x, $q1_y, $junk, $q1_angle) = find_distance_coords_angle($this->curvepoints, ($out_percent / 100) * $curvelength);
 		list($q3_x, $q3_y, $junk, $q3_angle) = find_distance_coords_angle($this->curvepoints, ($in_percent / 100) * $curvelength);
 

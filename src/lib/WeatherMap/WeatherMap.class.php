@@ -585,6 +585,10 @@ class WeatherMap extends WeatherMapBase {
 		$x = intval(round($x));
 		$y = intval(round($y));
 
+		if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+			WeatherMapSvg::$active->text($fontnumber, $x, $y, $string, $colour, $angle);
+		}
+
 		if ($fontnumber > 0 && $fontnumber < 6 && $angle == 0) {
 			/**
 			 * The x and y coordinates will be different due to the change between
@@ -1297,6 +1301,10 @@ class WeatherMap extends WeatherMapBase {
 	function DrawLabelRotated($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, &$map, $direction) {
 		list($strwidth, $strheight) = $this->myimagestringsize($font, $text);
 
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
+		}
+
 		if (abs($angle) > 90) {
 			$angle -= 180;
 		}
@@ -1343,6 +1351,10 @@ class WeatherMap extends WeatherMapBase {
 
 		$textcol = myimagecolorallocate($image, $textcolour[0], $textcolour[1], $textcolour[2]);
 		$this->myimagestring($image, $font, $apoints[8], $apoints[9], $text, $textcol, $angle, $strheight);
+
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->role = null;
+		}
 
 		$areaname = 'LINK:L' . $map->links[$linkname]->id . ':' . ($direction + 2);
 
@@ -3806,6 +3818,11 @@ class WeatherMap extends WeatherMapBase {
 			// save this away, now
 			$this->image = $image;
 
+			$svg = WeatherMapSvg::$active;
+			if ($svg) {
+				$svg->start($image);
+			}
+
 			$this->white    = myimagecolorallocate($image, 255, 255, 255);
 			$this->black    = myimagecolorallocate($image, 0, 0, 0);
 			$this->grey     = myimagecolorallocate($image, 192, 192, 192);
@@ -3815,6 +3832,10 @@ class WeatherMap extends WeatherMapBase {
 
 			// fill with background colour anyway, in case the background image failed to load
 			wimagefilledrectangle($image, 0, 0, $this->width, $this->height, $this->colours['DEFAULT']['BG']['gdref1']);
+
+			if ($svg) {
+				$svg->background($svg->rgba($this->colours['DEFAULT']['BG']['gdref1']), $bgimage ? $this->background : '');
+			}
 
 			if ($bgimage) {
 				$bg_w = imagesx($bgimage);
@@ -3850,6 +3871,17 @@ class WeatherMap extends WeatherMapBase {
 
 				// all the map 'furniture' is fixed at z=1000
 				if ($z==1000) {
+					// for SVG output, the furniture goes on its own transparent layer
+					$main_image = $image;
+					if ($svg) {
+						$svg->begin('furniture', 'furniture');
+						$image = imagecreatetruecolor($this->width, $this->height);
+						imagesavealpha($image, true);
+						imagealphablending($image, false);
+						imagefilledrectangle($image, 0, 0, $this->width, $this->height, imagecolorallocatealpha($image, 0, 0, 0, 127));
+						imagealphablending($image, true);
+					}
+
 					foreach ($this->colours as $scalename => $colours) {
 						wm_debug("Drawing KEY for $scalename if necessary.");
 
@@ -3884,6 +3916,14 @@ class WeatherMap extends WeatherMapBase {
 					}
 
 					$this->DrawTitle($image, $this->titlefont, $this->colours['DEFAULT']['TITLE']['gdref1']);
+
+					if ($svg) {
+						$svg->raster($image);
+						imagecopy($main_image, $image, 0, 0, 0, 0, $this->width, $this->height);
+						imagedestroy($image);
+						$image = $main_image;
+						$svg->begin(null);
+					}
 				}
 
 				if (is_array($z_items)) {
@@ -3893,6 +3933,10 @@ class WeatherMap extends WeatherMapBase {
 							// (also, check if the link still exists - if this is in the editor, it may have been deleted by now)
 							if (isset($this->links[$it->name]) && isset($it->a) && isset($it->b)) {
 								wm_debug("Drawing LINK ".$it->name);
+
+								if ($svg) {
+									$svg->begin('link', $it->name, 'L' . $it->id);
+								}
 
 								$this->links[$it->name]->Draw($image, $this);
 							}
@@ -3906,6 +3950,11 @@ class WeatherMap extends WeatherMapBase {
 									wm_debug('Drawing NODE ' . $it->name);
 
 									$this->nodes[$it->name]->NewDraw($image, $this);
+
+									if ($svg) {
+										$svg->begin('node', $it->name, 'N' . $it->id);
+										$svg->node($this->nodes[$it->name]);
+									}
 
 									$ii=0;
 

@@ -163,6 +163,33 @@ of them:
 With Docker on the Observium server, uncomment the Observium volumes in
 `docker/docker-compose.yml` and use `host.docker.internal` as database host.
 
+## Map editor
+
+The editor (Editor > Edit) draws the map as SVG, so zooming stays sharp,
+and saves each change straight into the map's `.conf` file.
+
+- **Select**: click, Shift+click to add, drag on empty space for an area,
+  Ctrl+A for everything, or *Select…* (Ctrl+F) to pick by name, label,
+  target, group, width or bandwidth.
+- **Move**: drag the selection, or use the arrow keys (Shift for 10 px).
+  *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
+- **Arrange**: align and distribute nodes, group them (Ctrl+G; Alt+click
+  picks one member), lock them (Ctrl+L), bring to front or send to back.
+  Groups and locks are stored as `SET editor_group` and `SET editor_lock`.
+- **Links**: drag from the blue dot next to a selected node to another node,
+  or use the *Link* tool (L). On a selected link, drag the red points to
+  bend it, double-click one to remove it, and click a square around a node
+  to attach that end to a side (`NODES a:N b:E`).
+  *Auto-route* bends links around the nodes in their way; *Untangle labels*
+  moves bandwidth labels that overlap (`BWLABELPOS`).
+- **Add**: drag a node or an icon from the left panel, or double-click an
+  empty spot.
+- **Edit**: the right panel changes every selected item at once.
+- **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
+  `DATA_ROOT/history/<map id>`, so they survive a reload.
+
+The previous editor is still available at `/editor/classic/<map id>`.
+
 ## Directory Structure
 
 ```

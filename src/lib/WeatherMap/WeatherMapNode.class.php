@@ -88,6 +88,7 @@ class WeatherMapNode extends WeatherMapItem {
 	var $centre_x, $centre_y;
 	var $relative_to;
 	var $zorder;
+	var $svgparts = array();
 	var $template;
 	var $polar;
 	var $boundingboxes=array();
@@ -620,8 +621,19 @@ class WeatherMapNode extends WeatherMapItem {
 		$bbox_y1   = intval(round($bbox_y1));
 		$bbox_y2   = intval(round($bbox_y2));
 
+		$svg = WeatherMapSvg::$active;
+		$this->svgparts = array();
+
 		// Draw the icon, if any
 		if (isset($icon_im)) {
+			if ($svg) {
+				$this->svgparts['icon'] = array(
+					'x' => $icon_x1 + $bbox_x1, 'y' => $icon_y1 + $bbox_y1,
+					'w' => imagesx($icon_im), 'h' => imagesy($icon_im),
+					'href' => WeatherMapSvg::gdToDataUri($icon_im),
+				);
+			}
+
 			imagecopy($node_im, $icon_im, $icon_x1, $icon_y1, 0, 0, imagesx($icon_im), imagesy($icon_im));
 			imagedestroy($icon_im);
 		}
@@ -679,6 +691,17 @@ class WeatherMapNode extends WeatherMapItem {
 			}
 
 			$map->myimagestring($node_im, $this->labelfont, $txt_x, $txt_y, $this->proclabel, $txcol->gdallocate($node_im),$this->labelangle);
+
+			if ($svg) {
+				$this->svgparts['label'] = array(
+					'x1' => $label_x1 + $bbox_x1, 'y1' => $label_y1 + $bbox_y1,
+					'x2' => $label_x2 + $bbox_x1, 'y2' => $label_y2 + $bbox_y1,
+					'tx' => intval(round($txt_x)) + $bbox_x1, 'ty' => intval(round($txt_y)) + $bbox_y1,
+					'text' => $this->proclabel, 'font' => $this->labelfont, 'angle' => $this->labelangle,
+					'bg' => $svg->rgba($col), 'outline' => $svg->rgba($olcol ?? null),
+					'shadow' => $svg->rgba($shcol), 'colour' => $svg->rgba($txcol),
+				);
+			}
 			//$map->myimagestring($node_im, $this->labelfont, $txt_x, $txt_y, $this->proclabel, $txcol->gdallocate($node_im),90);
 		}
 

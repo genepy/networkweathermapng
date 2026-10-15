@@ -337,6 +337,11 @@ class EditorController extends BaseController
         
         require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
         require_once $this->config->getLibPath() . '/WeatherMap/editor.inc.php';
+
+        // Changes made here can be undone from the new editor as well
+        if (!in_array($action, ['load_area_data', 'load_map_javascript'], true)) {
+            (new \App\Services\Editor\ConfigHistory($this->config->getDataRoot() . '/history/' . $id, $mapFile))->record();
+        }
         
         switch ($action) {
             case 'add_node':

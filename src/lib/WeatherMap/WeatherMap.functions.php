@@ -1997,6 +1997,10 @@ function wimagepolygon($image, $points, $num_points, $color) {
 
 	metadump("POLY $num_points " . $pts . " $r $g $b $a");
 
+	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+		WeatherMapSvg::$active->polygon(array_slice($points, 0, $num_points * 2), $color, false);
+	}
+
 	if (version_compare(PHP_VERSION, '8.0', '>')) {
 		return(imagepolygon($image, $points, $color));
 	} else {
@@ -2029,6 +2033,10 @@ function wimagefilledpolygon($image, $points, $num_points, $color) {
 	}
 
 	metadump("FPOLY $num_points " . $pts . " $r $g $b $a");
+
+	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+		WeatherMapSvg::$active->polygon(array_slice($points, 0, $num_points * 2), $color, true);
+	}
 
 	if (version_compare(PHP_VERSION, '8.0', '>')) {
 		return(imagefilledpolygon($image, $points, $color));
