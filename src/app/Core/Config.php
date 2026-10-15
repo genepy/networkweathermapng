@@ -30,6 +30,8 @@ class Config
             'APP_DEBUG' => 'false',
             'APP_TIMEZONE' => 'UTC',
             'APP_SECRET_KEY' => '',
+            // Key that encrypts data source passwords; empty = DATA_ROOT/app.key
+            'APP_KEY' => '',
             'APP_ROOT' => $appRoot,
             'DATA_ROOT' => $appRoot . '/data',
             
