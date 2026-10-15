@@ -997,6 +997,103 @@ class WeatherMap extends WeatherMapBase {
 		}
 	}
 
+	/**
+	 * Interface speed behind a link's targets, in bit/s (0 when unknown).
+	 * Asks each target's data source plugin that implements ReadSpeed().
+	 */
+	/**
+	 * Links joining the same two nodes would be drawn on top of each other:
+	 * spread them side by side, centred on the line between the nodes.
+	 * Only links with no VIA and no NODES offset are moved; those are the
+	 * ones that overlap exactly. SET link_spacing <pixels> sets the gap
+	 * between their centres (0 turns spreading off); by default it follows
+	 * the widest link of the group.
+	 */
+	function SpreadParallelLinks() {
+		$groups = array();
+
+		foreach ($this->links as $name => $link) {
+			$this->links[$name]->parallel_offset = array(0, 0);
+
+			if (!isset($link->a) || !isset($link->b) || $link->a->name == $link->b->name) {
+				continue;
+			}
+			if (count($link->vialist) > 0 || $link->a_offset != 'C' || $link->b_offset != 'C') {
+				continue;
+			}
+
+			$ends = array($link->a->name, $link->b->name);
+			sort($ends, SORT_STRING);
+			$groups[implode("\0", $ends)][] = $name;
+		}
+
+		$hint = $this->get_hint('link_spacing');
+
+		foreach ($groups as $key => $names) {
+			$count = count($names);
+			if ($count < 2) {
+				continue;
+			}
+
+			sort($names, SORT_STRING);
+			list($first, $second) = explode("\0", $key);
+
+			$dx  = $this->nodes[$second]->x - $this->nodes[$first]->x;
+			$dy  = $this->nodes[$second]->y - $this->nodes[$first]->y;
+			$len = sqrt($dx * $dx + $dy * $dy);
+			if ($len == 0) {
+				continue;
+			}
+
+			if ($hint !== null && $hint !== '') {
+				$spacing = floatval($hint);
+			} else {
+				// arrow heads are about 2.5 times as wide as the link
+				$widest = 0;
+				foreach ($names as $name) {
+					$widest = max($widest, floatval($this->links[$name]->EffectiveWidth($this)));
+				}
+				$spacing = round($widest * 2.5) + 4;
+			}
+
+			if ($spacing <= 0) {
+				continue;
+			}
+
+			// unit vector perpendicular to the line between the nodes
+			$nx = -$dy / $len;
+			$ny = $dx / $len;
+
+			foreach ($names as $i => $name) {
+				$distance = ($i - ($count - 1) / 2) * $spacing;
+				$this->links[$name]->parallel_offset = array(round($nx * $distance), round($ny * $distance));
+			}
+		}
+	}
+
+	function ReadLinkSpeed(&$link) {
+		$total = 0;
+
+		foreach ($link->targets as $target) {
+			if ($target[4] == '' || !isset($this->plugins['data'][$target[5]])) {
+				continue;
+			}
+
+			$plugin = $this->plugins['data'][$target[5]];
+			if (!method_exists($plugin, 'ReadSpeed')) {
+				continue;
+			}
+
+			$targetstring = $this->ProcessString($target[0], $link, false, false);
+			$speed = $plugin->ReadSpeed($targetstring, $this, $link);
+			if ($speed > 0) {
+				$total += $speed;
+			}
+		}
+
+		return $total;
+	}
+
 	function ReadData() {
 		$this->DatasourceInit();
 
@@ -1117,6 +1214,19 @@ class WeatherMap extends WeatherMapBase {
 					}
 				} else {
 					wm_debug("ReadData: Skipping $type $name that looks like a template.");
+				}
+
+				// BANDWIDTH auto: the interface speed, read from the data sources
+				// (the sum of the members for an aggregated link)
+				if ($type == 'LINK' && strtolower((string) $myobj->max_bandwidth_in_cfg) == 'auto') {
+					$speed = $this->ReadLinkSpeed($myobj);
+					if ($speed > 0) {
+						$myobj->max_bandwidth_in  = $speed;
+						$myobj->max_bandwidth_out = $speed;
+						wm_debug("ReadData: LINK $name: BANDWIDTH auto is $speed bps");
+					} else {
+						wm_warn("ReadData: LINK $name: BANDWIDTH auto but no data source knows the interface speed, using " . WM_AUTO_BANDWIDTH_FALLBACK . " [WMWARN90]");
+					}
 				}
 
 				# $this->links[$name]->bandwidth_in=$total_in;
@@ -2423,6 +2533,7 @@ class WeatherMap extends WeatherMapBase {
 				$config_keywords = array(
 					array('LINK','/^\s*(MAXVALUE|BANDWIDTH)\s+(\d+\.?\d*[KMGT]?)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>3)),
 					array('LINK','/^\s*(MAXVALUE|BANDWIDTH)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>2)),
+					array('LINK','/^\s*BANDWIDTH\s+(auto)\s*$/i',array('max_bandwidth_in_cfg'=>'#auto','max_bandwidth_out_cfg'=>'#auto')),
 					array('NODE','/^\s*(MAXVALUE)\s+(\d+\.?\d*[KMGT]?)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>3)),
 					array('NODE','/^\s*(MAXVALUE)\s+(\d+\.?\d*[KMGT]?)\s*$/i',array('max_bandwidth_in_cfg'=>2,'max_bandwidth_out_cfg'=>2)),
 					array('GLOBAL','/^\s*BACKGROUND\s+(.*)\s*$/i',array('background'=>1)),
@@ -2449,6 +2560,7 @@ class WeatherMap extends WeatherMapBase {
 					array('(LINK|GLOBAL)', "/^\s*WIDTH\s+(\d+)\s*$/i", array('width'=>1)),
 					array('(LINK|GLOBAL)', "/^\s*HEIGHT\s+(\d+)\s*$/i", array('height'=>1)),
 					array('LINK', "/^\s*WIDTH\s+(\d+\.\d+)\s*$/i", array('width'=>1)),
+					array('LINK', "/^\s*WIDTH\s+(auto)\s*$/i", array('width'=>'#auto')),
 					array('LINK', '/^\s*ARROWSTYLE\s+(classic|compact)\s*$/i', array('arrowstyle'=>1)),
 					array('LINK', '/^\s*VIASTYLE\s+(curved|angled)\s*$/i', array('viastyle'=>1)),
 					array('LINK', '/^\s*INCOMMENT\s+(.*)\s*$/i', array('comments[IN]'=>1)),
@@ -3179,8 +3291,8 @@ class WeatherMap extends WeatherMapBase {
 
 			// while we're looping through, let's set the real bandwidths
 			if ($item->my_type() == 'LINK') {
-				$this->links[$item->name]->max_bandwidth_in  = unformat_number($item->max_bandwidth_in_cfg, $this->kilo);
-				$this->links[$item->name]->max_bandwidth_out = unformat_number($item->max_bandwidth_out_cfg, $this->kilo);
+				$this->links[$item->name]->max_bandwidth_in  = unformat_number(wm_bandwidth_cfg($item->max_bandwidth_in_cfg), $this->kilo);
+				$this->links[$item->name]->max_bandwidth_out = unformat_number(wm_bandwidth_cfg($item->max_bandwidth_out_cfg), $this->kilo);
 			} elseif ($item->my_type() == 'NODE') {
 				$this->nodes[$item->name]->max_bandwidth_in  = unformat_number($item->max_bandwidth_in_cfg, $this->kilo);
 				$this->nodes[$item->name]->max_bandwidth_out = unformat_number($item->max_bandwidth_out_cfg, $this->kilo);
@@ -3725,6 +3837,8 @@ class WeatherMap extends WeatherMapBase {
 					$this->nodes[$node->name]->pre_render($image, $this);
 				}
 			}
+
+			$this->SpreadParallelLinks();
 
 			$all_layers = array_keys($this->seen_zlayers);
 			sort($all_layers);

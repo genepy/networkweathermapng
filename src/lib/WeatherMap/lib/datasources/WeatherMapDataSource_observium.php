@@ -43,6 +43,35 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
         return preg_match('/^observium:/i', (string) $targetstring) === 1;
     }
 
+    /**
+     * Interface speed in bit/s, for links with BANDWIDTH auto.
+     */
+    function ReadSpeed($targetstring, &$map, &$item)
+    {
+        if (!$this->svc) {
+            return 0;
+        }
+
+        try {
+            return (int) $this->svc->observiumSpeedForTarget((string) $targetstring, $this->sourceIdFor($item));
+        } catch (\Throwable $e) {
+            wm_warn("Observium ReadSpeed: {$targetstring}: " . $e->getMessage() . " [WMOBS02]");
+            return 0;
+        }
+    }
+
+    private function sourceIdFor($item): ?int
+    {
+        if (isset($item->hints) && is_array($item->hints) && isset($item->hints['datasource'])) {
+            $sel = json_decode((string) $item->hints['datasource'], true);
+            if (is_array($sel) && !empty($sel['sourceId'])) {
+                return (int) $sel['sourceId'];
+            }
+        }
+
+        return null;
+    }
+
     function ReadData($targetstring, &$map, &$item)
     {
         $data_time = time();
@@ -51,16 +80,8 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
             return array(NULL, NULL, $data_time);
         }
 
-        $sourceId = null;
-        if (isset($item->hints) && is_array($item->hints) && isset($item->hints['datasource'])) {
-            $sel = json_decode((string) $item->hints['datasource'], true);
-            if (is_array($sel) && !empty($sel['sourceId'])) {
-                $sourceId = (int) $sel['sourceId'];
-            }
-        }
-
         try {
-            $values = $this->svc->readObserviumTarget((string) $targetstring, $sourceId);
+            $values = $this->svc->readObserviumTarget((string) $targetstring, $this->sourceIdFor($item));
         } catch (\Throwable $e) {
             wm_warn("Observium ReadData: {$targetstring}: " . $e->getMessage() . " [WMOBS01]");
             $values = null;
