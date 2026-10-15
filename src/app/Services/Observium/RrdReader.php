@@ -35,6 +35,20 @@ final class RrdReader
         return rtrim($this->rrdDir, '/') . '/' . $hostname . '/port-' . $ifIndex . '.rrd';
     }
 
+    /**
+     * The file name given to rrdtool. A daemon reached over the network
+     * resolves names from its own base folder (rrdcached -b) and rrdtool
+     * refuses absolute names for it, so it gets <hostname>/port-<ifIndex>.rrd,
+     * as Observium itself does.
+     */
+    private function commandFile(string $hostname, int $ifIndex): string
+    {
+        $file = $this->fileFor($hostname, $ifIndex);
+        $local = $this->daemon === '' || str_starts_with($this->daemon, 'unix:') || str_starts_with($this->daemon, '/');
+
+        return $local ? $file : $hostname . '/port-' . $ifIndex . '.rrd';
+    }
+
     public function available(string $hostname, int $ifIndex): bool
     {
         // Through rrdcached the file may live on another server
@@ -61,7 +75,7 @@ final class RrdReader
      */
     public function series(string $hostname, int $ifIndex, int $minutes): array
     {
-        $command = [$this->binary, 'fetch', $this->fileFor($hostname, $ifIndex), 'AVERAGE', '--start', '-' . ($minutes * 60)];
+        $command = [$this->binary, 'fetch', $this->commandFile($hostname, $ifIndex), 'AVERAGE', '--start', '-' . ($minutes * 60)];
         if ($this->daemon !== '') {
             $command[] = '--daemon';
             $command[] = $this->daemon;

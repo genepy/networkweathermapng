@@ -83,6 +83,26 @@ TXT;
         $this->assertSame(['in' => 2000000.0, 'out' => 400000.0, 'time' => 1760000600], $points[1]);
     }
 
+    public function testRrdFileNameDependsOnTheDaemon(): void
+    {
+        $files = [];
+        $runner = function (array $command) use (&$files): string {
+            $files[] = $command[2];
+
+            return '';
+        };
+
+        (new RrdReader('/opt/observium/rrd', runner: $runner))->series('sw1', 3, 10);
+        (new RrdReader('/opt/observium/rrd', 'unix:/run/rrdcached.sock', runner: $runner))->series('sw1', 3, 10);
+        (new RrdReader('/opt/observium/rrd', 'rrdcached:42217', runner: $runner))->series('sw1', 3, 10);
+
+        $this->assertSame([
+            '/opt/observium/rrd/sw1/port-3.rrd',
+            '/opt/observium/rrd/sw1/port-3.rrd',
+            'sw1/port-3.rrd',
+        ], $files);
+    }
+
     public function testRrdPathRejectsTraversal(): void
     {
         $this->expectException(\InvalidArgumentException::class);

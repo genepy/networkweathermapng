@@ -1,0 +1,141 @@
+# Observium + NetworkWeathermapNG test deployment, with simulated devices.
+# Works on arm64 (Raspberry Pi 4, Oracle Ampere A1) and amd64.
+#
+#   ./deploy.sh            builds, starts and seeds everything
+#
+# Built to spare an SD card: rrdcached delays RRD writes, logs, sessions,
+# caches and rendered maps live in RAM (tmpfs), MariaDB writes less often.
+
+name: weathermap-testbed
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 2m
+    max-file: "2"
+
+x-snmpsim: &snmpsim
+  image: weathermap-testbed-snmpsim
+  # Built once, by core-router
+  pull_policy: never
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?run deploy.sh, it creates the env file}
+      MARIADB_DATABASE: observium
+      MARIADB_USER: observium
+      MARIADB_PASSWORD: ${OBSERVIUM_DB_PASSWORD:?}
+      WEATHERMAP_DB_PASSWORD: ${WEATHERMAP_DB_PASSWORD:?}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_general_ci"]
+    volumes:
+      - db:/var/lib/mysql
+      - ./mariadb/low-writes.cnf:/etc/mysql/conf.d/low-writes.cnf:ro
+      - ./mariadb/initdb:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    logging: *logging
+
+  rrdcached:
+    build: ./rrdcached
+    restart: unless-stopped
+    environment:
+      RRDCACHED_WRITE_DELAY: ${RRDCACHED_WRITE_DELAY:-1800}
+      RRDCACHED_WRITE_JITTER: ${RRDCACHED_WRITE_JITTER:-900}
+      RRDCACHED_JOURNAL: ${RRDCACHED_JOURNAL:-off}
+    volumes:
+      - rrd:/opt/observium/rrd
+    # Time to write the cached updates on "docker compose down"
+    stop_grace_period: 2m
+    logging: *logging
+
+  observium:
+    build: ./observium
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rrdcached:
+        condition: service_started
+      core-router:
+        condition: service_started
+      access-switch-1:
+        condition: service_started
+      access-switch-2:
+        condition: service_started
+    environment:
+      TZ: ${TZ:-UTC}
+      OBSERVIUM_DB_HOST: db
+      OBSERVIUM_DB_PASSWORD: ${OBSERVIUM_DB_PASSWORD:?}
+      OBSERVIUM_ADMIN_USER: ${OBSERVIUM_ADMIN_USER:-admin}
+      OBSERVIUM_ADMIN_PASSWORD: ${OBSERVIUM_ADMIN_PASSWORD:?}
+      OBSERVIUM_RRDCACHED: rrdcached:42217
+      OBSERVIUM_BASE_URL: ${OBSERVIUM_BASE_URL:-}
+      # Simulated devices; add your own as "host" or "host:community"
+      OBSERVIUM_DEVICES: ${OBSERVIUM_DEVICES:-core-router access-switch-1 access-switch-2}
+    ports:
+      - "${OBSERVIUM_PORT:-8668}:80"
+    volumes:
+      - rrd:/opt/observium/rrd
+    tmpfs:
+      - /tmp
+      - /opt/observium/logs
+    logging: *logging
+
+  weathermap:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - observium
+    environment:
+      APP_TIMEZONE: ${TZ:-UTC}
+      ADMIN_USER: ${WEATHERMAP_ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${WEATHERMAP_ADMIN_PASSWORD:?}
+      TESTBED_OBSERVIUM_DB_PASSWORD: ${WEATHERMAP_DB_PASSWORD:?}
+    ports:
+      - "${WEATHERMAP_PORT:-8080}:80"
+    volumes:
+      - weathermap:/app/data
+      - ./weathermap/php.ini:/usr/local/etc/php/conf.d/zz-testbed.ini:ro
+      - ./weathermap/seed.php:/testbed/seed.php:ro
+      - ./weathermap/demo-map.conf:/testbed/demo-map.conf:ro
+    tmpfs:
+      - /tmp
+      - /app/logs
+      - /app/data/output
+      - /app/data/cache
+    logging: *logging
+
+  # One small SNMP agent per simulated device (see snmpsim/devices.json)
+  core-router:
+    <<: *snmpsim
+    build: ./snmpsim
+    environment:
+      DEVICE: core-router
+
+  access-switch-1:
+    <<: *snmpsim
+    environment:
+      DEVICE: access-switch-1
+
+  access-switch-2:
+    <<: *snmpsim
+    environment:
+      DEVICE: access-switch-2
+
+volumes:
+  db:
+  rrd:
+  weathermap:

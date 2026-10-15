@@ -33,7 +33,8 @@ final class ObserviumClientTest extends TestCase
     public function testRrdIsUsedWhenTheDatabaseHasNoRate(): void
     {
         $rrd = new RrdReader('/rrd', 'rrdcached:42217', runner: function (array $command): string {
-            $this->assertContains('/rrd/core-rtr1/port-2.rrd', $command);
+            // rrdtool refuses absolute names for a daemon reached over the network
+            $this->assertContains('core-rtr1/port-2.rrd', $command);
 
             return "INOCTETS OUTOCTETS\n\n1760000000: 1.0e+03 2.0e+03\n";
         });

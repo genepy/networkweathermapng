@@ -1,0 +1,31 @@
+{
+  "core-router": {
+    "descr": "Simulated core router (NetworkWeathermapNG testbed)",
+    "location": "Testbed rack A",
+    "ports": [
+      {"name": "xe-0/0/0", "alias": "Uplink to Internet", "speed": 10000, "in": 3200, "out": 1100},
+      {"name": "xe-0/0/1", "alias": "Link to access-switch-1", "speed": 10000, "in": 900, "out": 2100, "phase": 1.0},
+      {"name": "xe-0/0/2", "alias": "Link to access-switch-2", "speed": 10000, "in": 450, "out": 1300, "phase": 2.5},
+      {"name": "ge-0/0/3", "alias": "Management", "speed": 1000, "in": 4, "out": 6}
+    ]
+  },
+  "access-switch-1": {
+    "descr": "Simulated access switch (NetworkWeathermapNG testbed)",
+    "location": "Testbed rack B",
+    "ports": [
+      {"name": "Te1/0/1", "alias": "Uplink to core-router", "speed": 10000, "in": 2100, "out": 900, "phase": 1.0},
+      {"name": "Gi1/0/1", "alias": "Office", "speed": 1000, "in": 420, "out": 180},
+      {"name": "Gi1/0/2", "alias": "Servers", "speed": 1000, "in": 760, "out": 310},
+      {"name": "Gi1/0/3", "alias": "Wi-Fi", "speed": 1000, "in": 230, "out": 90}
+    ]
+  },
+  "access-switch-2": {
+    "descr": "Simulated access switch (NetworkWeathermapNG testbed)",
+    "location": "Testbed rack C",
+    "ports": [
+      {"name": "Te1/0/1", "alias": "Uplink to core-router", "speed": 10000, "in": 1300, "out": 450, "phase": 2.5},
+      {"name": "Gi1/0/1", "alias": "Lab", "speed": 1000, "in": 640, "out": 120},
+      {"name": "Gi1/0/2", "alias": "Printers", "speed": 1000, "in": 15, "out": 3}
+    ]
+  }
+}

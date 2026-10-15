@@ -1,0 +1,45 @@
+name: Deploy testbed
+
+# Deploys deploy/testbed (Observium, Weathermap and simulated devices) on the
+# machine that runs the self-hosted runner labelled "deploy": a Raspberry Pi,
+# an Oracle Cloud Ampere instance, any arm64 or amd64 Linux host with Docker.
+#
+# Nothing runs until the repository variable TESTBED_ENABLED is "true"
+# (Settings > Secrets and variables > Actions > Variables), so jobs don't wait
+# for a runner that isn't installed yet.
+#
+# Never triggered by pull requests: code from a fork must not run on the
+# runner's machine.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'deploy/testbed/**'
+      - 'docker/**'
+      - 'src/**'
+      - 'composer.json'
+      - '.github/workflows/deploy-testbed.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-testbed
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ vars.TESTBED_ENABLED == 'true' }}
+    runs-on: [self-hosted, deploy]
+    # The first build compiles PHP extensions: slow on a Pi
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy
+        run: ./deploy/testbed/deploy.sh
