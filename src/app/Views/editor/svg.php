@@ -26,6 +26,12 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
         </div>
 
         <div class="tb-group">
+            <button data-cmd="cut" data-needs="nodes1" title="<?= e__('Cut (Ctrl+X)') ?>" aria-label="<?= e__('Cut') ?>">&#x2702;</button>
+            <button data-cmd="copy" data-needs="nodes1" title="<?= e__('Copy the selected nodes and the links between them, also for another map (Ctrl+C)') ?>" aria-label="<?= e__('Copy') ?>">&#x2398;</button>
+            <button data-cmd="paste" title="<?= e__('Paste (Ctrl+V): where the mouse is, or next to the original') ?>" aria-label="<?= e__('Paste') ?>" disabled>&#x1F4CB;</button>
+        </div>
+
+        <div class="tb-group">
             <button data-cmd="tool-select" class="active" title="<?= e__('Select and move (V)') ?>">&#x2B09; <?= e__('Select') ?></button>
             <button data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes (L)') ?>">&#x2194; <?= e__('Link') ?></button>
         </div>
@@ -51,11 +57,23 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
 
         <div class="tb-group">
             <button data-cmd="autoroute" title="<?= e__('Route the selected links (or all) around nodes') ?>"><?= e__('Auto-route') ?></button>
+            <button data-cmd="spread" title="<?= e__('Move overlapping nodes apart') ?>"><?= e__('Spread apart') ?></button>
             <button data-cmd="untangle" title="<?= e__('Move bandwidth labels that overlap') ?>"><?= e__('Untangle labels') ?></button>
             <button data-cmd="find" title="<?= e__('Select by criteria (Ctrl+F)') ?>"><?= e__('Select…') ?></button>
         </div>
 
         <div class="tb-group tb-right">
+            <span class="tb-layers">
+                <button data-cmd="layers" aria-expanded="false" aria-controls="layers-panel" title="<?= e__('Hide layers while editing (not saved in the map)') ?>"><?= e__('Layers') ?></button>
+                <span id="layers-panel" role="group" aria-label="<?= e__('Layers shown in the editor') ?>" hidden>
+                    <label><input type="checkbox" name="background" checked> <?= e__('Background image') ?></label>
+                    <label><input type="checkbox" name="links" checked> <?= e__('Links') ?></label>
+                    <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
+                    <label><input type="checkbox" name="nodelabels" checked> <?= e__('Node labels') ?></label>
+                    <small><?= e__('Only in this editor, in this browser.') ?></small>
+                </span>
+            </span>
+            <button data-cmd="text-mode" title="<?= e__('Edit the map as text (.conf)') ?>"><?= e__('Text mode') ?></button>
             <button data-cmd="snap" title="<?= e__('Snap to a 10 px grid (G)') ?>"><?= e__('Grid') ?></button>
             <button data-cmd="zoom-out" title="<?= e__('Zoom out (-)') ?>">&minus;</button>
             <button data-cmd="zoom-reset" id="zoom-level" title="<?= e__('Actual size (0)') ?>">100%</button>
@@ -114,7 +132,26 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
     <aside id="inspector">
         <div id="inspector-body"></div>
     </aside>
+
+    <section id="text-mode" hidden aria-label="<?= e__('Text mode') ?>">
+        <div class="text-bar">
+            <strong><?= e__('Text mode') ?></strong>
+            <span id="text-status" role="status" aria-live="polite"></span>
+            <span class="text-actions">
+                <button type="button" id="text-cancel"><?= e__('Back to the drawing') ?></button>
+                <button type="button" id="text-apply" class="primary" title="<?= e__('Save the text and return to the drawing (Ctrl+Enter)') ?>"><?= e__('Apply') ?></button>
+            </span>
+        </div>
+        <div class="text-body">
+            <div id="text-gutter" aria-hidden="true"></div>
+            <textarea id="text-area" spellcheck="false" wrap="off" autocomplete="off" autocapitalize="off" aria-label="<?= e__('Map configuration') ?>"></textarea>
+        </div>
+        <ol id="text-problems" aria-label="<?= e__('Problems found') ?>"></ol>
+        <p class="text-help"><?= e__('Changes are checked by the engine as you type. INCLUDE and output paths (*OUTPUTFILE, IMAGEURI) cannot be changed here. Apply saves the text as one step you can undo.') ?></p>
+    </section>
 </div>
+
+<div id="ctx-menu" role="menu" tabindex="-1" aria-label="<?= e__('Actions') ?>" hidden></div>
 
 <dialog id="find-dialog">
     <form method="dialog">

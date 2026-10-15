@@ -11,6 +11,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Editor\ConfigHistory;
+use App\Services\Editor\ConfigSource;
+use App\Services\Editor\MapClipboard;
 use App\Services\Editor\MapEditor;
 use App\Services\MapService;
 use InvalidArgumentException;
@@ -103,6 +105,126 @@ class SvgEditorController extends BaseController
         $this->respond($map, true, $result);
     }
 
+    /** POST {nodes: [...]}: the nodes and the links between them, as .conf text */
+    public function copy(array $params): void
+    {
+        $this->requireAdmin();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $body = $this->body();
+        $this->loadEngine();
+
+        try {
+            $wmap = (new MapEditor($this->configFile($map)))->load();
+            $clip = MapClipboard::copy($wmap, array_map('strval', (array) ($body['nodes'] ?? [])));
+        } catch (InvalidArgumentException $e) {
+            $this->json(['error' => $e->getMessage()], 422);
+            return;
+        }
+
+        $clip['mapId'] = (int) $map['id'];
+        $this->json($clip);
+    }
+
+    /** GET: the .conf text, for the text mode */
+    public function source(array $params): void
+    {
+        $this->requireAdmin();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $file = $this->configFile($map);
+        clearstatcache(true, $file);
+        $this->json([
+            'text' => is_file($file) ? (string) file_get_contents($file) : '',
+            'version' => $this->version($file),
+        ]);
+    }
+
+    /** POST {text}: the engine's warnings about a text, with their lines */
+    public function validate(array $params): void
+    {
+        $this->requireAdmin();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $body = $this->body();
+        if (!is_string($body['text'] ?? null)) {
+            $this->json(['error' => __('No text')], 422);
+            return;
+        }
+
+        $this->loadEngine();
+        $file = $this->configFile($map);
+        $current = is_file($file) ? (string) file_get_contents($file) : null;
+
+        $this->json((new ConfigSource($this->config->getPublicPath()))->validate($body['text'], $current));
+    }
+
+    /** POST {text, version?}: save the text as the map's .conf (one undo step) */
+    public function saveSource(array $params): void
+    {
+        $this->requireAdmin();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $body = $this->body();
+        if (!is_string($body['text'] ?? null) || trim($body['text']) === '') {
+            $this->json(['error' => __('No text')], 422);
+            return;
+        }
+
+        $this->loadEngine();
+        $file = $this->configFile($map);
+        clearstatcache(true, $file);
+        $before = is_file($file) ? (string) file_get_contents($file) : null;
+
+        if (isset($body['version']) && $body['version'] !== '' && (string) $body['version'] !== $this->version($file)) {
+            $this->json(['error' => __('The map was changed by someone else since the text was loaded. Copy your text, reload and try again.')], 409);
+            return;
+        }
+
+        $text = ConfigSource::normalise($body['text']);
+        try {
+            (new ConfigSource())->check($text, $before);
+        } catch (InvalidArgumentException $e) {
+            $this->json(['error' => $e->getMessage()], 422);
+            return;
+        }
+
+        if ($before !== $text) {
+            if (file_put_contents($file, $text, LOCK_EX) === false) {
+                $this->json(['error' => __('The map could not be saved')], 500);
+                return;
+            }
+            if (function_exists('opcache_invalidate')) {
+                opcache_invalidate($file, true);
+            }
+            if ($before !== null) {
+                $this->history($map)->record($before);
+            }
+        }
+
+        $this->respond($map, true);
+    }
+
     public function undo(array $params): void
     {
         $this->step($params, 'undo');
@@ -192,9 +314,21 @@ class SvgEditorController extends BaseController
             'svg' => $svg,
             'model' => MapEditor::model($wmap),
             'history' => $this->history($map)->counts(),
-            'version' => is_file($file) ? filemtime($file) . '-' . filesize($file) : '0',
+            'version' => $this->version($file),
             'result' => $result,
         ]);
+    }
+
+    private function version(string $file): string
+    {
+        clearstatcache(true, $file);
+        return is_file($file) ? filemtime($file) . '-' . filesize($file) : '0';
+    }
+
+    private function body(): array
+    {
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        return is_array($body) ? $body : [];
     }
 
     private function findMap(array $params): ?array

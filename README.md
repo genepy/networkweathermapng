@@ -74,6 +74,7 @@ limited to 64 MB.
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
 | `APP_TIMEZONE` | Application timezone | `UTC` |
+| `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
 | `APP_ROOT` | Application root path | - |
 | `DATA_ROOT` | Persistent data root path | - |
@@ -130,7 +131,9 @@ LINK router1-switch1
 |---------|--------|
 | `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 12 px for 400G |
 | `SET link_width_table 1G:2 10G:4 100G:9` | The map's own speed → width table for `WIDTH auto` |
-| `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium); an aggregated link adds up its members. Falls back to 1G when unknown |
+| `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium, or Zabbix for links picked in the editor: the `net.if.speed[...]` item of the SNMP templates, or the sysfs speed of the Linux agent); an aggregated link adds up its members. Falls back to 1G when unknown |
+| `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge) |
+| `SET width_legend_title Speed` | Title of that legend (default `Link speed`) |
 | `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
 
 Resizing a map in the editor (by dragging its border, or in Map Properties)
@@ -198,6 +201,21 @@ and saves each change straight into the map's `.conf` file.
 - **Add**: drag a node or an icon from the left panel, or double-click an
   empty spot.
 - **Edit**: the right panel changes every selected item at once.
+- **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
+  the links between them, also into another map open in another tab (the
+  copy is kept in the browser). Pasted items take free names (`name_2`…),
+  land under the mouse or next to the originals, and keep their VIAs and
+  templates. Only NODE and LINK blocks are accepted.
+- **Scale a layout**: with two nodes or more selected, drag the handles of
+  the selection box to spread or tighten them (Shift keeps proportions).
+- **Right-click** (or Shift+F10) opens a menu with the usual actions.
+- **Overlaps**: overlapping nodes are outlined; *Spread apart* moves them
+  (or only the selected ones) at least 10 px apart.
+- **Layers**: hide the background, links, link labels or node labels while
+  editing. This is remembered in the browser, never saved in the map.
+- **Text mode**: edit the `.conf` itself, checked by the engine as you type
+  (warnings with their line). *Apply* saves it as one undo step. INCLUDE and
+  the output paths (`*OUTPUTFILE`, `IMAGEURI`) cannot be changed there.
 - **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
   `DATA_ROOT/history/<map id>`, so they survive a reload.
 
@@ -228,6 +246,14 @@ Admin > Maps lists every map:
   permissions and settings.
 - Tick several maps to activate, deactivate, move, export or delete them at
   once.
+
+## Viewing maps
+
+- **Map list** (`/`): type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
+- **Map view** (`/map/{id}`): the map is drawn as SVG and can be zoomed with the mouse wheel or a pinch, moved by dragging, or with the toolbar (+, −, Fit, 100 %) and the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows, `/` to search). "Find a node" centres the map on a node by label or name. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
+- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; clicking a link or node opens its INFOURL in a new tab.
+- The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
+- **Fullscreen** fits the map to the screen for a NOC wall, follows the light/dark theme and hides the toolbar when the mouse is idle; Esc leaves it. The **PNG** button keeps the classic picture (also used for thumbnails, exports and the cycle page).
 
 ## Language and theme
 

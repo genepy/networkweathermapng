@@ -397,6 +397,8 @@ class MapService
         $imagePath = $this->outputPath . '/' . $outputBase . $suffix . '.' . $format;
         $thumbPath = $this->outputPath . '/' . $outputBase . $suffix . '.thumb.' . $format;
         $htmlPath = $this->outputPath . '/' . $outputBase . $suffix . '.html';
+        $svgPath = $this->outputPath . '/' . $outputBase . $suffix . '.svg';
+        $statusPath = $this->outputPath . '/' . $outputBase . '.json';
         
         // Check if we need to re-render
         // We consider it cached only if BOTH main image and thumbnail exist and are newer than config.
@@ -405,7 +407,13 @@ class MapService
             $imageTime = filemtime($imagePath);
             $thumbTime = filemtime($thumbPath);
             
-            if ($imageTime >= $configTime && $thumbTime >= $configTime) {
+            // The data render also keeps the SVG and the state summary next to the image
+            $extrasFresh = !$readData || (
+                is_file($svgPath) && filemtime($svgPath) >= $configTime
+                && is_file($statusPath) && filemtime($statusPath) >= $configTime
+            );
+
+            if ($imageTime >= $configTime && $thumbTime >= $configTime && $extrasFresh) {
                 return [
                     'image' => $imagePath,
                     'html' => file_exists($htmlPath) ? $htmlPath : null,
@@ -434,8 +442,24 @@ class MapService
             // Write the image
             error_log("MapService::renderMap writing image to: $imagePath");
             error_log("MapService::renderMap writing thumbnail to: $thumbPath");
-            $wmap->DrawMap($imagePath, $thumbPath);
+            // The SVG is collected during the same drawing pass as the PNG
+            $collector = new \WeatherMapSvg($wmap, [
+                'font_url' => static fn ($n) => '/map/' . $id . '/font/' . (int) $n,
+            ]);
+            $previous = \WeatherMapSvg::$active;
+            \WeatherMapSvg::$active = $collector;
+            try {
+                $wmap->DrawMap($imagePath, $thumbPath);
+            } finally {
+                \WeatherMapSvg::$active = $previous;
+            }
             error_log("MapService::renderMap image and thumbnail written successfully");
+            self::writeAtomic($svgPath, (string) $collector->toSvg());
+
+            if ($readData) {
+                $summary = self::summarize($wmap);
+                self::writeAtomic($statusPath, (string) json_encode($summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            }
             
             // Generate HTML imagemap
             if (method_exists($wmap, 'MakeHTML')) {
@@ -457,6 +481,306 @@ class MapService
             ];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage()];
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Viewer: SVG output, state summary, fonts, favourites
+
+    /** Outputs of a map: [svg, json summary] */
+    public function viewerPaths(array $map): array
+    {
+        $base = $this->outputPath . '/' . pathinfo($map['config_file'], PATHINFO_FILENAME);
+        return ['svg' => $base . '.svg', 'status' => $base . '.json'];
+    }
+
+    /**
+     * Whether a render made at $outputTime (null: none) can still be shown:
+     * it must be newer than the configuration and younger than $maxAge.
+     */
+    public static function isFresh(?int $outputTime, int $configTime, int $now, int $maxAge): bool
+    {
+        if ($outputTime === null) {
+            return false;
+        }
+        return $outputTime >= $configTime && ($maxAge <= 0 || $now - $outputTime < $maxAge);
+    }
+
+    /**
+     * The map with live data as SVG plus its summary, rendered again when
+     * the last one is older than the configuration or the refresh interval.
+     * One render at a time per map; the others wait and reuse it.
+     *
+     * @return array{svg: string, summary: array<string, mixed>}|null
+     */
+    public function liveRender(int $id): ?array
+    {
+        $map = $this->getMap($id);
+        if (!$map) {
+            return null;
+        }
+        $configPath = $this->configPath . '/' . $map['config_file'];
+        if (!is_file($configPath)) {
+            return null;
+        }
+
+        $paths = $this->viewerPaths($map);
+        $maxAge = (int) $this->config->get('MAP_REFRESH_INTERVAL', 300);
+        $fresh = function () use ($paths, $configPath, $maxAge): bool {
+            clearstatcache();
+            $svgTime = is_file($paths['svg']) ? (int) filemtime($paths['svg']) : null;
+            $jsonTime = is_file($paths['status']) ? (int) filemtime($paths['status']) : null;
+            $configTime = (int) filemtime($configPath);
+            return self::isFresh($svgTime, $configTime, time(), $maxAge)
+                && self::isFresh($jsonTime, $configTime, time(), $maxAge);
+        };
+
+        if (!$fresh()) {
+            $lock = @fopen($this->config->getCachePath() . '/render-' . $id . '.lock', 'c');
+            if ($lock) {
+                flock($lock, LOCK_EX);
+            }
+            try {
+                if (!$fresh()) {
+                    ob_start();
+                    try {
+                        $this->renderMap($id, true, true);
+                    } finally {
+                        ob_end_clean();
+                    }
+                }
+            } finally {
+                if ($lock) {
+                    flock($lock, LOCK_UN);
+                    fclose($lock);
+                }
+            }
+        }
+
+        if (!is_file($paths['svg'])) {
+            return null;
+        }
+
+        return [
+            'svg' => (string) file_get_contents($paths['svg']),
+            'summary' => $this->mapStatus($map) ?? [],
+        ];
+    }
+
+    /**
+     * What the last data render found: the most loaded link, and per item
+     * what the viewer shows on hover or opens on click.
+     */
+    public static function summarize(\WeatherMap $wmap): array
+    {
+        $max = null;
+        $items = [];
+
+        foreach ($wmap->links as $link) {
+            if (!isset($link->a, $link->b) || $link->name === 'DEFAULT') {
+                continue;
+            }
+            $in = (float) ($link->inpercent ?? 0);
+            $out = (float) ($link->outpercent ?? 0);
+            $dir = $out > $in ? OUT : IN;
+            $pct = max($in, $out);
+
+            if ($max === null || $pct > $max['pct']) {
+                $colour = $link->colours[$dir] ?? null;
+                $max = [
+                    'pct' => $pct,
+                    'link' => (string) $link->name,
+                    'colour' => self::colourHex($colour),
+                ];
+            }
+
+            $item = [
+                'kind' => 'link',
+                'name' => (string) $link->name,
+                'in' => is_numeric($link->bandwidth_in ?? null) ? (float) $link->bandwidth_in : null,
+                'out' => is_numeric($link->bandwidth_out ?? null) ? (float) $link->bandwidth_out : null,
+                'inpct' => round($in, 2),
+                'outpct' => round($out, 2),
+            ];
+            $ds = $link->hints['datasource'] ?? '';
+            if (is_string($ds) && $ds !== '') {
+                $item['ds'] = $ds;
+            }
+            $items['L' . $link->id] = $item + self::itemUrls($wmap, $link);
+        }
+
+        foreach ($wmap->nodes as $node) {
+            if (is_null($node->x) || $node->name === 'DEFAULT') {
+                continue;
+            }
+            $urls = self::itemUrls($wmap, $node);
+            if ($urls) {
+                $items['N' . $node->id] = ['kind' => 'node', 'name' => (string) $node->name] + $urls;
+            }
+        }
+
+        return [
+            'time' => time(),
+            'max' => $max === null ? null : round($max['pct'], 1),
+            'colour' => $max['colour'] ?? null,
+            'link' => $max['link'] ?? null,
+            'level' => self::loadLevel($max === null ? null : $max['pct']),
+            'items' => $items,
+        ];
+    }
+
+    /** ok / warn / crit / none, for a maximum link load in % */
+    public static function loadLevel(?float $pct): string
+    {
+        if ($pct === null) {
+            return 'none';
+        }
+        if ($pct >= 85) {
+            return 'crit';
+        }
+        return $pct >= 55 ? 'warn' : 'ok';
+    }
+
+    /** INFOURL (click) and first OVERLIBGRAPH (hover picture) of an item */
+    private static function itemUrls(\WeatherMap $wmap, object $item): array
+    {
+        $out = [];
+        $info = (string) ($item->infourl[IN] ?? '');
+        if ($info !== '' && ($url = self::safeUrl((string) $wmap->ProcessString($info, $item))) !== null) {
+            $out['url'] = $url;
+        }
+        $graphs = (array) ($item->overliburl[IN] ?? []);
+        if ($graphs && (string) reset($graphs) !== ''
+            && ($graph = self::safeUrl((string) $wmap->ProcessString((string) reset($graphs), $item))) !== null) {
+            $out['graph'] = $graph;
+        }
+        return $out;
+    }
+
+    /**
+     * A link from a map file the viewer may open: http(s) or relative only,
+     * so an imported map cannot run script with INFOURL javascript:...
+     */
+    public static function safeUrl(string $url): ?string
+    {
+        $url = trim($url);
+        if ($url === '' || preg_match('/[\x00-\x1f\x7f\\\\]/', $url)) {
+            return null;
+        }
+        if (preg_match('/^([a-z][a-z0-9+.-]*):/i', $url, $m)) {
+            return in_array(strtolower($m[1]), ['http', 'https'], true) ? $url : null;
+        }
+        return $url;
+    }
+
+    private static function colourHex(mixed $colour): ?string
+    {
+        if (is_object($colour) && isset($colour->r, $colour->g, $colour->b) && $colour->r >= 0) {
+            return sprintf('#%02x%02x%02x', (int) $colour->r, (int) $colour->g, (int) $colour->b);
+        }
+        return null;
+    }
+
+    /** The summary of the last data render of a map, null when there is none */
+    public function mapStatus(array $map): ?array
+    {
+        $file = $this->viewerPaths($map)['status'];
+        if (!is_file($file)) {
+            return null;
+        }
+        $data = json_decode((string) file_get_contents($file), true);
+        if (!is_array($data)) {
+            return null;
+        }
+        $data['time'] = (int) ($data['time'] ?? filemtime($file));
+        $configFile = $this->configPath . '/' . $map['config_file'];
+        $maxAge = (int) $this->config->get('MAP_REFRESH_INTERVAL', 300);
+        $data['stale'] = !self::isFresh((int) filemtime($file), is_file($configFile) ? (int) filemtime($configFile) : 0, time(), $maxAge);
+        return $data;
+    }
+
+    /** The TrueType file of font $n of a map, null when it has none */
+    public function fontFile(int $id, int $n): ?string
+    {
+        $map = $this->getMap($id);
+        if (!$map) {
+            return null;
+        }
+        $configPath = $this->configPath . '/' . $map['config_file'];
+        if (!is_file($configPath)) {
+            return null;
+        }
+
+        require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
+        $wmap = new \WeatherMap();
+        $wmap->context = 'viewer';
+        ob_start();
+        try {
+            $wmap->ReadConfig($configPath);
+        } finally {
+            ob_end_clean();
+        }
+
+        $font = $wmap->fonts[$n] ?? null;
+        if (!$font || $font->type !== 'truetype' || !is_readable($font->file)) {
+            return null;
+        }
+        return (string) $font->file;
+    }
+
+    /**
+     * Favourite maps of a user. They live in the settings table, one row
+     * per map (map_id, name "favourite:<user id>"), so deleting a map drops
+     * them with its other settings.
+     *
+     * @return list<int>
+     */
+    public function favouriteMapIds(int $userId): array
+    {
+        $rows = $this->db->query('SELECT map_id FROM settings WHERE name = ? AND map_id > 0', [self::favouriteKey($userId)]);
+        return array_values(array_map(static fn ($r) => (int) $r['map_id'], $rows));
+    }
+
+    public function setFavourite(int $userId, int $mapId, bool $favourite): void
+    {
+        $key = self::favouriteKey($userId);
+        $this->db->delete('settings', 'map_id = ? AND name = ?', [$mapId, $key]);
+        if ($favourite && $mapId > 0) {
+            $this->db->insert('settings', ['map_id' => $mapId, 'name' => $key, 'value' => '1']);
+        }
+    }
+
+    private static function favouriteKey(int $userId): string
+    {
+        return 'favourite:' . $userId;
+    }
+
+    /**
+     * Maps with the favourites first, the order of each part kept.
+     *
+     * @param list<array<string, mixed>> $maps
+     * @param list<int> $favourites
+     * @return list<array<string, mixed>>
+     */
+    public static function favouritesFirst(array $maps, array $favourites): array
+    {
+        $fav = array_flip($favourites);
+        $first = $rest = [];
+        foreach ($maps as $map) {
+            if (isset($fav[(int) $map['id']])) {
+                $first[] = $map;
+            } else {
+                $rest[] = $map;
+            }
+        }
+        return array_merge($first, $rest);
+    }
+
+    private static function writeAtomic(string $file, string $content): void
+    {
+        $tmp = $file . '.' . getmypid() . '.tmp';
+        if (file_put_contents($tmp, $content) !== false) {
+            rename($tmp, $file);
         }
     }
     

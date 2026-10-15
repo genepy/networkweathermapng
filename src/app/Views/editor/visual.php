@@ -660,7 +660,7 @@
                         <?php foreach ($imageList as $img): ?>
                         <div class="icon-item" data-icon="<?= htmlspecialchars($img) ?>">
                             <div class="icon-preview">
-                                <img src="/objects/<?= htmlspecialchars(basename($img)) ?>" alt="<?= htmlspecialchars(basename($img)) ?>">
+                                <img src="/<?= htmlspecialchars($img) ?>" alt="<?= htmlspecialchars(basename($img)) ?>">
                             </div>
                             <div class="icon-name"><?= htmlspecialchars(basename($img)) ?></div>
                         </div>

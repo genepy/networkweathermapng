@@ -1,3 +1,8 @@
+<?php
+    $favourites = isset($favourites) ? array_map('intval', (array) $favourites) : [];
+    $statuses = isset($statuses) ? (array) $statuses : [];
+?>
+<link rel="stylesheet" href="/assets/css/viewer.css">
 <div class="maps-page">
     <div class="page-header">
         <h1><?= e__('Network Weathermaps') ?></h1>
@@ -30,9 +35,39 @@
         <?php endif; ?>
     </div>
     <?php else: ?>
-    <div class="maps-grid">
-        <?php foreach ($maps as $map): ?>
-        <div class="map-card">
+    <div class="maps-toolbar">
+        <input type="search" id="mapsSearch" class="maps-search" placeholder="<?= e__('Search maps') ?>" aria-label="<?= e__('Search maps') ?>" autocomplete="off">
+        <span class="maps-count" id="mapsCount" aria-live="polite"></span>
+    </div>
+    <p class="maps-no-match" id="mapsNoMatch" hidden><?= e__('No map matches your search.') ?></p>
+    <div class="maps-grid" id="mapsGrid">
+        <?php foreach ($maps as $i => $map): ?>
+        <?php
+            $mid = (int) $map['id'];
+            $isFav = in_array($mid, $favourites, true);
+            $st = $statuses[$mid] ?? null;
+            $title = $map['title_cache'] ?: $map['name'];
+            $stTitle = __('No data yet');
+            $stText = '';
+            if ($st !== null && $st['max'] !== null) {
+                $stTitle = __('Max load :pct %', ['pct' => $st['max']]) . ($st['link'] ? ' (' . $st['link'] . ')' : '');
+                $stText = round((float) $st['max']) . ' %';
+            }
+            if ($st !== null && !empty($st['time'])) {
+                $stTitle .= ' — ' . __('Updated :time', ['time' => date('Y-m-d H:i', (int) $st['time'])]);
+            }
+        ?>
+        <div class="map-card" data-map-id="<?= $mid ?>" data-order="<?= (int) ($map['list_order'] ?? $i) ?>"
+             data-name="<?= htmlspecialchars(mb_strtolower($title . ' ' . $map['name'] . ' ' . ($map['group_name'] ?? ''))) ?>"
+             data-fav="<?= $isFav ? '1' : '0' ?>"
+             data-stale="<?= ($st === null || !empty($st['stale'])) ? '1' : '0' ?>">
+            <span class="map-state<?= ($st !== null && !empty($st['stale'])) ? ' map-state-stale' : '' ?>" title="<?= htmlspecialchars($stTitle) ?>" aria-label="<?= htmlspecialchars($stTitle) ?>">
+                <span class="map-state-dot"<?= ($st !== null && !empty($st['colour'])) ? ' style="background:' . htmlspecialchars((string) $st['colour']) . '"' : '' ?>></span>
+                <span class="map-state-text"><?= htmlspecialchars($stText) ?></span>
+            </span>
+            <button type="button" class="map-fav" aria-pressed="<?= $isFav ? 'true' : 'false' ?>"
+                    title="<?= $isFav ? e__('Remove from favourites') : e__('Add to favourites') ?>"
+                    aria-label="<?= htmlspecialchars(__('Favourite: :name', ['name' => $title])) ?>"><?= $isFav ? '★' : '☆' ?></button>
             <a href="/map/<?= $map['id'] ?>" class="map-link">
                 <div class="map-thumbnail">
                     <img src="/map/<?= $map['id'] ?>/thumb?fast=1" 
@@ -83,7 +118,11 @@
 </div>
 
 <script>
-window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['Error: :msg', 'Failed to move map', 'An error occurred while moving the map'])) ?>);
+window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['Error: :msg', 'Failed to move map', 'An error occurred while moving the map']) + \App\Core\I18n::section('viewer-js')) ?>);
+</script>
+<script src="/assets/js/maplist.js" defer></script>
+
+<script>
 function t(s) { return (window.WM_T && window.WM_T[s]) || s; }
 
 document.addEventListener('DOMContentLoaded', function() {

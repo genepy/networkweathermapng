@@ -73,8 +73,25 @@ class MapController extends BaseController
             });
         }
         
+        $favourites = $this->mapService->favouriteMapIds($this->currentUserId());
+        $maps = array_values($maps);
+        foreach ($maps as $k => $m) {
+            $maps[$k]['list_order'] = $k;
+        }
+        $maps = MapService::favouritesFirst($maps, $favourites);
+        $statuses = [];
+        foreach ($maps as $m) {
+            $status = $this->mapService->mapStatus($m);
+            if ($status !== null) {
+                unset($status['items']);
+                $statuses[(int) $m['id']] = $status;
+            }
+        }
+
         $this->render('maps/index', [
             'maps' => $maps,
+            'favourites' => $favourites,
+            'statuses' => $statuses,
             'groups' => $visibleGroups,
             'currentGroup' => $groupId,
             'title' => __('Network Weathermaps'),
@@ -174,9 +191,13 @@ class MapController extends BaseController
             $autoRefresh = 0;
         }
 
+        // The zoomable SVG is the default view; ?view=png keeps the picture
+        $viewKind = ($mode === 'preview' || (string) $this->getInput('view', '') === 'png') ? 'png' : 'svg';
+
         $this->render('maps/view', [
             'map' => $map,
             'mapHtml' => $mapHtml,
+            'viewKind' => $viewKind,
             'fullscreen' => $fullscreen,
             'fit' => $fit,
             'mode' => $mode,
@@ -184,6 +205,127 @@ class MapController extends BaseController
             'autoRefresh' => $autoRefresh,
             'title' => $map['title_cache'] ?: $map['name'],
         ], !$fullscreen);
+    }
+
+    /**
+     * GET: the map with live data as SVG, with what the viewer needs to know
+     * about its items (hover data, click URLs) and its state. The SVG is
+     * cached like the image and drawn again after the refresh interval.
+     */
+    public function svg(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->canView($mapId)) {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        $result = $this->mapService->liveRender($mapId);
+        if ($result === null) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $summary = $result['summary'];
+        header('Cache-Control: no-store');
+        $this->json([
+            'svg' => $result['svg'],
+            'items' => (object) ($summary['items'] ?? []),
+            'status' => self::publicStatus($summary),
+            'version' => $this->configVersion($mapId),
+        ]);
+    }
+
+    /** GET: the state of a map (most loaded link) for the map list */
+    public function status(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->canView($mapId)) {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        $result = $this->mapService->liveRender($mapId);
+        if ($result === null) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        header('Cache-Control: no-store');
+        $this->json(self::publicStatus($result['summary']));
+    }
+
+    /** GET: a TrueType font of the map, for the text of the SVG view */
+    public function font(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->canView($mapId)) {
+            http_response_code(403);
+            return;
+        }
+
+        $file = $this->mapService->fontFile($mapId, (int) ($params['n'] ?? 0));
+        if ($file === null) {
+            http_response_code(404);
+            return;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: font/ttf');
+        header('Content-Length: ' . filesize($file));
+        header('Cache-Control: private, max-age=86400');
+        readfile($file);
+    }
+
+    /** POST {favourite: bool}: star or unstar a map for the current user */
+    public function favourite(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->auth->check() || !$this->canView($mapId) || !$this->getMap($mapId)) {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        $body = $this->getJsonInput();
+        $on = (bool) ($body['favourite'] ?? $this->getInput('favourite', false));
+        $this->mapService->setFavourite($this->currentUserId(), $mapId, $on);
+        $this->json(['success' => true, 'favourite' => $on]);
+    }
+
+    private function canView(int $mapId): bool
+    {
+        return !$this->config->isAuthEnabled() || $this->auth->canViewMap($mapId);
+    }
+
+    private function currentUserId(): int
+    {
+        $user = $this->auth->user();
+        return (int) ($user['id'] ?? 0);
+    }
+
+    /** The summary without the per-item details */
+    private static function publicStatus(array $summary): array
+    {
+        return [
+            'max' => $summary['max'] ?? null,
+            'level' => $summary['level'] ?? 'none',
+            'colour' => $summary['colour'] ?? null,
+            'link' => $summary['link'] ?? null,
+            'time' => $summary['time'] ?? null,
+        ];
+    }
+
+    private function configVersion(int $mapId): string
+    {
+        $map = $this->getMap($mapId);
+        if (!$map) {
+            return '0';
+        }
+        $configFile = $this->config->getConfigsPath() . '/' . $map['config_file'];
+        clearstatcache(true, $configFile);
+        return file_exists($configFile) ? filemtime($configFile) . '-' . filesize($configFile) : '0';
     }
 
     /**

@@ -17,7 +17,10 @@
     function t(s, params) {
         var out = (window.WM_T && window.WM_T[s]) || s;
         if (params) {
-            Object.keys(params).forEach(function (k) { out = out.split(':' + k).join(String(params[k])); });
+            // longest first, so :n does not eat the start of :nodes
+            Object.keys(params).sort(function (a, b) { return b.length - a.length; }).forEach(function (k) {
+                out = out.split(':' + k).join(String(params[k]));
+            });
         }
         return out;
     }
@@ -51,7 +54,11 @@
         drag: null,
         nudge: null,
         spaceDown: false,
-        first: true
+        first: true,
+        mouse: null,              // last pointer position on the map, for paste
+        overlaps: new Set(),      // names of nodes whose boxes overlap another
+        textMode: false,
+        layers: loadLayers()
     };
 
     // ------------------------------------------------------------------
@@ -129,6 +136,7 @@
         state.history = d.history || { undo: 0, redo: 0 };
         state.nodes = new Map(d.model.nodes.map(function (n) { return [n.name, n]; }));
         state.links = new Map(d.model.links.map(function (l) { return [l.name, l]; }));
+        computeOverlaps();
 
         var w = d.model.map.width, h = d.model.map.height;
         [paper, gridLayer].forEach(function (r) { r.setAttribute('width', w); r.setAttribute('height', h); });
@@ -368,12 +376,16 @@
             });
         }
 
+        renderOverlaps(moved);
+
         state.selection.forEach(function (k) {
             var p = parseKey(k);
             if (p.kind === 'node') {
                 var n = state.nodes.get(p.name);
                 if (!n) { return; }
                 var dx = moved && moved[n.name] ? moved.dx : 0, dy = moved && moved[n.name] ? moved.dy : 0;
+                var scaled = drag && drag.type === 'scale' && drag.started && drag.pos[n.name];
+                if (scaled) { dx = scaled[0] - n.x; dy = scaled[1] - n.y; }
                 el('rect', {
                     'class': 'sel-box' + (n.group ? ' grouped' : ''),
                     x: n.box[0] - 3 + dx, y: n.box[1] - 3 + dy,
@@ -429,6 +441,11 @@
         if (drag && drag.type === 'resize' && drag.started) {
             el('rect', { 'class': 'lasso', x: 0, y: 0, width: drag.w, height: drag.h }, overlay);
         }
+
+        // Two nodes or more: a box with handles to scale their layout
+        if (nodes.length >= 2 && state.tool === 'select' && !moved) {
+            renderScaleBox(nodes);
+        }
     }
 
     function renderLinkHandles(link) {
@@ -480,6 +497,7 @@
         var nodes = selected('node').length, any = state.selection.size;
         $$('[data-needs]').forEach(function (e) {
             var need = e.dataset.needs, ok = true;
+            if (need === 'nodes1') { ok = nodes >= 1; }
             if (need === 'nodes2') { ok = nodes >= 2; }
             if (need === 'nodes3') { ok = nodes >= 3; }
             if (need === 'any') { ok = any > 0; }
@@ -488,6 +506,11 @@
         $('[data-cmd="tool-select"]').classList.toggle('active', state.tool === 'select');
         $('[data-cmd="tool-link"]').classList.toggle('active', state.tool === 'link');
         $('[data-cmd="snap"]').classList.toggle('active', state.snap);
+        $('[data-cmd="paste"]').disabled = !hasClip();
+        $('[data-cmd="text-mode"]').classList.toggle('active', state.textMode);
+        var spread = $('[data-cmd="spread"]');
+        spread.title = t('Move overlapping nodes apart (:n overlapping now)', { n: state.overlaps.size });
+        spread.classList.toggle('warn', state.overlaps.size > 0);
         stage.classList.toggle('tool-link', state.tool === 'link');
         stage.classList.toggle('snap', state.snap);
     }
@@ -591,6 +614,10 @@
     });
 
     function handleDown(evt, handle, p) {
+        if (handle === 'scale') {
+            startScale(evt, evt.target.dataset.dir, p);
+            return;
+        }
         var link = selected('link')[0];
         var idx = +evt.target.dataset.index;
 
@@ -669,9 +696,18 @@
                 d.w = Math.max(50, snap(state.model.map.width + p.x - d.start.x));
                 d.h = Math.max(50, snap(state.model.map.height + p.y - d.start.y));
                 break;
+
+            case 'scale':
+                scaleMove(d, p, evt.shiftKey);
+                break;
         }
         renderOverlay();
     });
+
+    stage.addEventListener('pointermove', function (evt) {
+        if (state.model) { state.mouse = toMap(evt); }
+    });
+    stage.addEventListener('pointerleave', function () { state.mouse = null; });
 
     function moveNodeGroups(moved) {
         $$('#map g[data-kind="node"]').forEach(function (g) {
@@ -757,6 +793,10 @@
                 if (d.started && (d.w !== state.model.map.width || d.h !== state.model.map.height)) {
                     askResize(d.w, d.h);
                 }
+                return;
+
+            case 'scale':
+                scaleEnd(d);
                 return;
         }
     }
@@ -863,10 +903,13 @@
         if (!nodes.length) {
             return;
         }
-        send([{ op: 'clone', nodes: nodes.map(function (n) { return n.name; }), dx: 20, dy: 20 }], function (r) {
-            var c = r.created || {};
-            return (c.nodes || []).map(function (n) { return key('node', n); }).concat((c.links || []).map(function (n) { return key('link', n); }));
-        });
+        send([{ op: 'clone', nodes: nodes.map(function (n) { return n.name; }), dx: 20, dy: 20 }], createdKeys);
+    }
+
+    /** The keys of what the server just created, to select it */
+    function createdKeys(r) {
+        var c = r.created || {};
+        return (c.nodes || []).map(function (n) { return key('node', n); }).concat((c.links || []).map(function (n) { return key('link', n); }));
     }
 
     function align(how) {
@@ -1318,6 +1361,8 @@
                 ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')],
                 [t('Ctrl+D / Delete'), t('duplicate / delete')],
                 ['Ctrl+G / Ctrl+Shift+G', t('group / ungroup')],
+                ['Ctrl+C / Ctrl+X / Ctrl+V', t('copy / cut / paste, also into another map')],
+                [t('Right-click, Shift+F10'), t('menu of actions')],
                 ['L / V', t('link tool / select tool')],
                 [t('Wheel, Space+drag'), t('zoom, move the view')],
                 ['F / 0', t('fit / actual size')]
@@ -1527,6 +1572,662 @@
     });
 
     // ------------------------------------------------------------------
+    // Copy, cut and paste (also into another map, through localStorage)
+
+    var CLIP_KEY = 'wm-editor-clipboard', CLIP_VERSION = 1;
+    var pasteCount = { time: null, n: 0 };
+
+    function hasClip() {
+        try { return !!localStorage.getItem(CLIP_KEY); } catch (e) { return false; }
+    }
+
+    function readClip() {
+        try {
+            var c = JSON.parse(localStorage.getItem(CLIP_KEY) || 'null');
+            return c && c.version === CLIP_VERSION && typeof c.text === 'string' ? c : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function copySelection(cut) {
+        var nodes = selected('node');
+        if (!nodes.length) {
+            toast(t('Select nodes to copy them (links between copied nodes come along).'));
+            return Promise.resolve();
+        }
+        var ok = false;
+        return run(function () {
+            return api('POST', '/editor/copy/' + cfg.mapId, { nodes: nodes.map(function (n) { return n.name; }) }).then(function (d) {
+                d.time = Date.now();
+                try {
+                    localStorage.setItem(CLIP_KEY, JSON.stringify(d));
+                } catch (e) {
+                    throw new Error(t('The browser refused to keep the copy (storage full or disabled).'));
+                }
+                ok = true;
+                toast(t(':nodes node(s) and :links link(s) copied', { nodes: d.nodes.length, links: d.links.length }));
+            });
+        }).then(function () {
+            updateToolbar();
+            if (cut && ok) {
+                deleteSelection();
+            }
+        });
+    }
+
+    /** Paste at a map point (centre of the pasted nodes), or offset a little */
+    function paste(at) {
+        var clip = readClip();
+        if (!clip) {
+            toast(t('Nothing to paste: copy nodes first (Ctrl+C).'));
+            return;
+        }
+        var op = { op: 'paste', text: clip.text };
+        if (at) {
+            op.at = [snap(at.x), snap(at.y)];
+        } else if (clip.mapId === cfg.mapId) {
+            // each paste of the same copy lands a little further
+            if (pasteCount.time !== clip.time) { pasteCount = { time: clip.time, n: 0 }; }
+            pasteCount.n++;
+            op.dx = op.dy = 20 * pasteCount.n;
+        } else {
+            op.at = [
+                Math.round(state.view.x + canvas.clientWidth / state.zoom / 2),
+                Math.round(state.view.y + canvas.clientHeight / state.zoom / 2)
+            ];
+        }
+        send([op], createdKeys);
+    }
+
+    window.addEventListener('storage', function (evt) {
+        if (evt.key === CLIP_KEY && state.model) { updateToolbar(); }
+    });
+
+    // ------------------------------------------------------------------
+    // Scale the layout of the selected nodes with handles
+
+    var SCALE_DIRS = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
+    function boxOf(nodes) {
+        return [
+            Math.min.apply(null, nodes.map(function (n) { return n.box[0]; })),
+            Math.min.apply(null, nodes.map(function (n) { return n.box[1]; })),
+            Math.max.apply(null, nodes.map(function (n) { return n.box[2]; })),
+            Math.max.apply(null, nodes.map(function (n) { return n.box[3]; }))
+        ];
+    }
+
+    function renderScaleBox(nodes) {
+        var d = state.drag && state.drag.type === 'scale' && state.drag.started ? state.drag : null;
+        var b = d ? d.preview : boxOf(nodes);
+        var pad = 6 / state.zoom, s = 8 / state.zoom;
+        var x1 = b[0] - pad, y1 = b[1] - pad, x2 = b[2] + pad, y2 = b[3] + pad;
+        el('rect', { 'class': 'scale-box', x: x1, y: y1, width: x2 - x1, height: y2 - y1 }, overlay);
+        if (d) {
+            renderScaleGhosts(d);
+        }
+        var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        var at = { nw: [x1, y1], n: [mx, y1], ne: [x2, y1], e: [x2, my], se: [x2, y2], s: [mx, y2], sw: [x1, y2], w: [x1, my] };
+        SCALE_DIRS.forEach(function (dir) {
+            el('rect', {
+                'class': 'scale-handle h-' + dir, x: at[dir][0] - s / 2, y: at[dir][1] - s / 2, width: s, height: s,
+                'data-handle': 'scale', 'data-dir': dir
+            }, overlay).appendChild(el('title', {})).textContent = t('Drag to spread or tighten the selected nodes (Shift keeps proportions)');
+        });
+    }
+
+    function startScale(evt, dir, p) {
+        var nodes = selected('node');
+        var b = boxOf(nodes);
+        var movable = nodes.filter(function (n) { return !n.locked; });
+        if (!movable.length) {
+            toast(t('These nodes are locked. Unlock them to move them.'));
+            return;
+        }
+        var inSel = {};
+        nodes.forEach(function (n) { inSel[n.name] = true; });
+        startDrag(evt, { type: 'scale', dir: dir, box: b, preview: b, start: p, nodes: movable, inSel: inSel, pos: {}, vias: {} });
+    }
+
+    function scaleMove(d, p, keep) {
+        var b = d.box, dir = d.dir;
+        var w = Math.max(1, b[2] - b[0]), hh = Math.max(1, b[3] - b[1]);
+        var cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+        var dx = p.x - d.start.x, dy = p.y - d.start.y;
+        var sx = 1, sy = 1, ax = cx, ay = cy;
+        var horiz = dir.indexOf('e') >= 0 || dir.indexOf('w') >= 0, vert = dir.indexOf('n') >= 0 || dir.indexOf('s') >= 0;
+
+        if (dir.indexOf('e') >= 0) { sx = (w + dx) / w; ax = b[0]; }
+        if (dir.indexOf('w') >= 0) { sx = (w - dx) / w; ax = b[2]; }
+        if (dir.indexOf('s') >= 0) { sy = (hh + dy) / hh; ay = b[1]; }
+        if (dir.indexOf('n') >= 0) { sy = (hh - dy) / hh; ay = b[3]; }
+        sx = Math.max(0.05, sx);
+        sy = Math.max(0.05, sy);
+
+        if (keep) {
+            var k = horiz && vert ? (Math.abs(sx - 1) > Math.abs(sy - 1) ? sx : sy) : (horiz ? sx : sy);
+            sx = sy = k;
+        }
+
+        function tx(x) { return ax + (x - ax) * sx; }
+        function ty(y) { return ay + (y - ay) * sy; }
+
+        d.pos = {};
+        d.nodes.forEach(function (n) {
+            d.pos[n.name] = [snap(tx(n.x)), snap(ty(n.y))];
+        });
+        d.vias = {};
+        state.links.forEach(function (l) {
+            if (l.via.length && d.inSel[l.a] && d.inSel[l.b]) {
+                d.vias[l.name] = l.via.map(function (v) { return [Math.round(tx(v[0])), Math.round(ty(v[1]))]; });
+            }
+        });
+        d.preview = [tx(b[0]), ty(b[1]), tx(b[2]), ty(b[3])];
+        if (d.preview[0] > d.preview[2]) { d.preview = [d.preview[2], d.preview[1], d.preview[0], d.preview[3]]; }
+        if (d.preview[1] > d.preview[3]) { d.preview = [d.preview[0], d.preview[3], d.preview[2], d.preview[1]]; }
+        previewPositions(d.pos);
+    }
+
+    /** Show nodes at new positions while dragging, before the server draws them */
+    function previewPositions(pos) {
+        $$('#map g[data-kind="node"]').forEach(function (g) {
+            var n = state.nodes.get(g.dataset.name), q = pos[g.dataset.name];
+            if (q && n) {
+                g.setAttribute('transform', 'translate(' + (q[0] - n.x) + ' ' + (q[1] - n.y) + ')');
+            } else {
+                g.removeAttribute('transform');
+            }
+        });
+        $$('#map g[data-kind="link"]').forEach(function (g) {
+            var l = state.links.get(g.dataset.name);
+            g.classList.toggle('dimmed', !!(l && (pos[l.a] || pos[l.b])));
+        });
+    }
+
+    function renderScaleGhosts(d) {
+        state.links.forEach(function (l) {
+            if (!d.pos[l.a] && !d.pos[l.b]) { return; }
+            var a = state.nodes.get(l.a), b = state.nodes.get(l.b);
+            if (d.pos[l.a]) { a = Object.assign({}, a, { x: d.pos[l.a][0], y: d.pos[l.a][1] }); }
+            if (d.pos[l.b]) { b = Object.assign({}, b, { x: d.pos[l.b][0], y: d.pos[l.b][1] }); }
+            var pts = [anchorPoint(a, l.a_offset)].concat(d.vias[l.name] || l.via, [anchorPoint(b, l.b_offset)]);
+            el('polyline', { 'class': 'ghost', points: pts.join(' ') }, overlay);
+        });
+    }
+
+    function scaleEnd(d) {
+        var changed = d.started && Object.keys(d.pos).some(function (name) {
+            var n = state.nodes.get(name);
+            return n && (d.pos[name][0] !== n.x || d.pos[name][1] !== n.y);
+        });
+        if (!changed) {
+            previewPositions({});
+            refresh();
+            return;
+        }
+        send([{ op: 'move', nodes: d.pos, vias: d.vias }]);
+    }
+
+    // ------------------------------------------------------------------
+    // Overlapping nodes, and spreading them apart
+
+    function boxesOverlap(a, b, gap) {
+        return a[0] < b[2] + gap && b[0] < a[2] + gap && a[1] < b[3] + gap && b[1] < a[3] + gap;
+    }
+
+    function computeOverlaps() {
+        var list = Array.from(state.nodes.values()), out = new Set();
+        for (var i = 0; i < list.length; i++) {
+            for (var j = i + 1; j < list.length; j++) {
+                if (boxesOverlap(list[i].box, list[j].box, 0)) {
+                    out.add(list[i].name);
+                    out.add(list[j].name);
+                }
+            }
+        }
+        state.overlaps = out;
+    }
+
+    function renderOverlaps(moved) {
+        if (!state.layers.nodelabels) {
+            // labels are hidden: keep a trace of where each node is
+            state.nodes.forEach(function (n) {
+                el('rect', { 'class': 'node-trace', x: n.box[0], y: n.box[1], width: n.box[2] - n.box[0], height: n.box[3] - n.box[1] }, overlay);
+            });
+        }
+        state.overlaps.forEach(function (name) {
+            var n = state.nodes.get(name);
+            if (!n || (moved && moved[name])) { return; }
+            el('rect', { 'class': 'overlap', x: n.box[0] - 1, y: n.box[1] - 1, width: n.box[2] - n.box[0] + 2, height: n.box[3] - n.box[1] + 2 }, overlay)
+                .appendChild(el('title', {})).textContent = t('Overlaps another node');
+        });
+    }
+
+    /**
+     * Push overlapping nodes apart until `gap` px separates them. The
+     * selected nodes move (all nodes when nothing is selected); the others
+     * and locked nodes stay. Each step moves along the shorter way out.
+     */
+    function spreadApart(gap) {
+        gap = gap == null ? 10 : gap;
+        var sel = selected('node');
+        var pool = new Set((sel.length ? sel : Array.from(state.nodes.values())).filter(function (n) { return !n.locked; }).map(function (n) { return n.name; }));
+        var items = Array.from(state.nodes.values()).map(function (n) {
+            return { n: n, b: n.box.slice(), dx: 0, dy: 0, movable: pool.has(n.name) };
+        });
+
+        // only nodes that overlap something now take part
+        var involved = new Set();
+        items.forEach(function (a, i) {
+            items.forEach(function (b, j) {
+                if (i < j && (a.movable || b.movable) && boxesOverlap(a.b, b.b, 0)) { involved.add(i); involved.add(j); }
+            });
+        });
+        if (!involved.size) {
+            toast(t('No overlapping nodes.'));
+            return;
+        }
+
+        for (var iter = 0; iter < 400; iter++) {
+            var pushed = false;
+            for (var i = 0; i < items.length; i++) {
+                for (var j = i + 1; j < items.length; j++) {
+                    var a = items[i], b = items[j];
+                    if (!a.movable && !b.movable) { continue; }
+                    if (!involved.has(i) && !involved.has(j)) { continue; }
+                    var ab = [a.b[0] + a.dx, a.b[1] + a.dy, a.b[2] + a.dx, a.b[3] + a.dy];
+                    var bb = [b.b[0] + b.dx, b.b[1] + b.dy, b.b[2] + b.dx, b.b[3] + b.dy];
+                    if (!boxesOverlap(ab, bb, gap - 0.01)) { continue; }
+
+                    var ox = Math.min(ab[2], bb[2]) - Math.max(ab[0], bb[0]) + gap;
+                    var oy = Math.min(ab[3], bb[3]) - Math.max(ab[1], bb[1]) + gap;
+                    var cax = (ab[0] + ab[2]) / 2, cbx = (bb[0] + bb[2]) / 2, cay = (ab[1] + ab[3]) / 2, cby = (bb[1] + bb[3]) / 2;
+                    var horizontal = ox <= oy;
+                    var sign = horizontal ? (cbx - cax || (j % 2 ? 1 : -1)) : (cby - cay || (j % 2 ? 1 : -1));
+                    sign = sign > 0 ? 1 : -1;
+                    var amount = Math.ceil(horizontal ? ox : oy);
+                    var shareA = a.movable ? (b.movable ? amount / 2 : amount) : 0;
+                    var shareB = amount - shareA;
+                    if (horizontal) { a.dx -= sign * shareA; b.dx += sign * shareB; } else { a.dy -= sign * shareA; b.dy += sign * shareB; }
+                    involved.add(i);
+                    involved.add(j);
+                    pushed = true;
+                }
+            }
+            if (!pushed) { break; }
+        }
+
+        var pos = {}, count = 0;
+        items.forEach(function (it) {
+            var dx = Math.round(it.dx), dy = Math.round(it.dy);
+            if (dx || dy) {
+                pos[it.n.name] = [it.n.x + dx, it.n.y + dy];
+                count++;
+            }
+        });
+        if (!count) {
+            toast(t('The overlapping nodes are locked or not selected.'));
+            return;
+        }
+        send([{ op: 'move', nodes: pos }]).then(function () { toast(t(':n node(s) moved apart. Ctrl+Z to undo.', { n: count })); });
+    }
+
+    // ------------------------------------------------------------------
+    // Layers hidden while editing (this browser only, never saved)
+
+    function loadLayers() {
+        var layers = { background: true, links: true, linklabels: true, nodelabels: true };
+        try {
+            var saved = JSON.parse(localStorage.getItem('wm-editor-layers') || '{}');
+            Object.keys(layers).forEach(function (k) { if (saved[k] === false) { layers[k] = false; } });
+        } catch (e) { /* defaults */ }
+        return layers;
+    }
+
+    function applyLayers() {
+        Object.keys(state.layers).forEach(function (k) {
+            stage.classList.toggle('hide-' + k, !state.layers[k]);
+            var box = $('#layers-panel input[name="' + k + '"]');
+            if (box) { box.checked = state.layers[k]; }
+        });
+        var hidden = Object.keys(state.layers).filter(function (k) { return !state.layers[k]; }).length;
+        $('[data-cmd="layers"]').classList.toggle('active', hidden > 0);
+    }
+
+    function setLayer(name, on) {
+        if (!(name in state.layers)) { return; }
+        state.layers[name] = !!on;
+        try { localStorage.setItem('wm-editor-layers', JSON.stringify(state.layers)); } catch (e) { /* this session only */ }
+        applyLayers();
+        renderOverlay();
+    }
+
+    function toggleLayersPanel(force) {
+        var panel = $('#layers-panel'), btn = $('[data-cmd="layers"]');
+        var open = typeof force === 'boolean' ? force : panel.hidden;
+        panel.hidden = !open;
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) {
+            var first = panel.querySelector('input');
+            if (first) { first.focus(); }
+        }
+    }
+
+    $('#layers-panel').addEventListener('change', function (evt) {
+        if (evt.target.name) { setLayer(evt.target.name, evt.target.checked); }
+    });
+    $('#layers-panel').addEventListener('keydown', function (evt) {
+        if (evt.key === 'Escape') {
+            toggleLayersPanel(false);
+            $('[data-cmd="layers"]').focus();
+            evt.preventDefault();
+        }
+    });
+    document.addEventListener('pointerdown', function (evt) {
+        if (!$('#layers-panel').hidden && !evt.target.closest('#layers-panel, [data-cmd="layers"]')) {
+            toggleLayersPanel(false);
+        }
+    }, true);
+    applyLayers();
+
+    // ------------------------------------------------------------------
+    // Context menu
+
+    var menu = $('#ctx-menu');
+    var menuReturn = null;
+
+    function menuOpen() { return !menu.hidden; }
+
+    function menuEntries(at) {
+        var nodes = selected('node'), links = selected('link'), any = nodes.length + links.length;
+        var all = nodes.concat(links);
+        var locked = all.length && all.every(function (i) { return i.locked; });
+        var grouped = all.some(function (i) { return i.group; });
+        var entries = [
+            { label: t('Cut'), kbd: 'Ctrl+X', run: function () { copySelection(true); }, off: !nodes.length },
+            { label: t('Copy'), kbd: 'Ctrl+C', run: function () { copySelection(false); }, off: !nodes.length },
+            { label: t('Paste'), kbd: 'Ctrl+V', run: function () { paste(at); }, off: !hasClip() },
+            { label: t('Duplicate'), kbd: 'Ctrl+D', run: duplicateSelection, off: !nodes.length },
+            { label: t('Delete'), kbd: t('Del'), run: deleteSelection, off: !any, danger: true }
+        ];
+        if (any) {
+            entries.push('-',
+                { label: t('Group'), kbd: 'Ctrl+G', run: group, off: any < 2 },
+                { label: t('Ungroup'), kbd: 'Ctrl+Shift+G', run: ungroup, off: !grouped },
+                { label: locked ? t('Unlock') : t('Lock'), kbd: 'Ctrl+L', run: toggleLock },
+                { label: t('Bring to front'), kbd: 'Ctrl+]', run: function () { zorder('front'); } },
+                { label: t('Send to back'), kbd: 'Ctrl+[', run: function () { zorder('back'); } });
+        }
+        if (nodes.length >= 2) {
+            entries.push('-', {
+                row: t('Align'), items: [
+                    ['⎸←', t('Align left edges'), 'left'], ['↕', t('Align centres vertically'), 'hcenter'], ['→⎹', t('Align right edges'), 'right'],
+                    ['⤒', t('Align top edges'), 'top'], ['↔', t('Align centres horizontally'), 'vcenter'], ['⤓', t('Align bottom edges'), 'bottom']
+                ].concat(nodes.length >= 3 ? [['⋯', t('Space evenly, left to right'), 'distribute-h'], ['⋮', t('Space evenly, top to bottom'), 'distribute-v']] : [])
+            });
+        }
+        entries.push('-',
+            { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
+            { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
+        return entries;
+    }
+
+    function openMenu(clientX, clientY, at) {
+        menuReturn = document.activeElement;
+        var items = menuEntries(at).map(function (e) {
+            if (e === '-') {
+                return h('div', { 'class': 'ctx-sep', role: 'separator' });
+            }
+            if (e.row) {
+                return h('div', { 'class': 'ctx-row', role: 'group', 'aria-label': e.row }, [h('span', { text: e.row })].concat(e.items.map(function (it) {
+                    return h('button', {
+                        type: 'button', role: 'menuitem', tabindex: '-1', title: it[1], 'aria-label': it[1], text: it[0],
+                        onclick: function () { closeMenu(); align(it[2]); }
+                    });
+                })));
+            }
+            return h('button', {
+                type: 'button', role: 'menuitem', tabindex: '-1', disabled: !!e.off, 'class': e.danger ? 'danger' : '',
+                onclick: function () { closeMenu(); e.run(); }
+            }, [h('span', { text: e.label }), e.kbd ? h('kbd', { text: e.kbd }) : null]);
+        });
+        menu.replaceChildren.apply(menu, items);
+        menu.hidden = false;
+        var r = menu.getBoundingClientRect();
+        menu.style.left = Math.max(4, Math.min(clientX, window.innerWidth - r.width - 4)) + 'px';
+        menu.style.top = Math.max(4, Math.min(clientY, window.innerHeight - r.height - 4)) + 'px';
+        var first = menuItems()[0];
+        if (first) { first.focus(); } else { menu.focus(); }
+    }
+
+    function closeMenu() {
+        if (menu.hidden) { return; }
+        menu.hidden = true;
+        menu.replaceChildren();
+        if (menuReturn && menuReturn.focus && document.contains(menuReturn)) { menuReturn.focus(); }
+        menuReturn = null;
+    }
+
+    function menuItems() {
+        return $$('[role="menuitem"]:not([disabled])', menu);
+    }
+
+    function openMenuForSelection() {
+        var nodes = selected('node'), links = selected('link'), x, y;
+        if (nodes.length) {
+            var b = boxOf(nodes);
+            x = (b[0] + b[2]) / 2; y = (b[1] + b[3]) / 2;
+        } else if (links.length && midpoint(links[0])) {
+            x = midpoint(links[0])[0]; y = midpoint(links[0])[1];
+        } else {
+            x = state.view.x + canvas.clientWidth / state.zoom / 2;
+            y = state.view.y + canvas.clientHeight / state.zoom / 2;
+        }
+        var pt = stage.createSVGPoint();
+        pt.x = x; pt.y = y;
+        var c = pt.matrixTransform(stage.getScreenCTM());
+        openMenu(c.x, c.y, { x: x, y: y });
+    }
+
+    stage.addEventListener('contextmenu', function (evt) {
+        evt.preventDefault();
+        if (!state.model || state.textMode) { return; }
+        var item = itemAt(evt);
+        if (item) {
+            var k = key(item.kind, item.name);
+            if (!state.selection.has(k)) {
+                state.selection = new Set(withGroups([k], evt.altKey));
+                refresh();
+            }
+        } else if (!evt.target.dataset || !evt.target.dataset.handle) {
+            if (state.selection.size) {
+                state.selection.clear();
+                refresh();
+            }
+        }
+        openMenu(evt.clientX, evt.clientY, toMap(evt));
+    });
+
+    menu.addEventListener('keydown', function (evt) {
+        var list = menuItems(), i = list.indexOf(document.activeElement);
+        switch (evt.key) {
+            case 'Escape': case 'Tab': closeMenu(); break;
+            case 'ArrowDown': case 'ArrowRight': (list[(i + 1) % list.length] || list[0]).focus(); break;
+            case 'ArrowUp': case 'ArrowLeft': (list[(i - 1 + list.length) % list.length] || list[0]).focus(); break;
+            case 'Home': list[0].focus(); break;
+            case 'End': list[list.length - 1].focus(); break;
+            default: return;
+        }
+        evt.preventDefault();
+        evt.stopPropagation();
+    });
+    document.addEventListener('pointerdown', function (evt) {
+        if (menuOpen() && !menu.contains(evt.target)) { closeMenu(); }
+    }, true);
+    window.addEventListener('blur', closeMenu);
+    window.addEventListener('resize', closeMenu);
+    stage.addEventListener('wheel', closeMenu, { passive: true });
+
+    // ------------------------------------------------------------------
+    // Text mode: the .conf itself, checked by the engine as it is typed
+
+    var text = {
+        panel: $('#text-mode'), area: $('#text-area'), gutter: $('#text-gutter'), list: $('#text-problems'),
+        status: $('#text-status'), apply: $('#text-apply'),
+        original: '', version: '', timer: null, seq: 0, problems: { errors: [], warnings: [] }, lines: 0
+    };
+
+    function openText() {
+        if (state.textMode) { return; }
+        closeMenu();
+        run(function () {
+            return api('GET', '/editor/source/' + cfg.mapId).then(function (d) {
+                text.original = d.text;
+                text.version = d.version;
+                text.area.value = d.text;
+                state.textMode = true;
+                $('#app').classList.add('text-mode');
+                text.panel.hidden = false;
+                text.problems = { errors: [], warnings: [] };
+                renderGutter(true);
+                updateToolbar();
+                text.area.focus();
+                text.area.setSelectionRange(0, 0);
+                text.area.scrollTop = 0;
+                text.area.scrollLeft = 0;
+                validateText();
+            });
+        });
+    }
+
+    function closeText(force) {
+        if (!state.textMode) { return; }
+        if (!force && text.area.value !== text.original && !window.confirm(t('Discard the changes made to the text?'))) {
+            return;
+        }
+        clearTimeout(text.timer);
+        state.textMode = false;
+        $('#app').classList.remove('text-mode');
+        text.panel.hidden = true;
+        updateToolbar();
+        updateView();
+    }
+
+    function applyText() {
+        if (text.area.value === text.original) {
+            closeText(true);
+            return;
+        }
+        var ok = false;
+        run(function () {
+            return api('POST', '/editor/source/' + cfg.mapId, { text: text.area.value, version: text.version }).then(function (d) {
+                ok = true;
+                closeText(true);
+                applyRender(d);
+                toast(t('Text saved. Ctrl+Z to undo.'));
+            });
+        }).then(function () {
+            if (!ok && state.textMode) { text.area.focus(); }
+        });
+    }
+
+    function validateText() {
+        clearTimeout(text.timer);
+        var seq = ++text.seq;
+        text.status.textContent = t('Checking…');
+        text.timer = setTimeout(function () {
+            api('POST', '/editor/validate/' + cfg.mapId, { text: text.area.value }).then(function (d) {
+                if (seq !== text.seq || !state.textMode) { return; }
+                text.problems = { errors: d.errors || [], warnings: d.warnings || [] };
+                renderProblems(d);
+            }).catch(function (e) {
+                if (seq === text.seq) { text.status.textContent = e.message; }
+            });
+        }, 500);
+    }
+
+    function renderProblems(d) {
+        var p = text.problems;
+        var all = p.errors.map(function (e) { return { kind: 'error', line: e.line, message: e.message }; })
+            .concat(p.warnings.map(function (w) { return { kind: 'warning', line: w.line, message: w.message }; }));
+        text.list.replaceChildren.apply(text.list, all.map(function (pb) {
+            return h('li', { 'class': pb.kind }, [h('button', {
+                type: 'button', disabled: pb.line == null,
+                onclick: function () { goToLine(pb.line); }
+            }, [h('span', { 'class': 'pb-line', text: pb.line == null ? '—' : t('Line :n', { n: pb.line }) }), ' ' + pb.message])]);
+        }));
+        if (p.errors.length) {
+            text.status.textContent = t(':n error(s): the text cannot be saved as it is.', { n: p.errors.length });
+        } else if (p.warnings.length) {
+            text.status.textContent = t(':n warning(s). :nodes nodes, :links links.', { n: p.warnings.length, nodes: d.nodes, links: d.links });
+        } else {
+            text.status.textContent = t('No problem found. :nodes nodes, :links links.', { nodes: d.nodes, links: d.links });
+        }
+        text.status.className = p.errors.length ? 'error' : (p.warnings.length ? 'warning' : 'ok');
+        text.apply.disabled = p.errors.length > 0;
+        renderGutter(true);
+    }
+
+    /** Line numbers, with the lines that have a problem marked */
+    function renderGutter(force) {
+        var n = text.area.value.split('\n').length;
+        if (!force && n === text.lines) { return; }
+        text.lines = n;
+        var marks = {};
+        text.problems.warnings.forEach(function (w) { if (w.line) { marks[w.line] = 'warning'; } });
+        text.problems.errors.forEach(function (e) { if (e.line) { marks[e.line] = 'error'; } });
+        var frag = document.createDocumentFragment();
+        for (var i = 1; i <= n; i++) {
+            var d = document.createElement('div');
+            d.textContent = i;
+            if (marks[i]) { d.className = marks[i]; }
+            frag.appendChild(d);
+        }
+        text.gutter.replaceChildren(frag);
+        text.gutter.scrollTop = text.area.scrollTop;
+    }
+
+    function goToLine(line) {
+        var lines = text.area.value.split('\n');
+        var start = 0;
+        for (var i = 0; i < line - 1 && i < lines.length; i++) { start += lines[i].length + 1; }
+        var end = start + (lines[line - 1] || '').length;
+        text.area.focus();
+        text.area.setSelectionRange(start, end);
+        var lh = parseFloat(getComputedStyle(text.area).lineHeight) || 18;
+        text.area.scrollTop = Math.max(0, (line - 1) * lh - text.area.clientHeight / 3);
+    }
+
+    text.area.addEventListener('input', function () {
+        renderGutter(false);
+        validateText();
+    });
+    text.area.addEventListener('scroll', function () { text.gutter.scrollTop = text.area.scrollTop; });
+    text.area.addEventListener('keydown', function (evt) {
+        if (evt.key === 'Tab' && !evt.shiftKey && !evt.ctrlKey && !evt.metaKey && !evt.altKey) {
+            // a tab character, as in the .conf files; Esc then Tab leaves the text
+            text.area.setRangeText('\t', text.area.selectionStart, text.area.selectionEnd, 'end');
+            text.area.dispatchEvent(new Event('input'));
+            evt.preventDefault();
+        } else if (evt.key === 'Escape') {
+            text.apply.focus();
+            evt.preventDefault();
+        } else if ((evt.ctrlKey || evt.metaKey) && (evt.key === 'Enter' || evt.key === 's' || evt.key === 'S')) {
+            if (!text.apply.disabled) { applyText(); }
+            evt.preventDefault();
+        }
+    });
+    text.apply.addEventListener('click', applyText);
+    $('#text-cancel').addEventListener('click', function () { closeText(false); });
+    window.addEventListener('beforeunload', function (evt) {
+        if (state.textMode && text.area.value !== text.original) {
+            evt.preventDefault();
+            evt.returnValue = '';
+        }
+    });
+
+    // ------------------------------------------------------------------
     // Toolbar and keyboard
 
     var commands = {
@@ -1550,6 +2251,12 @@
         'autoroute': autoRoute,
         'untangle': untangle,
         'find': openFind,
+        'copy': function () { copySelection(false); },
+        'cut': function () { copySelection(true); },
+        'paste': function () { paste(null); },
+        'spread': function () { spreadApart(10); },
+        'layers': toggleLayersPanel,
+        'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },
         'zoom-in': function () { zoomAt(1.25); },
         'zoom-out': function () { zoomAt(0.8); },
@@ -1559,6 +2266,9 @@
 
     $('#toolbar').addEventListener('click', function (evt) {
         var b = evt.target.closest('button[data-cmd]');
+        if (b && state.textMode && b.dataset.cmd !== 'text-mode') {
+            return;
+        }
         if (b && commands[b.dataset.cmd]) {
             commands[b.dataset.cmd]();
         }
@@ -1582,10 +2292,18 @@
 
     document.addEventListener('keydown', function (evt) {
         var tgt = evt.target;
+        if (state.textMode || menuOpen() || (tgt.closest && tgt.closest('#layers-panel'))) {
+            return;
+        }
         if (tgt.tagName === 'INPUT' || tgt.tagName === 'SELECT' || tgt.tagName === 'TEXTAREA' || $('dialog[open]')) {
             return;
         }
         var ctrl = evt.ctrlKey || evt.metaKey, k = evt.key;
+
+        if (k === 'ContextMenu' || (evt.shiftKey && k === 'F10')) { openMenuForSelection(); evt.preventDefault(); return; }
+        if (ctrl && (k === 'c' || k === 'C')) { copySelection(false); evt.preventDefault(); return; }
+        if (ctrl && (k === 'x' || k === 'X')) { copySelection(true); evt.preventDefault(); return; }
+        if (ctrl && (k === 'v' || k === 'V')) { paste(state.mouse); evt.preventDefault(); return; }
 
         if (k === ' ') { state.spaceDown = true; evt.preventDefault(); return; }
         if (ctrl && (k === 'z' || k === 'Z')) { historyStep(evt.shiftKey ? 'redo' : 'undo'); evt.preventDefault(); return; }
@@ -1628,7 +2346,7 @@
     // Other people (or the classic editor) may change the map: reload when
     // the file changes and nothing is being dragged.
     setInterval(function () {
-        if (state.drag || state.nudge || document.hidden) { return; }
+        if (state.drag || state.nudge || state.textMode || document.hidden) { return; }
         fetch('/map/' + cfg.mapId + '/version').then(function (r) { return r.ok ? r.text() : null; }).then(function (v) {
             if (v === null) { return; }
             if (lastVersion !== null && v !== lastVersion) { run(load); }
@@ -1639,5 +2357,9 @@
     run(load);
 
     // for tests and debugging
-    window.WMEditor = { state: state, send: send, load: load, autoRoute: autoRoute, untangle: untangle, align: align };
+    window.WMEditor = {
+        state: state, send: send, load: load, autoRoute: autoRoute, untangle: untangle, align: align,
+        spreadApart: spreadApart, copy: copySelection, paste: paste, openMenu: openMenu, setLayer: setLayer,
+        openText: openText, closeText: closeText
+    };
 })();

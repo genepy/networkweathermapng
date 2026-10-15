@@ -117,4 +117,57 @@ return [
     'Interface' => 'Interface',
     'No interface with traffic data' => 'Aucune interface avec des données de trafic',
     'Source' => 'Source',
+
+    // Copy, cut, paste
+    'Select nodes to copy them (links between copied nodes come along).' => 'Sélectionnez des nœuds pour les copier (les liens entre les nœuds copiés suivent).',
+    'The browser refused to keep the copy (storage full or disabled).' => 'Le navigateur a refusé de garder la copie (stockage plein ou désactivé).',
+    ':nodes node(s) and :links link(s) copied' => ':nodes nœud(s) et :links lien(s) copié(s)',
+    'Nothing to paste: copy nodes first (Ctrl+C).' => 'Rien à coller : copiez d’abord des nœuds (Ctrl+C).',
+    'copy / cut / paste, also into another map' => 'copier / couper / coller, y compris dans une autre carte',
+    'Right-click, Shift+F10' => 'Clic droit, Maj+F10',
+    'menu of actions' => 'menu des actions',
+
+    // Scaling the selection
+    'Drag to spread or tighten the selected nodes (Shift keeps proportions)' => 'Faire glisser pour écarter ou resserrer les nœuds sélectionnés (Maj garde les proportions)',
+    'These nodes are locked. Unlock them to move them.' => 'Ces nœuds sont verrouillés. Déverrouillez-les pour les déplacer.',
+
+    // Overlaps
+    'Move overlapping nodes apart (:n overlapping now)' => 'Écarter les nœuds qui se chevauchent (:n en chevauchement actuellement)',
+    'Overlaps another node' => 'Chevauchement avec un autre nœud',
+    'No overlapping nodes.' => 'Aucun chevauchement de nœuds.',
+    'The overlapping nodes are locked or not selected.' => 'Les nœuds en chevauchement sont verrouillés ou non sélectionnés.',
+    ':n node(s) moved apart. Ctrl+Z to undo.' => ':n nœud(s) écarté(s). Ctrl+Z pour annuler.',
+
+    // Context menu
+    'Cut' => 'Couper',
+    'Copy' => 'Copier',
+    'Paste' => 'Coller',
+    'Del' => 'Suppr',
+    'Group' => 'Grouper',
+    'Ungroup' => 'Dégrouper',
+    'Lock' => 'Verrouiller',
+    'Unlock' => 'Déverrouiller',
+    'Bring to front' => 'Mettre au premier plan',
+    'Send to back' => 'Mettre à l’arrière-plan',
+    'Align' => 'Aligner',
+    'Align left edges' => 'Aligner les bords gauches',
+    'Align centres vertically' => 'Aligner les centres verticalement',
+    'Align right edges' => 'Aligner les bords droits',
+    'Align top edges' => 'Aligner les bords supérieurs',
+    'Align centres horizontally' => 'Aligner les centres horizontalement',
+    'Align bottom edges' => 'Aligner les bords inférieurs',
+    'Space evenly, left to right' => 'Répartir régulièrement, de gauche à droite',
+    'Space evenly, top to bottom' => 'Répartir régulièrement, de haut en bas',
+    'Spread apart the selection' => 'Écarter la sélection',
+    'Spread apart overlapping nodes' => 'Écarter les nœuds qui se chevauchent',
+    'Select all' => 'Tout sélectionner',
+
+    // Text mode
+    'Discard the changes made to the text?' => 'Abandonner les modifications apportées au texte ?',
+    'Text saved. Ctrl+Z to undo.' => 'Texte enregistré. Ctrl+Z pour annuler.',
+    'Checking…' => 'Vérification…',
+    'Line :n' => 'Ligne :n',
+    ':n error(s): the text cannot be saved as it is.' => ':n erreur(s) : le texte ne peut pas être enregistré tel quel.',
+    ':n warning(s). :nodes nodes, :links links.' => ':n avertissement(s). :nodes nœuds, :links liens.',
+    'No problem found. :nodes nodes, :links links.' => 'Aucun problème détecté. :nodes nœuds, :links liens.',
 ];
