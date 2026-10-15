@@ -108,6 +108,33 @@ final class SvgRenderTest extends TestCase
         $this->assertLessThan($centre($default, 'out')[0] - 20, $centre($moved, 'out')[0]);
     }
 
+    public function testVectorIcons(): void
+    {
+        $conf = "WIDTH 300\nHEIGHT 200\n"
+            . "NODE a\n\tICON objects/net/router.png\n\tPOSITION 50 50\n"
+            . "NODE b\n\tICON objects/net/switch-l2.svg\n\tPOSITION 150 50\n"
+            . "NODE c\n\tICON objects/Router.png\n\tPOSITION 250 50\n";
+        $file = TESTS_OUTPUT . '/vector-icons.conf';
+        file_put_contents($file, $conf);
+
+        $cwd = getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public');
+        try {
+            $map = $this->load($file);
+            $svg = \WeatherMapSvg::render($map);
+            $png = TESTS_OUTPUT . '/vector-icons.png';
+            $map = $this->load($file);
+            $map->DrawMap($png);
+        } finally {
+            chdir($cwd);
+        }
+
+        preg_match_all('/class="wm-icon"[^>]*href="data:image\/([a-z+]+);/', $svg, $m);
+        $this->assertSame(['svg+xml', 'svg+xml', 'png'], $m[1], 'SVG twins are used, other icons stay bitmaps');
+        $this->assertFileExists($png);
+        $this->assertSame(48, (int) $map->nodes['b']->width, 'the .svg icon is drawn from its PNG twin');
+    }
+
     private function load(string $file): \WeatherMap
     {
         $map = new \WeatherMap();

@@ -1,13 +1,38 @@
 <?php
     $isFullscreen = !empty($fullscreen);
+    $viewKind = isset($viewKind) ? (string) $viewKind : 'png';
+    $isSvg = $viewKind === 'svg';
+    $mapId = (int) $map['id'];
+    $svgFsUrl = '/map/' . $mapId . '?fullscreen=1';
+    $pngUrl = '/map/' . $mapId . '?view=png';
+    $dataRefresh = !empty($autoRefresh) ? (int) $autoRefresh : (int) $config->get('MAP_REFRESH_INTERVAL', 300);
     $isFit = !empty($fit);
     $mode = isset($mode) ? (string) $mode : '';
     $fsFitUrl = '/map/' . (int)$map['id'] . '?fullscreen=1&fit=1&autorefresh=120';
     $fsOrigUrl = '/map/' . (int)$map['id'] . '?fullscreen=1&fit=0&autorefresh=120';
     $normalUrl = '/map/' . (int)$map['id'];
     $previewUrl = '/map/' . (int)$map['id'] . '?mode=preview&hours=4&fullscreen=1&fit=0';
-    $rootClasses = 'map-view-page' . ($isFullscreen ? ' fullscreen' : '') . ($isFit ? ' fit' : '') . ($mode === 'preview' ? ' preview' : '');
+    $rootClasses = 'map-view-page' . ($isFullscreen ? ' fullscreen' : '') . ($isFit ? ' fit' : '') . ($mode === 'preview' ? ' preview' : '') . ($isSvg ? ' svg-view' : '');
+    $mapTitle = $map['title_cache'] ?: $map['name'];
 ?>
+<?php if ($isFullscreen): ?>
+<?php $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''; ?>
+<!DOCTYPE html>
+<html lang="<?= \App\Core\I18n::locale() ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title><?= htmlspecialchars($mapTitle) ?> - NetworkWeathermapNG</title>
+    <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/css/weathermap.css">
+    <link rel="stylesheet" href="/assets/css/viewer.css">
+    <script src="/assets/js/weathermap.js" defer></script>
+</head>
+<body class="wmv-noc">
+<?php else: ?>
+<link rel="stylesheet" href="/assets/css/viewer.css">
+<?php endif; ?>
 
 <div class="<?= $rootClasses ?>">
     <style>
@@ -22,7 +47,7 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background: #111;
+            background: var(--map-bg, #111);
         }
         .map-view-page.fullscreen .map-container {
             width: 100vw;
@@ -91,19 +116,57 @@
     <?php if (!$isFullscreen): ?>
         <div class="page-header">
             <div class="breadcrumb">
-                <a href="/">Maps</a> &raquo; <?= htmlspecialchars($map['title_cache'] ?: $map['name']) ?>
+                <a href="/"><?= e__('Maps') ?></a> &raquo; <?= htmlspecialchars($map['title_cache'] ?: $map['name']) ?>
             </div>
             <div class="page-actions">
-                <a href="<?= $fsFitUrl ?>" class="btn btn-secondary">Fullscreen (Fit)</a>
-                <a href="<?= $fsOrigUrl ?>" class="btn btn-secondary">Fullscreen (Original)</a>
-                <a href="<?= $previewUrl ?>" class="btn btn-success">Preview</a>
+                <?php if ($isSvg): ?>
+                <a href="<?= $svgFsUrl ?>" class="btn btn-secondary" id="wmv-fullscreen-link"><?= e__('Fullscreen') ?></a>
+                <a href="<?= $pngUrl ?>" class="btn btn-secondary" title="<?= e__('Show the map as a PNG picture') ?>"><?= e__('PNG') ?></a>
+                <?php else: ?>
+                <a href="<?= $normalUrl ?>" class="btn btn-secondary" title="<?= e__('Zoomable view of the map') ?>"><?= e__('Zoomable view') ?></a>
+                <a href="<?= $fsFitUrl ?>&amp;view=png" class="btn btn-secondary"><?= e__('Fullscreen (Fit)') ?></a>
+                <a href="<?= $fsOrigUrl ?>&amp;view=png" class="btn btn-secondary"><?= e__('Fullscreen (Original)') ?></a>
+                <?php endif; ?>
+                <a href="<?= $previewUrl ?>" class="btn btn-success"><?= e__('Preview') ?></a>
                 <?php if ($auth->isAdmin()): ?>
-                <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn btn-primary">Edit Map</a>
+                <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn btn-primary"><?= e__('Edit Map') ?></a>
                 <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
     
+    <?php if ($isSvg): ?>
+    <div class="wmv<?= $isFullscreen ? ' wmv-fullscreen' : '' ?>" id="wmv"
+         data-map-id="<?= $mapId ?>"
+         data-refresh="<?= max(30, $dataRefresh) ?>"
+         data-fullscreen="<?= $isFullscreen ? '1' : '0' ?>"
+         data-normal-url="<?= htmlspecialchars($normalUrl) ?>"
+         data-png-url="/map/<?= $mapId ?>/image">
+        <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
+            <div class="wmv-stage"></div>
+            <div class="wmv-message" role="status"><?= e__('Loading the map…') ?></div>
+        </div>
+        <div class="wmv-toolbar" role="toolbar" aria-label="<?= e__('Map view') ?>">
+            <form class="wmv-find" role="search" autocomplete="off">
+                <input type="search" class="wmv-find-input" list="wmv-nodes" placeholder="<?= e__('Find a node') ?>" aria-label="<?= e__('Find a node') ?>">
+                <datalist id="wmv-nodes"></datalist>
+            </form>
+            <button type="button" class="wmv-btn" data-act="out" title="<?= e__('Zoom out (-)') ?>" aria-label="<?= e__('Zoom out') ?>">−</button>
+            <span class="wmv-zoom" aria-live="polite">100 %</span>
+            <button type="button" class="wmv-btn" data-act="in" title="<?= e__('Zoom in (+)') ?>" aria-label="<?= e__('Zoom in') ?>">+</button>
+            <button type="button" class="wmv-btn wmv-btn-text" data-act="fit" title="<?= e__('Fit the map to the window (0)') ?>"><?= e__('Fit') ?></button>
+            <button type="button" class="wmv-btn wmv-btn-text" data-act="actual" title="<?= e__('Actual size (1)') ?>">100 %</button>
+            <?php if ($isFullscreen): ?>
+            <a class="wmv-btn wmv-btn-text" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" title="<?= e__('Leave fullscreen (Esc)') ?>"><?= e__('Exit') ?></a>
+            <?php endif; ?>
+            <span class="wmv-state" hidden><span class="wmv-dot"></span><span class="wmv-state-text"></span></span>
+        </div>
+        <div class="wmv-minimap" hidden aria-hidden="true">
+            <img alt="">
+            <div class="wmv-minimap-view"></div>
+        </div>
+    </div>
+    <?php else: ?>
     <div class="map-container">
         <?php if ($mapHtml): ?>
             <?= $mapHtml ?>
@@ -116,12 +179,22 @@
         <?php endif; ?>
     </div>
     
+    <?php endif; ?>
+
     <div class="map-meta">
         <?php if ($map['last_run']): ?>
-        <span class="last-updated">Last updated: <?= htmlspecialchars($map['last_run']) ?></span>
+        <span class="last-updated"><?= e__('Last updated:') ?> <?= htmlspecialchars($map['last_run']) ?></span>
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['API request failed', 'Invalid data source', 'Failed to load', 'Loading…', 'Link bandwidth (24h)', 'IN', 'OUT']) + \App\Core\I18n::section('viewer-js')) ?>);
+</script>
+
+<?php if ($isSvg): ?>
+<script src="/assets/js/viewer.js" defer></script>
+<?php else: ?>
 
 <?php if (empty($autoRefresh)): ?>
 <script>
@@ -247,7 +320,7 @@
     img.style.display = 'block';
     img.style.width = '520px';
     img.style.height = '180px';
-    img.alt = 'Traffic last <?= (int)$hours ?>h';
+    img.alt = <?= json_encode(__('Traffic last :hours h', ['hours' => (int) $hours])) ?>;
     tooltip.appendChild(img);
     document.body.appendChild(tooltip);
 
@@ -370,9 +443,14 @@
 (function() {
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            window.location.href = <?= json_encode($normalUrl) ?>;
+            window.location.href = <?= json_encode($normalUrl . '?view=png') ?>;
         }
     });
 })();
 </script>
+<?php endif; ?>
+<?php endif; /* PNG view */ ?>
+<?php if ($isFullscreen): ?>
+</body>
+</html>
 <?php endif; ?>

@@ -195,6 +195,12 @@ function wm_warn($string, $notice_only = false) {
 
 	$message .= ($weathermap_map == '' ? '':$weathermap_map . ': ') . rtrim($string);
 
+	// a caller that wants the warnings (the migration report) collects them here
+	if (isset($GLOBALS['weathermap_warnings']) && is_array($GLOBALS['weathermap_warnings'])) {
+		$GLOBALS['weathermap_warnings'][] = rtrim($string);
+		return;
+	}
+
 	// use Cacti's debug log, if we are running from the poller
 	if (function_exists('cacti_log') && (!function_exists('show_editor_startpage'))) {
 		cacti_log($message, true, 'WEATHERMAP');
@@ -1480,22 +1486,11 @@ function wm_bandwidth_cfg($cfg) {
  * speed it reaches, and the first width when it is slower than all of them.
  */
 function wm_auto_link_width($bandwidth, $table = '', $kilo = 1000) {
-	$table = trim((string) $table) != '' ? $table : WM_DEFAULT_LINK_WIDTH_TABLE;
-
-	$steps = array();
-	foreach (preg_split('/[\s,;]+/', trim($table)) as $pair) {
-		if (preg_match('/^(\d+\.?\d*[KMGT]?):(\d+\.?\d*)$/i', $pair, $m)) {
-			$steps[] = array(unformat_number(strtoupper($m[1]), $kilo), (float) $m[2]);
-		}
-	}
+	$steps = wm_link_width_steps($table, $kilo);
 
 	if (count($steps) == 0) {
 		return 7;
 	}
-
-	usort($steps, function ($a, $b) {
-		return $a[0] <=> $b[0];
-	});
 
 	$width = $steps[0][1];
 	foreach ($steps as $step) {
@@ -1505,6 +1500,27 @@ function wm_auto_link_width($bandwidth, $table = '', $kilo = 1000) {
 	}
 
 	return $width;
+}
+
+/**
+ * The "speed:width" pairs of a link width table, slowest first, as
+ * array(bit/s, width, label as written).
+ */
+function wm_link_width_steps($table = '', $kilo = 1000) {
+	$table = trim((string) $table) != '' ? $table : WM_DEFAULT_LINK_WIDTH_TABLE;
+
+	$steps = array();
+	foreach (preg_split('/[\s,;]+/', trim($table)) as $pair) {
+		if (preg_match('/^(\d+\.?\d*[KMGT]?):(\d+\.?\d*)$/i', $pair, $m)) {
+			$steps[] = array(unformat_number(strtoupper($m[1]), $kilo), (float) $m[2], strtoupper($m[1]));
+		}
+	}
+
+	usort($steps, function ($a, $b) {
+		return $a[0] <=> $b[0];
+	});
+
+	return $steps;
 }
 
 function unformat_number($instring, $kilo = 1000) {

@@ -84,16 +84,14 @@ function get_imagelist($basepath, $imagedir) {
     }
     
     if (is_dir($imdir)) {
-        $dh = opendir($imdir);
-        if ($dh) {
-            while ($file = readdir($dh)) {
-                $realfile = $imdir . '/' . $file;
-                $uri = "$imagedir/$file";
-                if (is_readable($realfile) && preg_match('/\.(gif|jpg|png)$/i', $file)) {
-                    $imagelist[] = $uri;
+        // the folder and its sub-folders (icon sets such as objects/net)
+        foreach (array_merge([''], array_map('basename', glob($imdir . '/*', GLOB_ONLYDIR) ?: [])) as $sub) {
+            $dir = $sub === '' ? $imdir : $imdir . '/' . $sub;
+            foreach (scandir($dir) ?: [] as $file) {
+                if (is_readable($dir . '/' . $file) && preg_match('/\.(gif|jpg|png)$/i', $file)) {
+                    $imagelist[] = $imagedir . '/' . ($sub === '' ? '' : $sub . '/') . $file;
                 }
             }
-            closedir($dh);
         }
     }
     

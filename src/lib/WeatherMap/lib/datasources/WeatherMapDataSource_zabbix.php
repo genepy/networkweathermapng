@@ -54,6 +54,36 @@ class WeatherMapDataSource_zabbix extends WeatherMapDataSource
         // no-op (could batch in future)
     }
 
+    /**
+     * Interface speed in bit/s, for links with BANDWIDTH auto.
+     */
+    function ReadSpeed($targetstring, &$map, &$item)
+    {
+        $sel = $this->selectionFor($item);
+        if (!$this->svc || !$sel) {
+            return 0;
+        }
+
+        try {
+            return (int) $this->svc->getLinkSpeed((int) $sel['sourceId'], $sel);
+        } catch (\Throwable $e) {
+            wm_warn("Zabbix ReadSpeed: {$targetstring}: " . $e->getMessage() . " [WMZBX02]");
+            return 0;
+        }
+    }
+
+    private function selectionFor($item): ?array
+    {
+        if (isset($item->hints) && is_array($item->hints) && isset($item->hints['datasource'])) {
+            $sel = json_decode((string) $item->hints['datasource'], true);
+            if (is_array($sel) && !empty($sel['sourceId'])) {
+                return $sel;
+            }
+        }
+
+        return null;
+    }
+
     function ReadData($targetstring, &$map, &$item)
     {
         $data_time = time();

@@ -1,7 +1,7 @@
 <div class="content-header">
     <h1><?= htmlspecialchars($title) ?></h1>
     <div class="header-actions">
-        <a href="/admin/groups" class="btn btn-secondary">← Back to Groups</a>
+        <a href="/admin/groups" class="btn btn-secondary">← <?= e__('Back to Groups') ?></a>
     </div>
 </div>
 
@@ -9,17 +9,17 @@
     <div class="card-body">
         <form method="POST" action="<?= $action === 'create' ? '/admin/groups/create' : '/admin/groups/edit/' . $group['id'] ?>">
             <div class="form-group">
-                <label for="name">Group Name *</label>
+                <label for="name"><?= e__('Group Name') ?> *</label>
                 <input type="text" id="name" name="name" class="form-control" 
                        value="<?= htmlspecialchars($group['name'] ?? '') ?>" 
-                       placeholder="Enter group name" required>
+                       placeholder="<?= e__('Enter group name') ?>" required>
             </div>
             
             <div class="form-group">
-                <label>User Access</label>
+                <label><?= e__('User Access') ?></label>
                 <div class="users-list">
                     <?php if (empty($users)): ?>
-                        <p class="text-muted">No users available.</p>
+                        <p class="text-muted"><?= e__('No users available.') ?></p>
                     <?php else: ?>
                         <?php foreach ($users as $user): ?>
                             <?php if ($user['username'] !== 'admin'): ?>
@@ -27,20 +27,20 @@
                                 <input type="checkbox" name="users[]" value="<?= $user['id'] ?>" 
                                     <?= in_array($user['id'], $groupUsers ?? []) ? 'checked' : '' ?>>
                                 <?= htmlspecialchars($user['username']) ?> 
-                                <span class="text-muted small">(<?= htmlspecialchars($user['role']) ?>)</span>
+                                <span class="text-muted small">(<?= ($user['role'] === 'admin' ? e__('Administrator') : e__(ucfirst((string) $user['role']))) ?>)</span>
                             </label>
                             <?php endif; ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
-                <small class="form-text text-muted">Select users who can access this map group.</small>
+                <small class="form-text text-muted"><?= e__('Select users who can access this map group.') ?></small>
             </div>
             
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
-                    <?= $action === 'create' ? 'Create Group' : 'Save Changes' ?>
+                    <?= $action === 'create' ? e__('Create Group') : e__('Save Changes') ?>
                 </button>
-                <a href="/admin/groups" class="btn btn-secondary">Cancel</a>
+                <a href="/admin/groups" class="btn btn-secondary"><?= e__('Cancel') ?></a>
             </div>
         </form>
     </div>
@@ -62,24 +62,26 @@
     max-width: 500px;
     padding: 0.5rem 0.75rem;
     font-size: 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-color);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #007bff;
+    border-color: var(--accent);
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .users-list {
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 1rem;
     max-height: 200px;
     overflow-y: auto;
     max-width: 500px;
-    background-color: #fff;
+    background-color: var(--input-bg);
 }
 
 .users-list .checkbox-label {
@@ -100,7 +102,7 @@
 }
 
 .text-muted {
-    color: #6c757d;
+    color: var(--text-muted);
 }
 
 .small {

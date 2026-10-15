@@ -87,7 +87,7 @@ class MapEditor
 
         foreach ($ops as $op) {
             if (!is_array($op) || !isset($op['op'])) {
-                throw new InvalidArgumentException('Each operation needs an "op"');
+                throw new InvalidArgumentException(__('Each operation needs an "op"'));
             }
 
             $created = match ($op['op']) {
@@ -101,7 +101,8 @@ class MapEditor
                 'clone' => $this->cloneNodes($map, (array) ($op['nodes'] ?? []), (int) ($op['dx'] ?? 20), (int) ($op['dy'] ?? 20)),
                 'hint' => $this->hint($map, $op),
                 'set_map' => $this->setMap($map, $op),
-                default => throw new InvalidArgumentException('Unknown operation: ' . $op['op']),
+                'paste' => $this->paste($map, $op),
+                default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
             if (is_array($created)) {
@@ -186,7 +187,7 @@ class MapEditor
                 } elseif ($key === 'position') {
                     [$node->x, $node->y] = $this->point($value);
                 } else {
-                    throw new InvalidArgumentException("Unknown node property: $key");
+                    throw new InvalidArgumentException(__('Unknown node property: :key', ['key' => $key]));
                 }
             }
         }
@@ -209,7 +210,7 @@ class MapEditor
                     }
                 } elseif (isset(self::LINK_CHOICES[$key])) {
                     if (!in_array($value, self::LINK_CHOICES[$key], true)) {
-                        throw new InvalidArgumentException("Invalid $key: $value");
+                        throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
                     }
                     $field = $key === 'labelstyle' ? 'labelstyle' : $key;
                     $link->$field = $value;
@@ -240,7 +241,7 @@ class MapEditor
                 } elseif ($key === 'via') {
                     $this->setVias($link, (array) $value);
                 } else {
-                    throw new InvalidArgumentException("Unknown link property: $key");
+                    throw new InvalidArgumentException(__('Unknown link property: :key', ['key' => $key]));
                 }
             }
         }
@@ -255,7 +256,7 @@ class MapEditor
             return;
         }
         if (isset($map->nodes[$to])) {
-            throw new InvalidArgumentException("A node called $to already exists");
+            throw new InvalidArgumentException(__('A node called :name already exists', ['name' => $to]));
         }
 
         $node->name = $to;
@@ -321,7 +322,7 @@ class MapEditor
         [$x, $y] = $this->point([$op['x'] ?? 0, $op['y'] ?? 0]);
         $template = (string) ($op['template'] ?? 'DEFAULT');
         if (!isset($map->nodes[$template])) {
-            throw new InvalidArgumentException("Unknown template: $template");
+            throw new InvalidArgumentException(__('Unknown template: :template', ['template' => $template]));
         }
 
         $name = $this->freeName($map->nodes, $this->name((string) ($op['name'] ?? 'node')));
@@ -360,12 +361,12 @@ class MapEditor
         $a = $this->node($map, (string) ($op['a'] ?? ''));
         $b = $this->node($map, (string) ($op['b'] ?? ''));
         if ($a === $b) {
-            throw new InvalidArgumentException('A link needs two different nodes');
+            throw new InvalidArgumentException(__('A link needs two different nodes'));
         }
 
         $template = (string) ($op['template'] ?? 'DEFAULT');
         if (!isset($map->links[$template])) {
-            throw new InvalidArgumentException("Unknown template: $template");
+            throw new InvalidArgumentException(__('Unknown template: :template', ['template' => $template]));
         }
 
         $name = $this->freeName($map->links, $this->name((string) ($op['name'] ?? ($a->name . '-' . $b->name))));
@@ -440,12 +441,27 @@ class MapEditor
         return ['nodes' => array_values($renamed), 'links' => $links];
     }
 
+    /**
+     * {op: paste, text, at?: [x, y], dx?, dy?}: the text of MapClipboard::copy().
+     * With `at`, the centre of the pasted nodes lands there; otherwise they
+     * move by (dx, dy).
+     */
+    private function paste(\WeatherMap $map, array $op): array
+    {
+        if (!isset($op['text']) || !is_string($op['text'])) {
+            throw new InvalidArgumentException(__('Nothing to paste'));
+        }
+        $at = isset($op['at']) ? $this->point($op['at']) : null;
+
+        return MapClipboard::paste($map, $op['text'], $at, (int) ($op['dx'] ?? 0), (int) ($op['dy'] ?? 0));
+    }
+
     /** {op: hint, kind: node|link, names, key, value} - value null removes it */
     private function hint(\WeatherMap $map, array $op): void
     {
         $key = (string) ($op['key'] ?? '');
         if (!in_array($key, self::EDITOR_HINTS, true)) {
-            throw new InvalidArgumentException("Unknown editor setting: $key");
+            throw new InvalidArgumentException(__('Unknown editor setting: :key', ['key' => $key]));
         }
 
         $value = $op['value'] ?? null;
@@ -471,7 +487,7 @@ class MapEditor
         if (isset($op['background'])) {
             $bg = trim((string) $op['background']);
             if ($bg !== '' && (str_contains($bg, '..') || !preg_match('/^[\w\/.\-]+\.(png|jpe?g|gif)$/i', $bg))) {
-                throw new InvalidArgumentException("Invalid background: $bg");
+                throw new InvalidArgumentException(__('Invalid background: :value', ['value' => $bg]));
             }
             $map->background = $bg;
         }
@@ -612,7 +628,7 @@ class MapEditor
     private function node(\WeatherMap $map, string $name): \WeatherMapNode
     {
         if (!isset($map->nodes[$name]) || $this->isDefault($name) || $map->nodes[$name]->x === null) {
-            throw new InvalidArgumentException("Unknown node: $name");
+            throw new InvalidArgumentException(__('Unknown node: :name', ['name' => $name]));
         }
         return $map->nodes[$name];
     }
@@ -620,7 +636,7 @@ class MapEditor
     private function link(\WeatherMap $map, string $name): \WeatherMapLink
     {
         if (!isset($map->links[$name]) || $this->isDefault($name) || !isset($map->links[$name]->a)) {
-            throw new InvalidArgumentException("Unknown link: $name");
+            throw new InvalidArgumentException(__('Unknown link: :name', ['name' => $name]));
         }
         return $map->links[$name];
     }
@@ -641,7 +657,7 @@ class MapEditor
     private function point(mixed $p): array
     {
         if (!is_array($p) || count($p) < 2 || !is_numeric($p[0] ?? null) || !is_numeric($p[1] ?? null)) {
-            throw new InvalidArgumentException('A position is [x, y]');
+            throw new InvalidArgumentException(__('A position is [x, y]'));
         }
         return [(int) round((float) $p[0]), (int) round((float) $p[1])];
     }
@@ -662,7 +678,7 @@ class MapEditor
             return (string) (int) $value;
         }
         if (!is_array($value) || !isset($value['sourceId'])) {
-            throw new InvalidArgumentException('Invalid data source');
+            throw new InvalidArgumentException(__('Invalid data source'));
         }
 
         $clean = ['sourceId' => (int) $value['sourceId']];
@@ -685,7 +701,7 @@ class MapEditor
         if (in_array($value, self::ANCHORS, true) || preg_match('/^-?\d+:-?\d+$/', $value) || preg_match('/^(N|S|E|W|NE|NW|SE|SW)\d{1,3}$/', $value)) {
             return $value;
         }
-        throw new InvalidArgumentException("Invalid anchor: $value");
+        throw new InvalidArgumentException(__('Invalid anchor: :value', ['value' => $value]));
     }
 
     private function bandwidth(string $value): string
@@ -695,7 +711,7 @@ class MapEditor
             return 'auto';
         }
         if (!preg_match('/^\d+(\.\d+)?[KMGT]?$/i', $value)) {
-            throw new InvalidArgumentException("Invalid bandwidth: $value");
+            throw new InvalidArgumentException(__('Invalid bandwidth: :value', ['value' => $value]));
         }
         return $value;
     }
@@ -712,7 +728,7 @@ class MapEditor
         if (preg_match('/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/', $value, $m)) {
             return [hexdec($m[1]), hexdec($m[2]), hexdec($m[3])];
         }
-        throw new InvalidArgumentException("Invalid colour: $value");
+        throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => $value]));
     }
 
     private static function colourOut(mixed $c): string
@@ -762,7 +778,7 @@ class MapEditor
             return $value;
         }
         if (str_contains($value, '..') || !preg_match('/^[\w\/.\-{}:]+\.(png|jpe?g|gif)$/i', $value)) {
-            throw new InvalidArgumentException("Invalid icon: $value");
+            throw new InvalidArgumentException(__('Invalid icon: :value', ['value' => $value]));
         }
         return $value;
     }
@@ -777,7 +793,7 @@ class MapEditor
     {
         $value = preg_replace('/[^\w.\-:]/', '_', trim($value));
         if ($value === '' || $value === null) {
-            throw new InvalidArgumentException('A name is required');
+            throw new InvalidArgumentException(__('A name is required'));
         }
         return $value;
     }

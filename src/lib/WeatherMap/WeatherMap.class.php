@@ -1002,10 +1002,6 @@ class WeatherMap extends WeatherMapBase {
 	}
 
 	/**
-	 * Interface speed behind a link's targets, in bit/s (0 when unknown).
-	 * Asks each target's data source plugin that implements ReadSpeed().
-	 */
-	/**
 	 * Links joining the same two nodes would be drawn on top of each other:
 	 * spread them side by side, centred on the line between the nodes.
 	 * Only links with no VIA and no NODES offset are moved; those are the
@@ -1075,6 +1071,10 @@ class WeatherMap extends WeatherMapBase {
 		}
 	}
 
+	/**
+	 * Interface speed behind a link's targets, in bit/s (0 when unknown).
+	 * Asks each target's data source plugin that implements ReadSpeed().
+	 */
 	function ReadLinkSpeed(&$link) {
 		$total = 0;
 
@@ -2309,6 +2309,76 @@ class WeatherMap extends WeatherMapBase {
 
 		$this->myimagestring($image, $font, $x, $y, $stamp, $colour);
 		$this->imap->addArea('Rectangle', $which . 'TIMESTAMP', '', array($x, $y, $x + $boxwidth, $y - $boxheight));
+	}
+
+	/**
+	 * Legend of the "WIDTH auto" link widths, one bar per step of the
+	 * link width table. SET width_legend <x> <y> places it (negative values
+	 * count from the right or bottom edge), SET width_legend_title names it.
+	 */
+	function DrawWidthLegend($image) {
+		$where = trim((string) $this->get_hint('width_legend'));
+		if ($where === '' || !preg_match('/^(-?\d+)[\s,]+(-?\d+)$/', $where, $m)) {
+			return;
+		}
+
+		$steps = wm_link_width_steps($this->get_hint('link_width_table'), $this->kilo);
+		if (count($steps) == 0) {
+			return;
+		}
+
+		$font  = $this->keyfont;
+		$title = (string) $this->get_hint('width_legend_title');
+		if ($title === '') {
+			$title = 'Link speed';
+		}
+
+		list($titlewidth, $lineheight) = $this->myimagestringsize($font, $title);
+		$labelwidth = 0;
+		$widest = 0;
+		foreach ($steps as $step) {
+			list($w, $junk) = $this->myimagestringsize($font, $step[2]);
+			$labelwidth = max($labelwidth, $w);
+			$widest = max($widest, $step[1]);
+		}
+
+		$bar     = 40;
+		$row     = max($lineheight, $widest) + 6;
+		$width   = max($titlewidth, $bar + 8 + $labelwidth) + 12;
+		$height  = $lineheight + 10 + $row * count($steps);
+
+		$x = (int) $m[1];
+		$y = (int) $m[2];
+		if ($x < 0) {
+			$x += $this->width - $width;
+		}
+		if ($y < 0) {
+			$y += $this->height - $height;
+		}
+
+		$bg      = $this->colours['DEFAULT']['KEYBG'];
+		$outline = $this->colours['DEFAULT']['KEYOUTLINE'];
+		$text    = $this->colours['DEFAULT']['KEYTEXT']['gdref1'];
+
+		if (!is_none($bg)) {
+			wimagefilledrectangle($image, $x, $y, $x + $width, $y + $height, $bg['gdref1']);
+		}
+		if (!is_none($outline)) {
+			wimagerectangle($image, $x, $y, $x + $width, $y + $height, $outline['gdref1']);
+		}
+
+		$this->myimagestring($image, $font, $x + 6, $y + 4 + $lineheight, $title, $text);
+
+		$cy = $y + $lineheight + 8;
+		foreach ($steps as $step) {
+			$mid  = $cy + $row / 2;
+			$half = max(0.5, $step[1] / 2);
+			wimagefilledrectangle($image, $x + 6, (int) round($mid - $half), $x + 6 + $bar, (int) round($mid + $half - 1), $text);
+			$this->myimagestring($image, $font, $x + 14 + $bar, (int) round($mid + $lineheight / 2), $step[2], $text);
+			$cy += $row;
+		}
+
+		$this->imap->addArea('Rectangle', 'WIDTHLEGEND', '', array($x, $y, $x + $width, $y + $height));
 	}
 
 	function DrawTitle($image, $font, $colour) {
@@ -3907,6 +3977,8 @@ class WeatherMap extends WeatherMapBase {
 							}
 						}
 					}
+
+					$this->DrawWidthLegend($image);
 
 					$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1']);
 

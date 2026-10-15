@@ -1,11 +1,20 @@
+<?php
+use App\Core\I18n;
+
+$theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : '';
+$uri = $_SERVER['REQUEST_URI'] ?? '/';
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= I18n::locale() ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <?= \App\Core\Csrf::metaTag() ?>
     <script src="/assets/js/csrf.js"></script>
+    <script src="/assets/js/preferences.js"></script>
     <title><?= htmlspecialchars($title ?? 'NetworkWeathermapNG') ?></title>
+    <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <script src="/assets/js/weathermap.js" defer></script>
 </head>
@@ -17,46 +26,50 @@
             </div>
             <nav class="main-nav">
                 <ul>
-                    <li><a href="/" class="<?= ($_SERVER['REQUEST_URI'] === '/' || str_starts_with($_SERVER['REQUEST_URI'], '/maps')) ? 'active' : '' ?>">Maps</a></li>
+                    <li><a href="/" class="<?= ($uri === '/' || str_starts_with($uri, '/maps')) ? 'active' : '' ?>"><?= e__('Maps') ?></a></li>
                     <?php if ($auth->isAdmin()): ?>
-                    <li><a href="/editor" class="<?= str_starts_with($_SERVER['REQUEST_URI'], '/editor') ? 'active' : '' ?>">Editor</a></li>
-                    <li><a href="/admin" class="<?= str_starts_with($_SERVER['REQUEST_URI'], '/admin') ? 'active' : '' ?>">Admin</a></li>
+                    <li><a href="/editor" class="<?= str_starts_with($uri, '/editor') ? 'active' : '' ?>"><?= e__('Editor') ?></a></li>
+                    <li><a href="/admin" class="<?= str_starts_with($uri, '/admin') ? 'active' : '' ?>"><?= e__('Admin') ?></a></li>
                     <?php endif; ?>
                 </ul>
             </nav>
             <div class="user-menu">
+                <select class="lang-select" aria-label="<?= e__('Language') ?>" data-pref="lang">
+                    <?php foreach (I18n::LOCALES as $code => $label): ?>
+                    <option value="<?= $code ?>" <?= I18n::locale() === $code ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="button" class="theme-toggle" data-pref="theme"
+                        data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"
+                        aria-label="<?= e__('Theme') ?>"></button>
                 <?php if ($user): ?>
                     <span class="username"><?= htmlspecialchars($user['username']) ?></span>
-                    <a href="/account/password" class="login-btn">Change Password</a>
-                    <a href="/logout" class="logout-btn">Logout</a>
+                    <a href="/account/password" class="login-btn"><?= e__('Change password') ?></a>
+                    <form method="post" action="/logout" class="logout-form"><?= \App\Core\Csrf::field() ?><button type="submit" class="logout-btn"><?= e__('Logout') ?></button></form>
                 <?php else: ?>
-                    <a href="/login" class="login-btn">Login</a>
+                    <a href="/login" class="login-btn"><?= e__('Login') ?></a>
                 <?php endif; ?>
             </div>
         </div>
     </header>
-    
+
     <main class="main-content">
-        <?php 
+        <?php
         $flash = $_SESSION['flash'] ?? [];
         unset($_SESSION['flash']);
-        if (!empty($flash)): 
+        if (!empty($flash)):
         ?>
         <div class="flash-messages">
-            <?php if (isset($flash['success'])): ?>
-            <div class="alert alert-success"><?= htmlspecialchars($flash['success']) ?></div>
+            <?php foreach (['success', 'error', 'info'] as $type): ?>
+            <?php if (isset($flash[$type])): ?>
+            <div class="alert alert-<?= $type ?>"><?= htmlspecialchars($flash[$type]) ?></div>
             <?php endif; ?>
-            <?php if (isset($flash['error'])): ?>
-            <div class="alert alert-error"><?= htmlspecialchars($flash['error']) ?></div>
-            <?php endif; ?>
-            <?php if (isset($flash['info'])): ?>
-            <div class="alert alert-info"><?= htmlspecialchars($flash['info']) ?></div>
-            <?php endif; ?>
+            <?php endforeach; ?>
         </div>
         <?php endif; ?>
         <?= $content ?>
     </main>
-    
+
     <footer class="main-footer">
         <div class="footer-container">
             <p>&copy; <?= date('Y') ?> NetworkWeathermapNG</p>
