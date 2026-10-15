@@ -49,6 +49,26 @@ class MapEditor
         'labelstyle' => ['percent', 'bits', 'unformatted', 'none'],
     ];
 
+    /** Zone fields the inspector may change: request key => [property, type] */
+    private const ZONE_FIELDS = [
+        'label' => ['label', 'text'],
+        'x' => ['x', 'int'],
+        'y' => ['y', 'int'],
+        'width' => ['width', 'size'],
+        'height' => ['height', 'size'],
+        'labelfont' => ['labelfont', 'int'],
+        'opacity' => ['opacity', 'percent'],
+        'outlinewidth' => ['outlinewidth', 'int'],
+        'fillcolour' => ['fillcolour', 'colour'],
+        'outlinecolour' => ['outlinecolour', 'colour'],
+        'labelfontcolour' => ['labelfontcolour', 'colour'],
+    ];
+
+    private const ZONE_CHOICES = [
+        'labelpos' => \WeatherMapZone::LABEL_POSITIONS,
+        'outlinestyle' => ['solid', 'dashed'],
+    ];
+
     private const ANCHORS = ['C', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'];
 
     /** Hints the editor owns: grouping and locking */
@@ -102,6 +122,9 @@ class MapEditor
                 'hint' => $this->hint($map, $op),
                 'set_map' => $this->setMap($map, $op),
                 'paste' => $this->paste($map, $op),
+                'add_zone' => $this->addZone($map, $op),
+                'set_zone' => $this->setZones($map, $op),
+                'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
@@ -135,7 +158,7 @@ class MapEditor
     // Operations
 
     /**
-     * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}}
+     * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]}}
      * Positions are absolute map pixels.
      */
     private function move(\WeatherMap $map, array $op): void
@@ -158,6 +181,95 @@ class MapEditor
 
         foreach ((array) ($op['vias'] ?? []) as $name => $vias) {
             $this->setVias($this->link($map, (string) $name), (array) $vias);
+        }
+
+        foreach ((array) ($op['zones'] ?? []) as $name => $pos) {
+            $zone = $this->zone($map, (string) $name);
+            [$zone->x, $zone->y] = $this->point($pos);
+        }
+    }
+
+    /** {op: add_zone, x, y, width?, height?, label?, name?} */
+    private function addZone(\WeatherMap $map, array $op): array
+    {
+        [$x, $y] = $this->point([$op['x'] ?? 0, $op['y'] ?? 0]);
+        $name = $this->freeName($map->zones, $this->name((string) ($op['name'] ?? 'zone')));
+
+        $zone = new \WeatherMapZone($name);
+        $zone->x = $x;
+        $zone->y = $y;
+        $zone->width = max(1, (int) ($op['width'] ?? $zone->width));
+        $zone->height = max(1, (int) ($op['height'] ?? $zone->height));
+        $zone->label = isset($op['label']) ? $this->text($op['label']) : $name;
+        $zone->defined_in = $map->configfile;
+
+        $map->zones[$name] = $zone;
+
+        return ['zones' => [$name]];
+    }
+
+    /** {op: set_zone, names: [...], props: {label, x, y, width, height, fillcolour, ...}} or props.name to rename one */
+    private function setZones(\WeatherMap $map, array $op): void
+    {
+        $props = (array) ($op['props'] ?? []);
+        $names = array_map('strval', (array) ($op['names'] ?? []));
+
+        foreach ($names as $name) {
+            $zone = $this->zone($map, $name);
+
+            foreach ($props as $key => $value) {
+                if (isset(self::ZONE_FIELDS[$key])) {
+                    [$field, $type] = self::ZONE_FIELDS[$key];
+                    $zone->$field = match ($type) {
+                        'text' => $this->text($value),
+                        'size' => max(1, (int) $value),
+                        'percent' => max(0, min(100, (int) $value)),
+                        'colour' => $this->zoneColour($value),
+                        default => (int) $value,
+                    };
+                } elseif (isset(self::ZONE_CHOICES[$key])) {
+                    $value = $key === 'labelpos' ? strtoupper((string) $value) : strtolower((string) $value);
+                    if (!in_array($value, self::ZONE_CHOICES[$key], true)) {
+                        throw new InvalidArgumentException(__('Invalid value for :key: :value', ['key' => $key, 'value' => $value]));
+                    }
+                    $zone->$key = $value;
+                } elseif ($key !== 'name') {
+                    throw new InvalidArgumentException(__('Unknown zone property: :key', ['key' => $key]));
+                }
+            }
+        }
+
+        if (isset($props['name']) && count($names) === 1) {
+            $this->renameZone($map, $names[0], (string) $props['name']);
+        }
+    }
+
+    private function renameZone(\WeatherMap $map, string $name, string $to): void
+    {
+        $to = $this->name($to);
+        if ($to === $name) {
+            return;
+        }
+        if (isset($map->zones[$to])) {
+            throw new InvalidArgumentException(__('A zone named :name already exists', ['name' => $to]));
+        }
+
+        // keep the order of the zones, which is their drawing order
+        $zones = [];
+        foreach ($map->zones as $key => $zone) {
+            if ($key === $name) {
+                $zone->name = $to;
+                $key = $to;
+            }
+            $zones[$key] = $zone;
+        }
+        $map->zones = $zones;
+    }
+
+    private function deleteZones(\WeatherMap $map, array $names): void
+    {
+        foreach ($names as $name) {
+            unset($map->zones[(string) $name]);
         }
     }
 
@@ -608,6 +720,26 @@ class MapEditor
             ];
         }
 
+        $zones = [];
+        foreach ($map->zones as $name => $zone) {
+            $zones[] = [
+                'name' => (string) $name,
+                'x' => (int) $zone->x,
+                'y' => (int) $zone->y,
+                'width' => (int) $zone->width,
+                'height' => (int) $zone->height,
+                'label' => (string) $zone->label,
+                'labelfont' => (int) $zone->labelfont,
+                'labelpos' => (string) $zone->labelpos,
+                'fillcolour' => self::zoneColourOut($zone->fillcolour),
+                'outlinecolour' => self::zoneColourOut($zone->outlinecolour),
+                'labelfontcolour' => self::zoneColourOut($zone->labelfontcolour),
+                'opacity' => (int) $zone->opacity,
+                'outlinewidth' => (int) $zone->outlinewidth,
+                'outlinestyle' => (string) $zone->outlinestyle,
+            ];
+        }
+
         return [
             'map' => [
                 'width' => (int) $map->width,
@@ -617,6 +749,7 @@ class MapEditor
             ],
             'nodes' => $nodes,
             'links' => $links,
+            'zones' => $zones,
             'templates' => $templates,
             'fonts' => array_values(array_unique(array_merge([1, 2, 3, 4, 5], array_keys($map->fonts)))),
         ];
@@ -639,6 +772,30 @@ class MapEditor
             throw new InvalidArgumentException(__('Unknown link: :name', ['name' => $name]));
         }
         return $map->links[$name];
+    }
+
+    private function zone(\WeatherMap $map, string $name): \WeatherMapZone
+    {
+        if (!isset($map->zones[$name])) {
+            throw new InvalidArgumentException(__('Unknown zone: :name', ['name' => $name]));
+        }
+        return $map->zones[$name];
+    }
+
+    /** A zone colour: [r, g, b], or null for none */
+    private function zoneColour(mixed $value): ?array
+    {
+        $value = strtolower(trim((string) $value));
+        if ($value === 'contrast') {
+            throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => $value]));
+        }
+        $c = $this->colour($value);
+        return $c[0] < 0 ? null : $c;
+    }
+
+    private static function zoneColourOut(?array $c): string
+    {
+        return $c === null ? 'none' : sprintf('#%02x%02x%02x', $c[0], $c[1], $c[2]);
     }
 
     private function isDefault(string $name): bool

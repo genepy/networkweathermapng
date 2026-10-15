@@ -57,6 +57,7 @@ require_once __DIR__ . '/WeatherMap.class.php';
 // Load node and link classes AFTER main class (they extend WeatherMapItem)
 require_once __DIR__ . '/WeatherMapNode.class.php';
 require_once __DIR__ . '/WeatherMapLink.class.php';
+require_once __DIR__ . '/WeatherMapZone.class.php';
 
 // Map resizing that keeps the layout
 require_once __DIR__ . '/WeatherMapScaler.class.php';

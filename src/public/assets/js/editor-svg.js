@@ -43,7 +43,8 @@
         model: null,
         nodes: new Map(),
         links: new Map(),
-        selection: new Set(),     // "node:NAME" or "link:NAME"
+        zones: new Map(),
+        selection: new Set(),     // "node:NAME", "link:NAME" or "zone:NAME"
         view: { x: 0, y: 0 },
         zoom: 1,
         tool: 'select',
@@ -136,6 +137,7 @@
         state.history = d.history || { undo: 0, redo: 0 };
         state.nodes = new Map(d.model.nodes.map(function (n) { return [n.name, n]; }));
         state.links = new Map(d.model.links.map(function (l) { return [l.name, l]; }));
+        state.zones = new Map((d.model.zones || []).map(function (z) { return [z.name, z]; }));
         computeOverlaps();
 
         var w = d.model.map.width, h = d.model.map.height;
@@ -160,7 +162,7 @@
     function pruneSelection() {
         state.selection.forEach(function (key) {
             var p = parseKey(key);
-            if (!(p.kind === 'node' ? state.nodes : state.links).has(p.name)) {
+            if (!itemOf(p.kind, p.name)) {
                 state.selection.delete(key);
             }
         });
@@ -170,6 +172,10 @@
     // Helpers
 
     function key(kind, name) { return kind + ':' + name; }
+    function itemOf(kind, name) {
+        var m = kind === 'node' ? state.nodes : kind === 'link' ? state.links : kind === 'zone' ? state.zones : null;
+        return m ? m.get(name) : undefined;
+    }
     function parseKey(k) { var i = k.indexOf(':'); return { kind: k.slice(0, i), name: k.slice(i + 1) }; }
 
     function selected(kind) {
@@ -177,7 +183,7 @@
         state.selection.forEach(function (k) {
             var p = parseKey(k);
             if (p.kind === kind) {
-                out.push(kind === 'node' ? state.nodes.get(p.name) : state.links.get(p.name));
+                out.push(itemOf(kind, p.name));
             }
         });
         return out.filter(Boolean);
@@ -238,7 +244,7 @@
         var groups = new Set();
         keys.forEach(function (k) {
             var p = parseKey(k);
-            var item = p.kind === 'node' ? state.nodes.get(p.name) : state.links.get(p.name);
+            var item = itemOf(p.kind, p.name);
             if (groupOf(item)) {
                 groups.add(item.group);
             }
@@ -365,7 +371,7 @@
     function renderOverlay() {
         overlay.replaceChildren();
         var drag = state.drag;
-        var moved = drag && drag.type === 'nodes' && drag.started ? drag.moved : null;
+        var moved = drag && (drag.type === 'nodes' || drag.type === 'zone') && drag.started ? drag.moved : null;
 
         // Links being dragged with their nodes
         if (moved) {
@@ -395,6 +401,8 @@
                     var mark = el('text', { 'class': 'lock-mark', x: n.box[2] + 2 + dx, y: n.box[1] + dy }, overlay);
                     mark.textContent = '🔒';
                 }
+            } else if (p.kind === 'zone') {
+                renderZoneBox(state.zones.get(p.name), drag);
             } else {
                 var l = state.links.get(p.name);
                 if (l) {
@@ -445,6 +453,24 @@
         // Two nodes or more: a box with handles to scale their layout
         if (nodes.length >= 2 && state.tool === 'select' && !moved) {
             renderScaleBox(nodes);
+        }
+    }
+
+    /** A selected zone: its outline and, alone, a handle to resize it */
+    function renderZoneBox(z, drag) {
+        if (!z) { return; }
+        var x = z.x, y = z.y, w = z.width, hh = z.height;
+        if (drag && drag.type === 'zone' && drag.started && drag.zones.indexOf(z.name) >= 0) {
+            x += drag.moved.dx; y += drag.moved.dy;
+        }
+        if (drag && drag.type === 'zone-size' && drag.started && drag.zone === z.name) {
+            w = drag.w; hh = drag.h;
+        }
+        el('rect', { 'class': 'sel-box zone', x: x - 3, y: y - 3, width: w + 6, height: hh + 6 }, overlay);
+        if (state.selection.size === 1 && !(drag && drag.type === 'zone' && drag.started)) {
+            var r = 5 / state.zoom;
+            el('rect', { 'class': 'scale-handle', x: x + w - r, y: y + hh - r, width: 2 * r, height: 2 * r, 'data-handle': 'zone-size' }, overlay)
+                .appendChild(el('title', {})).textContent = t('Drag to resize the zone');
         }
     }
 
@@ -520,10 +546,35 @@
 
     function itemAt(evt) {
         var g = evt.target.closest && evt.target.closest('#map g[data-kind]');
-        if (!g || (g.dataset.kind !== 'node' && g.dataset.kind !== 'link')) {
-            return null;
+        if (g && (g.dataset.kind === 'node' || g.dataset.kind === 'link')) {
+            return { kind: g.dataset.kind, name: g.dataset.name };
         }
-        return { kind: g.dataset.kind, name: g.dataset.name };
+        if (g && g.dataset.kind === 'zone' && evt.target.classList.contains('wm-zone-label')) {
+            return { kind: 'zone', name: g.dataset.name };
+        }
+        // a zone is picked by its edge, so its inside stays free for selecting an area
+        var z = zoneEdgeAt(toMap(evt));
+        return z ? { kind: 'zone', name: z.name } : null;
+    }
+
+    function zoneEdgeAt(p) {
+        var tol = 6 / state.zoom, found = null;
+        if (!state.layers.zones) { return null; }
+        state.zones.forEach(function (z) {
+            var inOuter = p.x >= z.x - tol && p.x <= z.x + z.width + tol && p.y >= z.y - tol && p.y <= z.y + z.height + tol;
+            var inInner = p.x > z.x + tol && p.x < z.x + z.width - tol && p.y > z.y + tol && p.y < z.y + z.height - tol;
+            if (inOuter && !inInner) { found = z; }
+        });
+        return found;
+    }
+
+    /** Unlocked nodes whose centre is inside the zone */
+    function nodesIn(z) {
+        var out = [];
+        state.nodes.forEach(function (n) {
+            if (!n.locked && n.x >= z.x && n.x <= z.x + z.width && n.y >= z.y && n.y <= z.y + z.height) { out.push(n); }
+        });
+        return out;
     }
 
     function nodeAtPoint(p) {
@@ -611,11 +662,25 @@
             var lead = state.nodes.get(item.name);
             startDrag(evt, { type: 'nodes', start: p, moved: moved, lead: lead.locked ? movable[0] : lead, clicked: k, multi: state.selection.size > 1 });
         }
+
+        if (item.kind === 'zone') {
+            // a zone takes its nodes along, unless Alt is held
+            var zones = selected('zone'), zmoved = { dx: 0, dy: 0 };
+            if (!evt.altKey) {
+                zones.forEach(function (z) { nodesIn(z).forEach(function (n) { zmoved[n.name] = true; }); });
+            }
+            startDrag(evt, { type: 'zone', start: p, moved: zmoved, lead: state.zones.get(item.name), zones: zones.map(function (z) { return z.name; }), clicked: k, multi: state.selection.size > 1 });
+        }
     });
 
     function handleDown(evt, handle, p) {
         if (handle === 'scale') {
             startScale(evt, evt.target.dataset.dir, p);
+            return;
+        }
+        if (handle === 'zone-size') {
+            var z = selected('zone')[0];
+            startDrag(evt, { type: 'zone-size', zone: z.name, start: p, w: z.width, h: z.height });
             return;
         }
         var link = selected('link')[0];
@@ -677,6 +742,19 @@
                 moveNodeGroups(d.moved);
                 break;
 
+            case 'zone':
+                d.moved.dx = snap(d.lead.x + p.x - d.start.x) - d.lead.x;
+                d.moved.dy = snap(d.lead.y + p.y - d.start.y) - d.lead.y;
+                moveNodeGroups(d.moved);
+                moveZoneGroups(d.zones, d.moved);
+                break;
+
+            case 'zone-size':
+                var zs = state.zones.get(d.zone);
+                d.w = Math.max(10, snap(zs.x + zs.width + p.x - d.start.x) - zs.x);
+                d.h = Math.max(10, snap(zs.y + zs.height + p.y - d.start.y) - zs.y);
+                break;
+
             case 'lasso':
                 d.now = p;
                 break;
@@ -721,6 +799,14 @@
         });
     }
 
+    function moveZoneGroups(names, moved) {
+        $$('#map g[data-kind="zone"]').forEach(function (g) {
+            if (names.indexOf(g.dataset.name) >= 0) {
+                g.setAttribute('transform', 'translate(' + moved.dx + ' ' + moved.dy + ')');
+            }
+        });
+    }
+
     stage.addEventListener('pointerup', endDrag);
     stage.addEventListener('pointercancel', function (evt) { endDrag(evt, true); });
 
@@ -748,6 +834,28 @@
                     return;
                 }
                 send([moveOp(d.moved)]);
+                return;
+
+            case 'zone':
+                if (!d.started || (!d.moved.dx && !d.moved.dy)) {
+                    if (!d.started && d.multi && !(evt.shiftKey || evt.ctrlKey || evt.metaKey)) {
+                        state.selection = new Set([d.clicked]);
+                    }
+                    moveNodeGroups({ dx: 0, dy: 0 });
+                    moveZoneGroups(d.zones, { dx: 0, dy: 0 });
+                    refresh();
+                    return;
+                }
+                send([moveOp(d.moved, d.zones)]);
+                return;
+
+            case 'zone-size':
+                var zz = state.zones.get(d.zone);
+                if (!d.started || (d.w === zz.width && d.h === zz.height)) {
+                    renderOverlay();
+                    return;
+                }
+                send([{ op: 'set_zone', names: [d.zone], props: { width: d.w, height: d.h } }]);
                 return;
 
             case 'lasso':
@@ -806,8 +914,12 @@
         return s && s.length ? s[Math.floor(s.length / 2)] : null;
     }
 
-    function moveOp(moved) {
-        var nodes = {}, vias = {};
+    function moveOp(moved, zoneNames) {
+        var nodes = {}, vias = {}, zones = {};
+        (zoneNames || []).forEach(function (name) {
+            var z = state.zones.get(name);
+            zones[name] = [z.x + moved.dx, z.y + moved.dy];
+        });
         Object.keys(moved).forEach(function (name) {
             if (name === 'dx' || name === 'dy') { return; }
             var n = state.nodes.get(name);
@@ -819,7 +931,7 @@
                 vias[l.name] = l.via.map(function (v) { return [v[0] + moved.dx, v[1] + moved.dy]; });
             }
         });
-        return { op: 'move', nodes: nodes, vias: vias };
+        return { op: 'move', nodes: nodes, vias: vias, zones: zones };
     }
 
     stage.addEventListener('dblclick', function (evt) {
@@ -832,7 +944,7 @@
             return;
         }
         var item = itemAt(evt);
-        if (item && item.kind === 'node') {
+        if (item && (item.kind === 'node' || item.kind === 'zone')) {
             var input = $('#inspector input[name="label"]');
             if (input) { input.focus(); input.select(); }
         }
@@ -892,10 +1004,31 @@
         }
         nodes = nodes.filter(function (n) { return !n.locked; });
         links = links.filter(function (l) { return !l.locked; });
-        if (!nodes.length && !links.length) {
-            return;
+        var zones = selected('zone'), ops = [];
+        if (nodes.length || links.length) {
+            ops.push({ op: 'delete', nodes: nodes.map(function (n) { return n.name; }), links: links.map(function (l) { return l.name; }) });
         }
-        send([{ op: 'delete', nodes: nodes.map(function (n) { return n.name; }), links: links.map(function (l) { return l.name; }) }], []);
+        if (zones.length) {
+            ops.push({ op: 'delete_zones', names: zones.map(function (z) { return z.name; }) });
+        }
+        send(ops, []);
+    }
+
+    /**
+     * A new zone around the selected nodes, or at a point of the map.
+     */
+    function addZone(at) {
+        var nodes = selected('node'), op = { op: 'add_zone' }, pad = 30;
+        if (nodes.length) {
+            var b = boxOf(nodes);
+            op.x = Math.round(b[0] - pad); op.y = Math.round(b[1] - pad - 16);
+            op.width = Math.round(b[2] - b[0] + 2 * pad); op.height = Math.round(b[3] - b[1] + 2 * pad + 16);
+        } else {
+            var c = at || { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
+            op.x = snap(c.x - 100); op.y = snap(c.y - 60); op.width = 200; op.height = 120;
+        }
+        op.x = Math.max(0, op.x); op.y = Math.max(0, op.y);
+        send([op], function (r) { return (r.created && r.created.zones || []).map(function (n) { return key('zone', n); }); });
     }
 
     function duplicateSelection() {
@@ -1274,7 +1407,7 @@
             if (input.value === '' && c.mixed) { return; }
             var props = {};
             props[opts.prop || name] = opts.number ? +input.value : input.value;
-            send([{ op: kind === 'node' ? 'set_node' : 'set_link', names: items.map(function (i) { return i.name; }), props: props }]);
+            send([{ op: 'set_' + kind, names: items.map(function (i) { return i.name; }), props: props }]);
         });
         return input;
     }
@@ -1286,7 +1419,7 @@
         function save(v) {
             var props = {};
             props[name] = v;
-            send([{ op: kind === 'node' ? 'set_node' : 'set_link', names: items.map(function (i) { return i.name; }), props: props }]);
+            send([{ op: 'set_' + kind, names: items.map(function (i) { return i.name; }), props: props }]);
         }
         swatch.addEventListener('change', function () { text.value = swatch.value; save(swatch.value); });
         text.addEventListener('change', function () { save(text.value); });
@@ -1304,14 +1437,15 @@
             return;
         }
         inspector.dataset.stale = '';
-        var nodes = selected('node'), links = selected('link');
+        var nodes = selected('node'), links = selected('link'), zones = selected('zone');
         var parts = [];
 
-        if (!nodes.length && !links.length) {
+        if (!nodes.length && !links.length && !zones.length) {
             parts = mapPanel();
         } else {
             if (nodes.length) { parts = parts.concat(nodePanel(nodes)); }
             if (links.length) { parts = parts.concat(linkPanel(links)); }
+            if (zones.length) { parts = parts.concat(zonePanel(zones)); }
             parts.push(h('div', { 'class': 'actions' }, [
                 h('button', { type: 'button', text: t('Duplicate'), title: 'Ctrl+D', onclick: duplicateSelection, disabled: !nodes.length }),
                 h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection })
@@ -1424,6 +1558,46 @@
         if (nodes.some(function (n) { return n.group; })) {
             out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
+        return out;
+    }
+
+    function zonePanel(zones) {
+        var single = zones.length === 1 ? zones[0] : null;
+        var out = [h('h2', { text: single ? t('Zone') : t(':n zones', { n: zones.length }) })];
+
+        if (single) {
+            var name = h('input', { name: 'name', value: single.name });
+            name.addEventListener('change', function () {
+                send([{ op: 'set_zone', names: [single.name], props: { name: name.value } }], function () { return [key('zone', name.value.replace(/[^\w.\-:]/g, '_'))]; });
+            });
+            out.push(row(t('Name'), name));
+        }
+
+        out.push(row(t('Label'), field(zones, 'label', 'zone')));
+
+        if (single) {
+            out.push(
+                row(t('Position'), h('div', { 'class': 'pair' }, [field(zones, 'x', 'zone', { type: 'number', number: true }), field(zones, 'y', 'zone', { type: 'number', number: true })])),
+                row(t('Size'), h('div', { 'class': 'pair' }, [field(zones, 'width', 'zone', { type: 'number', number: true }), h('label', { text: '×' }), field(zones, 'height', 'zone', { type: 'number', number: true })]))
+            );
+        }
+
+        out.push(
+            h('h3', { text: t('Style') }),
+            row(t('Fill'), colourField(zones, 'fillcolour', 'zone')),
+            row(t('Opacity (%)'), field(zones, 'opacity', 'zone', { type: 'number', number: true })),
+            row(t('Outline'), colourField(zones, 'outlinecolour', 'zone')),
+            row(t('Outline width'), field(zones, 'outlinewidth', 'zone', { type: 'number', number: true })),
+            row(t('Outline style'), field(zones, 'outlinestyle', 'zone', { options: [['solid', t('Solid')], ['dashed', t('Dashed')]] })),
+            h('h3', { text: t('Label style') }),
+            row(t('Font'), field(zones, 'labelfont', 'zone', { options: fontOptions(), number: true })),
+            row(t('Text'), colourField(zones, 'labelfontcolour', 'zone')),
+            row(t('Placement'), field(zones, 'labelpos', 'zone', { options: [
+                ['NW', t('Top left')], ['N', t('Top centre')], ['NE', t('Top right')],
+                ['SW', t('Bottom left')], ['S', t('Bottom centre')], ['SE', t('Bottom right')]
+            ] })),
+            h('p', { 'class': 'help', text: t('Zones are drawn under links and nodes. Dragging a zone by its edge moves the nodes inside it too; hold Alt to move the zone alone.') })
+        );
         return out;
     }
 
@@ -1877,7 +2051,7 @@
     // Layers hidden while editing (this browser only, never saved)
 
     function loadLayers() {
-        var layers = { background: true, links: true, linklabels: true, nodelabels: true };
+        var layers = { background: true, zones: true, links: true, linklabels: true, nodelabels: true };
         try {
             var saved = JSON.parse(localStorage.getItem('wm-editor-layers') || '{}');
             Object.keys(layers).forEach(function (k) { if (saved[k] === false) { layers[k] = false; } });
@@ -1940,7 +2114,7 @@
     function menuOpen() { return !menu.hidden; }
 
     function menuEntries(at) {
-        var nodes = selected('node'), links = selected('link'), any = nodes.length + links.length;
+        var nodes = selected('node'), links = selected('link'), any = nodes.length + links.length + selected('zone').length;
         var all = nodes.concat(links);
         var locked = all.length && all.every(function (i) { return i.locked; });
         var grouped = all.some(function (i) { return i.group; });
@@ -1951,7 +2125,7 @@
             { label: t('Duplicate'), kbd: 'Ctrl+D', run: duplicateSelection, off: !nodes.length },
             { label: t('Delete'), kbd: t('Del'), run: deleteSelection, off: !any, danger: true }
         ];
-        if (any) {
+        if (nodes.length + links.length) {
             entries.push('-',
                 { label: t('Group'), kbd: 'Ctrl+G', run: group, off: any < 2 },
                 { label: t('Ungroup'), kbd: 'Ctrl+Shift+G', run: ungroup, off: !grouped },
@@ -1968,6 +2142,7 @@
             });
         }
         entries.push('-',
+            { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
             { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
         return entries;
@@ -2255,6 +2430,7 @@
         'cut': function () { copySelection(true); },
         'paste': function () { paste(null); },
         'spread': function () { spreadApart(10); },
+        'zone': function () { addZone(null); },
         'layers': toggleLayersPanel,
         'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },
@@ -2276,17 +2452,19 @@
 
     function nudge(dx, dy) {
         var nodes = selected('node').filter(function (n) { return !n.locked; });
-        if (!nodes.length) { return; }
-        var n = state.nudge || (state.nudge = { moved: { dx: 0, dy: 0 } });
+        var zones = selected('zone').map(function (z) { return z.name; });
+        if (!nodes.length && !zones.length) { return; }
+        var n = state.nudge || (state.nudge = { moved: { dx: 0, dy: 0 }, zones: zones });
         nodes.forEach(function (node) { n.moved[node.name] = true; });
         n.moved.dx += dx;
         n.moved.dy += dy;
         moveNodeGroups(n.moved);
+        moveZoneGroups(n.zones, n.moved);
         clearTimeout(n.timer);
         // a burst of key presses is saved as one change
         n.timer = setTimeout(function () {
             state.nudge = null;
-            send([moveOp(n.moved)]);
+            send([moveOp(n.moved, n.zones)]);
         }, 400);
     }
 

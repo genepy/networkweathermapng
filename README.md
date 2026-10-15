@@ -141,6 +141,33 @@ asks whether to **scale the content** with it (nodes, VIA points, legend, title
 and timestamp move proportionally, optionally keeping proportions and scaling
 link widths) or only extend/crop the canvas.
 
+### Zones (site rectangles)
+
+A `ZONE` block draws a labelled rectangle under every link and node, to show a
+site, a room or an area. Zones come after the global settings, before or among
+the NODE and LINK blocks:
+
+```
+ZONE paris
+	POSITION 20 30          # top-left corner
+	SIZE 400 250            # width and height
+	LABEL Paris DC
+	LABELPOS NW             # NW, N, NE, SW, S or SE, inside the box
+	LABELFONT 3
+	FILLCOLOR 235 242 255   # or none
+	OPACITY 100             # fill opacity, in percent
+	OUTLINECOLOR 120 140 180
+	OUTLINEWIDTH 1
+	OUTLINESTYLE dashed     # or solid
+	LABELFONTCOLOR 40 60 100
+```
+
+Everything but `POSITION` and `SIZE` is optional. In the SVG editor, the
+**Zone** button adds one (around the selected nodes, if any). A zone is picked
+by its edge or its label, so its inside stays free for selecting nodes. Dragging
+a zone moves the nodes inside it too; hold Alt to move the zone alone. The
+corner handle resizes it, and the inspector edits its label and style.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |

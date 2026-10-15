@@ -138,6 +138,8 @@ html, body {
 
 #overlay .sel-box { fill: none; stroke: var(--select); stroke-width: 1.5; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .sel-box.grouped { stroke: var(--group); }
+#overlay .sel-box.zone { stroke-dasharray: 8 4; }
+#map g.wm-zone .wm-zone-label { cursor: move; }
 #overlay .sel-link { fill: none; stroke: var(--select); stroke-opacity: .5; stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .lock-mark { font-size: 11px; pointer-events: none; }
 #overlay .lasso { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -240,6 +242,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 
 /* Layers hidden while editing */
 #stage.hide-background #map .wm-bgimage { display: none; }
+#stage.hide-zones #map g.wm-zone { display: none; }
 #stage.hide-links #map g.wm-link { display: none; }
 #stage.hide-linklabels #map .wm-bwlabel-in, #stage.hide-linklabels #map .wm-bwlabel-out { display: none; }
 #stage.hide-nodelabels #map g.wm-node > :not(.wm-icon) { opacity: 0; }

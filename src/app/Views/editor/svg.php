@@ -34,6 +34,7 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
         <div class="tb-group">
             <button data-cmd="tool-select" class="active" title="<?= e__('Select and move (V)') ?>">&#x2B09; <?= e__('Select') ?></button>
             <button data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes (L)') ?>">&#x2194; <?= e__('Link') ?></button>
+            <button data-cmd="zone" title="<?= e__('Add a zone: a labelled rectangle for a site, around the selected nodes if any') ?>">&#x25AD; <?= e__('Zone') ?></button>
         </div>
 
         <div class="tb-group" data-needs="nodes2">
@@ -67,6 +68,7 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
                 <button data-cmd="layers" aria-expanded="false" aria-controls="layers-panel" title="<?= e__('Hide layers while editing (not saved in the map)') ?>"><?= e__('Layers') ?></button>
                 <span id="layers-panel" role="group" aria-label="<?= e__('Layers shown in the editor') ?>" hidden>
                     <label><input type="checkbox" name="background" checked> <?= e__('Background image') ?></label>
+                    <label><input type="checkbox" name="zones" checked> <?= e__('Zones') ?></label>
                     <label><input type="checkbox" name="links" checked> <?= e__('Links') ?></label>
                     <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
                     <label><input type="checkbox" name="nodelabels" checked> <?= e__('Node labels') ?></label>

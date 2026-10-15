@@ -195,4 +195,50 @@ final class MapEditorTest extends TestCase
         $history->record();
         $this->assertSame(['undo' => 1, 'redo' => 0], $history->counts());
     }
+
+    public function testZonesAreAddedEditedMovedAndDeleted(): void
+    {
+        $r = $this->editor->apply([['op' => 'add_zone', 'x' => 10, 'y' => 20, 'width' => 300, 'height' => 150, 'label' => 'Paris']]);
+        $this->assertSame(['zones' => ['zone']], $r['created']);
+
+        $this->editor->apply([
+            ['op' => 'set_zone', 'names' => ['zone'], 'props' => ['fillcolour' => '#102030', 'outlinecolour' => 'none', 'labelpos' => 'se', 'outlinestyle' => 'DASHED', 'opacity' => 150, 'name' => 'paris-dc']],
+            ['op' => 'move', 'zones' => ['paris-dc' => [40, 50]]],
+        ]);
+
+        $map = $this->editor->load();
+        $z = $map->zones['paris-dc'];
+        $this->assertSame([40, 50, 300, 150], [$z->x, $z->y, $z->width, $z->height]);
+        $this->assertSame([16, 32, 48], $z->fillcolour);
+        $this->assertNull($z->outlinecolour);
+        $this->assertSame('SE', $z->labelpos);
+        $this->assertSame('dashed', $z->outlinestyle);
+        $this->assertSame(100, $z->opacity);
+        $this->assertSame('Paris', $z->label);
+
+        $model = MapEditor::model($map);
+        $this->assertSame('paris-dc', $model['zones'][0]['name']);
+        $this->assertSame('#102030', $model['zones'][0]['fillcolour']);
+        $this->assertSame('none', $model['zones'][0]['outlinecolour']);
+
+        $this->editor->apply([['op' => 'delete_zones', 'names' => ['paris-dc']]]);
+        $this->assertSame([], $this->editor->load()->zones);
+    }
+
+    public function testBadZoneValuesAreRefused(): void
+    {
+        $this->editor->apply([['op' => 'add_zone', 'x' => 0, 'y' => 0]]);
+
+        foreach ([['labelpos' => 'middle'], ['fillcolour' => 'contrast'], ['colour' => '#fff']] as $props) {
+            try {
+                $this->editor->apply([['op' => 'set_zone', 'names' => ['zone'], 'props' => $props]]);
+                $this->fail('accepted ' . json_encode($props));
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_zone', 'names' => ['nope'], 'props' => ['label' => 'x']]]);
+    }
 }
