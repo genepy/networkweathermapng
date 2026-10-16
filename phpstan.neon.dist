@@ -4,5 +4,7 @@ parameters:
         - src/app
         - src/lib
     excludePaths:
-        # Cacti-only helper, never loaded by the standalone application
+        # Cacti helpers: only the rrd data source loads it, for its Cacti-only path
+        - src/lib/WeatherMap/ds-common.php
+    scanFiles:
         - src/lib/WeatherMap/ds-common.php
