@@ -84,6 +84,18 @@ class WeatherMapDataSource_mrtg extends WeatherMapDataSource {
 			$matchperiod = 'd';
 		}
 
+		// a local file, or a page fetched over http(s); other stream wrappers
+		// (php://, phar://, data:, ftp://...) have no business in a TARGET
+		if (preg_match('/^([a-z][a-z0-9+.\-]*):/i', $targetstring, $scheme) && !in_array(strtolower($scheme[1]), ['http', 'https'], true)) {
+			wm_warn("MRTG ReadData: unsupported address $targetstring, use a file path or an http(s) URL [WMMRTG10]");
+
+			return [null, null, 0];
+		}
+
+		// the hints are matched as plain text, not as a pattern
+		$matchvalue  = preg_quote($matchvalue, '/');
+		$matchperiod = preg_quote($matchperiod, '/');
+
 		$fd = fopen($targetstring, 'r');
 
 		if ($fd) {

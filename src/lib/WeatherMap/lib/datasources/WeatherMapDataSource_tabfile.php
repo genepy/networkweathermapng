@@ -73,6 +73,14 @@ class WeatherMapDataSource_tabfile extends WeatherMapDataSource {
 
 		$matches = 0;
 
+		// a local file, or a page fetched over http(s); other stream wrappers
+		// (php://, phar://, data:, ftp://...) have no business in a TARGET
+		if (preg_match('/^([a-z][a-z0-9+.\-]*):/i', $targetstring, $scheme) && !in_array(strtolower($scheme[1]), ['http', 'https'], true)) {
+			wm_warn("TabText ReadData: unsupported address $targetstring, use a file path or an http(s) URL [WMTABDATA10]");
+
+			return [null, null, 0];
+		}
+
 		$fd = fopen($targetstring, 'r');
 
 		if ($fd) {
@@ -82,15 +90,16 @@ class WeatherMapDataSource_tabfile extends WeatherMapDataSource {
 				// strip out any Windows line-endings that have gotten in here
 				$buffer = str_replace("\r", '', $buffer);
 
-				if (preg_match("/^$itemname\t(\d+\.?\d*[KMGT]*)\t(\d+\.?\d*[KMGT]*)/", $buffer, $matches)) {
+				if (preg_match("/^" . preg_quote($itemname, '/') . "\t(\d+\.?\d*[KMGT]*)\t(\d+\.?\d*[KMGT]*)/", $buffer, $matches)) {
 					$data[IN]  = unformat_number($matches[1]);
 					$data[OUT] = unformat_number($matches[2]);
 				}
 			}
 
-			$stats     = stat($targetstring);
-			assert($stats !== false);
-			$data_time = $stats['mtime'];
+			// a URL has no modification time
+			if (!preg_match('/^[a-z]+:\/\//i', $targetstring)) {
+				$data_time = (int) filemtime($targetstring);
+			}
 		} else {
 			// some error code to go in here
 			wm_debug("TabText ReadData: Couldn't open ($targetstring)");

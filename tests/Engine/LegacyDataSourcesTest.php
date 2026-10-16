@@ -77,6 +77,30 @@ CONF);
         $this->assertEquals(200 * 8, $map->links['mrtgaverage']->bandwidth_out);
     }
 
+    public function testFileTargetsRefuseOtherStreamsAndPatterns(): void
+    {
+        $dir = TESTS_ROOT . '/fixtures/datasources';
+        $map = $this->loadString(<<<CONF
+NODE a
+	POSITION 10 10
+NODE b
+	POSITION 100 10
+LINK wrapped
+	NODES a b
+	BANDWIDTH 10K
+	TARGET php://filter/resource=$dir/traffic.tsv
+LINK pattern
+	NODES a b
+	BANDWIDTH 10K
+	SET mrtg_value (
+	TARGET $dir/mrtg-port.html
+CONF);
+        $map->ReadData();
+
+        $this->assertEquals(0, $map->links['wrapped']->bandwidth_in);
+        $this->assertEquals(0, $map->links['pattern']->bandwidth_in);
+    }
+
     public function testMissingToolsDoNotStopTheMap(): void
     {
         $map = $this->loadString(<<<'CONF'
