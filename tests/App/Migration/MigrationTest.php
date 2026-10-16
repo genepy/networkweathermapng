@@ -128,6 +128,34 @@ final class MigrationTest extends TestCase
         $this->assertStringContainsString('TITLEFONT 3', $out);
     }
 
+    public function testUnrecognisedLinesAreKept(): void
+    {
+        $migrator = $this->migrator();
+        $conf = "WIDTH 400\nHEIGHT 300\nFUTUREGLOBAL on\n\n"
+            . "NODE a\n\tPOSITION 50 50\n\tNODEMAGIC 3\n\n"
+            . "NODE b\n\tPOSITION 300 200\n\n"
+            . "LINK a-b\n\tNODES a b\n\tLINKMAGIC blue\n\tTARGET static:1M:2M\n";
+
+        $report = $migrator->analyze($conf);
+        $this->assertCount(3, array_filter($report['warnings'], fn ($w) => str_starts_with($w, 'Unrecognised config')));
+
+        $out = $migrator->convert($conf, $report);
+
+        $this->assertMatchesRegularExpression('/^FUTUREGLOBAL on$/m', $out);
+        $this->assertMatchesRegularExpression('/^NODE a\n\tNODEMAGIC 3$/m', $out);
+        $this->assertMatchesRegularExpression('/^LINK a-b\n\tLINKMAGIC blue$/m', $out);
+        $this->assertLessThan(strpos($out, 'NODE a'), strpos($out, 'FUTUREGLOBAL'));
+
+        // the converted map still reads, with the same lines kept
+        $again = $migrator->analyze($out);
+        $this->assertSame(['nodes' => 2, 'links' => 1], $again['counts']);
+        $this->assertSame($migrator->unrecognised($conf, $report['warnings']), [
+            '' => ['FUTUREGLOBAL on'],
+            'NODE a' => ["\tNODEMAGIC 3"],
+            'LINK a-b' => ["\tLINKMAGIC blue"],
+        ]);
+    }
+
     private function conf(): string
     {
         return (string) file_get_contents(TESTS_ROOT . '/fixtures/migration/legacy.conf');

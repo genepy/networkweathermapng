@@ -51,7 +51,11 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
             <li><?= e__('Ignored, this application writes its own files:') ?> <code><?= $h($line) ?></code></li>
             <?php endforeach; ?>
             <?php foreach ($report['warnings'] as $line): ?>
+            <?php if (str_starts_with($line, 'Unrecognised config')): ?>
+            <li><?= e__('Kept as is in the converted map, this application does not use it:') ?> <code><?= $h($line) ?></code></li>
+            <?php else: ?>
             <li class="warn"><code><?= $h($line) ?></code></li>
+            <?php endif; ?>
             <?php endforeach; ?>
         </ul>
     </section>

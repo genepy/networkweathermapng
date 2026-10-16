@@ -9,7 +9,8 @@
  *   convert()  writes the adapted .conf: images relinked, targets replaced
  *              by the chosen interfaces, bitmap fonts swapped for TrueType.
  *
- * The positions, VIAs and every other setting are kept as they are.
+ * The positions, VIAs and every other setting are kept as they are, and so
+ * are the lines the engine does not understand.
  */
 
 declare(strict_types=1);
@@ -29,6 +30,9 @@ class MapMigrator
 
     /** Settings that make the renderer write files where the old server wanted them */
     private const OUTPUT_FIELDS = ['htmloutputfile', 'imageoutputfile', 'dataoutputfile', 'imageuri'];
+
+    /** The lines that open a block of the .conf */
+    private const SECTION = '/^\s*(NODE|LINK|ZONE)\s+(\S+)\s*$/i';
 
     private string $publicPath;
     private string $fontDir;
@@ -116,7 +120,7 @@ class MapMigrator
     public function convert(string $conf, array $report, array $choices = [], array $options = []): string
     {
         [$clean] = $this->sanitize($conf);
-        [$map] = $this->read($clean);
+        [$map, $warnings] = $this->read($clean);
 
         foreach (self::OUTPUT_FIELDS as $field) {
             $map->$field = '';
@@ -160,7 +164,88 @@ class MapMigrator
             $this->convertFonts($map);
         }
 
-        return $this->write($map);
+        return $this->restoreUnrecognised($this->write($map), $clean, $warnings);
+    }
+
+    /**
+     * Lines the engine does not understand, grouped by the NODE, LINK or ZONE
+     * they sit in ('' for the global part of the file).
+     *
+     * @return array<string, list<string>>
+     */
+    public function unrecognised(string $clean, array $warnings): array
+    {
+        $lines = explode("\n", $clean);
+        $kept = [];
+
+        foreach ($warnings as $warning) {
+            if (!preg_match('/^Unrecognised config on line (\d+):/', (string) $warning, $m)) {
+                continue;
+            }
+            $n = (int) $m[1];
+            if (!isset($lines[$n - 1])) {
+                continue;
+            }
+
+            $section = '';
+            for ($i = $n - 2; $i >= 0; $i--) {
+                if (preg_match(self::SECTION, $lines[$i], $h)) {
+                    $section = strtoupper($h[1]) . ' ' . $h[2];
+                    break;
+                }
+            }
+            $kept[$section][] = rtrim($lines[$n - 1]);
+        }
+
+        return $kept;
+    }
+
+    /**
+     * The engine drops what it does not understand when it writes a map back:
+     * put those lines back where they were, so the migration loses nothing.
+     */
+    private function restoreUnrecognised(string $out, string $clean, array $warnings): string
+    {
+        $kept = $this->unrecognised($clean, $warnings);
+        if (!$kept) {
+            return $out;
+        }
+
+        $global = $kept[''] ?? [];
+        unset($kept['']);
+
+        $result = [];
+        foreach (explode("\n", $out) as $line) {
+            $header = preg_match(self::SECTION, $line, $h);
+            if ($header && $global) {
+                array_push($result, ...$global);
+                $result[] = '';
+                $global = [];
+            }
+            $result[] = $line;
+            if ($header) {
+                $key = strtoupper($h[1]) . ' ' . $h[2];
+                foreach ($kept[$key] ?? [] as $extra) {
+                    $result[] = "\t" . ltrim($extra);
+                }
+                unset($kept[$key]);
+            }
+        }
+
+        // a map with no NODE, LINK or ZONE, or a section the engine did not write back
+        $tail = $global;
+        foreach ($kept as $section => $extras) {
+            $tail[] = $section;
+            foreach ($extras as $extra) {
+                $tail[] = "\t" . ltrim($extra);
+            }
+        }
+        if ($tail) {
+            $result[] = '';
+            array_push($result, ...$tail);
+        }
+
+        return implode("\n", $result);
     }
 
     /**
