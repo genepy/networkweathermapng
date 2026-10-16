@@ -328,3 +328,77 @@ if (!function_exists('set_request_var')) {
         $_REQUEST[$name] = $value;
     }
 }
+
+/*
+ * Used by the data source plugins taken from the Cacti Group's Weathermap
+ * (rrd, snmp2c, snmp3, fping): outside Cacti there is no poller_output
+ * table and no Cacti SNMP layer, so these fall back to plain PHP.
+ */
+
+if (!defined('POLLER_VERBOSITY_LOW')) {
+    define('POLLER_VERBOSITY_LOW', 2);
+}
+
+if (!function_exists('db_fetch_row_prepared')) {
+    function db_fetch_row_prepared($sql, $params = []) {
+        return [];
+    }
+}
+
+if (!function_exists('cacti_escapeshellarg')) {
+    function cacti_escapeshellarg($string) {
+        return escapeshellarg((string) $string);
+    }
+}
+
+if (!function_exists('rrdtool_function_fetch')) {
+    function rrdtool_function_fetch($local_data_id, $start, $end) {
+        return [];
+    }
+}
+
+/**
+ * Replacement for cacti_snmp_get, on PHP's snmp extension.
+ *
+ * @param int $timeout milliseconds as Cacti takes it; values above 100000
+ *                     are taken as microseconds, as the snmp2c plugin passes them
+ * @return string|false the value, or false when the device does not answer
+ */
+if (!function_exists('cacti_snmp_get')) {
+    function cacti_snmp_get($host, $community, $oid, $version, $auth_user = '', $auth_pass = '',
+        $auth_proto = '', $priv_pass = '', $priv_proto = '', $context = '', $port = 161,
+        $timeout = 1000, $retries = 0) {
+        if (!class_exists('SNMP')) {
+            static $warned = false;
+            if (!$warned) {
+                wm_warn('SNMP targets need the PHP snmp extension [WMSNMP10]');
+                $warned = true;
+            }
+            return false;
+        }
+
+        $version = (int) $version;
+        $snmpVersion = $version === 3 ? SNMP::VERSION_3 : ($version === 1 ? SNMP::VERSION_1 : SNMP::VERSION_2c);
+        $microseconds = $timeout > 100000 ? (int) $timeout : (int) $timeout * 1000;
+        $port = (int) $port > 0 ? (int) $port : 161;
+
+        try {
+            $session = new SNMP($snmpVersion, $host . ':' . $port, $version === 3 ? (string) $auth_user : (string) $community,
+                $microseconds, (int) $retries);
+            if ($version === 3) {
+                $level = $auth_pass === '' ? 'noAuthNoPriv' : ($priv_pass === '' ? 'authNoPriv' : 'authPriv');
+                $session->setSecurity($level, $auth_proto ?: 'SHA', (string) $auth_pass,
+                    $priv_proto ?: 'AES', (string) $priv_pass, (string) $context);
+            }
+            $session->valueretrieval = SNMP_VALUE_PLAIN;
+            $session->oid_output_format = SNMP_OID_OUTPUT_NUMERIC;
+            $value = @$session->get($oid);
+            $session->close();
+        } catch (\Throwable $e) {
+            wm_debug('cacti_snmp_get: ' . $e->getMessage());
+            return false;
+        }
+
+        return $value === false ? false : (string) $value;
+    }
+}

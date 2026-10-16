@@ -1,0 +1,378 @@
+<?php
+/*
+ +-------------------------------------------------------------------------+
+ | Copyright (C) 2022-2026 The Cacti Group, Inc.                           |
+ |                                                                         |
+ | Based on the Original Plugin developed by Howard Jones                  |
+ |                                                                         |
+ | Copyright (C) 2005-2022 Howard Jones and contributors                   |
+ |                                                                         |
+ | Permission is hereby granted, free of charge, to any person obtaining   |
+ | a copy of this software and associated documentation files              |
+ | (the "Software"), to deal in the Software without restriction,          |
+ | including without limitation the rights to use, copy, modify, merge,    |
+ | publish, distribute, sublicense, and/or sell copies of the Software,    |
+ | and to permit persons to whom the Software is furnished to do so,       |
+ | subject to the following conditions:                                    |
+ |                                                                         |
+ | The above copyright notice and this permission notice shall be          |
+ | included in all copies or substantial portions of the Software.         |
+ |                                                                         |
+ | THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,         |
+ | EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES         |
+ | OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND                |
+ | NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS     |
+ | BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN      |
+ | ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN       |
+ | CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE        |
+ | SOFTWARE.                                                               |
+ +-------------------------------------------------------------------------+
+ | Cacti: The Complete RRDtool-based Graphing Solution                     |
+ +-------------------------------------------------------------------------+
+ | Extensions to Howard Jones' original work are designed, written, and    |
+ | maintained by the Cacti Group.                                          |
+ |                                                                         |
+ | Howard Jones was the original author of Weathermap.  You can reach      |
+ | him at: howie@thingy.com                                                |
+ +-------------------------------------------------------------------------+
+ | http://www.network-weathermap.com/                                      |
+ | http://www.cacti.net/                                                   |
+ +-------------------------------------------------------------------------+
+*/
+
+// Pluggable datasource for PHP Weathermap 0.9
+// - return a live SNMP value
+
+// doesn't work well with large values like interface counters (I think this is a rounding problem)
+// - also it doesn't calculate rates. Just fetches a value.
+
+// useful for absolute GAUGE-style values like DHCP Lease Counts, Wireless AP Associations, Firewall Sessions
+// which you want to use to colour a NODE
+
+// You could also fetch interface states from IF-MIB with it.
+
+// TARGET snmp:public:hostname:1.3.6.1.4.1.3711.1.1:1.3.6.1.4.1.3711.1.2
+// (that is, TARGET snmp:community:host:in_oid:out_oid
+
+class WeatherMapDataSource_snmp3 extends WeatherMapDataSource {
+	/** @var mixed */
+	protected $owner;
+	/** @var mixed */
+	protected $regexpsHandled;
+	/** @var mixed */
+	protected $recognised;
+	/** @var mixed */
+	protected $name;
+	/** @var mixed */
+	protected $data;
+	/** @var mixed */
+	protected $dataTime;
+
+	/** @var mixed */
+	protected $downCache;
+
+	/** @var array<string, string> */
+	private $snmpParamDefaults = [
+		'username'  => '',
+		'seclevel'  => 'noAuthNoPriv',
+		'authpass'  => '',
+		'privpass'  => '',
+		'authproto' => '',
+		'privproto' => ''
+	];
+
+	/** @var mixed */
+	private $abortCount;
+	/** @var mixed */
+	private $timeout;
+	/** @var mixed */
+	private $retryCount;
+
+	public function __construct() {
+		$this->recognised = 0;
+
+		$this->data      = [];
+		$this->dataTime  = 0;
+		$this->data[IN]  = null;
+		$this->data[OUT] = null;
+
+		$this->regexpsHandled = [
+			'/^snmp3:([^:]+):([^:]+):([^:]+):([^:]+)$/'
+		];
+		$this->name = 'SNMP3';
+	}
+
+	/**
+	 * @param WeatherMap $map
+	 * @return bool
+	 */
+	function Init(&$map) {
+		// We can keep a list of unresponsive nodes, so we can give up earlier
+		$this->downCache = [];
+
+		return true;
+	}
+
+	/**
+	 * @param string $targetString
+	 * @return bool
+	 */
+	public function Recognise($targetString) {
+		foreach ($this->regexpsHandled as $regexp) {
+			if (preg_match($regexp, $targetString)) {
+				$this->recognised++;
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param string $targetstring
+	 * @param WeatherMap $map
+	 * @param WeatherMapItem $item
+	 * @return void
+	 */
+	public function Register($targetstring, &$map, &$item) {
+		parent::Register($targetstring, $map, $item);
+
+		if (preg_match($this->regexpsHandled[0], $targetstring, $matches)) {
+			// make sure there is a key for every host in the down_cache
+			$host                   = $matches[2];
+			$this->downCache[$host] = 0;
+		}
+	}
+
+	/**
+	 * Decide if this host has failed too much already
+	 *
+	 * @param  string $host
+	 * @return bool
+	 */
+	private function isHostAborted($host) {
+		// we're not keeping score
+		if ($this->abortCount == 0) {
+			return false;
+		}
+
+		if (!isset($this->downCache[$host]) || intval($this->downCache[$host]) < $this->abortCount) {
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param string $targetString
+	 * @param WeatherMap $map
+	 * @param mixed $mapItem
+	 * @return mixed
+	 */
+	public function ReadData($targetString, &$map, &$mapItem) {
+		$this->data[IN]  = null;
+		$this->data[OUT] = null;
+
+		$this->timeout    = intval($map->get_hint('snmp_timeout', 1000000));
+		$this->abortCount = intval($map->get_hint('snmp_abort_count', 0));
+		$this->retryCount = intval($map->get_hint('snmp_retries', 2));
+
+		if (preg_match($this->regexpsHandled[0], $targetString, $matches)) {
+			$profileName = $matches[1];
+			$host        = $matches[2];
+			$oids        = [IN => $matches[3], OUT => $matches[4]];
+
+			if (!$this->isHostAborted($host)) {
+				$params = $this->buildSNMPParams($map, $profileName);
+
+				wm_debug(sprintf("SNMPv3 ReadData: SNMP settings are %s\n", json_encode($params)));
+
+				$this->getSNMPData($host, $params, $oids, $mapItem, $this->timeout, $this->retryCount);
+			} else {
+				wm_warn("SNMP for $host has reached $this->abortCount failures. Skipping. [WMSNMP01]");
+			}
+		} else {
+			wm_debug("SNMPv3 ReadData: regexp didn't match after Recognise did - this is odd!\n");
+		}
+
+		return $this->returnData();
+	}
+
+	/**
+	 * @return mixed
+	 */
+	protected function returnData() {
+		wm_debug(
+			sprintf(
+				"%s ReadData: Returning (%s, %s, %s)\n",
+				$this->name,
+				valueOrNull($this->data[IN]),
+				valueOrNull($this->data[OUT]),
+				$this->dataTime
+			)
+		);
+
+		return [$this->data[IN], $this->data[OUT], $this->dataTime];
+	}
+
+	/**
+	 * @param WeatherMap $map
+	 * @param mixed      $profileName
+	 *
+	 * @return array
+	 */
+	public function buildSNMPParams(&$map, $profileName) {
+		// snmp3_PROFILE1_import 33
+		//
+		// OR
+		//
+		// snmp3_PROFILE1_username
+		// snmp3_PROFILE1_seclevel
+		// snmp3_PROFILE1_authproto
+		// snmp3_PROFILE1_authpass
+		// snmp3_PROFILE1_privproto
+		// snmp3_PROFILE1_privpass
+
+		$import = $map->get_hint('snmp3_' . $profileName . '_import');
+
+		$params = [];
+
+		if (is_null($import)) {
+			// If they are explicitly defined...
+			wm_debug("SNMPv3 ReadData: no import, defining profile $profileName from SET variables\n");
+
+			foreach ($this->snmpParamDefaults as $keyname => $default) {
+				$params[$keyname] = $map->get_hint('snmp3_' . $profileName . '_' . $keyname, $default);
+			}
+		} else {
+			// if they are to be copied from a Cacti profile...
+			$import = intval($import);
+			wm_debug("SNMPv3 ReadData: will try to import profile $profileName from Cacti host id $import\n");
+
+			$params = $this->copyParamsFromCacti($profileName, $import);
+		}
+
+		return $params;
+	}
+
+	/**
+	 * @param mixed $profileName
+	 * @param int   $hostId
+	 *
+	 * @return mixed
+	 */
+	private function copyParamsFromCacti($profileName, $hostId) {
+		$params = [];
+
+		foreach ($this->snmpParamDefaults as $keyname => $default) {
+			$params[$keyname] = $default;
+		}
+
+		if (!function_exists('db_fetch_row')) {
+			wm_warn('SNMPv3 ReadData snmp3_' . $profileName . '_import is set but not running in Cacti');
+
+			return $params;
+		}
+
+		$result = db_fetch_row_prepared('SELECT *
+			FROM host
+			WHERE snmp_version = 3
+			AND id = ?',
+			[$hostId]);
+
+		if (!$result) {
+			wm_warn('SNMPv3 ReadData snmp3_' . $profileName . "_import failed to read data from Cacti host id $hostId");
+
+			return $params;
+		}
+
+		$dbFieldMapping = [
+			'username'  => 'snmp_username',
+			'authpass'  => 'snmp_password',
+			'privpass'  => 'snmp_priv_passphrase',
+			'authproto' => 'snmp_auth_protocol',
+			'privproto' => 'snmp_priv_protocol'
+		];
+
+		foreach ($dbFieldMapping as $param => $fieldname) {
+			$params[$param] = $result[0][$fieldname];
+		}
+
+		if ($params['privproto'] == '[None]' || $params['privpass'] == '') {
+			$params['seclevel']  = 'authNoPriv';
+			$params['privproto'] = '';
+		} else {
+			$params['seclevel'] = 'authPriv';
+		}
+
+		wm_debug(sprintf(
+			"SNMPv3 ReadData Imported Cacti info for device %d into profile named %s\n",
+			$hostId,
+			$profileName)
+		);
+
+		return $params;
+	}
+
+	/**
+	 * @param $host
+	 * @param $params
+	 * @param $oids
+	 * @param $item
+	 * @param $timeout
+	 * @param $retries
+	 * @param mixed $host
+	 * @param mixed $params
+	 * @param mixed $oids
+	 * @param WeatherMapItem $item
+	 * @param mixed $timeout
+	 * @param mixed $retries
+	 * @return void
+	 */
+	private function getSNMPData($host, $params, $oids, &$item, $timeout, $retries) {
+		$channels = [
+			'in'  => IN,
+			'out' => OUT
+		];
+
+		$results      = [];
+		$results[IN]  = null;
+		$results[OUT] = null;
+
+		if ($params['username'] != '') {
+			foreach ($channels as $name => $id) {
+				if ($oids[$id] != '-') {
+					$oid = $oids[$id];
+					wm_debug("Going to get $oid\n");
+
+					$results[$id] = cacti_snmp_get($host, '', $oid, 3, $params['username'], $params['authpass'], $params['authproto'],
+						$params['privpass'], $params['privproto'], '', 161, $timeout, $retries);
+
+					if ($results[$id] !== false) {
+						$this->data[$id] = floatval($results[$id]);
+						$item->add_hint('snmp_' . $name . '_raw', $results[$id]);
+					} else {
+						$this->downCache[$host]++;
+					}
+				} else {
+					wm_debug("SNMPv3 ReadData: skipping $name channel: OID is '-'\n");
+				}
+			}
+		} else {
+			wm_debug("SNMPv3 ReadData: no username defined, not going to try.\n");
+		}
+
+		wm_debug(sprintf("SNMPv3 ReadData: Got '%s' and '%s'\n", $results[IN], $results[OUT]));
+
+		$this->dataTime = time();
+	}
+}
+
+/**
+ * @param string $value
+ * @return mixed
+ */
+function valueOrNull($value) {
+	return $value === null ? '{null}' : $value;
+}

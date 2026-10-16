@@ -446,15 +446,20 @@ and are listed with a link to their review page.
 
 ## License
 
-This project is based on PHP Network Weathermap by Howard Jones and The Cacti Group.
+Licensed under the MIT License. See [LICENSE](LICENSE).
 
-Licensed under the MIT License. See LICENSE file for details.
+This project is based on PHP Network Weathermap by Howard Jones and on the
+Weathermap plugin for Cacti by The Cacti Group. The code, icons, fonts and
+packages that come from other projects, with their authors and licenses, are
+listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Credits
 
-- Original Weathermap by Howard Jones
+- Original Weathermap by Howard Jones and contributors
 - Cacti Weathermap Plugin by The Cacti Group
-- Zabbix integration and Docker containerization by the Zabbix Weathermap Team
+- Zabbix edition, Zabbix integration and Docker containerization by Artur Zdolinski (nchekwa)
+- Network icons from Network-Icons-SVG by aci686 and BobTheButcher
+- DejaVu fonts by the DejaVu team, based on Bitstream Vera
 
 ## Support
 

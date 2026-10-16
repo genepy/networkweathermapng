@@ -21,7 +21,10 @@ RUN apk add --no-cache \
     ttf-dejavu \
     fontconfig \
     rrdtool \
-    rsvg-convert
+    rsvg-convert \
+    net-snmp-dev \
+    net-snmp-libs \
+    fping
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -33,7 +36,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         zip \
         intl \
         mbstring \
-        opcache
+        opcache \
+        snmp
 
 # Install Composer
 COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
