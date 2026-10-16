@@ -291,6 +291,7 @@ return [
     'Checks' => 'Vérifications',
     'Removed, it reads files on the old server:' => 'Supprimé, car il lit des fichiers sur l’ancien serveur :',
     'Ignored, this application writes its own files:' => 'Ignoré, cette application écrit ses propres fichiers :',
+    'Kept as is in the converted map, this application does not use it:' => 'Conservé tel quel dans la carte convertie, cette application ne l’utilise pas :',
     'Replace the bitmap fonts (:list) by TrueType fonts of the same size' => 'Remplacer les polices bitmap (:list) par des polices TrueType de même taille',
     'Images' => 'Images',
     'Used by' => 'Utilisée par',
