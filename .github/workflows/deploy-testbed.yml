@@ -1,26 +1,29 @@
 name: Deploy testbed
 
 # Deploys deploy/testbed (Observium, Weathermap and simulated devices) on the
-# machine that runs the self-hosted runner labelled "deploy": a Raspberry Pi,
-# an Oracle Cloud Ampere instance, any arm64 or amd64 Linux host with Docker.
+# Raspberry Pi through its self-hosted runner (labels self-hosted, ARM64, rpi).
+#
+# A push to main runs CI on GitHub's runners first; this workflow then deploys
+# exactly the commit CI tested, only if it passed. It can also be started by
+# hand from the Actions tab.
+#
+# On the Pi, once:
+#   /opt/apps/networkweathermapng/    holds .env (created with new passwords
+#                                     on the first deployment if missing)
+#   /opt/backups/networkweathermapng/ receives a backup before each deployment
+# Both must be writable by the runner's user.
 #
 # Nothing runs until the repository variable TESTBED_ENABLED is "true"
 # (Settings > Secrets and variables > Actions > Variables), so jobs don't wait
 # for a runner that isn't installed yet.
 #
-# Never triggered by pull requests: code from a fork must not run on the
-# runner's machine.
+# Never triggered by pull requests: code from a fork must not run on the Pi.
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'deploy/testbed/**'
-      - 'docker/**'
-      - 'src/**'
-      - 'composer.json'
-      - '.github/workflows/deploy-testbed.yml'
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -32,14 +35,33 @@ concurrency:
 
 jobs:
   deploy:
-    if: ${{ vars.TESTBED_ENABLED == 'true' }}
-    runs-on: [self-hosted, deploy]
+    if: >-
+      vars.TESTBED_ENABLED == 'true' && (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+      )
+    runs-on: [self-hosted, ARM64, rpi]
     # The first build compiles PHP extensions: slow on a Pi
     timeout-minutes: 90
+    env:
+      APP_DIR: /opt/apps/networkweathermapng
+      TESTBED_ENV_FILE: /opt/apps/networkweathermapng/.env
+      TESTBED_BACKUP_DIR: /opt/backups/networkweathermapng
 
     steps:
-      - name: Checkout
+      - name: Checkout the tested commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Check the folders on the Pi
+        run: |
+          for dir in "$APP_DIR" "$TESTBED_BACKUP_DIR"; do
+            if [ ! -w "$dir" ]; then
+              echo "::error::$dir is missing or not writable by $(whoami). Create it once: sudo install -d -o $(whoami) $dir"
+              exit 1
+            fi
+          done
 
       - name: Deploy
         run: ./deploy/testbed/deploy.sh

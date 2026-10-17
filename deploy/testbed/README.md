@@ -40,15 +40,31 @@ the polls go by.
 ## Deploy from GitHub Actions
 
 The **Deploy testbed** workflow (`.github/workflows/deploy-testbed.yml`) runs
-`deploy.sh` on a self-hosted runner, after each push to `main` that changes
-the application or the testbed, or by hand from the Actions tab.
+`deploy.sh` on a Raspberry Pi through a self-hosted runner with the labels
+`self-hosted`, `ARM64` and `rpi`. A push to `main` runs CI on GitHub's
+runners first; the deployment then starts on the Pi with exactly the commit CI
+tested, only if it passed. It can also be started by hand from the Actions tab.
 
-1. Install a self-hosted runner on the machine (repository **Settings →
-   Actions → Runners → New self-hosted runner**, Linux, ARM64 for a Pi or an
-   Ampere instance) with the label `deploy`, under a user without sudo that is
-   in the `docker` group, and install it as a service (`sudo ./svc.sh install
-   <user> && sudo ./svc.sh start`).
-2. Add the repository variable `TESTBED_ENABLED` = `true` (**Settings →
+Each deployment builds the new images while the running version keeps
+running, backs up its data to `/opt/backups/networkweathermapng` (Observium's
+database, RRD files, Weathermap's data; the last 10 are kept), then starts the
+new version. If the backup fails, the running version is left untouched.
+
+Once, on the Pi:
+
+1. Install a runner for this repository (repository **Settings → Actions →
+   Runners → New self-hosted runner**, Linux, ARM64) with the label `rpi`,
+   under a user without sudo that is in the `docker` group, and install it as
+   a service (`sudo ./svc.sh install <user> && sudo ./svc.sh start`). A runner
+   registered for another repository of a personal account doesn't take this
+   repository's jobs: install a second one, in its own folder, next to it.
+2. Create the folders, owned by the runner's user:
+   ```bash
+   sudo install -d -o <user> /opt/apps/networkweathermapng /opt/backups/networkweathermapng
+   ```
+   The first deployment writes `/opt/apps/networkweathermapng/.env` with new
+   passwords; edit it to change ports or settings.
+3. Add the repository variable `TESTBED_ENABLED` = `true` (**Settings →
    Secrets and variables → Actions → Variables**). Until then the workflow
    does nothing, so no job waits for a runner that doesn't exist.
 
@@ -82,12 +98,15 @@ On the Raspberry Pi itself, these help too:
 
 ## Settings
 
-Everything is in the env file (`~/.config/weathermap-testbed/env`, or the
-path in `TESTBED_ENV_FILE`); run `deploy.sh` again after a change.
+Everything is in the env file (`/opt/apps/networkweathermapng/.env` when
+deployed by the workflow, `~/.config/weathermap-testbed/env` by hand, or the
+path in `TESTBED_ENV_FILE`); run `deploy.sh` again after a change. By hand,
+set `TESTBED_BACKUP_DIR` (an absolute path) to back up before each run.
 
 | Variable | Default | |
 |----------|---------|---|
-| `WEATHERMAP_PORT`, `OBSERVIUM_PORT` | `8080`, `8668` | Ports published on the host |
+| `WEATHERMAP_PORT`, `OBSERVIUM_PORT` | `8080`, `8668` | Ports published on the host; change them if another application uses them |
+| `BIND_ADDRESS` | `0.0.0.0` | Address the ports listen on; `127.0.0.1` behind a reverse proxy on the same machine |
 | `TZ` | `UTC` | Time zone |
 | `OBSERVIUM_DEVICES` | the three simulated devices | Devices Observium adds at start, `host` or `host:community`, separated by spaces |
 | `OBSERVIUM_BASE_URL` | detected | Observium's public URL, if it is behind a proxy |
@@ -104,7 +123,7 @@ VPN (WireGuard, Tailscale).
 
 ## Security
 
-The ports are published on every interface of the host. On a cloud instance
+By default the ports are published on every interface of the host. On a cloud instance
 with a public address, don't open them to the world: allow only your own
 address in the provider's firewall (Oracle: the subnet's security list), or
 reach them through an SSH tunnel or a VPN.

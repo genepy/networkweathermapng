@@ -84,7 +84,7 @@ services:
       # Simulated devices; add your own as "host" or "host:community"
       OBSERVIUM_DEVICES: ${OBSERVIUM_DEVICES:-core-router access-switch-1 access-switch-2}
     ports:
-      - "${OBSERVIUM_PORT:-8668}:80"
+      - "${BIND_ADDRESS:-0.0.0.0}:${OBSERVIUM_PORT:-8668}:80"
     volumes:
       - rrd:/opt/observium/rrd
     tmpfs:
@@ -105,7 +105,7 @@ services:
       ADMIN_PASSWORD: ${WEATHERMAP_ADMIN_PASSWORD:?}
       TESTBED_OBSERVIUM_DB_PASSWORD: ${WEATHERMAP_DB_PASSWORD:?}
     ports:
-      - "${WEATHERMAP_PORT:-8080}:80"
+      - "${BIND_ADDRESS:-0.0.0.0}:${WEATHERMAP_PORT:-8080}:80"
     volumes:
       - weathermap:/app/data
       - ./weathermap/php.ini:/usr/local/etc/php/conf.d/zz-testbed.ini:ro
