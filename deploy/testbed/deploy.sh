@@ -5,6 +5,11 @@
 # Passwords are generated on the first run and kept outside the checkout, in
 # $TESTBED_ENV_FILE (default ~/.config/weathermap-testbed/env). Edit that file
 # to change ports, passwords or the monitored devices, then run this again.
+#
+# With $TESTBED_BACKUP_DIR set, the running version's data (Observium's
+# database, RRD files, Weathermap's data) is saved there before the new
+# version starts; the last 10 backups are kept. If the backup fails, the
+# running version is left as it is.
 set -eu
 
 cd "$(dirname "$0")"
@@ -36,8 +41,41 @@ compose() {
     docker compose --env-file "$env_file" "$@"
 }
 
-echo "Building and starting the containers (the first build takes a while on a Pi)"
-compose up -d --build --remove-orphans
+echo "Building the images (the first build takes a while on a Pi)"
+compose build
+
+# Each step returns on failure: "set -e" does not apply inside "if ! backup"
+backup() {
+    dir=$1
+    stamp=$(date +%Y%m%d-%H%M%S)
+    mkdir -p "$dir" || return 1
+
+    echo "Backing up the running version to $dir"
+    compose exec -T db bash -o pipefail -c \
+        'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction observium | gzip' \
+        > "$dir/observium-db-$stamp.sql.gz" || return 1
+    # Writes the RRD updates rrdcached still holds in memory
+    compose exec -T rrdcached sh -c 'echo FLUSHALL | nc -w 10 127.0.0.1 42217' > /dev/null || return 1
+    docker run --rm \
+        -v weathermap-testbed_rrd:/backup/rrd:ro \
+        -v weathermap-testbed_weathermap:/backup/weathermap:ro \
+        -v "$dir":/out \
+        alpine:3.20 tar czf "/out/volumes-$stamp.tar.gz" -C /backup rrd weathermap || return 1
+
+    for pattern in 'observium-db-*.sql.gz' 'volumes-*.tar.gz'; do
+        find "$dir" -maxdepth 1 -name "$pattern" | sort -r | tail -n +11 | xargs -r rm -f
+    done
+}
+
+if [ -n "${TESTBED_BACKUP_DIR:-}" ] && [ -n "$(compose ps -q --status running db 2>/dev/null)" ]; then
+    if ! backup "$TESTBED_BACKUP_DIR"; then
+        echo "Backup failed: the running version is left untouched" >&2
+        exit 1
+    fi
+fi
+
+echo "Starting the containers"
+compose up -d --remove-orphans
 
 echo "Waiting for the containers to be ready"
 ready=0
