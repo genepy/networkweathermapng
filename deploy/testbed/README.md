@@ -109,7 +109,8 @@ set `TESTBED_BACKUP_DIR` (an absolute path) to back up before each run.
 | `BIND_ADDRESS` | `0.0.0.0` | Address the ports listen on; `127.0.0.1` behind a reverse proxy on the same machine |
 | `TZ` | `UTC` | Time zone |
 | `OBSERVIUM_DEVICES` | the three simulated devices | Devices Observium adds at start, `host` or `host:community`, separated by spaces |
-| `OBSERVIUM_BASE_URL` | detected | Observium's public URL, if it is behind a proxy |
+| `OBSERVIUM_BASE_URL` | detected | Observium's public URL, to pin its links to one address behind a reverse proxy. Without it, Observium builds them from each request (`Host`, and `https` from `X-Forwarded-Proto`) |
+| `WEATHERMAP_PUBLIC_URL`, `OBSERVIUM_PUBLIC_URL` | none | Addresses `deploy.sh` prints at the end, behind a reverse proxy (`OBSERVIUM_PUBLIC_URL` falls back to `OBSERVIUM_BASE_URL`) |
 | `RRDCACHED_WRITE_DELAY` | `1800` | Seconds an RRD update may stay in memory |
 | `RRDCACHED_JOURNAL` | `off` | `on` to journal updates on disk |
 
@@ -120,6 +121,12 @@ The simulated devices and their average traffic are described in
 To monitor real equipment, add it to `OBSERVIUM_DEVICES` or in Observium's
 web interface. A cloud instance only reaches your network's devices through a
 VPN (WireGuard, Tailscale).
+
+Behind an HTTPS reverse proxy, both applications work without other settings
+as long as the proxy passes the original `Host` and `X-Forwarded-Proto:
+https`: links and redirects are relative or use that host, and session cookies
+are marked `Secure`. The Raspberry Pi set-up is described in
+[docs/raspberry-pi.md](../../docs/raspberry-pi.md).
 
 ## Security
 
