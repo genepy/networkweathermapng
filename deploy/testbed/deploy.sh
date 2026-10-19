@@ -5,6 +5,8 @@
 # Passwords are generated on the first run and kept outside the checkout, in
 # $TESTBED_ENV_FILE (default ~/.config/weathermap-testbed/env). Edit that file
 # to change ports, passwords or the monitored devices, then run this again.
+# WEATHERMAP_PUBLIC_URL and OBSERVIUM_PUBLIC_URL, when set there, are the
+# addresses printed at the end (behind a reverse proxy).
 #
 # With $TESTBED_BACKUP_DIR set, the running version's data (Observium's
 # database, RRD files, Weathermap's data) is saved there before the new
@@ -100,9 +102,19 @@ compose exec -T -u www-data weathermap php /testbed/seed.php
 docker image prune -f > /dev/null
 
 . "$env_file"
-host=$(hostname -I 2>/dev/null | awk '{print $1}')
-host=${host:-localhost}
+# Public addresses when a reverse proxy is in front, else the published ports
+# (on this machine only when they listen on a single address).
+case ${BIND_ADDRESS:-0.0.0.0} in
+    0.0.0.0 | ::)
+        host=$(hostname -I 2>/dev/null | awk '{print $1}')
+        host=${host:-localhost}
+        ;;
+    *:*) host="[$BIND_ADDRESS]" ;;
+    *) host=$BIND_ADDRESS ;;
+esac
+weathermap_url=${WEATHERMAP_PUBLIC_URL:-http://$host:${WEATHERMAP_PORT:-8080}}
+observium_url=${OBSERVIUM_PUBLIC_URL:-${OBSERVIUM_BASE_URL:-http://$host:${OBSERVIUM_PORT:-8668}}}
 echo
-echo "Weathermap: http://$host:${WEATHERMAP_PORT:-8080}  (admin, password in $env_file)"
-echo "Observium:  http://$host:${OBSERVIUM_PORT:-8668}  (admin, password in $env_file)"
+echo "Weathermap: $weathermap_url  (admin, password in $env_file)"
+echo "Observium:  $observium_url  (admin, password in $env_file)"
 echo "The map shows the simulated traffic about a minute after the first start."

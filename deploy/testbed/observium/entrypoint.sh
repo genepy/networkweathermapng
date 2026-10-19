@@ -25,8 +25,12 @@ cat > config.php <<PHP
 \$config['snmp']['version'] = 'v2c';
 \$config['snmp']['community'] = [$(php_quote "${OBSERVIUM_SNMP_COMMUNITY:-public}")];
 PHP
+# Without base_url, Observium builds its links from the request (Host header,
+# and https when X-Forwarded-Proto says so). base_url pins them to one public
+# address; external_url is the same address for links made by the scheduler.
 if [ -n "$OBSERVIUM_BASE_URL" ]; then
     echo "\$config['base_url'] = $(php_quote "$OBSERVIUM_BASE_URL");" >> config.php
+    echo "\$config['external_url'] = $(php_quote "$OBSERVIUM_BASE_URL");" >> config.php
 fi
 chmod 640 config.php
 chown root:www-data config.php
