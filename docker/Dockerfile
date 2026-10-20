@@ -24,7 +24,8 @@ RUN apk add --no-cache \
     rsvg-convert \
     net-snmp-dev \
     net-snmp-libs \
-    fping
+    fping \
+    openssh-client 
 
 # Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
