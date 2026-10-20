@@ -40,6 +40,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache \
         snmp
 
+RUN cat /etc/resolv.conf \
+    && php -r '$h="api.github.com"; $ip=gethostbyname($h); echo "$h => $ip\n"; exit($ip === $h ? 1 : 0);' \
+    && curl -sS -o /dev/null -w 'GitHub HTTP %{http_code}\n' --max-time 15 https://api.github.com/
+
 # Install Composer
 COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
