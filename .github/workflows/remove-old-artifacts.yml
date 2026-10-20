@@ -1,0 +1,22 @@
+name: Remove old artifacts
+
+on:
+  schedule:
+    # Exécution tous les jours à 2h00 du matin (format Cron)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Permet de lancer le nettoyage manuellement depuis l'onglet Actions
+
+jobs:
+  remove-artifacts:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write # Nécessaire pour supprimer les artefacts
+      contents: read
+    steps:
+      - name: Delete old artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '2 days' # Supprime les artefacts de plus de 3 jours
+          skip-tags: true # Conserve les artefacts associés aux tags/releases
+          dry-run: false # Mettre sur 'true' pour tester sans supprimer réellement
+          max-retries: 5
