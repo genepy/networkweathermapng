@@ -44,7 +44,11 @@ compose() {
 }
 
 echo "Building the images (the first build takes a while on a Pi)"
-compose build
+# The images build on the host's network ("network: host" in
+# docker-compose.yml). Compose's Bake builder refuses that without the
+# network.host entitlement, which "compose build" cannot grant, so use the
+# classic builder.
+COMPOSE_BAKE=false compose build
 
 # Each step returns on failure: "set -e" does not apply inside "if ! backup"
 backup() {
