@@ -127,6 +127,10 @@ After a change, redeploy (Actions > "Deploy testbed" > Run workflow).
   Weathermap's data (`weathermap`, mounted on `/app/data`: SQLite database,
   `app.key`, uploaded icons and backgrounds). Anything written elsewhere in a
   container is lost on the next deployment, and is not backed up.
+- **Builds on the host's network**: every `build` in
+  `deploy/testbed/docker-compose.yml` has `network: host`. Without it, the
+  build containers cannot resolve names on the Pi and Composer cannot
+  download its packages.
 - **ARM64**: the Pi is `aarch64`. Base images and packages must exist for
   `linux/arm64`; PHP extensions are compiled during the build.
 - **Resources**: the Pi has 8 GB shared with the other applications, and an
