@@ -1,0 +1,147 @@
+name: Clean up workflow runs
+
+# Deletes old workflow runs in bulk so they don't have to be removed one by
+# one from the Actions tab.
+#
+# Runs every Sunday with the defaults below, and can be started by hand from
+# the Actions tab ("Clean up workflow runs" > "Run workflow") with custom
+# settings. Start with "dry run" ticked to see what would be deleted.
+#
+# Only completed runs are considered: queued and in-progress runs (including
+# this one) are never touched. For each workflow, the newest "keep" runs are
+# always kept, whatever their age or conclusion.
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Delete runs older than this many days (0 = any age)
+        type: string
+        default: '30'
+      keep:
+        description: Always keep the newest N runs of each workflow
+        type: string
+        default: '5'
+      conclusions:
+        description: >-
+          Only delete runs with these conclusions, comma separated
+          (e.g. failure,cancelled,skipped). Empty = any conclusion.
+        type: string
+        default: ''
+      workflow:
+        description: Only clean up this workflow file (e.g. ci.yml). Empty = all workflows.
+        type: string
+        default: ''
+      max_deletions:
+        description: Stop after this many deletions (keeps within API rate limits)
+        type: string
+        default: '500'
+      dry_run:
+        description: Only list the runs that would be deleted
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+
+concurrency:
+  group: cleanup-workflow-runs
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          # Scheduled runs have no inputs, so fall back to the defaults.
+          DAYS: ${{ inputs.days || '30' }}
+          KEEP: ${{ inputs.keep || '5' }}
+          CONCLUSIONS: ${{ inputs.conclusions || '' }}
+          WORKFLOW: ${{ inputs.workflow || '' }}
+          MAX_DELETIONS: ${{ inputs.max_deletions || '500' }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+
+          for value in "$DAYS" "$KEEP" "$MAX_DELETIONS"; do
+            if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+              echo "::error::'$value' is not a non-negative integer"
+              exit 1
+            fi
+          done
+
+          if [ "$DAYS" -gt 0 ]; then
+            cutoff=$(date -u -d "-${DAYS} days" +%Y-%m-%dT%H:%M:%SZ)
+          else
+            cutoff=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          fi
+
+          gh api --paginate "repos/${REPO}/actions/runs?status=completed&per_page=100" \
+            --jq '.workflow_runs[] | {id, path, name, run_number, conclusion, created_at}' \
+            > runs.jsonl
+
+          jq -s -c \
+            --arg cutoff "$cutoff" \
+            --argjson keep "$KEEP" \
+            --arg conclusions "$CONCLUSIONS" \
+            --arg workflow "$WORKFLOW" '
+              ($conclusions | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))) as $wanted
+              | map(select($workflow == "" or (.path | split("/") | last) == $workflow))
+              | group_by(.path)
+              | map(sort_by(.created_at) | reverse | .[$keep:])
+              | add // []
+              | map(select(.created_at < $cutoff))
+              | map(select((.conclusion // "none") as $c | ($wanted | length) == 0 or ($wanted | any(. == $c))))
+              | sort_by(.created_at)
+              | .[]
+            ' runs.jsonl > to-delete.jsonl
+
+          total=$(wc -l < runs.jsonl)
+          candidates=$(wc -l < to-delete.jsonl)
+          echo "Completed runs found: ${total}"
+          echo "Runs matching the filters: ${candidates}"
+
+          deleted=0
+          failed=0
+          while IFS= read -r run; do
+            if [ "$deleted" -ge "$MAX_DELETIONS" ]; then
+              echo "Reached max_deletions (${MAX_DELETIONS}), stopping."
+              break
+            fi
+            id=$(jq -r '.id' <<<"$run")
+            label=$(jq -r '"\(.name) #\(.run_number) (\(.conclusion // "none"), \(.created_at))"' <<<"$run")
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "Would delete ${label}"
+              deleted=$((deleted + 1))
+            elif gh api -X DELETE "repos/${REPO}/actions/runs/${id}" --silent; then
+              echo "Deleted ${label}"
+              deleted=$((deleted + 1))
+            else
+              echo "::warning::Could not delete ${label}"
+              failed=$((failed + 1))
+            fi
+          done < to-delete.jsonl
+
+          verb=$([ "$DRY_RUN" = "true" ] && echo "Would delete" || echo "Deleted")
+          {
+            echo "### Workflow run cleanup"
+            echo ""
+            echo "| Setting | Value |"
+            echo "| --- | --- |"
+            echo "| Older than | ${DAYS} days |"
+            echo "| Kept per workflow | ${KEEP} |"
+            echo "| Conclusions | ${CONCLUSIONS:-any} |"
+            echo "| Workflow | ${WORKFLOW:-all} |"
+            echo "| Dry run | ${DRY_RUN} |"
+            echo ""
+            echo "${verb} **${deleted}** of ${candidates} matching runs (${total} completed runs in total)."
+            if [ "$failed" -gt 0 ]; then
+              echo ""
+              echo "${failed} deletions failed, see the log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
