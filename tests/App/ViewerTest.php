@@ -121,6 +121,11 @@ CONF);
         $this->assertStringContainsString('"sourceId":1', $ab['ds']);
         $this->assertEqualsWithDelta(30.0, $ab['inpct'], 0.01);
         $this->assertEqualsWithDelta(30000000.0, $ab['in'], 1);
+        $abId = (int) substr((string) array_search($ab, $items, true), 1);
+        $this->assertSame('/map/' . $id . '/link/' . $abId . '/graph', $ab['graph'], 'a link from a data source gets its traffic graph');
+        $bc = array_values(array_filter($items, fn ($i) => $i['name'] === 'b-c'))[0];
+        $this->assertArrayNotHasKey('graph', $bc);
+        $this->assertArrayNotHasKey('url', $bc);
         $nodeA = array_values(array_filter($items, fn ($i) => $i['kind'] === 'node'));
         $this->assertCount(1, $nodeA, 'only nodes with a URL are listed');
         $this->assertSame('https://nms.example/node/a', $nodeA[0]['url']);
@@ -178,6 +183,42 @@ CONF);
         $this->assertFalse($this->maps->mapStatus($map)['stale']);
 
         $this->assertNull($this->maps->liveRender(9999));
+    }
+
+    public function testMonitoringPageAndGraphWithoutInfoUrl(): void
+    {
+        $id = $this->createMap(<<<CONF
+LINK c-a
+	NODES c a
+	TARGET -observium:host:core-rtr1:if:xe-0/0/1
+LINK a-c
+	NODES a c
+	TARGET observium:host:core-rtr1:status
+	OVERLIBGRAPH https://nms.example/graph.png
+CONF);
+        $map = (array) $this->maps->getMap($id);
+        require_once dirname(TESTS_ROOT) . '/src/lib/WeatherMap/bootstrap.php';
+        $wmap = new \WeatherMap();
+        ob_start();
+        $wmap->ReadConfig($this->config->getConfigsPath() . '/' . $map['config_file']);
+        ob_end_clean();
+        // what the Observium data source notes during a data render
+        $wmap->links['c-a']->add_note('monitoring_url', 'https://obs.example/device/device=1/tab=port/port=10/');
+        $wmap->links['a-c']->add_note('monitoring_url', 'javascript:alert(1)');
+        $wmap->links['a-b']->add_note('monitoring_url', 'https://obs.example/ignored');
+
+        $items = MapService::summarize($wmap, $id)['items'];
+        $ca = $items['L' . $wmap->links['c-a']->id];
+        $this->assertSame('https://obs.example/device/device=1/tab=port/port=10/', $ca['url']);
+        $this->assertSame('/map/' . $id . '/link/' . $wmap->links['c-a']->id . '/graph', $ca['graph']);
+        $ac = $items['L' . $wmap->links['a-c']->id];
+        $this->assertArrayNotHasKey('url', $ac, 'only web pages are opened');
+        $this->assertSame('https://nms.example/graph.png', $ac['graph'], 'OVERLIBGRAPH comes first');
+        $this->assertSame('https://nms.example/port/a-b', $items['L' . $wmap->links['a-b']->id]['url'], 'INFOURL comes first');
+
+        $this->assertSame('observium:host:core-rtr1:if:xe-0/0/1', MapService::observiumPortTarget($wmap->links['c-a']));
+        $this->assertNull(MapService::observiumPortTarget($wmap->links['a-c']), 'a device status has no traffic');
+        $this->assertArrayNotHasKey('graph', MapService::summarize($wmap)['items']['L' . $wmap->links['c-a']->id], 'no graph without the map id');
     }
 
     public function testLoadLevels(): void

@@ -36,6 +36,10 @@ it again updates the containers and keeps all data.
 Observium polls every 5 minutes, with two extra polls when it starts: the map
 shows traffic about a minute after the start, and the hover graphs fill in as
 the polls go by.
+Hovering a link (a first tap, on a phone) shows its traffic graph; a click
+(a second tap) opens the port page in Observium, at `OBSERVIUM_PUBLIC_URL`
+(or `OBSERVIUM_BASE_URL`) when set, else at the published port. Another
+address can be set in Weathermap under **Admin → Data Sources**.
 
 ## Deploy from GitHub Actions
 

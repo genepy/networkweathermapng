@@ -10,6 +10,9 @@
  * (API, MySQL or RRD, see App\Services\Observium\ObserviumClient). When a
  * link was set up with the editor's picker, its "datasource" hint names the
  * source to use; otherwise the first active Observium source is used.
+ *
+ * With a URL in the source settings, each item also gets the note
+ * monitoring_url: its port or device page in Observium.
  */
 
 class WeatherMapDataSource_observium extends WeatherMapDataSource
@@ -72,6 +75,23 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
         return null;
     }
 
+    /**
+     * The port (or device) page in Observium, as the note monitoring_url:
+     * the viewer opens it on click when the item has no INFOURL, and an
+     * INFOURL can use it as {link:this:monitoring_url}.
+     */
+    private function notePage(string $target, $item): void
+    {
+        try {
+            $url = $this->svc->observiumPageForTarget($target, $this->sourceIdFor($item));
+            if ($url !== null && method_exists($item, 'add_note')) {
+                $item->add_note('monitoring_url', $url);
+            }
+        } catch (\Throwable $e) {
+            wm_debug("Observium page: {$target}: " . $e->getMessage());
+        }
+    }
+
     function ReadData($targetstring, &$map, &$item)
     {
         $data_time = time();
@@ -86,6 +106,8 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
             wm_warn("Observium ReadData: {$targetstring}: " . $e->getMessage() . " [WMOBS01]");
             $values = null;
         }
+
+        $this->notePage((string) $targetstring, $item);
 
         if ($values === null) {
             return array(NULL, NULL, $data_time);

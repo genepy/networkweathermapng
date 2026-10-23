@@ -394,13 +394,14 @@ class MapController extends BaseController
             }
         }
 
-        if (!$targetLink || !isset($targetLink->hints) || !is_array($targetLink->hints) || empty($targetLink->hints['datasource'])) {
-            http_response_code(404);
-            exit;
-        }
-
-        $selection = json_decode((string) $targetLink->hints['datasource'], true);
+        // A link set up with the editor's picker names its source; otherwise
+        // an Observium TARGET is read from the first active Observium source
+        $selection = $targetLink ? json_decode((string) ($targetLink->hints['datasource'] ?? ''), true) : null;
         if (!is_array($selection) || empty($selection['sourceId'])) {
+            $selection = null;
+        }
+        $observiumTarget = $targetLink && !$selection ? MapService::observiumPortTarget($targetLink) : null;
+        if (!$selection && $observiumTarget === null) {
             http_response_code(404);
             exit;
         }
@@ -424,7 +425,14 @@ class MapController extends BaseController
             return;
         }
 
-        $data = $this->dataSourceService->getLinkBandwidthData((int) $selection['sourceId'], $selection, $minutes);
+        try {
+            $data = $selection
+                ? $this->dataSourceService->getLinkBandwidthData((int) $selection['sourceId'], $selection, $minutes)
+                : $this->dataSourceService->observiumBandwidthForTarget((string) $observiumTarget, null, $minutes);
+        } catch (\Throwable $e) {
+            // drawn as "No Data" rather than a broken picture in the hover panel
+            $data = [];
+        }
         $png = $this->renderBandwidthGraphPng($data, $minutes);
 
         // Save to cache

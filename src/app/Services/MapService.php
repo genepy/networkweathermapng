@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Core\Config;
+use App\Services\Observium\ObserviumTarget;
 
 /**
  * MapService - Handles all map-related operations
@@ -457,7 +458,7 @@ class MapService
             self::writeAtomic($svgPath, (string) $collector->toSvg());
 
             if ($readData) {
-                $summary = self::summarize($wmap);
+                $summary = self::summarize($wmap, $id);
                 self::writeAtomic($statusPath, (string) json_encode($summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
             }
             
@@ -569,9 +570,11 @@ class MapService
 
     /**
      * What the last data render found: the most loaded link, and per item
-     * what the viewer shows on hover or opens on click.
+     * what the viewer shows on hover or opens on click. With the map id,
+     * links read from a data source get the traffic graph of
+     * /map/{id}/link/{linkId}/graph when they have no OVERLIBGRAPH.
      */
-    public static function summarize(\WeatherMap $wmap): array
+    public static function summarize(\WeatherMap $wmap, ?int $mapId = null): array
     {
         $max = null;
         $items = [];
@@ -606,7 +609,11 @@ class MapService
             if (is_string($ds) && $ds !== '') {
                 $item['ds'] = $ds;
             }
-            $items['L' . $link->id] = $item + self::itemUrls($wmap, $link);
+            $urls = self::itemUrls($wmap, $link);
+            if (!isset($urls['graph']) && $mapId !== null && self::hasTrafficHistory($link)) {
+                $urls['graph'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/graph';
+            }
+            $items['L' . $link->id] = $item + $urls;
         }
 
         foreach ($wmap->nodes as $node) {
@@ -641,12 +648,18 @@ class MapService
         return $pct >= 55 ? 'warn' : 'ok';
     }
 
-    /** INFOURL (click) and first OVERLIBGRAPH (hover picture) of an item */
+    /**
+     * INFOURL (click) and first OVERLIBGRAPH (hover picture) of an item.
+     * Without INFOURL, the click opens the page in the monitoring tool that
+     * a data source noted (its port page in Observium, for instance).
+     */
     private static function itemUrls(\WeatherMap $wmap, object $item): array
     {
         $out = [];
         $info = (string) ($item->infourl[IN] ?? '');
         if ($info !== '' && ($url = self::safeUrl((string) $wmap->ProcessString($info, $item))) !== null) {
+            $out['url'] = $url;
+        } elseif (is_string($page = $item->notes['monitoring_url'] ?? null) && ($url = self::safeUrl($page)) !== null) {
             $out['url'] = $url;
         }
         $graphs = (array) ($item->overliburl[IN] ?? []);
@@ -655,6 +668,35 @@ class MapService
             $out['graph'] = $graph;
         }
         return $out;
+    }
+
+    /**
+     * Whether linkGraph can draw a link's traffic: it was set up with the
+     * editor's picker, or its TARGET names an Observium port.
+     */
+    public static function hasTrafficHistory(object $link): bool
+    {
+        $ds = json_decode((string) ($link->hints['datasource'] ?? ''), true);
+        if (is_array($ds) && !empty($ds['sourceId'])) {
+            return true;
+        }
+
+        return self::observiumPortTarget($link) !== null;
+    }
+
+    /** The first TARGET of a link that names an Observium port */
+    public static function observiumPortTarget(object $link): ?string
+    {
+        foreach ((array) ($link->targets ?? []) as $target) {
+            // without the -/scale* prefix that Weathermap allows before a target
+            $string = (string) preg_replace('/^-?(\d+(\.\d+)?\*)?/', '', trim((string) ($target[4] ?? '')));
+            $parsed = ObserviumTarget::parse($string);
+            if ($parsed && $parsed->kind === ObserviumTarget::PORT) {
+                return $string;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -341,6 +341,58 @@ class DataSourceService
         return $client?->speedForTarget($target);
     }
 
+    /** Observium's port or device page for a TARGET string, null when there is none. */
+    public function observiumPageForTarget(string $target, ?int $sourceId = null): ?string
+    {
+        return $this->observiumClient($sourceId)?->pageForTarget($target);
+    }
+
+    /** Traffic history of the Observium port behind a TARGET string. */
+    public function observiumBandwidthForTarget(string $target, ?int $sourceId = null, int $minutes = 1440): array
+    {
+        return $this->observiumClient($sourceId)?->bandwidthDataForTarget($target, $minutes) ?? [];
+    }
+
+    /**
+     * The monitoring tool's page for a link set up with the editor's
+     * picker: the port page in Observium, the host's latest data in Zabbix.
+     * Null when the source has no URL.
+     */
+    public function linkPageUrl(int $sourceId, array $selection): ?string
+    {
+        $source = $this->getSource($sourceId);
+        if (!$source) {
+            return null;
+        }
+
+        return self::pageUrl($source, $selection);
+    }
+
+    /** See linkPageUrl() */
+    public static function pageUrl(array $source, array $selection): ?string
+    {
+        $base = rtrim(trim((string) ($source['url'] ?? '')), '/');
+        $base = (string) preg_replace('#/api_jsonrpc\.php$#i', '', $base);
+        $hostId = (string) ($selection['hostId'] ?? '');
+        if ($base === '' || $hostId === '' || !ctype_digit($hostId)) {
+            return null;
+        }
+
+        if ($source['type'] === 'observium') {
+            $portId = (string) ($selection['interfaceId'] ?? '');
+
+            return ctype_digit($portId)
+                ? ObserviumClient::portPage($base, (int) $hostId, (int) $portId)
+                : ObserviumClient::devicePage($base, (int) $hostId);
+        }
+
+        if ($source['type'] === 'zabbix') {
+            return $base . '/zabbix.php?action=latest.view&hostids%5B%5D=' . $hostId;
+        }
+
+        return null;
+    }
+
     private function observiumClient(?int $sourceId): ?ObserviumClient
     {
         $source = $sourceId

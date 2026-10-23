@@ -35,10 +35,15 @@ if ($password === '') {
     exit(1);
 }
 
+$existing = $sources->getSourceByName(SOURCE_NAME);
+
 $source = [
     'name' => SOURCE_NAME,
     'type' => 'observium',
-    'url' => '',
+    // Observium's address in the browser, for the links to its port pages:
+    // the public address when deploy.sh has one, else the one already set
+    // (by hand in Admin > Data Sources), else the published port
+    'url' => (string) (getenv('TESTBED_OBSERVIUM_URL') ?: (($existing['url'] ?? '') ?: getenv('TESTBED_OBSERVIUM_DEFAULT_URL'))),
     // the database password lives in settings; the source itself has none
     'password' => '',
     'settings' => [
@@ -53,7 +58,6 @@ $source = [
     ],
 ];
 
-$existing = $sources->getSourceByName(SOURCE_NAME);
 if ($existing) {
     $sources->updateSource((int) $existing['id'], $source);
     echo "Data source updated: " . SOURCE_NAME . "\n";

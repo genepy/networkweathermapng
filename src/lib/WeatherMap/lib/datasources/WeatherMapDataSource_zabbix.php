@@ -84,6 +84,22 @@ class WeatherMapDataSource_zabbix extends WeatherMapDataSource
         return null;
     }
 
+    /**
+     * The host's latest data in Zabbix, as the note monitoring_url: the
+     * viewer opens it on click when the link has no INFOURL.
+     */
+    private function notePage(int $sourceId, array $sel, $item): void
+    {
+        try {
+            $url = $this->svc->linkPageUrl($sourceId, $sel);
+            if ($url !== null && method_exists($item, 'add_note')) {
+                $item->add_note('monitoring_url', $url);
+            }
+        } catch (\Throwable $e) {
+            wm_debug("Zabbix page: " . $e->getMessage());
+        }
+    }
+
     function ReadData($targetstring, &$map, &$item)
     {
         $data_time = time();
@@ -97,6 +113,7 @@ class WeatherMapDataSource_zabbix extends WeatherMapDataSource
             $sel = json_decode((string) $item->hints['datasource'], true);
             if (is_array($sel) && !empty($sel['sourceId'])) {
                 $sourceId = (int) $sel['sourceId'];
+                $this->notePage($sourceId, $sel, $item);
                 $current = $this->svc->getLinkBandwidthCurrent($sourceId, $sel);
 
                 if (isset($current['in']) && isset($current['out'])) {

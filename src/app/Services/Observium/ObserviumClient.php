@@ -29,6 +29,9 @@ final class ObserviumClient implements DataSourceClientInterface
     private array $settings;
     private array $debug = [];
 
+    /** @var array<string, array|null> ports by target, see portFor() */
+    private array $ports = [];
+
     public function __construct(
         private readonly array $source,
         private readonly ?DataSourceService $service = null,
@@ -179,11 +182,55 @@ final class ObserviumClient implements DataSourceClientInterface
             return $device ? ($device['up'] ? [0.0, 0.0] : [100.0, 100.0]) : null;
         }
 
-        $port = $parsed->portId !== null
-            ? $this->backend()->port($parsed->portId)
-            : $this->backend()->portByName((string) $parsed->host, (string) $parsed->interface);
+        $port = $this->portFor($parsed);
 
         return $port ? $this->rates($port) : null;
+    }
+
+    /**
+     * Observium's web page for a TARGET string: the port page for a port,
+     * the device page for a device status. Null without a base URL in the
+     * source settings, or when Observium does not know the target.
+     */
+    public function pageForTarget(string $target): ?string
+    {
+        $base = rtrim(trim((string) ($this->source['url'] ?? '')), '/');
+        $parsed = ObserviumTarget::parse($target);
+        if ($base === '' || !$parsed) {
+            return null;
+        }
+
+        if ($parsed->kind === ObserviumTarget::STATUS) {
+            $device = $this->backend()->device((string) $parsed->host);
+
+            return $device ? self::devicePage($base, $device['device_id']) : null;
+        }
+
+        $port = $this->portFor($parsed);
+
+        return $port ? self::portPage($base, $port['device_id'], $port['port_id']) : null;
+    }
+
+    /** Traffic history of the port behind a TARGET string, as getBandwidthData() */
+    public function bandwidthDataForTarget(string $target, int $minutes = 1440): array
+    {
+        $parsed = ObserviumTarget::parse($target);
+        if (!$parsed || $parsed->kind !== ObserviumTarget::PORT) {
+            return [];
+        }
+        $port = $this->portFor($parsed);
+
+        return $port ? $this->getBandwidthData(['interfaceId' => $port['port_id']], $minutes) : [];
+    }
+
+    public static function devicePage(string $base, int $deviceId): string
+    {
+        return sprintf('%s/device/device=%d/', rtrim($base, '/'), $deviceId);
+    }
+
+    public static function portPage(string $base, int $deviceId, int $portId): string
+    {
+        return sprintf('%s/device/device=%d/tab=port/port=%d/', rtrim($base, '/'), $deviceId, $portId);
     }
 
     /** Interface speed in bit/s for a TARGET, to size the link automatically. */
@@ -193,9 +240,7 @@ final class ObserviumClient implements DataSourceClientInterface
         if (!$parsed || $parsed->kind !== ObserviumTarget::PORT) {
             return null;
         }
-        $port = $parsed->portId !== null
-            ? $this->backend()->port($parsed->portId)
-            : $this->backend()->portByName((string) $parsed->host, (string) $parsed->interface);
+        $port = $this->portFor($parsed);
 
         return $port['speed'] ?? null;
     }
@@ -216,6 +261,22 @@ final class ObserviumClient implements DataSourceClientInterface
         }
 
         return (string) $bitsPerSecond;
+    }
+
+    /**
+     * The port a TARGET names, looked up once per client: a map render
+     * reads the rates, then the port page, of the same target.
+     */
+    private function portFor(ObserviumTarget $parsed): ?array
+    {
+        $key = $parsed->portId !== null ? '#' . $parsed->portId : strtolower((string) $parsed->host) . "\0" . $parsed->interface;
+        if (!array_key_exists($key, $this->ports)) {
+            $this->ports[$key] = $parsed->portId !== null
+                ? $this->backend()->port($parsed->portId)
+                : $this->backend()->portByName((string) $parsed->host, (string) $parsed->interface);
+        }
+
+        return $this->ports[$key];
     }
 
     /** @return array{0: float, 1: float}|null */
