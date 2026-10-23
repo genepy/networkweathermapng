@@ -44,7 +44,18 @@ compose() {
 }
 
 echo "Building the images (the first build takes a while on a Pi)"
-compose build
+# The images build on the host's network (see docker-compose.yml), which needs
+# the network.host entitlement. "docker compose build" cannot grant it, so its
+# build definition goes to buildx with the entitlements: host network, and
+# reading the repository root (Weathermap's build context).
+bake_file=$(mktemp)
+compose build --print > "$bake_file"
+if ! docker buildx bake --allow=network.host --allow=fs.read="$(cd ../.. && pwd)" \
+    --file - < "$bake_file"; then
+    rm -f "$bake_file"
+    exit 1
+fi
+rm -f "$bake_file"
 
 # Each step returns on failure: "set -e" does not apply inside "if ! backup"
 backup() {
