@@ -125,8 +125,9 @@
         el.style.position = 'fixed';
         el.style.zIndex = '9999';
         el.style.pointerEvents = 'none';
-        el.style.minWidth = '320px';
-        el.style.maxWidth = '520px';
+        el.style.minWidth = 'min(320px, calc(100vw - 16px))';
+        el.style.maxWidth = 'min(520px, calc(100vw - 16px))';
+        el.style.boxSizing = 'border-box';
         el.style.background = 'rgba(15, 18, 24, 0.92)';
         el.style.border = '1px solid rgba(255,255,255,0.12)';
         el.style.borderRadius = '10px';
@@ -208,13 +209,15 @@
     /**
      * The hover panel of a link: in/out now and the last 24 h.
      * info: {title, ds (data source selection, JSON text), in, out, inpct,
-     * outpct (values from the last map render), graph (picture URL)}.
+     * outpct (values from the last map render), graph (picture URL),
+     * hint (a line under it, e.g. what a click does)}.
      * Used by the PNG imagemap (area.link) and the SVG view (viewer.js).
      */
     const wmHover = (function() {
         let hover = null;
         let lastKey = null;
         let visible = false;
+        let lastPos = null;
 
         function panel() {
             if (!hover) {
@@ -239,6 +242,7 @@
         return {
             move: function(e) {
                 const el = panel();
+                lastPos = {clientX: e.clientX, clientY: e.clientY};
                 const w = el.offsetWidth || 340;
                 const h = el.offsetHeight || 120;
                 let x = e.clientX + 18;
@@ -271,8 +275,18 @@
                 el.style.display = 'block';
                 if (e) this.move(e);
 
+                const hint = info.hint ? `<div style="opacity:0.75;margin-top:6px;">${wmEsc(info.hint)}</div>` : '';
+
                 if (!selection) {
-                    el.innerHTML = title + now + (info.graph ? `<img src="${wmEsc(info.graph)}" alt="" style="display:block;max-width:500px;margin-top:6px;">` : '');
+                    el.innerHTML = title + now
+                        + (info.graph ? `<img src="${wmEsc(info.graph)}" alt="" style="display:block;width:500px;max-width:100%;height:auto;margin-top:6px;border-radius:4px;">` : '')
+                        + hint;
+                    const img = el.querySelector('img');
+                    if (img) {
+                        // the panel grows when the picture arrives: keep it on screen
+                        img.addEventListener('load', () => { if (visible && lastPos) this.move(lastPos); });
+                        img.addEventListener('error', () => { img.remove(); });
+                    }
                     return;
                 }
 
@@ -307,7 +321,7 @@
                             <div style="font-weight:600;color:#6aa7ff;">${wmFormatNum(outLast)} ${outUnits}</div>
                         </div>
                         <div>${outSvg}</div>
-                    `;
+                    ` + hint;
                 } catch (err) {
                     if (lastKey !== key || !visible) return;
                     el.innerHTML = title + now + '<div style="color:#ff8b8b">' + wmEsc(String(err.message || err)) + '</div>';

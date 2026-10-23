@@ -449,7 +449,7 @@
             dragging = true;
             root.classList.add('wmv-dragging');
             viewport.setPointerCapture(e.pointerId);
-            if (window.WM && WM.hover) WM.hover.hide();
+            hidePanel();
         }
         if (dragging) {
             S.tx += cur.x - prev.x;
@@ -477,27 +477,48 @@
     // ------------------------------------------------------------------
     // Hover panel and clicks on the map items
 
+    // On a touch screen there is no hover: the first tap on a link shows
+    // its panel (traffic graph), a second tap opens its page
     let hovered = null;
+    let touch = false;
+    let tapped = null;
+
+    viewport.addEventListener('pointerdown', function (e) {
+        touch = e.pointerType === 'touch' || e.pointerType === 'pen';
+    }, true);
+
+    function showPanel(g, d, e) {
+        if (!window.WM || !WM.hover) return false;
+        let hint = '';
+        if (d.url) hint = touch ? t('Tap again to open its page in a new tab') : t('Click to open its page in a new tab');
+        WM.hover.show({
+            // the traffic graph, when there is one, rather than the sparklines
+            title: d.name, ds: d.graph ? '' : (d.ds || ''), in: d.in, out: d.out,
+            inpct: d.inpct, outpct: d.outpct, graph: d.graph || '', hint: hint
+        }, e);
+        return true;
+    }
+
+    function hidePanel() {
+        hovered = null;
+        tapped = null;
+        if (window.WM && WM.hover) WM.hover.hide();
+    }
+
     viewport.addEventListener('mouseover', function (e) {
-        if (dragging) return;
+        if (dragging || touch) return;
         const it = itemOf(e.target);
         const g = it && it.g.classList.contains('wm-link') ? it.g : null;
         if (g === hovered) return;
         hovered = g;
-        if (!window.WM || !WM.hover) return;
         if (!g || !it.data) {
-            WM.hover.hide();
+            if (window.WM && WM.hover) WM.hover.hide();
             return;
         }
-        const d = it.data;
-        WM.hover.show({
-            title: d.name, ds: d.ds || '', in: d.in, out: d.out,
-            inpct: d.inpct, outpct: d.outpct, graph: d.graph || ''
-        }, e);
+        showPanel(g, it.data, e);
     });
     viewport.addEventListener('mouseleave', function () {
-        hovered = null;
-        if (window.WM && WM.hover) WM.hover.hide();
+        if (!touch) hidePanel();
     });
 
     viewport.addEventListener('click', function (e) {
@@ -508,6 +529,17 @@
             return;
         }
         const it = itemOf(e.target);
+        if (touch) {
+            const link = it && it.data && it.g.classList.contains('wm-link') ? it.g : null;
+            if (link && link !== tapped) {
+                hidePanel();
+                if (showPanel(link, it.data, e)) {
+                    tapped = link;
+                    return;
+                }
+            }
+            if (!link) hidePanel();
+        }
         if (it && it.data && it.data.url) {
             window.open(it.data.url, '_blank', 'noopener');
         }

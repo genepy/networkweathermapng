@@ -10,6 +10,8 @@ return [
     'Max :pct %' => 'Max. :pct %',
     'Most loaded link: :link (:pct %)' => 'Lien le plus chargé : :link (:pct %)',
     'No node matches “:q”' => 'Aucun nœud ne correspond à « :q »',
+    'Click to open its page in a new tab' => 'Cliquer pour ouvrir sa page dans un nouvel onglet',
+    'Tap again to open its page in a new tab' => 'Toucher à nouveau pour ouvrir sa page dans un nouvel onglet',
 
     // maplist.js
     ':shown of :total maps' => ':shown sur :total cartes',

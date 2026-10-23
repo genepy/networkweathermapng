@@ -107,11 +107,6 @@ if [ "$ready" -ne 1 ]; then
     exit 1
 fi
 
-compose exec -T -u www-data weathermap php /testbed/seed.php
-
-# Old images left by previous builds take space on the card
-docker image prune -f > /dev/null
-
 . "$env_file"
 # Public addresses when a reverse proxy is in front, else the published ports
 # (on this machine only when they listen on a single address).
@@ -125,6 +120,17 @@ case ${BIND_ADDRESS:-0.0.0.0} in
 esac
 weathermap_url=${WEATHERMAP_PUBLIC_URL:-http://$host:${WEATHERMAP_PORT:-8080}}
 observium_url=${OBSERVIUM_PUBLIC_URL:-${OBSERVIUM_BASE_URL:-http://$host:${OBSERVIUM_PORT:-8668}}}
+
+# The map links to Observium's port pages: at its public address when one is
+# set, else at the published port unless an address was set in Weathermap
+compose exec -T -u www-data \
+    -e TESTBED_OBSERVIUM_URL="${OBSERVIUM_PUBLIC_URL:-${OBSERVIUM_BASE_URL:-}}" \
+    -e TESTBED_OBSERVIUM_DEFAULT_URL="$observium_url" \
+    weathermap php /testbed/seed.php
+
+# Old images left by previous builds take space on the card
+docker image prune -f > /dev/null
+
 echo
 echo "Weathermap: $weathermap_url  (admin, password in $env_file)"
 echo "Observium:  $observium_url  (admin, password in $env_file)"
