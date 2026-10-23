@@ -1,4 +1,4 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.5-fpm-alpine
 
 LABEL maintainer="Zabbix Weathermap Team"
 LABEL description="Zabbix Weathermap - Network visualization tool"
@@ -26,7 +26,7 @@ RUN apk add --no-cache \
     net-snmp-libs \
     fping
 
-# Configure and install PHP extensions
+# Configure and install PHP extensions (OPcache is built into PHP 8.5+)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         gd \
@@ -36,7 +36,6 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         zip \
         intl \
         mbstring \
-        opcache \
         snmp
 
 # Install Composer
