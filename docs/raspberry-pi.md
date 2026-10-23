@@ -130,7 +130,8 @@ After a change, redeploy (Actions > "Deploy testbed" > Run workflow).
 - **Builds on the host's network**: every `build` in
   `deploy/testbed/docker-compose.yml` has `network: host`. Without it, the
   build containers cannot resolve names on the Pi and Composer cannot
-  download its packages.
+  download its packages. `docker compose build` refuses such builds, so
+  `deploy.sh` builds with `docker buildx bake --allow=network.host`.
 - **ARM64**: the Pi is `aarch64`. Base images and packages must exist for
   `linux/arm64`; PHP extensions are compiled during the build.
 - **Resources**: the Pi has 8 GB shared with the other applications, and an

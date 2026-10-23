@@ -10,6 +10,7 @@
 # resolve names like the host does (the runner itself reaches GitHub). On the
 # Pi, build containers on Docker's bridge network could not reach any DNS
 # server and Composer failed with "Could not resolve host: github.com".
+# "docker compose build" refuses host-network builds: build with deploy.sh.
 
 name: weathermap-testbed
 
