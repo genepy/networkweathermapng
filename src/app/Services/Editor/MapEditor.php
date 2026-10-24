@@ -365,9 +365,16 @@ class MapEditor
                         $node->labeloffsetx = $template === null ? 0 : $template->labeloffsetx;
                         $node->labeloffsety = $template === null ? 0 : $template->labeloffsety;
                         $node->labeloffset = $inherited;
-                    } else {
+                    } elseif ($inherited === '') {
                         [$node->labeloffsetx, $node->labeloffsety] = $this->point($value);
-                        $node->labeloffset = $inherited === '' ? '' : 'C';
+                        $node->labeloffset = '';
+                    } else {
+                        // a compass offset from the template wins over LABELOFFSET x y,
+                        // so override it with a pixel one (LABELOFFSET dx:dy)
+                        [$dx, $dy] = $this->point($value);
+                        $node->labeloffset = $dx . ':' . $dy;
+                        $node->labeloffsetx = $template->labeloffsetx;
+                        $node->labeloffsety = $template->labeloffsety;
                     }
                 } else {
                     throw new InvalidArgumentException(__('Unknown node property: :key', ['key' => $key]));

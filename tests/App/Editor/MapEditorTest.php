@@ -331,4 +331,19 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('LABELOFFSET', file_get_contents($this->file));
         $this->assertSame($b, array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
     }
+
+    public function testANodeLabelMovesWhenItsTemplateUsesACompassOffset(): void
+    {
+        file_put_contents($this->file, str_replace("LINK DEFAULT", "NODE DEFAULT\n\tLABELOFFSET S\n\nLINK DEFAULT", file_get_contents($this->file)));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $before = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => [10, -20]]]]);
+        $this->assertStringContainsString('LABELOFFSET 10:-20', file_get_contents($this->file));
+        $this->assertSame([10, -20], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_shift']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => null]]]);
+        $this->assertSame(1, substr_count(file_get_contents($this->file), 'LABELOFFSET'), 'only the template keeps one');
+        $this->assertSame($before['label_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
+    }
 }
