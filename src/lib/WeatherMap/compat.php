@@ -162,6 +162,12 @@ if (!function_exists('wimagerectangle')) {
     }
 }
 
+if (!function_exists('wimageline')) {
+    function wimageline($image, $x1, $y1, $x2, $y2, $color) {
+        return imageline($image, intval($x1), intval($y1), intval($x2), intval($y2), $color);
+    }
+}
+
 if (!function_exists('wimagepolygon')) {
     function wimagepolygon($image, $points, $num_points, $color) {
         return imagepolygon($image, $points, $num_points, $color);
