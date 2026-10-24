@@ -68,6 +68,18 @@ final class ZoneTest extends TestCase
         $this->assertArrayHasKey('n', $again->nodes);
     }
 
+    public function testZoneHintsSurviveWriteConfig(): void
+    {
+        $map = $this->load("WIDTH 300\nHEIGHT 200\nZONE z1\n\tPOSITION 5 6\n\tSIZE 70 80\n\tSET editor_group g1\nNODE n\n\tPOSITION 10 10\n");
+        $this->assertSame(['editor_group' => 'g1'], $map->zones['z1']->hints);
+
+        [$text, $again] = $this->writeAndRead($map);
+
+        $this->assertStringContainsString("ZONE z1\n\tPOSITION 5 6\n\tSIZE 70 80\n\tSET editor_group g1\n", $text);
+        $this->assertSame('g1', $again->zones['z1']->hints['editor_group']);
+        $this->assertArrayNotHasKey('editor_group', $again->hints);
+    }
+
     public function testUnknownZoneKeywordIsReported(): void
     {
         $map = new \WeatherMap();

@@ -241,4 +241,109 @@ final class MapEditorTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->editor->apply([['op' => 'set_zone', 'names' => ['nope'], 'props' => ['label' => 'x']]]);
     }
+
+    private function drawnModel(): array
+    {
+        $map = $this->editor->load();
+        ob_start();
+        $map->DrawMap('null');
+        ob_end_clean();
+        return MapEditor::model($map);
+    }
+
+    public function testLegendTimestampAndTitleAreInTheModelAndMove(): void
+    {
+        $furniture = array_column($this->drawnModel()['furniture'], null, 'kind');
+        $this->assertSame('DEFAULT', $furniture['legend']['name']);
+        $this->assertSame([680, 20], $furniture['legend']['pos']);
+        $this->assertSame([10, 490], $furniture['timestamp']['pos']);
+        $this->assertSame([10, 20], $furniture['title']['pos']);
+        $this->assertSame(490, $furniture['timestamp']['box'][3]);
+
+        $this->editor->apply([
+            ['op' => 'move', 'furniture' => ['legend:DEFAULT' => [600, 40], 'timestamp:' => [20, 470], 'title:' => [30, 25]]],
+        ]);
+
+        $map = $this->editor->load();
+        $this->assertEquals([600, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
+        $this->assertEquals([20, 470], [$map->timex, $map->timey]);
+        $this->assertEquals([30, 25], [$map->titlex, $map->titley]);
+
+        // what the model says is where it was put
+        $furniture = array_column($this->drawnModel()['furniture'], null, 'kind');
+        $this->assertSame([600, 40], $furniture['legend']['pos']);
+        $this->assertSame([20, 470], $furniture['timestamp']['pos']);
+        $this->assertSame([30, 25], $furniture['title']['pos']);
+    }
+
+    public function testFurnitureStaysOnTheMapAndUnknownItemsAreRefused(): void
+    {
+        // TIMEPOS 0 0 would mean "top right corner", negative KEYPOS hides the legend
+        $this->editor->apply([['op' => 'move', 'furniture' => ['timestamp:' => [-5, 0], 'legend:DEFAULT' => [-10, 5]]]]);
+        $map = $this->editor->load();
+        $this->assertEquals([1, 1], [$map->timex, $map->timey]);
+        $this->assertEquals([0, 5], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
+
+        foreach (['legend:NOPE', 'timestamp:LATER', 'clock:'] as $key) {
+            try {
+                $this->editor->apply([['op' => 'move', 'furniture' => [$key => [1, 1]]]]);
+                $this->fail('accepted ' . $key);
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testZonesCanBeGroupedAndLocked(): void
+    {
+        $this->editor->apply([
+            ['op' => 'add_zone', 'x' => 100, 'y' => 250, 'name' => 'site'],
+            ['op' => 'hint', 'kind' => 'zone', 'names' => ['site'], 'key' => 'editor_group', 'value' => 'g1'],
+            ['op' => 'hint', 'kind' => 'node', 'names' => ['paris'], 'key' => 'editor_group', 'value' => 'g1'],
+            ['op' => 'hint', 'kind' => 'zone', 'names' => ['site'], 'key' => 'editor_lock', 'value' => '1'],
+        ]);
+
+        $model = $this->drawnModel();
+        $this->assertSame('g1', $model['zones'][0]['group']);
+        $this->assertTrue($model['zones'][0]['locked']);
+        $this->assertSame('g1', array_column($model['nodes'], null, 'name')['paris']['group']);
+
+        $this->editor->apply([['op' => 'hint', 'kind' => 'zone', 'names' => ['site'], 'key' => 'editor_lock', 'value' => null]]);
+        $this->assertFalse($this->drawnModel()['zones'][0]['locked']);
+    }
+
+    public function testANodeLabelMovesAwayFromItsIconAndBack(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $before = array_column($this->drawnModel()['nodes'], null, 'name');
+        $this->assertNotNull($before['backup']['label_box']);
+        $this->assertNull($before['core']['label_box'], 'without an icon, the label is the node');
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => [10, -20]]]]);
+        $this->assertStringContainsString('LABELOFFSET 10 -20', file_get_contents($this->file));
+
+        $after = array_column($this->drawnModel()['nodes'], null, 'name');
+        $this->assertSame([10, -20], $after['backup']['label_shift']);
+        $b = $before['backup']['label_box'];
+        $this->assertSame([$b[0] + 10, $b[1] - 20, $b[2] + 10, $b[3] - 20], $after['backup']['label_box']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => null]]]);
+        $this->assertStringNotContainsString('LABELOFFSET', file_get_contents($this->file));
+        $this->assertSame($b, array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
+    }
+
+    public function testANodeLabelMovesWhenItsTemplateUsesACompassOffset(): void
+    {
+        file_put_contents($this->file, str_replace("LINK DEFAULT", "NODE DEFAULT\n\tLABELOFFSET S\n\nLINK DEFAULT", file_get_contents($this->file)));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $before = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => [10, -20]]]]);
+        $this->assertStringContainsString('LABELOFFSET 10:-20', file_get_contents($this->file));
+        $this->assertSame([10, -20], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_shift']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => null]]]);
+        $this->assertSame(1, substr_count(file_get_contents($this->file), 'LABELOFFSET'), 'only the template keeps one');
+        $this->assertSame($before['label_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
+    }
 }

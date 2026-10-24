@@ -2691,6 +2691,7 @@ class WeatherMap extends WeatherMapBase {
 					array('NODE', '/^\s*LABELOFFSET\s+(C|NE|SE|NW|SW|N|S|E|W)\s*$/i', array('labeloffset'=>1)),
 					array('NODE', '/^\s*LABELOFFSET\s+((C|NE|SE|NW|SW|N|S|E|W)\d+)\s*$/i', array('labeloffset'=>1)),
 					array('NODE', '/^\s*LABELOFFSET\s+(-?\d+r\d+)\s*$/i', array('labeloffset'=>1)),
+					array('NODE', '/^\s*LABELOFFSET\s+([-+]?\d+:[-+]?\d+)\s*$/i', array('labeloffset'=>1)),
 
 					array('NODE', '/^\s*LABELFONT\s+(\d+)\s*$/i', array('labelfont'=>1)),
 					array('NODE', '/^\s*LABELANGLE\s+(0|90|180|270)\s*$/i', array('labelangle'=>1)),

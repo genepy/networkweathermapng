@@ -219,20 +219,31 @@ The editor (Editor > Edit) draws the map as SVG, so zooming stays sharp,
 and saves each change straight into the map's `.conf` file.
 
 - **Select**: click, Shift+click to add, drag on empty space for an area,
-  Ctrl+A for everything, or *Select…* (Ctrl+F) to pick by name, label,
-  target, group, width or bandwidth.
+  Ctrl+A for everything (zones, legends, timestamps and title included), or
+  *Select…* (Ctrl+F) to pick by name, label, target, group, width or
+  bandwidth. Esc cancels a drag, closes the open menu, or empties the
+  selection.
 - **Move**: drag the selection, or use the arrow keys (Shift for 10 px).
-  *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
-- **Arrange**: align and distribute nodes, group them (Ctrl+G; Alt+click
-  picks one member), lock them (Ctrl+L), bring to front or send to back.
-  Groups and locks are stored as `SET editor_group` and `SET editor_lock`.
+  Nodes, zones, legends (`KEYPOS`), timestamps (`TIMEPOS`) and the title
+  (`TITLEPOS`) move alike. While dragging, pink guides show the edges and
+  centres the selection lines up with, and it snaps to them (hold Alt not
+  to). *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
+  A zone moves alone: group it with its nodes to move them together.
+- **Arrange**: align and distribute nodes, zones, legends and the title,
+  group nodes, links and zones (Ctrl+G; Alt+click picks one member), lock
+  them (Ctrl+L), bring to front or send to back. Groups and locks are stored
+  as `SET editor_group` and `SET editor_lock`.
 - **Links**: drag from the blue dot next to a selected node to another node,
-  or use the *Link* tool (L). On a selected link, drag the red points to
-  bend it, double-click one to remove it, and click a square around a node
-  to attach that end to a side (`NODES a:N b:E`).
+  or use the *Link* tool (L). Double-click a link to add a bend point there;
+  on a selected link, drag the red points to bend it (as many as needed),
+  double-click one to remove it, and click a square around a node to attach
+  that end to a side (`NODES a:N b:E`).
   *Auto-route* bends links around the nodes in their way; *Untangle labels*
   moves bandwidth labels that overlap (`BWLABELPOS`).
-- **Add**: drag a node or an icon from the left panel, or double-click an
+- **Labels**: drag a bandwidth label of the selected link along it
+  (`BWLABELPOS`), or the label of a selected node with an icon away from the
+  icon (`LABELOFFSET`).
+- **Add**: drag a node or an icon from the left panel, or Ctrl+click an
   empty spot.
 - **Edit**: the right panel changes every selected item at once.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and

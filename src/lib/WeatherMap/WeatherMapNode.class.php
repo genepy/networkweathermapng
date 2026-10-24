@@ -66,6 +66,8 @@ class WeatherMapNode extends WeatherMapItem {
 	var $max_bandwidth_in, $max_bandwidth_out;
 	var $max_bandwidth_in_cfg, $max_bandwidth_out_cfg;
 	var $labeloffset, $labeloffsetx, $labeloffsety;
+	/** Where the label was drawn from its default place, after pre_render(): [dx, dy] */
+	var $labelshift = array(0, 0);
 
 	var $inherit_fieldlist;
 
@@ -575,6 +577,7 @@ class WeatherMapNode extends WeatherMapItem {
 			#$this->labeloffsety = $dy;
 		}
 
+		$this->labelshift = array($this->labeloffsetx + $dx, $this->labeloffsety + $dy);
 		$label_x1 += ($this->labeloffsetx + $dx);
 		$label_x2 += ($this->labeloffsetx + $dx);
 		$label_y1 += ($this->labeloffsety + $dy);
