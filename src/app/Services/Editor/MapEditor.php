@@ -74,6 +74,18 @@ class MapEditor
     /** Hints the editor owns: grouping and locking */
     public const EDITOR_HINTS = ['editor_group', 'editor_lock'];
 
+    /**
+     * Map furniture the editor can move, by image map area name:
+     * area name => [kind, name]. Legends are LEGEND:<scale>.
+     */
+    private const FURNITURE_AREAS = [
+        'TIMESTAMP' => ['timestamp', ''],
+        'MINTIMESTAMP' => ['timestamp', 'MIN'],
+        'MAXTIMESTAMP' => ['timestamp', 'MAX'],
+        'TITLE' => ['title', ''],
+        'WIDTHLEGEND' => ['widthlegend', ''],
+    ];
+
     private string $file;
 
     public function __construct(string $file)
@@ -158,8 +170,10 @@ class MapEditor
     // Operations
 
     /**
-     * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]}}
-     * Positions are absolute map pixels.
+     * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]},
+     *  furniture: {"legend:DEFAULT" | "timestamp:" | "timestamp:MIN" | "title:" | "widthlegend:": [x, y]}}
+     * Positions are absolute map pixels; for furniture, the position its
+     * keyword takes (KEYPOS, TIMEPOS, TITLEPOS, SET width_legend), as in model().
      */
     private function move(\WeatherMap $map, array $op): void
     {
@@ -187,6 +201,49 @@ class MapEditor
             $zone = $this->zone($map, (string) $name);
             [$zone->x, $zone->y] = $this->point($pos);
         }
+
+        foreach ((array) ($op['furniture'] ?? []) as $key => $pos) {
+            $this->moveFurniture($map, (string) $key, $this->point($pos));
+        }
+    }
+
+    /** Place the legend of a scale, a timestamp, the title or the width legend */
+    private function moveFurniture(\WeatherMap $map, string $key, array $pos): void
+    {
+        [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
+        // negative positions mean "hidden" or "from the far edge" for these keywords
+        [$x, $y] = [max(0, $pos[0]), max(0, $pos[1])];
+
+        switch ($kind) {
+            case 'legend':
+                if (!isset($map->keyx[$name])) {
+                    throw new InvalidArgumentException(__('Unknown legend: :name', ['name' => $name]));
+                }
+                $map->keyx[$name] = $x;
+                $map->keyy[$name] = $y;
+                return;
+
+            case 'timestamp':
+                // TIMEPOS 0 0 means "top right corner"
+                $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
+                if ($prefix === null) {
+                    throw new InvalidArgumentException(__('Unknown timestamp: :name', ['name' => $name]));
+                }
+                $map->{$prefix . 'timex'} = max(1, $x);
+                $map->{$prefix . 'timey'} = max(1, $y);
+                return;
+
+            case 'title':
+                $map->titlex = $x;
+                $map->titley = $y;
+                return;
+
+            case 'widthlegend':
+                $map->add_hint('width_legend', $x . ' ' . $y);
+                return;
+        }
+
+        throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
     }
 
     /** {op: add_zone, x, y, width?, height?, label?, name?} */
@@ -300,6 +357,18 @@ class MapEditor
                     $node->targets = $this->targets((string) $value);
                 } elseif ($key === 'position') {
                     [$node->x, $node->y] = $this->point($value);
+                } elseif ($key === 'labelshift') {
+                    // where the label sits from its default place, in pixels; null puts it back
+                    $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
+                    $inherited = $template === null ? '' : (string) $template->labeloffset;
+                    if ($value === null) {
+                        $node->labeloffsetx = $template === null ? 0 : $template->labeloffsetx;
+                        $node->labeloffsety = $template === null ? 0 : $template->labeloffsety;
+                        $node->labeloffset = $inherited;
+                    } else {
+                        [$node->labeloffsetx, $node->labeloffsety] = $this->point($value);
+                        $node->labeloffset = $inherited === '' ? '' : 'C';
+                    }
                 } else {
                     throw new InvalidArgumentException(__('Unknown node property: :key', ['key' => $key]));
                 }
@@ -570,7 +639,7 @@ class MapEditor
         return MapClipboard::paste($map, $op['text'], $at, (int) ($op['dx'] ?? 0), (int) ($op['dy'] ?? 0));
     }
 
-    /** {op: hint, kind: node|link, names, key, value} - value null removes it */
+    /** {op: hint, kind: node|link|zone, names, key, value} - value null removes it */
     private function hint(\WeatherMap $map, array $op): void
     {
         $key = (string) ($op['key'] ?? '');
@@ -582,7 +651,11 @@ class MapEditor
         $value = ($value === null || $value === '' || $value === false) ? null : $this->name((string) $value);
 
         foreach ((array) ($op['names'] ?? []) as $name) {
-            $item = ($op['kind'] ?? 'node') === 'link' ? $this->link($map, (string) $name) : $this->node($map, (string) $name);
+            $item = match ($op['kind'] ?? 'node') {
+                'link' => $this->link($map, (string) $name),
+                'zone' => $this->zone($map, (string) $name),
+                default => $this->node($map, (string) $name),
+            };
             if ($value === null) {
                 unset($item->hints[$key]);
             } else {
@@ -646,6 +719,11 @@ class MapEditor
             }
             $box ??= [$node->x - 5, $node->y - 5, $node->x + 5, $node->y + 5];
 
+            // with an icon, the label is the second box and can move on its own
+            $labelBox = count($node->boundingboxes) >= 2 && (string) $node->label !== ''
+                ? array_map(static fn ($v) => (int) round((float) $v), end($node->boundingboxes))
+                : null;
+
             $nodes[] = [
                 'name' => $name,
                 'id' => 'N' . $node->id,
@@ -655,6 +733,8 @@ class MapEditor
                 'w' => (int) round((float) $node->width),
                 'h' => (int) round((float) $node->height),
                 'label' => (string) $node->label,
+                'label_box' => $labelBox,
+                'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
                 'icon' => (string) $node->iconfile,
                 'template' => (string) $node->template,
                 'relative_to' => (string) $node->relative_to,
@@ -739,6 +819,8 @@ class MapEditor
                 'opacity' => (int) $zone->opacity,
                 'outlinewidth' => (int) $zone->outlinewidth,
                 'outlinestyle' => (string) $zone->outlinestyle,
+                'group' => (string) ($zone->hints['editor_group'] ?? ''),
+                'locked' => !empty($zone->hints['editor_lock']),
             ];
         }
 
@@ -752,9 +834,45 @@ class MapEditor
             'nodes' => $nodes,
             'links' => $links,
             'zones' => $zones,
+            'furniture' => self::furnitureOut($map),
             'templates' => $templates,
             'fonts' => array_values(array_unique(array_merge([1, 2, 3, 4, 5], array_keys($map->fonts)))),
         ];
+    }
+
+    /**
+     * The legends, timestamps, title and width legend as drawn: their box
+     * (from the image map) and the position their keyword holds.
+     */
+    private static function furnitureOut(\WeatherMap $map): array
+    {
+        $found = [];
+        foreach ((array) ($map->imap->shapes ?? []) as $area) {
+            if (!$area instanceof \HTML_ImageMap_Area_Rectangle) {
+                continue;
+            }
+            $name = (string) $area->name;
+            if (str_starts_with($name, 'LEGEND:')) {
+                [$kind, $item] = ['legend', substr($name, 7)];
+            } elseif (isset(self::FURNITURE_AREAS[$name])) {
+                [$kind, $item] = self::FURNITURE_AREAS[$name];
+            } else {
+                continue;
+            }
+
+            $box = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
+            $pos = match ($kind) {
+                'legend' => [(int) ($map->keyx[$item] ?? $box[0]), (int) ($map->keyy[$item] ?? $box[1])],
+                // text is placed by the left end of its baseline
+                'timestamp', 'title' => [$box[0], $box[3]],
+                default => [$box[0], $box[1]],
+            };
+
+            // the last drawing wins, if an area was recorded twice
+            $found[$kind . ':' . $item] = ['kind' => $kind, 'name' => $item, 'box' => $box, 'pos' => $pos];
+        }
+
+        return array_values($found);
     }
 
     // ------------------------------------------------------------------

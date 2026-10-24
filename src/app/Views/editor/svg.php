@@ -37,15 +37,15 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
             <button data-cmd="zone" title="<?= e__('Add a zone: a labelled rectangle for a site, around the selected nodes if any') ?>">&#x25AD; <?= e__('Zone') ?></button>
         </div>
 
-        <div class="tb-group" data-needs="nodes2">
+        <div class="tb-group" data-needs="objects2">
             <button data-cmd="align-left" title="<?= e__('Align left edges') ?>">&#x23B8;&#x2190;</button>
             <button data-cmd="align-hcenter" title="<?= e__('Align centres vertically') ?>">&#x2195;</button>
             <button data-cmd="align-right" title="<?= e__('Align right edges') ?>">&#x2192;&#x23B9;</button>
             <button data-cmd="align-top" title="<?= e__('Align top edges') ?>">&#x2912;</button>
             <button data-cmd="align-vcenter" title="<?= e__('Align centres horizontally') ?>">&#x2194;</button>
             <button data-cmd="align-bottom" title="<?= e__('Align bottom edges') ?>">&#x2913;</button>
-            <button data-cmd="distribute-h" title="<?= e__('Space evenly, left to right') ?>" data-needs="nodes3">&#x22EF;</button>
-            <button data-cmd="distribute-v" title="<?= e__('Space evenly, top to bottom') ?>" data-needs="nodes3">&#x22EE;</button>
+            <button data-cmd="distribute-h" title="<?= e__('Space evenly, left to right') ?>" data-needs="objects3">&#x22EF;</button>
+            <button data-cmd="distribute-v" title="<?= e__('Space evenly, top to bottom') ?>" data-needs="objects3">&#x22EE;</button>
         </div>
 
         <div class="tb-group" data-needs="any">

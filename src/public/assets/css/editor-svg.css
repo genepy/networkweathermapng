@@ -148,6 +148,11 @@ html, body {
 #overlay .via-add { fill: var(--danger); fill-opacity: .25; stroke: none; cursor: copy; }
 #overlay .anchor { fill: #fff; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: pointer; }
 #overlay .anchor.current { fill: var(--accent); }
+#overlay .sel-box.furniture { stroke-dasharray: 2 3; }
+#map g[data-kind="legend"], #map g[data-kind="timestamp"], #map g[data-kind="title"], #map g[data-kind="widthlegend"] { cursor: move; pointer-events: auto; }
+#overlay .guide { stroke: #e91e63; stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+#overlay .label-handle { fill: transparent; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; cursor: move; }
+#overlay .label-ghost { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .connector { fill: var(--accent); stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: crosshair; }
 #overlay .link-source { fill: none; stroke: #2e7d32; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 #resize-handle { fill: var(--accent); cursor: nwse-resize; }
