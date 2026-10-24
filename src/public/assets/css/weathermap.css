@@ -359,13 +359,13 @@ button.btn {
 }
 
 .tabs li a:hover {
-    color: var(--primary-color);
+    color: var(--link-color);
     text-decoration: none;
 }
 
 .tabs li a.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
+    color: var(--link-color);
+    border-bottom-color: var(--link-color);
 }
 
 /* Maps Grid */
@@ -452,6 +452,20 @@ button.btn {
 .breadcrumb {
     font-size: 14px;
     color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+}
+
+/* The current page, last in the breadcrumb, is the page title */
+.breadcrumb h1,
+.page-header .breadcrumb h1 {
+    display: inline;
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 .breadcrumb a {
@@ -459,7 +473,7 @@ button.btn {
 }
 
 .breadcrumb a:hover {
-    color: var(--primary-color);
+    color: var(--link-color);
 }
 
 /* Empty State */
@@ -588,38 +602,49 @@ button.btn {
     margin-right: 0;
 }
 
-.editor-page .maps-list {
-    width: 100%;
+/* Map list of the Editor tab */
+.maps-admin-page .data-table-container { overflow: visible; } /* room for the "more actions" menu */
+.maps-table .map-file { display: block; width: fit-content; margin-top: 3px; color: var(--text-muted); }
+.maps-table .col-actions { width: 1%; white-space: nowrap; }
+.row-actions { display: flex; align-items: center; gap: 6px; }
+.row-actions .btn,
+.row-menu-items a { display: inline-flex; align-items: center; gap: 6px; }
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.row-menu { position: relative; }
+.row-menu summary { list-style: none; }
+.row-menu summary::-webkit-details-marker { display: none; }
+.row-menu-items {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 20;
+    min-width: 170px;
+    padding: 4px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
 }
+.row-menu-items a { display: flex; padding: 7px 10px; border-radius: 4px; color: var(--text-color); }
+.row-menu-items a:hover { background: var(--hover-bg); text-decoration: none; }
+.row-menu-items a.danger { color: var(--danger-text); }
 
-.editor-page .maps-list .data-table {
-    width: 100%;
-    table-layout: fixed;
+/* Active / inactive switch */
+.status-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; }
+.status-toggle:hover { text-decoration: none; color: var(--text-color); }
+.status-toggle-track { position: relative; width: 34px; height: 18px; border-radius: 9px; background: var(--border-color); transition: background 0.2s; }
+.status-toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+.status-toggle.is-on { color: var(--success-text); }
+.status-toggle.is-on .status-toggle-track { background: var(--success-color); }
+.status-toggle.is-on .status-toggle-track::after { transform: translateX(16px); }
+
+@media (max-width: 900px) {
+    .row-actions .btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .maps-table .col-last-run { display: none; }
 }
-
-.editor-page .maps-list .data-table th:nth-child(1),
-.editor-page .maps-list .data-table td:nth-child(1) {
-    width: 35%;
-}
-
-.editor-page .maps-list .data-table th:nth-child(2),
-.editor-page .maps-list .data-table td:nth-child(2) {
-    width: 25%;
-}
-
-.editor-page .maps-list .data-table th:nth-child(3),
-.editor-page .maps-list .data-table td:nth-child(3) {
-    width: 15%;
-}
-
-.editor-page .maps-list .data-table th:nth-child(4),
-.editor-page .maps-list .data-table td:nth-child(4) {
-    width: 25%;
-}
-
-.editor-page .maps-list .data-table td .btn {
-    min-width: 100px;
-    text-align: center;
+@media (max-width: 640px) {
+    .maps-table .col-group,
+    .status-toggle-label { display: none; }
 }
 
 /* Status Badges */

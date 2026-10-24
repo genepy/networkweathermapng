@@ -11,6 +11,9 @@ class Auth
 {
     public const DEFAULT_PASSWORD = 'admin';
 
+    /** admin: everything; editor: maps and the editor, no users, data sources or settings; viewer: read only */
+    public const ROLES = ['viewer', 'editor', 'admin'];
+
     private Database $database;
     private Config $config;
     
@@ -113,6 +116,17 @@ class Auth
         $user = $this->user();
         return $user && $user['role'] === 'admin';
     }
+
+    /** May create, edit and manage maps: administrators and editors */
+    public function canEdit(): bool
+    {
+        if (!$this->config->isAuthEnabled()) {
+            return true;
+        }
+
+        $user = $this->user();
+        return $user && in_array($user['role'], ['admin', 'editor'], true);
+    }
     
     public function canViewMap(int $mapId): bool
     {
@@ -120,7 +134,8 @@ class Auth
             return true;
         }
         
-        if ($this->isAdmin()) {
+        // Editors manage every map, so they see every map
+        if ($this->canEdit()) {
             return true;
         }
         
@@ -163,10 +178,6 @@ class Auth
     
     public function canEditMap(int $mapId): bool
     {
-        if (!$this->config->isAuthEnabled()) {
-            return true;
-        }
-        
-        return $this->isAdmin();
+        return $this->canEdit();
     }
 }

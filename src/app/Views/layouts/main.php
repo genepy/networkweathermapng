@@ -27,8 +27,10 @@ $uri = $_SERVER['REQUEST_URI'] ?? '/';
             <nav class="main-nav">
                 <ul>
                     <li><a href="/" class="<?= ($uri === '/' || str_starts_with($uri, '/maps')) ? 'active' : '' ?>"><?= e__('Maps') ?></a></li>
-                    <?php if ($auth->isAdmin()): ?>
+                    <?php if ($auth->canEdit()): ?>
                     <li><a href="/editor" class="<?= str_starts_with($uri, '/editor') ? 'active' : '' ?>"><?= e__('Editor') ?></a></li>
+                    <?php endif; ?>
+                    <?php if ($auth->isAdmin()): ?>
                     <li><a href="/admin" class="<?= str_starts_with($uri, '/admin') ? 'active' : '' ?>"><?= e__('Admin') ?></a></li>
                     <?php endif; ?>
                 </ul>
