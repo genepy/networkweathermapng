@@ -29,7 +29,7 @@ class SvgEditorController extends BaseController
 
     public function edit(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -53,7 +53,7 @@ class SvgEditorController extends BaseController
     /** GET: the map as SVG plus the editable model */
     public function renderMap(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -67,7 +67,7 @@ class SvgEditorController extends BaseController
     /** POST {ops: [...]} */
     public function ops(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -108,7 +108,7 @@ class SvgEditorController extends BaseController
     /** POST {nodes: [...]}: the nodes and the links between them, as .conf text */
     public function copy(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -134,7 +134,7 @@ class SvgEditorController extends BaseController
     /** GET: the .conf text, for the text mode */
     public function source(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -153,7 +153,7 @@ class SvgEditorController extends BaseController
     /** POST {text}: the engine's warnings about a text, with their lines */
     public function validate(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -177,7 +177,7 @@ class SvgEditorController extends BaseController
     /** POST {text, version?}: save the text as the map's .conf (one undo step) */
     public function saveSource(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {
@@ -238,7 +238,7 @@ class SvgEditorController extends BaseController
     /** GET: a TrueType font used by the map, for the SVG text */
     public function font(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         $n = (int) ($params['n'] ?? 0);
@@ -265,7 +265,7 @@ class SvgEditorController extends BaseController
 
     private function step(array $params, string $direction): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $map = $this->findMap($params);
         if (!$map) {

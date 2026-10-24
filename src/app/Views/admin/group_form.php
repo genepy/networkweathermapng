@@ -1,12 +1,9 @@
-<div class="content-header">
-    <h1><?= htmlspecialchars($title) ?></h1>
-    <div class="header-actions">
-        <a href="/admin/groups" class="btn btn-secondary">← <?= e__('Back to Groups') ?></a>
-    </div>
+<div class="page-header">
+    <?= breadcrumb([[__('Admin'), '/admin'], [__('Groups'), '/admin/groups'], [$title]]) ?>
 </div>
 
-<div class="card">
-    <div class="card-body">
+<div class="form-card">
+    <div>
         <form method="POST" action="<?= $action === 'create' ? '/admin/groups/create' : '/admin/groups/edit/' . $group['id'] ?>">
             <div class="form-group">
                 <label for="name"><?= e__('Group Name') ?> *</label>

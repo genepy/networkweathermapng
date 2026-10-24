@@ -1,6 +1,6 @@
 <div class="admin-page">
     <div class="page-header">
-        <h1><?= e__('Administration') ?></h1>
+        <?= breadcrumb([[__('Administration')]]) ?>
     </div>
     
     <div class="admin-dashboard">
@@ -8,7 +8,7 @@
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['maps'] ?></div>
                 <div class="stat-label"><?= e__('Maps') ?></div>
-                <a href="/admin/maps" class="stat-link"><?= e__('Manage Maps') ?></a>
+                <a href="/editor" class="stat-link"><?= e__('Manage Maps') ?></a>
             </div>
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['groups'] ?></div>
@@ -25,7 +25,7 @@
         <div class="admin-menu">
             <h2><?= e__('Quick Actions') ?></h2>
             <div class="menu-grid">
-                <a href="/admin/maps" class="menu-item">
+                <a href="/editor" class="menu-item">
                     <span class="menu-icon">🗺️</span>
                     <span class="menu-title"><?= e__('Maps') ?></span>
                     <span class="menu-desc"><?= e__('Add, edit, and manage weathermaps') ?></span>
@@ -60,11 +60,6 @@
                     <span class="menu-title"><?= e__('Check DB') ?></span>
                     <span class="menu-desc"><?= e__('Verify database integrity') ?></span>
                 </a>
-                <a href="/editor" class="menu-item">
-                    <span class="menu-icon">✏️</span>
-                    <span class="menu-title"><?= e__('Editor') ?></span>
-                    <span class="menu-desc"><?= e__('Visual map editor') ?></span>
-                </a>
             </div>
         </div>
     </div>
@@ -87,7 +82,7 @@
 .stat-value {
     font-size: 48px;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--link-color);
 }
 .stat-label {
     font-size: 14px;

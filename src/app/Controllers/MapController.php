@@ -38,10 +38,10 @@ class MapController extends BaseController
         $visibleGroups = [];
         
         foreach ($allGroups as $group) {
-            // Admin sees all groups (even empty ones)
+            // Editors and admins see all groups (even empty ones)
             // Users see groups they have accessible maps in
             // Users also see groups they are explicitly assigned to (even if empty)
-            if ($this->auth->isAdmin()) {
+            if ($this->auth->canEdit()) {
                 $visibleGroups[] = $group;
                 continue;
             }
@@ -785,7 +785,7 @@ class MapController extends BaseController
         }
         
         // Apply permission filters in SQL for non-admins
-        if ($this->config->isAuthEnabled() && !$this->auth->isAdmin()) {
+        if ($this->config->isAuthEnabled() && !$this->auth->canEdit()) {
             $user = $this->auth->user();
             $userId = $user['id'] ?? 0;
             

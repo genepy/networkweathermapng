@@ -1,8 +1,6 @@
 <div class="admin-settings-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Settings') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Settings')]]) ?>
     </div>
     
     <div class="settings-container">

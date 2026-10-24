@@ -1,7 +1,9 @@
 <div class="admin-container">
     <div class="page-header">
-        <h1><?= e__('Data Sources') ?></h1>
-        <a href="/admin/data-sources/create" class="btn btn-primary">+ <?= e__('Add Source') ?></a>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Data Sources')]]) ?>
+        <div class="page-actions">
+            <a href="/admin/data-sources/create" class="btn btn-primary">+ <?= e__('Add Source') ?></a>
+        </div>
     </div>
     
     <p class="page-description">

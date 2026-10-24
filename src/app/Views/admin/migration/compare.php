@@ -1,10 +1,7 @@
 <?php $id = $meta['id']; ?>
 <div class="admin-container migration-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <a href="/admin/migration"><?= e__('Migration') ?></a> &raquo;
-            <a href="/admin/migration/<?= $id ?>"><?= htmlspecialchars($meta['name']) ?></a> &raquo; <?= e__('Compare') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Migration'), '/admin/migration'], [$meta['name'], '/admin/migration/' . $id], [__('Compare')]]) ?>
         <div class="page-actions">
             <a href="/admin/migration/<?= $id ?>" class="btn"><?= e__('Back to the choices') ?></a>
         </div>

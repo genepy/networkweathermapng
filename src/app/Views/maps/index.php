@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="/assets/css/viewer.css">
 <div class="maps-page">
     <div class="page-header">
-        <h1><?= e__('Network Weathermaps') ?></h1>
+        <?= breadcrumb([[__('Network Weathermaps')]]) ?>
         <div class="page-actions">
             <a href="/cycle" class="btn btn-primary"><?= e__('Cycle Maps') ?></a>
         </div>
@@ -30,8 +30,8 @@
     <?php if (empty($maps)): ?>
     <div class="empty-state">
         <p><?= e__('No maps available.') ?></p>
-        <?php if ($auth->isAdmin()): ?>
-        <p><a href="/admin/maps"><?= e__('Create your first map') ?></a></p>
+        <?php if ($auth->canEdit()): ?>
+        <p><a href="/editor/maps/create?return=/"><?= e__('Create your first map') ?></a></p>
         <?php endif; ?>
     </div>
     <?php else: ?>
@@ -79,7 +79,7 @@
                     <?php if ($map['group_name']): ?>
                     <span class="map-group"><?= htmlspecialchars($map['group_name']) ?></span>
                     <?php endif; ?>
-                    <?php if ($auth->isAdmin()): ?>
+                    <?php if ($auth->canEdit()): ?>
                     <button class="btn-icon move-map-btn" data-map-id="<?= $map['id'] ?>" data-current-group="<?= $map['group_id'] ?>" title="<?= e__('Move to another group') ?>" aria-label="<?= e__('Move to another group') ?>">
                         ↔️
                     </button>
@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const mapId = document.getElementById('moveMapId').value;
         const groupId = document.getElementById('moveMapGroup').value;
         
-        fetch(`/admin/maps/move/${mapId}`, {
+        fetch(`/editor/maps/move/${mapId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

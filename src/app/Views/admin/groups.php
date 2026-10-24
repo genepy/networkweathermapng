@@ -1,8 +1,6 @@
 <div class="admin-groups-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Groups') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Groups')]]) ?>
         <div class="page-actions">
             <a href="/admin/groups/create" class="btn btn-primary">+ <?= e__('Add Group') ?></a>
         </div>

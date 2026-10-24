@@ -29,7 +29,6 @@ return [
     'Migration' => 'Migration',
     'Review' => 'Examiner',
     'Compare' => 'Comparer',
-    'Config file' => 'Fichier de configuration',
     'Created' => 'Créé le',
     'Username' => 'Nom d’utilisateur',
     'Email' => 'E-mail',
@@ -55,7 +54,6 @@ return [
     'Configure application settings' => 'Configurer les paramètres de l’application',
     'Check DB' => 'Vérifier la base',
     'Verify database integrity' => 'Vérifier l’intégrité de la base de données',
-    'Visual map editor' => 'Éditeur visuel de cartes',
 
     // Maps
     'Export all' => 'Tout exporter',
@@ -104,7 +102,6 @@ return [
     'Add Group' => 'Ajouter un groupe',
     'Sort Order' => 'Ordre de tri',
     'Are you sure you want to delete this group? Maps will be moved to Default group.' => 'Supprimer ce groupe ? Ses cartes seront déplacées dans le groupe par défaut.',
-    'Back to Groups' => 'Retour aux groupes',
     'Group Name' => 'Nom du groupe',
     'Enter group name' => 'Saisissez le nom du groupe',
     'User Access' => 'Accès des utilisateurs',
@@ -126,7 +123,6 @@ return [
     // Users
     'Add User' => 'Ajouter un utilisateur',
     'Are you sure you want to delete this user?' => 'Supprimer cet utilisateur ?',
-    'Back to Users' => 'Retour aux utilisateurs',
     'Group Access' => 'Accès aux groupes',
     'No groups available.' => 'Aucun groupe disponible.',
     'Select map groups this user can access.' => 'Sélectionnez les groupes de cartes auxquels cet utilisateur a accès.',
@@ -162,7 +158,6 @@ return [
 
     // Database check
     'Database Integrity Check' => 'Vérification de l’intégrité de la base de données',
-    'Back to Dashboard' => 'Retour au tableau de bord',
     'Database integrity check passed.' => 'La vérification de la base de données a réussi.',
     'All required tables and columns are present.' => 'Toutes les tables et colonnes requises sont présentes.',
     'Database integrity check failed.' => 'La vérification de la base de données a échoué.',
@@ -340,4 +335,12 @@ return [
     'After (SVG)' => 'Après (SVG)',
     'Administrator' => 'Administrateur',
     ':n map(s) deleted with all their data' => ':n carte(s) supprimée(s) avec toutes leurs données',
+
+    // Map list of the Editor tab, roles
+    'Map ":name" activated' => 'Carte « :name » activée',
+    'Map ":name" deactivated' => 'Carte « :name » désactivée',
+    'Active: click to deactivate (hidden from users)' => 'Active : cliquer pour désactiver (masquée aux utilisateurs)',
+    'Inactive: click to activate' => 'Inactive : cliquer pour activer',
+    'More actions' => 'Plus d’actions',
+    'Viewer: sees the maps it is given. Editor: creates and edits every map, without access to users, data sources or settings. Administrator: everything.' => 'Lecteur : voit les cartes qui lui sont attribuées. Éditeur : crée et modifie toutes les cartes, sans accès aux utilisateurs, aux sources de données ni aux paramètres. Administrateur : tout.',
 ];

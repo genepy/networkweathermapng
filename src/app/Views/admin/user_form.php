@@ -1,12 +1,9 @@
-<div class="content-header">
-    <h1><?= htmlspecialchars($title) ?></h1>
-    <div class="header-actions">
-        <a href="/admin/users" class="btn btn-secondary">← <?= e__('Back to Users') ?></a>
-    </div>
+<div class="page-header">
+    <?= breadcrumb([[__('Admin'), '/admin'], [__('Users'), '/admin/users'], [$title]]) ?>
 </div>
 
-<div class="card">
-    <div class="card-body">
+<div class="form-card">
+    <div>
         <form method="POST" action="<?= $action === 'create' ? '/admin/users/create' : '/admin/users/edit/' . $userData['id'] ?>">
             <?php if ($action === 'create'): ?>
             <div class="form-group">
@@ -30,8 +27,10 @@
                 <select id="role" name="role" class="form-control" <?= ($action === 'edit' && ($userData['username'] ?? '') === 'admin') ? 'disabled' : '' ?>>
                     <?php $currentRole = $userData['role'] ?? 'viewer'; ?>
                     <option value="viewer" <?= $currentRole === 'viewer' ? 'selected' : '' ?>><?= e__('Viewer') ?></option>
+                    <option value="editor" <?= $currentRole === 'editor' ? 'selected' : '' ?>><?= e__('Editor') ?></option>
                     <option value="admin" <?= $currentRole === 'admin' ? 'selected' : '' ?>><?= e__('Administrator') ?></option>
                 </select>
+                <small class="form-text text-muted"><?= e__('Viewer: sees the maps it is given. Editor: creates and edits every map, without access to users, data sources or settings. Administrator: everything.') ?></small>
                 <?php if ($action === 'edit' && ($userData['username'] ?? '') === 'admin'): ?>
                     <input type="hidden" name="role" value="admin">
                 <?php endif; ?>

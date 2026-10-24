@@ -96,14 +96,29 @@ abstract class BaseController
         $this->requireAuth();
         
         if (!$this->auth->isAdmin()) {
-            if ($this->isApiRequest()) {
-                $this->json(['error' => 'Forbidden'], 403);
-                exit;
-            }
-            http_response_code(403);
-            echo '<h1>403 Forbidden</h1>';
+            $this->forbidden();
+        }
+    }
+
+    /** Administrators and editors: maps and the editor */
+    protected function requireEditor(): void
+    {
+        $this->requireAuth();
+
+        if (!$this->auth->canEdit()) {
+            $this->forbidden();
+        }
+    }
+
+    private function forbidden(): never
+    {
+        if ($this->isApiRequest()) {
+            $this->json(['error' => 'Forbidden'], 403);
             exit;
         }
+        http_response_code(403);
+        echo '<h1>403 Forbidden</h1>';
+        exit;
     }
     
     protected function isApiRequest(): bool

@@ -1,7 +1,7 @@
 <?php
-/** @var string $action create, edit or duplicate */
+/** @var string $action create, edit or duplicate @var string $return the page to go back to */
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
-$targets = ['create' => '/admin/maps/create', 'edit' => '/admin/maps/edit/', 'duplicate' => '/admin/maps/duplicate/'];
+$targets = ['create' => '/editor/maps/create', 'edit' => '/editor/maps/edit/', 'duplicate' => '/editor/maps/duplicate/'];
 $url = $targets[$action] . ($action === 'create' ? '' : (int) $map['id']);
 $name = match ($action) {
     'duplicate' => $map['name'] . ' ' . __('(copy)'),
@@ -11,12 +11,11 @@ $name = match ($action) {
 ?>
 <div class="admin-container map-form-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <a href="/admin/maps"><?= e__('Maps') ?></a> &raquo; <?= $h($title) ?>
-        </div>
+        <?= breadcrumb([[__('Maps'), '/editor'], [$title]]) ?>
     </div>
 
     <form method="post" action="<?= $url ?>" class="form-card">
+        <input type="hidden" name="return" value="<?= $h($return) ?>">
         <div class="form-group">
             <label for="name"><?= e__('Name') ?> *</label>
             <input type="text" id="name" name="name" class="form-control" value="<?= $h($name) ?>" required maxlength="200" autofocus>
@@ -41,7 +40,9 @@ $name = match ($action) {
                 <option value="<?= (int) $m['id'] ?>"><?= e__('A copy of :name', ['name' => $m['name']]) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php if ($auth->isAdmin()): ?>
             <small class="text-muted"><?= e__('To bring maps from another Weathermap, use') ?> <a href="/admin/migration"><?= e__('Migration') ?></a>.</small>
+            <?php endif; ?>
         </div>
         <div class="form-group form-pair" data-empty-only>
             <label><?= e__('Width') ?> <input type="number" name="width" class="form-control" value="800" min="100" max="10000"></label>
@@ -71,9 +72,9 @@ $name = match ($action) {
             <button type="submit" class="btn btn-primary">
                 <?= match ($action) { 'create' => e__('Create map'), 'duplicate' => e__('Duplicate'), default => e__('Save') } ?>
             </button>
-            <a href="/admin/maps" class="btn btn-secondary"><?= e__('Cancel') ?></a>
+            <a href="<?= $h($return) ?>" class="btn btn-secondary"><?= e__('Cancel') ?></a>
             <?php if ($action === 'edit'): ?>
-            <a href="/admin/maps/delete/<?= (int) $map['id'] ?>" data-method="post" class="btn btn-danger push-right"
+            <a href="/editor/maps/delete/<?= (int) $map['id'] ?>" data-method="post" class="btn btn-danger push-right"
                data-confirm="<?= e__('Delete this map and all its data (configuration, images, history, permissions)? This cannot be undone.') ?>"><?= e__('Delete') ?></a>
             <?php endif; ?>
         </div>

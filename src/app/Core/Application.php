@@ -93,8 +93,27 @@ class Application
         $this->router->get('/cycle', 'MapController@cycle');
         $this->router->get('/cycle/{group}', 'MapController@cycle');
         
-        // Editor - Visual Map Editor
-        $this->router->get('/editor', 'EditorController@index');
+        // Editor tab: the map list and the map properties (admins and editors)
+        $this->router->get('/editor', 'MapManagementController@index');
+        foreach (['/editor/maps', '/admin/maps'] as $prefix) {
+            // /admin/maps/... are the addresses of older versions, kept for bookmarks
+            $this->router->get($prefix . '/create', 'MapManagementController@create');
+            $this->router->post($prefix . '/create', 'MapManagementController@create');
+            $this->router->get($prefix . '/edit/{id}', 'MapManagementController@edit');
+            $this->router->post($prefix . '/edit/{id}', 'MapManagementController@edit');
+            $this->router->post($prefix . '/delete/{id}', 'MapManagementController@delete');
+            $this->router->get($prefix . '/duplicate/{id}', 'MapManagementController@duplicate');
+            $this->router->post($prefix . '/duplicate/{id}', 'MapManagementController@duplicate');
+            $this->router->post($prefix . '/toggle/{id}', 'MapManagementController@toggle');
+            $this->router->post($prefix . '/bulk', 'MapManagementController@bulk');
+            $this->router->get($prefix . '/export', 'MapManagementController@exportAll');
+            $this->router->get($prefix . '/export/{id}', 'MapManagementController@export');
+            $this->router->post($prefix . '/move/{id}', 'MapManagementController@move');
+        }
+        $this->router->get('/editor/maps', 'MapManagementController@legacyList');
+        $this->router->get('/admin/maps', 'MapManagementController@legacyList');
+
+        // Visual Map Editor
         $this->router->get('/editor/edit/{id}', 'SvgEditorController@edit');
         $this->router->get('/editor/render/{id}', 'SvgEditorController@renderMap');
         $this->router->post('/editor/ops/{id}', 'SvgEditorController@ops');
@@ -143,18 +162,6 @@ class Application
         
         // Admin
         $this->router->get('/admin', 'AdminController@index');
-        $this->router->get('/admin/maps', 'AdminController@maps');
-        $this->router->get('/admin/maps/create', 'AdminController@createMap');
-        $this->router->post('/admin/maps/create', 'AdminController@createMap');
-        $this->router->get('/admin/maps/edit/{id}', 'AdminController@editMap');
-        $this->router->post('/admin/maps/edit/{id}', 'AdminController@editMap');
-        $this->router->post('/admin/maps/delete/{id}', 'AdminController@deleteMap');
-        $this->router->get('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
-        $this->router->post('/admin/maps/duplicate/{id}', 'AdminController@duplicateMap');
-        $this->router->post('/admin/maps/bulk', 'AdminController@bulkMaps');
-        $this->router->get('/admin/maps/export', 'AdminController@exportMaps');
-        $this->router->get('/admin/maps/export/{id}', 'AdminController@exportMap');
-        $this->router->post('/admin/maps/move/{id}', 'AdminController@moveMap');
         
         $this->router->get('/admin/groups', 'AdminController@groups');
         $this->router->get('/admin/groups/create', 'AdminController@createGroup');
