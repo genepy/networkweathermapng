@@ -53,9 +53,10 @@ composer.lock
 # Docker
 docker-compose.override.yml
 
-# Internal Docs (docs/raspberry-pi.md is public)
+# Internal Docs (docs/raspberry-pi.md and docs/ROADMAP.md are public)
 docs/*
 !docs/raspberry-pi.md
+!docs/ROADMAP.md
 data/
 
 # Tests

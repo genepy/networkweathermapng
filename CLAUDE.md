@@ -1,3 +1,7 @@
+# Instructions
+
+Read [AGENTS.md](AGENTS.md) first: project rules, architecture, dev/test/deploy notes, and how to coordinate with other agents through [docs/ROADMAP.md](docs/ROADMAP.md). It applies to Claude too.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
