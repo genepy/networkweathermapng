@@ -11,7 +11,40 @@ Last updated: 2026-10-27.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch | Based on |
+|------|--------|----------|
+| [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | c087720 (rebased onto `main`) |
+
+### Link data source picker
+
+Branch `claude/project-thread-6ggwxe`. Moved from *Paused* on 2026-10-27,
+rebased on `main` (c087720) without conflict.
+
+**Done:** the three dropdowns of the link inspector are replaced by search
+boxes: devices by name, interfaces by name or number. The data source is
+asked for only when several exist, and a picked interface shows as a
+summary with a Change button. Files: `editor-svg.js` (`interfacePicker()`
+rewritten, new helpers `dsCache`, `dsFetch`, `dsSources`, `dsHosts`,
+`dsInterfaces`, `ifaceNumber`, `parseSelection`, `searchList`),
+`editor-svg.css` (`.ds-*` rules, unused `#inspector details/summary` rules
+removed), `Lang/fr/editor-js.php`. No server change: it reuses the existing
+`/api/data-sources` endpoints.
+
+**Decisions:** filtering is client side, hosts are fetched once per source
+and cached per page. The interface number is `ifIndex`, or else a numeric
+`interfaceId` when the link has no target. Results are capped at 50. The
+last-used source is preselected. The hint format is unchanged: the summary
+resolves names client side, so no names (and no spaces) go into the `SET`
+hint. The heading is "Monitored interface".
+
+**Left:** run phpunit and i18n-check, check in a browser in light and dark
+themes with one data source and with several (stub `/api/data-sources*` if
+no Zabbix or Observium is available), open the PR.
+
+**Gotchas:** `renderInspector()` does not rebuild while an input has focus,
+which is why results are buttons. The picker's key handlers call
+`stopPropagation` so they do not reach the global editor shortcuts. The
+legacy editor (`visual.php`) is not changed.
 
 ## Paused
 
@@ -23,7 +56,6 @@ branch.
 | Item | Branch | Based on |
 |------|--------|----------|
 | [SVG map furniture drawn as vectors](#svg-map-furniture-drawn-as-vectors) | `claude/project-thread-znx5hy` | #22 |
-| [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | #22 |
 | [Maps pages and editor role](#maps-pages-and-editor-role) | `claude/project-thread-x46foc` | #22 |
 | [Kiosk mode settings](#kiosk-mode-settings) | `claude/project-thread-shzu2l` | #22 |
 
@@ -45,37 +77,6 @@ boxes drawn on a scratch image are recorded at their `KEYPOS` through
 
 **Left:** rebase on `main` (one PR behind), run phpunit, check the
 result in the SVG editor and the viewer, open the PR.
-
-### Link data source picker
-
-Branch `claude/project-thread-6ggwxe`, commit a4deef9.
-
-**Done:** the three dropdowns of the link inspector are replaced by search
-boxes: devices by name, interfaces by name or number. The data source is
-asked for only when several exist, and a picked interface shows as a
-summary with a Change button. Files: `editor-svg.js` (`interfacePicker()`
-rewritten, new helpers `dsCache`, `dsFetch`, `dsSources`, `dsHosts`,
-`dsInterfaces`, `ifaceNumber`, `parseSelection`, `searchList`),
-`editor-svg.css` (`.ds-*` rules, unused `#inspector details/summary` rules
-removed), `Lang/fr/editor-js.php`. No server change: it reuses the existing
-`/api/data-sources` endpoints.
-
-**Decisions:** filtering is client side, hosts are fetched once per source
-and cached per page. The interface number is `ifIndex`, or else a numeric
-`interfaceId` when the link has no target. Results are capped at 50. The
-last-used source is preselected. The hint format is unchanged: the summary
-resolves names client side, so no names (and no spaces) go into the `SET`
-hint. The heading is "Monitored interface".
-
-**Left:** rebase on `main` (merges cleanly after #23), run phpunit and
-i18n-check, check in a browser in light and dark themes with one data source
-and with several (stub `/api/data-sources*` if no Zabbix or Observium is
-available), open the PR.
-
-**Gotchas:** `renderInspector()` does not rebuild while an input has focus,
-which is why results are buttons. The picker's key handlers call
-`stopPropagation` so they do not reach the global editor shortcuts. The
-legacy editor (`visual.php`) is not changed.
 
 ### Maps pages and editor role
 
