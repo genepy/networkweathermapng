@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-27.
+Last updated: 2026-10-29.
 
 ## In progress
 
@@ -153,8 +153,16 @@ goes.
 
 | Item | Notes |
 |------|-------|
-| Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps |
+| Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps. Include the PHP Weathermap 2.0 keywords and hints listed in [the study](studies/php-weathermap-2.0.md) item 1 |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
+| Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
+| Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |
+| Highlight saturated links | Pulse or glow on links at 80 % or more in the viewer, per-map switch, off under `prefers-reduced-motion`. Study item 4 |
+| Comments along curved links | IN/OUT comments on a text path following the curve, straight fallback. Study item 5 |
+| Icon and background library | Upload, delete and search images from the editor, icons and backgrounds apart, SVG sanitised. Study item 6 |
+| Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
+| Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
+| Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
 ## Stale branches
@@ -167,6 +175,7 @@ goes.
 
 | PR | Item |
 |----|------|
+| (this PR) | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |
