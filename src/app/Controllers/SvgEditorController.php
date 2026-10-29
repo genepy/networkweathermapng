@@ -14,6 +14,7 @@ use App\Services\Editor\ConfigHistory;
 use App\Services\Editor\ConfigSource;
 use App\Services\Editor\MapClipboard;
 use App\Services\Editor\MapEditor;
+use App\Services\Images\IconLibrary;
 use App\Services\MapService;
 use InvalidArgumentException;
 
@@ -40,14 +41,68 @@ class SvgEditorController extends BaseController
 
         $this->loadEngine();
         $publicPath = $this->config->getPublicPath();
+        $library = $this->icons();
 
         $this->render('editor/svg', [
             'map' => $map,
             'mapId' => (int) $map['id'],
-            'icons' => get_imagelist($publicPath, 'objects'),
+            'icons' => $library->paths(),
+            'iconThemes' => $library->themes(),
             'backgrounds' => get_imagelist($publicPath, 'backgrounds'),
             'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
+    }
+
+    /** GET: the icon library, by theme */
+    public function iconList(): void
+    {
+        $this->requireAdmin();
+        $this->json($this->iconLibrary());
+    }
+
+    /** POST multipart: theme, icons[] (PNG, GIF, JPEG or SVG files) */
+    public function addIcons(): void
+    {
+        $this->requireAdmin();
+
+        $theme = (string) ($_POST['theme'] ?? '');
+        $files = $_FILES['icons'] ?? null;
+        if (!is_array($files) || !is_array($files['name'] ?? null) || $files['name'] === []) {
+            $this->json(['error' => __('No file')], 422);
+            return;
+        }
+
+        $added = [];
+        $errors = [];
+        foreach ($files['name'] as $i => $name) {
+            $name = (string) $name;
+            if (($files['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string) $files['tmp_name'][$i])) {
+                $errors[] = $name . ': ' . __('the upload failed');
+                continue;
+            }
+            try {
+                $added[] = $this->icons()->add($theme, $name, (string) file_get_contents((string) $files['tmp_name'][$i]));
+            } catch (\RuntimeException $e) {
+                $errors[] = $name . ': ' . $e->getMessage();
+            }
+        }
+
+        $this->json($this->iconLibrary() + ['added' => $added, 'errors' => $errors], $added ? 200 : 422);
+    }
+
+    /** POST {path}: remove an icon no map uses */
+    public function deleteIcon(): void
+    {
+        $this->requireAdmin();
+
+        try {
+            $this->icons()->delete((string) ($this->body()['path'] ?? ''));
+        } catch (\RuntimeException $e) {
+            $this->json(['error' => $e->getMessage()], 409);
+            return;
+        }
+
+        $this->json($this->iconLibrary());
     }
 
     /** GET: the map as SVG plus the editable model */
@@ -317,6 +372,17 @@ class SvgEditorController extends BaseController
             'version' => $this->version($file),
             'result' => $result,
         ]);
+    }
+
+    private function icons(): IconLibrary
+    {
+        return new IconLibrary($this->config->getPublicPath(), $this->config->getConfigsPath());
+    }
+
+    private function iconLibrary(): array
+    {
+        $library = $this->icons();
+        return ['icons' => $library->paths(), 'themes' => $library->themes()];
     }
 
     private function version(string $file): string
