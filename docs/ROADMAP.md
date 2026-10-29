@@ -11,7 +11,9 @@ Last updated: 2026-10-27.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch | Notes |
+|------|--------|-------|
+| SVG editor polish | `claude/project-thread-g3jixk` | Ctrl+drag duplicates, distribute keeps groups together, link width from bandwidth, link labels kept above other links, readable traffic graph popup on large screens |
 
 ## Paused
 
@@ -154,7 +156,6 @@ goes.
 | Item | Notes |
 |------|-------|
 | Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps |
-| SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
 ## Stale branches
