@@ -21,7 +21,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Observium Integration** - API, MySQL or RRD, Community edition included
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
-- **Map Cycling** - Auto-rotate through maps for NOC displays
+- **Map Cycling** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Admin > Kiosk mode)
 - **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
