@@ -7,11 +7,13 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-27.
+Last updated: 2026-10-29.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch | Notes |
+|------|--------|-------|
+| [SVG editor interface and icons](#svg-editor-interface-and-icons) | `claude/project-thread-znx5hy` | See the details below |
 
 ## Paused
 
@@ -22,7 +24,6 @@ branch.
 
 | Item | Branch | Based on |
 |------|--------|----------|
-| [SVG map furniture drawn as vectors](#svg-map-furniture-drawn-as-vectors) | `claude/project-thread-znx5hy` | #22 |
 | [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | #22 |
 | [Maps pages and editor role](#maps-pages-and-editor-role) | `claude/project-thread-x46foc` | #22 |
 | [Kiosk mode settings](#kiosk-mode-settings) | `claude/project-thread-shzu2l` | #22 |
@@ -31,20 +32,28 @@ Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
 not run on these branches. Run them before opening the PR.
 
-### SVG map furniture drawn as vectors
+### SVG editor interface and icons
 
-Branch `claude/project-thread-znx5hy`, commit 480065c. Not confirmed by its agent yet: written from the commit.
+Branch `claude/project-thread-znx5hy`, in progress (Claude).
 
 **Done:** the title, legends and timestamps of the SVG render are each their
 own group (`data-kind` legend, title, timestamp, widthlegend) made of rects,
 lines and text, instead of one transparent bitmap over the whole map. Legend
 boxes drawn on a scratch image are recorded at their `KEYPOS` through
-`WeatherMapSvg::adopt()`. Files: `WeatherMap.class.php`,
-`WeatherMap.functions.php`, `WeatherMapSvg.class.php`, `compat.php`,
-`tests/Engine/SvgRenderTest.php`.
+`WeatherMapSvg::adopt()`.
 
-**Left:** rebase on `main` (one PR behind), run phpunit, check the
-result in the SVG editor and the viewer, open the PR.
+**Left:** SVG versions of the generic base icons; icon library in the
+palette (add and remove icons, themes that collapse and expand, search);
+open network icon sets with their licences; toolbars that can be moved,
+turned on or off and resized; a Map properties dialog (title, legend and
+timestamp texts, fonts, colours, default link bandwidth); contrast in dark
+and light themes; a clearer percentage legend; a button in the classic
+editor to open the new one.
+
+**Notes:** new editor code goes in separate files (`editor-toolbars.js`,
+`editor-icons.js`, `editor-mapprops.js`) that use `window.WMEditor`, to keep
+`editor-svg.js` from growing. Positions of the legends, timestamps and title
+go through the furniture part of the `move` operation from #23.
 
 ### Link data source picker
 
