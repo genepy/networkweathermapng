@@ -60,6 +60,8 @@ return [
     'move by 1 or 10 px' => 'déplacer de 1 ou 10 px',
     'Alt while dragging' => 'Alt en faisant glisser',
     'no snapping to the other objects' => 'sans aimantation aux autres objets',
+    'Ctrl+drag' => 'Ctrl+glisser',
+    'duplicate the selected nodes' => 'dupliquer les nœuds sélectionnés',
     'Double-click a link' => 'Double-clic sur un lien',
     'add a bend point there' => 'y ajouter un point de courbure',
     'undo, redo' => 'annuler, rétablir',
