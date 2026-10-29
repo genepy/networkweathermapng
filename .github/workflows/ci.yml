@@ -34,6 +34,11 @@ jobs:
           extensions: gd, pdo_sqlite, mbstring, curl
           coverage: none
 
+      # Fail early on a runner image that still ships a PHP release with a
+      # known security hole (8.5.12 fixes CVE-2026-109618 and CVE-2026-109619).
+      - name: Check the PHP patch level
+        run: php -r 'exit(version_compare(PHP_VERSION, "8.5.12", ">=") ? 0 : 1);' || { php -v; echo "PHP 8.5.12 or later is required"; exit 1; }
+
       - name: Cache Composer downloads
         uses: actions/cache@v4
         with:

@@ -1,4 +1,7 @@
-FROM php:8.5-fpm-alpine
+# Pinned to a patch release so that a security fix always reaches the image
+# (Dependabot proposes the next one). 8.5.12 fixes CVE-2026-109618 and
+# CVE-2026-109619 (unauthenticated remote code execution, October 2026).
+FROM php:8.5.12-fpm-alpine
 
 LABEL maintainer="Zabbix Weathermap Team"
 LABEL description="Zabbix Weathermap - Network visualization tool"

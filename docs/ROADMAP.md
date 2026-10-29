@@ -11,7 +11,9 @@ Last updated: 2026-10-27.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch |
+|------|--------|
+| Update PHP for CVE-2026-109618 and CVE-2026-109619 (PHP 8.5.12 in the image and CI, Alpine 3.23 with PHP 8.3.36 for the Observium testbed) | `claude/project-thread-8kity5` |
 
 ## Paused
 
