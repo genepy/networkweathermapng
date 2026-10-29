@@ -58,7 +58,8 @@ written for NetworkWeathermapNG and falls under its MIT license.
 | Files | Authors | License | Link |
 |---|---|---|---|
 | `src/public/objects/`: `Cloud-Filled`, `Cloud-line`, `Firewall`, `HPMini`, `Host`, `PAD`, `Router`, `WorkgroupSwitch`, `filecabinet`, `updown_0` to `updown_2`, and the `*-ball-64` and `hollow32` icons | Howard Jones and contributors, shipped with Network Weathermap and the Cacti plugin | MIT | https://github.com/howardjones/network-weathermap |
-| `src/public/objects/`: `arista-*`, `cisco-*`, `cloud-v1`, `cloud-v2`, `cumulus-*`, `f5-*`, `generic-*`, `juniper-*`, `viptela-*`, `vmware-compute` | Network-Icons-SVG by aci686, first shared by BobTheButcher; converted to PNG by the Cacti plugin | No license file; the authors say the icons "can be used freely" | https://github.com/aci686/Network-Icons-SVG |
+| `src/public/objects/`: `arista-*`, `cisco-*`, `cloud-v1`, `cloud-v2`, `cumulus-*`, `f5-*`, `generic-*`, `juniper-*`, `viptela-*`, `vmware-compute` | Network-Icons-SVG by aci686, first shared by BobTheButcher; converted to PNG by the Cacti plugin. The `.svg` files are the originals, cleaned by `SvgSanitizer` (editor metadata removed) | No license file; the authors say the icons "can be used freely" | https://github.com/aci686/Network-Icons-SVG |
+| `src/public/objects/`: `.svg` versions of `Cloud-Filled`, `Cloud-line`, `updown_0` to `updown_2`, the `*-ball-64` and `hollow32` icons | Redrawn as vectors for NetworkWeathermapNG after the Network Weathermap bitmaps | MIT | |
 | `src/public/objects/net/` | Drawn for NetworkWeathermapNG | MIT | |
 | `src/public/backgrounds/`: `Gradient_BK_800.png`, `background1_950x625_197.jpg`, `blueboard1024.png`, `bw_gradient_1024.png`, `uk1024.png` | Howard Jones and contributors | MIT | https://github.com/howardjones/network-weathermap |
 | `src/public/backgrounds/uk1280_720.png` | The Cacti Group, Inc. (Cacti plugin) | MIT | https://github.com/Cacti/plugin_weathermap |
