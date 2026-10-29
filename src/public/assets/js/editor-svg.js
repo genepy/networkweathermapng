@@ -651,11 +651,14 @@
 
     /** The bandwidth labels of a link as drawn: {dir: in|out, rect} */
     function bwLabelBoxes(link) {
-        var g = $$('#map g[data-kind="link"]').filter(function (e) { return e.dataset.name === link.name; })[0];
+        // the labels sit in a group of their own, drawn over all the links
+        var groups = $$('#map g[data-kind="link"]').filter(function (e) { return e.dataset.name === link.name; });
         var out = [];
-        if (!g) { return out; }
         ['in', 'out'].forEach(function (dir) {
-            var box = g.querySelector('polygon.wm-bwlabel-' + dir) || g.querySelector('text.wm-bwlabel-' + dir);
+            var box = null;
+            groups.forEach(function (g) {
+                box = box || g.querySelector('polygon.wm-bwlabel-' + dir) || g.querySelector('text.wm-bwlabel-' + dir);
+            });
             if (!box) { return; }
             var bb = box.getBBox();
             out.push({ dir: dir, w: bb.width, h: bb.height, rect: [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height] });

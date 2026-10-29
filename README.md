@@ -229,7 +229,10 @@ and saves each change straight into the map's `.conf` file.
   centres the selection lines up with, and it snaps to them (hold Alt not
   to). *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
   A zone moves alone: group it with its nodes to move them together.
-- **Arrange**: align and distribute nodes, zones, legends and the title,
+  Hold Ctrl (Cmd on a Mac) while dragging to drop a copy of the selected
+  nodes, and of the links between them, instead of moving them.
+- **Arrange**: align and distribute nodes, zones, legends and the title
+  (a group moves as one block, unless everything selected is one group),
   group nodes, links and zones (Ctrl+G; Alt+click picks one member), lock
   them (Ctrl+L), bring to front or send to back. Groups and locks are stored
   as `SET editor_group` and `SET editor_lock`.
@@ -296,7 +299,7 @@ Admin > Maps lists every map:
 
 - **Map list** (`/`): type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
 - **Map view** (`/map/{id}`): the map is drawn as SVG and can be zoomed with the mouse wheel or a pinch, moved by dragging, or with the toolbar (+, −, Fit, 100 %) and the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows, `/` to search). "Find a node" centres the map on a node by label or name. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
-- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; clicking a link or node opens its INFOURL in a new tab.
+- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; the traffic graph takes about 40 % of the window width (500 to 1400 px) and is drawn sharper on large or high-density screens. Clicking a link or node opens its INFOURL in a new tab.
 - The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
 - **Fullscreen** fits the map to the screen for a NOC wall, follows the light/dark theme and hides the toolbar when the mouse is idle; Esc leaves it. The **PNG** button keeps the classic picture (also used for thumbnails, exports and the cycle page).
 

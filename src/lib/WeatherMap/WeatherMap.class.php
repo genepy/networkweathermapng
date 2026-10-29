@@ -222,6 +222,8 @@ class WeatherMap extends WeatherMapBase {
 
 	var $used_images  = array(); // an array of image filenames referred to (used by editor)
 	var $seen_zlayers = array(0 => array(), 1000 => array()); // 0 is the background, 1000 is the legends, title, etc
+	/** Bandwidth labels waiting to be drawn over the links of their layer, or null to draw them at once */
+	var $pending_bwlabels = null;
 
 	var $config;
 	var $next_id;
@@ -1297,6 +1299,32 @@ class WeatherMap extends WeatherMapBase {
 			wm_debug("ReadData Completed.");
 			wm_debug("------------------------------");
 		}
+	}
+
+	/**
+	 * Draw the bandwidth labels that WeatherMapLink::Draw() queued. In the
+	 * SVG output each link gets a second group holding its labels.
+	 */
+	function DrawPendingBWLabels($image, $svg) {
+		if (empty($this->pending_bwlabels)) {
+			return;
+		}
+
+		foreach ($this->pending_bwlabels as $label) {
+			list($link, $args) = $label;
+
+			if ($svg) {
+				$svg->begin('link', $link->name, 'L' . $link->id);
+			}
+
+			$this->DrawLabelRotated($image, ...$args);
+		}
+
+		if ($svg) {
+			$svg->begin(null);
+		}
+
+		$this->pending_bwlabels = array();
 	}
 
 	// nodename is a vestigal parameter, from the days when nodes were just big labels
@@ -3984,6 +4012,8 @@ class WeatherMap extends WeatherMapBase {
 			$all_layers = array_keys($this->seen_zlayers);
 			sort($all_layers);
 
+			$this->pending_bwlabels = array();
+
 			foreach ($all_layers as $z) {
 				$z_items = $this->seen_zlayers[$z];
 
@@ -4095,7 +4125,13 @@ class WeatherMap extends WeatherMapBase {
 						}
 					}
 				}
+
+				// the bandwidth labels of a layer go over all of its links,
+				// so a link drawn later does not hide the label of another
+				$this->DrawPendingBWLabels($image, $svg);
 			}
+
+			$this->pending_bwlabels = null;
 
 			$overlay = myimagecolorallocate($image, 200, 0, 0);
 
