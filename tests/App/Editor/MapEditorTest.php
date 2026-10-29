@@ -395,6 +395,23 @@ final class MapEditorTest extends TestCase
         $this->assertEquals([10, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
     }
 
+    public function testAnEmptyTemplateIsKeptOnSave(): void
+    {
+        $conf = (string) file_get_contents($this->file);
+        $conf = str_replace("NODE core\n", "NODE bare\n\nLINK plain\n\nNODE core\n", $conf);
+        $conf .= "\nNODE edge\n\tTEMPLATE bare\n\tPOSITION 300 450\n"
+            . "\nLINK via-plain\n\tTEMPLATE plain\n\tNODES paris lyon\n";
+        file_put_contents($this->file, $conf);
+
+        $this->editor->apply([['op' => 'set_map', 'title' => 'Saved']]);
+        $map = $this->editor->load();
+
+        $this->assertArrayHasKey('plain', $map->links);
+        $this->assertSame('plain', $map->links['via-plain']->template);
+        $this->assertArrayHasKey('bare', $map->nodes);
+        $this->assertSame('bare', $map->nodes['edge']->template);
+    }
+
     public function testLinkDefaultsFollowThroughTemplates(): void
     {
         $conf = (string) file_get_contents($this->file);
