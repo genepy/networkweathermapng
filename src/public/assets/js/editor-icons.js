@@ -24,8 +24,15 @@
     /** Names of the themes the project knows; others show their folder name */
     var LABELS = {
         classic: t('Classic'), generic: t('Generic'), status: t('Status'), clouds: t('Clouds'), net: t('Network'),
-        arista: 'Arista', cisco: 'Cisco', cumulus: 'Cumulus', f5: 'F5', juniper: 'Juniper', viptela: 'Viptela', vmware: 'VMware'
+        affinity: 'Affinity', ansible: 'Ansible', arista: 'Arista', cisco: 'Cisco', cumulus: 'Cumulus', f5: 'F5', juniper: 'Juniper', viptela: 'Viptela', vmware: 'VMware'
     };
+
+    /** Themes open until the person folds them; the others start folded */
+    var OPEN_FIRST = ['net', 'classic'];
+
+    function isOpen(theme) {
+        return theme in state.open ? state.open[theme] : OPEN_FIRST.indexOf(theme) >= 0;
+    }
 
     function label(theme) {
         return LABELS[theme] || theme.replace(/[-_]+/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });
@@ -58,7 +65,7 @@
                     }, ['×']) : null
                 ]);
             }));
-            var details = h('details', { 'class': 'icon-theme', open: q ? true : state.open[theme.theme] !== false }, [
+            var details = h('details', { 'class': 'icon-theme', open: q ? true : isOpen(theme.theme) }, [
                 h('summary', {}, [h('span', { text: label(theme.theme) }), h('span', { 'class': 'icon-count', text: String(icons.length) })]),
                 grid
             ]);
@@ -146,7 +153,7 @@
     document.getElementById('icon-add').addEventListener('click', openAdd);
     manageBtn.addEventListener('click', function () { state.manage = !state.manage; render(); });
     document.getElementById('icon-fold').addEventListener('click', function () {
-        var anyOpen = state.themes.some(function (th) { return state.open[th.theme] !== false; });
+        var anyOpen = state.themes.some(function (th) { return isOpen(th.theme); });
         setAll(!anyOpen);
     });
     search.addEventListener('input', render);

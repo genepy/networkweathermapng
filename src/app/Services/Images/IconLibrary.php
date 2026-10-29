@@ -39,8 +39,11 @@ class IconLibrary
         $this->rasterizer = $rasterizer ?? new SvgRasterizer();
     }
 
+    /** The themes drawn for the project, shown before the vendor sets */
+    private const FIRST_THEMES = ['net', 'classic', 'status', 'clouds', 'generic'];
+
     /**
-     * Themes sorted by name, each with its icons:
+     * Themes, the project's own first and then by name, each with its icons:
      * [['theme' => 'cisco', 'icons' => [['path' => 'objects/cisco-router.png', 'name' => 'cisco-router', 'preview' => 'objects/cisco-router.svg'], ...]], ...]
      */
     public function themes(): array
@@ -53,7 +56,14 @@ class IconLibrary
                 'preview' => is_file($this->publicPath . '/' . self::svgTwin($path)) ? self::svgTwin($path) : $path,
             ];
         }
-        ksort($themes, SORT_NATURAL | SORT_FLAG_CASE);
+        uksort($themes, static function ($a, $b): int {
+            $ia = array_search($a, self::FIRST_THEMES, true);
+            $ib = array_search($b, self::FIRST_THEMES, true);
+            if ($ia !== false || $ib !== false) {
+                return ($ia === false ? PHP_INT_MAX : $ia) <=> ($ib === false ? PHP_INT_MAX : $ib);
+            }
+            return strnatcasecmp((string) $a, (string) $b);
+        });
 
         $out = [];
         foreach ($themes as $theme => $icons) {
@@ -114,7 +124,7 @@ class IconLibrary
         $dir = $this->publicPath . '/objects/' . $theme;
         $files = [];
         if ($ext === 'svg') {
-            $clean = (new SvgSanitizer())->sanitize($data);
+            $clean = (new SvgSanitizer())->sanitize(self::withoutSvgDoctype($data));
             $png = $this->rasterizer->toPng($clean, self::SVG_ICON_SIDE);
             if ($png === null) {
                 throw new RuntimeException($this->rasterizer->available()
@@ -240,5 +250,20 @@ class IconLibrary
             throw new RuntimeException(__('unsupported file name'));
         }
         return $name;
+    }
+
+    /**
+     * Drawing tools often add the public SVG 1.0 or 1.1 DOCTYPE. It declares
+     * nothing the icon needs, so it is dropped; any other DOCTYPE, or one
+     * with declarations of its own, is still refused by the sanitizer.
+     */
+    private static function withoutSvgDoctype(string $svg): string
+    {
+        return (string) preg_replace(
+            '~<!DOCTYPE\s+svg\s+PUBLIC\s+"-//W3C//DTD SVG 1\.[01]//EN"\s+"http://www\.w3\.org/(Graphics/SVG/1\.1/DTD/svg11\.dtd|TR/2001/REC-SVG-20010904/DTD/svg10\.dtd)"\s*>~',
+            '',
+            $svg,
+            1
+        );
     }
 }

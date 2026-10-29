@@ -39,7 +39,7 @@ final class IconLibraryTest extends TestCase
             $themes[$t['theme']] = array_column($t['icons'], 'name');
         }
 
-        $this->assertSame(['cisco', 'classic', 'generic', 'net', 'status'], array_keys($themes));
+        $this->assertSame(['net', 'classic', 'status', 'generic', 'cisco'], array_keys($themes), 'the project themes first');
         $this->assertSame(['cisco-router'], $themes['cisco']);
         $this->assertSame(['Host'], $themes['classic']);
         $this->assertSame(['red-ball-64'], $themes['status']);
@@ -74,6 +74,20 @@ final class IconLibraryTest extends TestCase
         $this->assertSame('objects/net/switch.png', $path);
         $svg = (string) file_get_contents($this->root . '/public/objects/net/switch.svg');
         $this->assertStringNotContainsString('onload', $svg, 'the SVG is cleaned');
+    }
+
+    public function testThePublicSvgDoctypeIsDroppedButNoOther(): void
+    {
+        $png = TESTS_OUTPUT . '/icon-twin.png';
+        file_put_contents($png, self::png());
+        $library = new IconLibrary($this->root . '/public', $this->root . '/configs', new SvgRasterizer(['cp', $png, '{out}']));
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>';
+
+        $library->add('net', 'a.svg', '<?xml version="1.0"?>' . "\n" . '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">' . "\n" . $svg);
+        $this->assertStringNotContainsString('DOCTYPE', (string) file_get_contents($this->root . '/public/objects/net/a.svg'));
+
+        $this->expectException(\RuntimeException::class);
+        $library->add('net', 'b.svg', '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [<!ENTITY x "y">]>' . $svg);
     }
 
     public function testRefusesWhatIsNotAnIcon(): void
