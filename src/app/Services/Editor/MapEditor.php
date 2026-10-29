@@ -671,7 +671,7 @@ class MapEditor
         }
     }
 
-    /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?} */
+    /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?, background?, props?: {...}} */
     private function setMap(\WeatherMap $map, array $op): void
     {
         if (isset($op['title'])) {
@@ -697,6 +697,143 @@ class MapEditor
                 $map->height = $h;
             }
         }
+
+        if (isset($op['props'])) {
+            $this->setMapProps($map, (array) $op['props']);
+        }
+    }
+
+    /** Colours of the map furniture, by request key => colour name in the engine */
+    private const MAP_COLOURS = [
+        'bg_colour' => 'BG', 'title_colour' => 'TITLE', 'time_colour' => 'TIME',
+        'key_text_colour' => 'KEYTEXT', 'key_bg_colour' => 'KEYBG', 'key_outline_colour' => 'KEYOUTLINE',
+    ];
+
+    private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags'];
+
+    /**
+     * The Map properties dialog: texts, fonts and colours of the title,
+     * legend and timestamp, and the defaults of the links. A new link
+     * default also applies to the links that had the old one.
+     */
+    private function setMapProps(\WeatherMap $map, array $props): void
+    {
+        $fonts = array_merge([1, 2, 3, 4, 5], array_keys($map->fonts));
+
+        foreach ($props as $key => $value) {
+            if (isset(self::MAP_COLOURS[$key])) {
+                $c = $this->colour($value);
+                if ($c[0] === -3 || ($c[0] === -1 && !in_array($key, ['key_bg_colour', 'key_outline_colour'], true))) {
+                    throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => $value]));
+                }
+                $ref = &$map->colours['DEFAULT'][self::MAP_COLOURS[$key]];
+                $ref['red1'] = $c[0];
+                $ref['green1'] = $c[1];
+                $ref['blue1'] = $c[2];
+                $ref['bottom'] = -2;
+                $ref['top'] = -1;
+                $ref['special'] = 1;
+                unset($ref);
+            } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
+                if (!in_array((int) $value, $fonts, true)) {
+                    throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value]));
+                }
+                $field = ['title_font' => 'titlefont', 'time_font' => 'timefont', 'key_font' => 'keyfont'][$key];
+                $map->$field = (int) $value;
+            } elseif ($key === 'key_text') {
+                $map->keytext['DEFAULT'] = $this->text($value);
+            } elseif ($key === 'key_style') {
+                if (!in_array($value, self::KEY_STYLES, true)) {
+                    throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
+                }
+                $map->keystyle['DEFAULT'] = $value;
+            } elseif ($key === 'key_size') {
+                $map->keysize['DEFAULT'] = max(50, min(2000, (int) $value));
+            } elseif ($key === 'key_shown') {
+                $shown = (bool) $value;
+                if ($shown && (($map->keyx['DEFAULT'] ?? -1) < 0 || ($map->keyy['DEFAULT'] ?? -1) < 0)) {
+                    $map->keyx['DEFAULT'] = 10;
+                    $map->keyy['DEFAULT'] = 40;
+                } elseif (!$shown) {
+                    $map->keyx['DEFAULT'] = -1;
+                    $map->keyy['DEFAULT'] = -1;
+                }
+                $map->keytext['DEFAULT'] ??= 'Traffic Load';
+            } elseif ($key === 'stamp_text') {
+                $map->stamptext = $this->text($value);
+            } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont'], true)) {
+                $this->setLinkDefault($map, $key, $value, $fonts);
+            } else {
+                throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
+            }
+        }
+    }
+
+    private function setLinkDefault(\WeatherMap $map, string $key, mixed $value, array $fonts): void
+    {
+        $default = $map->links['DEFAULT'] ?? null;
+        if (!$default) {
+            throw new InvalidArgumentException(__('This map has no DEFAULT link'));
+        }
+
+        $fields = match ($key) {
+            'link_bandwidth' => ['max_bandwidth_in_cfg', 'max_bandwidth_out_cfg'],
+            'link_width' => ['width'],
+            'link_labelstyle' => ['labelstyle'],
+            'link_bwfont' => ['bwfont'],
+        };
+        $new = match ($key) {
+            'link_bandwidth' => $this->bandwidth((string) $value),
+            'link_width' => strtolower((string) $value) === 'auto' ? 'auto' : max(1, (int) $value),
+            'link_labelstyle' => in_array($value, self::LINK_CHOICES['labelstyle'], true) ? $value
+                : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
+            'link_bwfont' => in_array((int) $value, $fonts, true) ? (int) $value
+                : throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value])),
+        };
+
+        foreach ($fields as $field) {
+            $old = $default->$field;
+            foreach ($map->links as $name => $link) {
+                if ($name !== 'DEFAULT' && $name !== ':: DEFAULT ::' && $link->template === 'DEFAULT' && (string) $link->$field === (string) $old) {
+                    $link->$field = $new;
+                }
+            }
+            $default->$field = $new;
+        }
+    }
+
+    /** What the Map properties dialog shows */
+    private static function mapProps(\WeatherMap $map): array
+    {
+        $colour = static function (string $name) use ($map): string {
+            $c = $map->colours['DEFAULT'][$name] ?? null;
+            if (!$c || $c['red1'] < 0) {
+                return 'none';
+            }
+            return sprintf('#%02x%02x%02x', $c['red1'], $c['green1'], $c['blue1']);
+        };
+        $default = $map->links['DEFAULT'] ?? null;
+
+        return [
+            'title_font' => (int) $map->titlefont,
+            'title_colour' => $colour('TITLE'),
+            'bg_colour' => $colour('BG'),
+            'key_shown' => ($map->keyx['DEFAULT'] ?? -1) >= 0 && ($map->keyy['DEFAULT'] ?? -1) >= 0,
+            'key_text' => (string) ($map->keytext['DEFAULT'] ?? ''),
+            'key_style' => (string) ($map->keystyle['DEFAULT'] ?? 'classic'),
+            'key_size' => (int) ($map->keysize['DEFAULT'] ?? 400),
+            'key_font' => (int) $map->keyfont,
+            'key_text_colour' => $colour('KEYTEXT'),
+            'key_bg_colour' => $colour('KEYBG'),
+            'key_outline_colour' => $colour('KEYOUTLINE'),
+            'stamp_text' => (string) $map->stamptext,
+            'time_font' => (int) $map->timefont,
+            'time_colour' => $colour('TIME'),
+            'link_bandwidth' => $default ? (string) $default->max_bandwidth_in_cfg : '',
+            'link_width' => $default ? (string) $default->width : '',
+            'link_labelstyle' => $default ? (string) $default->labelstyle : 'percent',
+            'link_bwfont' => $default ? (int) $default->bwfont : 2,
+        ];
     }
 
     // ------------------------------------------------------------------
@@ -837,6 +974,7 @@ class MapEditor
                 'height' => (int) $map->height,
                 'title' => (string) $map->title,
                 'background' => (string) $map->background,
+                'props' => self::mapProps($map),
             ],
             'nodes' => $nodes,
             'links' => $links,

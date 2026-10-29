@@ -346,4 +346,57 @@ final class MapEditorTest extends TestCase
         $this->assertSame(1, substr_count(file_get_contents($this->file), 'LABELOFFSET'), 'only the template keeps one');
         $this->assertSame($before['label_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
     }
+
+    public function testMapPropertiesAreSavedAndLinkDefaultsFollow(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => [
+            'key_text' => "Load\nper link", 'key_style' => 'horizontal', 'key_size' => 300,
+            'key_bg_colour' => 'none', 'title_colour' => '#102030', 'stamp_text' => 'Updated %H:%M',
+            'title_font' => 4, 'link_bandwidth' => '10G', 'link_width' => 8,
+        ]]]);
+
+        $map = $this->editor->load();
+        $this->assertSame('Load per link', $map->keytext['DEFAULT']);
+        $this->assertSame('horizontal', $map->keystyle['DEFAULT']);
+        $this->assertEquals(300, $map->keysize['DEFAULT']);
+        $this->assertEquals(-1, $map->colours['DEFAULT']['KEYBG']['red1']);
+        $this->assertEquals([16, 32, 48], [$map->colours['DEFAULT']['TITLE']['red1'], $map->colours['DEFAULT']['TITLE']['green1'], $map->colours['DEFAULT']['TITLE']['blue1']]);
+        $this->assertSame('Updated %H:%M', $map->stamptext);
+        $this->assertEquals(4, $map->titlefont);
+
+        // links that had the old default follow it; a link with its own value keeps it
+        $this->assertSame('10G', $map->links['DEFAULT']->max_bandwidth_in_cfg);
+        $this->assertSame('10G', $map->links['core-paris']->max_bandwidth_in_cfg);
+        $this->assertEquals(8, $map->links['core-paris']->width);
+
+        $props = MapEditor::model($map)['map']['props'];
+        $this->assertSame('none', $props['key_bg_colour']);
+        $this->assertSame('#102030', $props['title_colour']);
+        $this->assertSame('10G', $props['link_bandwidth']);
+    }
+
+    public function testTheLegendCanBeHiddenAndShownAgain(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => false]]]);
+        $this->assertFalse(MapEditor::model($this->editor->load())['map']['props']['key_shown']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
+        $map = $this->editor->load();
+        $this->assertGreaterThanOrEqual(0, $map->keyx['DEFAULT']);
+        $this->assertSame('Trafic', $map->keytext['DEFAULT']);
+    }
+
+    public function testBadMapPropertiesAreRefused(): void
+    {
+        $before = (string) file_get_contents($this->file);
+        foreach ([['title_colour' => 'none'], ['key_style' => 'round'], ['title_font' => 99], ['link_bandwidth' => '1 Gb'], ['nope' => 1]] as $props) {
+            try {
+                $this->editor->apply([['op' => 'set_map', 'props' => $props]]);
+                $this->fail(json_encode($props) . ' was accepted');
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->assertSame($before, (string) file_get_contents($this->file));
+    }
 }
