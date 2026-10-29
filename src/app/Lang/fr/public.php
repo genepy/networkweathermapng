@@ -92,4 +92,5 @@ return [
     'Data source ID and host ID required' => "Identifiants de source de données et d'équipement requis",
     'Selection required' => 'Sélection requise',
     'Invalid selection JSON' => 'JSON de sélection invalide',
+    'Kiosk settings' => 'Réglages du mode kiosque',
 ];
