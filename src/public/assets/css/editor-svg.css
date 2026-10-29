@@ -16,6 +16,10 @@
     --paper-shadow: #0003;
     --on-accent: #ffffff;
     --disabled: #9aa3b2;
+    /* edges of fields and buttons: 3:1 against the panels */
+    --field-border: #7f889a;
+    /* red behind white text (the danger text colour may be lighter) */
+    --danger-fill: #c62828;
     color-scheme: light;
 }
 
@@ -33,6 +37,9 @@
         --paper-shadow: #0008;
         --on-accent: #08111f;
         --disabled: #5c6678;
+        --field-border: #6b788c;
+        --danger: #ff7b72;
+        --danger-fill: #c62828;
         --warn: #ffa733;
         --ok: #66bb6a;
         color-scheme: dark;
@@ -52,6 +59,9 @@
     --paper-shadow: #0008;
     --on-accent: #08111f;
     --disabled: #5c6678;
+    --field-border: #6b788c;
+    --danger: #ff7b72;
+    --danger-fill: #c62828;
     color-scheme: dark;
 }
 
@@ -168,7 +178,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 }
 #toolbars-menu h3 { margin: 10px 0 4px; font-size: 12px; text-transform: uppercase; color: var(--muted); }
 #toolbars-menu label { display: flex; gap: 6px; align-items: center; margin: 3px 0; cursor: pointer; }
-#toolbars-menu select { margin-left: auto; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; }
+#toolbars-menu select { margin-left: auto; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px; }
 #toolbars-menu .hint { margin-top: 8px; max-width: 260px; }
 #toolbars-menu > button { font: inherit; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); cursor: pointer; }
 
@@ -202,11 +212,11 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .palette-tools { display: flex; gap: 2px; }
 .palette-tools button, #icon-search {
     font: inherit; color: var(--text); background: var(--panel-2);
-    border: 1px solid var(--border); border-radius: 4px;
+    border: 1px solid var(--field-border); border-radius: 4px;
 }
 .palette-tools button { min-width: 24px; height: 24px; padding: 0 4px; cursor: pointer; line-height: 1; }
 .palette-tools button:hover { border-color: var(--accent); }
-.palette-tools button.active { background: var(--danger); border-color: var(--danger); color: #fff; }
+.palette-tools button.active { background: var(--danger-fill); border-color: var(--danger-fill); color: #fff; }
 #icon-search { width: 100%; margin: 6px 0; padding: 4px 6px; }
 .icon-theme { margin-bottom: 4px; }
 .icon-theme summary {
@@ -221,7 +231,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .palette-icon { background: #f4f6f9 !important; border-color: var(--border); }
 .icon-delete {
     position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; padding: 0; border-radius: 50%;
-    border: 1px solid var(--panel); background: var(--danger); color: #fff; font: 12px/1 sans-serif; cursor: pointer;
+    border: 1px solid var(--panel); background: var(--danger-fill); color: #fff; font: 12px/1 sans-serif; cursor: pointer;
 }
 .icon-errors { margin: 0; padding-left: 18px; color: var(--danger); }
 .icon-errors:empty { display: none; }
@@ -282,7 +292,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
     position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
     background: #222b; color: #fff; padding: 6px 14px; border-radius: 4px; max-width: 80%;
 }
-#toast.error { background: var(--danger); }
+#toast.error { background: var(--danger-fill); }
 
 /* Inspector */
 #inspector {
@@ -299,7 +309,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #inspector .row.full { grid-template-columns: 1fr; }
 #inspector input, #inspector select, #inspector textarea {
     width: 100%; font: inherit; color: var(--text);
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px;
+    background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px; padding: 4px 6px;
 }
 #inspector input[type=color] { padding: 0 2px; height: 26px; }
 #inspector input[type=checkbox] { width: auto; }
@@ -310,7 +320,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #inspector .actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 #inspector button {
     font: inherit; padding: 4px 8px; border-radius: 4px; cursor: pointer;
-    border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--field-border); background: var(--panel-2); color: var(--text);
 }
 #inspector button.danger { color: var(--danger); }
 #inspector .anchors { display: grid; grid-template-columns: repeat(3, 24px); gap: 2px; }
@@ -324,9 +334,9 @@ dialog h3 { margin-top: 0; }
 dialog label { display: block; margin-bottom: 8px; }
 dialog label.inline { display: flex; gap: 6px; align-items: center; }
 dialog label.indent { margin-left: 22px; }
-dialog select, dialog input:not([type=checkbox]):not([type=radio]) { width: 100%; font: inherit; padding: 4px; margin-top: 2px; }
+dialog select, dialog input:not([type=checkbox]):not([type=radio]) { width: 100%; font: inherit; padding: 4px; margin-top: 2px; color: var(--text); background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px; }
 dialog menu { display: flex; justify-content: flex-end; gap: 6px; padding: 0; margin: 12px 0 0; }
-dialog button { font: inherit; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text); cursor: pointer; }
+dialog button { font: inherit; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--field-border); background: var(--panel-2); color: var(--text); cursor: pointer; }
 dialog button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 #inspector .props-open { display: block; margin: 8px 0; }
 

@@ -13,7 +13,7 @@ Last updated: 2026-10-29.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| [SVG editor interface and icons](#svg-editor-interface-and-icons) | `claude/project-thread-znx5hy` | See the details below |
+| (none) | | |
 
 ## Paused
 
@@ -31,29 +31,6 @@ branch.
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
 not run on these branches. Run them before opening the PR.
-
-### SVG editor interface and icons
-
-Branch `claude/project-thread-znx5hy`, in progress (Claude).
-
-**Done:** the title, legends and timestamps of the SVG render are each their
-own group (`data-kind` legend, title, timestamp, widthlegend) made of rects,
-lines and text, instead of one transparent bitmap over the whole map. Legend
-boxes drawn on a scratch image are recorded at their `KEYPOS` through
-`WeatherMapSvg::adopt()`.
-
-**Left:** SVG versions of the generic base icons; icon library in the
-palette (add and remove icons, themes that collapse and expand, search);
-open network icon sets with their licences; toolbars that can be moved,
-turned on or off and resized; a Map properties dialog (title, legend and
-timestamp texts, fonts, colours, default link bandwidth); contrast in dark
-and light themes; a clearer percentage legend; a button in the classic
-editor to open the new one.
-
-**Notes:** new editor code goes in separate files (`editor-toolbars.js`,
-`editor-icons.js`, `editor-mapprops.js`) that use `window.WMEditor`, to keep
-`editor-svg.js` from growing. Positions of the legends, timestamps and title
-go through the furniture part of the `move` operation from #23.
 
 ### Link data source picker
 
@@ -176,6 +153,7 @@ goes.
 
 | PR | Item |
 |----|------|
+| #25 | SVG editor interface and icons: movable toolbars, icon library with themes and the Affinity and Ansible sets, Map properties, vector legends |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |
