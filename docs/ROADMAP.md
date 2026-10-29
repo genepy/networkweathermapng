@@ -175,7 +175,7 @@ goes.
 
 | PR | Item |
 |----|------|
-| (this PR) | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
+| #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |
