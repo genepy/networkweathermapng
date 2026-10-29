@@ -59,7 +59,7 @@
             var grid = h('div', { 'class': 'icon-grid' }, icons.map(function (i) {
                 return h('div', { 'class': 'palette-icon', draggable: state.manage ? 'false' : 'true', 'data-icon': i.path, title: i.name }, [
                     h('img', { src: '/' + i.preview, alt: '', loading: 'lazy' }),
-                    state.manage ? h('button', {
+                    state.manage && !i.shipped ? h('button', {
                         type: 'button', 'class': 'icon-delete', title: t('Remove this icon'), 'aria-label': t('Remove :name', { name: i.name }),
                         onclick: function (evt) { evt.stopPropagation(); remove(i); }
                     }, ['×']) : null
@@ -79,6 +79,9 @@
 
         if (!sections.length) {
             sections.push(h('p', { 'class': 'hint', text: q ? t('No icon matches') : t('No icons in public/objects') }));
+        }
+        if (state.manage) {
+            sections.unshift(h('p', { 'class': 'hint', text: t('Icons shipped with NetworkWeathermapNG cannot be removed.') }));
         }
         holder.replaceChildren.apply(holder, sections);
         manageBtn.classList.toggle('active', state.manage);

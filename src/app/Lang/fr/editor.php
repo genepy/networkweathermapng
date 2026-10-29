@@ -174,6 +174,7 @@ return [
     'The icon could not be saved' => 'L’icône n’a pas pu être enregistrée',
     'This icon is used by: :maps. Change those nodes first.' => 'Cette icône est utilisée par : :maps. Modifiez d’abord ces nœuds.',
     'The icon could not be removed' => 'L’icône n’a pas pu être supprimée',
+    'This icon comes with NetworkWeathermapNG and cannot be removed' => 'Cette icône est livrée avec NetworkWeathermapNG et ne peut pas être supprimée',
     'Icon not found' => 'Icône introuvable',
     'A theme name is required (letters, digits, - and _, 32 at most)' => 'Un nom de thème est requis (lettres, chiffres, - et _, 32 au plus)',
     'Title, legend, timestamp, fonts, colours and link defaults of the map' => 'Titre, légende, horodatage, polices, couleurs et valeurs par défaut des liens de la carte',

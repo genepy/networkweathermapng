@@ -750,14 +750,11 @@ class MapEditor
             } elseif ($key === 'key_size') {
                 $map->keysize['DEFAULT'] = max(50, min(2000, (int) $value));
             } elseif ($key === 'key_shown') {
-                $shown = (bool) $value;
-                if ($shown && (($map->keyx['DEFAULT'] ?? -1) < 0 || ($map->keyy['DEFAULT'] ?? -1) < 0)) {
-                    $map->keyx['DEFAULT'] = 10;
-                    $map->keyy['DEFAULT'] = 40;
-                } elseif (!$shown) {
-                    $map->keyx['DEFAULT'] = -1;
-                    $map->keyy['DEFAULT'] = -1;
-                }
+                [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']] = self::legendPosition(
+                    (bool) $value,
+                    $map->keyx['DEFAULT'] ?? -1,
+                    $map->keyy['DEFAULT'] ?? -1
+                );
                 $map->keytext['DEFAULT'] ??= 'Traffic Load';
             } elseif ($key === 'stamp_text') {
                 $map->stamptext = $this->text($value);
@@ -767,6 +764,32 @@ class MapEditor
                 throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
             }
         }
+    }
+
+    /**
+     * The engine hides a legend placed at a negative position. A hidden
+     * legend keeps its place as (-x - 1, -y - 1), so showing it again puts
+     * it back where it was; the classic -1 -1 comes back at 10, 40.
+     *
+     * @return array{int, int}
+     */
+    private static function legendPosition(bool $shown, mixed $x, mixed $y): array
+    {
+        $x = is_numeric($x) ? (int) $x : -1;
+        $y = is_numeric($y) ? (int) $y : -1;
+        $hidden = $x < 0 || $y < 0;
+
+        if ($shown) {
+            if (!$hidden) {
+                return [$x, $y];
+            }
+            if ($x === -1 && $y === -1) {
+                return [10, 40];
+            }
+            return [$x < 0 ? -$x - 1 : $x, $y < 0 ? -$y - 1 : $y];
+        }
+
+        return $hidden ? [$x, $y] : [-$x - 1, -$y - 1];
     }
 
     private function setLinkDefault(\WeatherMap $map, string $key, mixed $value, array $fonts): void
@@ -792,14 +815,37 @@ class MapEditor
         };
 
         foreach ($fields as $field) {
-            $old = $default->$field;
-            foreach ($map->links as $name => $link) {
-                if ($name !== 'DEFAULT' && $name !== ':: DEFAULT ::' && $link->template === 'DEFAULT' && (string) $link->$field === (string) $old) {
-                    $link->$field = $new;
-                }
+            // find all the followers first: changing one would hide its children
+            $followers = array_filter(
+                $map->links,
+                static fn ($link, $name) => $name !== 'DEFAULT' && $name !== ':: DEFAULT ::' && self::inheritsFromDefault($map, $link, $field),
+                ARRAY_FILTER_USE_BOTH
+            );
+            foreach ($followers as $link) {
+                $link->$field = $new;
             }
             $default->$field = $new;
         }
+    }
+
+    /**
+     * Whether a link (or a link template) has $field from DEFAULT: each
+     * template between them has the same value as DEFAULT, so none of them
+     * sets its own.
+     */
+    private static function inheritsFromDefault(\WeatherMap $map, object $link, string $field): bool
+    {
+        $value = (string) $link->$field;
+        $seen = [];
+        while (($template = (string) $link->template) !== 'DEFAULT') {
+            $parent = $map->links[$template] ?? null;
+            if ($parent === null || isset($seen[$template]) || (string) $parent->$field !== $value) {
+                return false;
+            }
+            $seen[$template] = true;
+            $link = $parent;
+        }
+        return $value === (string) $map->links['DEFAULT']->$field;
     }
 
     /** What the Map properties dialog shows */

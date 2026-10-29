@@ -382,8 +382,36 @@ final class MapEditorTest extends TestCase
 
         $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
         $map = $this->editor->load();
-        $this->assertGreaterThanOrEqual(0, $map->keyx['DEFAULT']);
+        $this->assertEquals([680, 20], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']], 'the legend comes back where it was');
         $this->assertSame('Trafic', $map->keytext['DEFAULT']);
+    }
+
+    public function testAClassicHiddenLegendIsShownInTheCorner(): void
+    {
+        file_put_contents($this->file, str_replace('KEYPOS DEFAULT 680 20', 'KEYPOS DEFAULT -1 -1', (string) file_get_contents($this->file)));
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
+        $map = $this->editor->load();
+        $this->assertEquals([10, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
+    }
+
+    public function testLinkDefaultsFollowThroughTemplates(): void
+    {
+        $conf = (string) file_get_contents($this->file);
+        $conf = str_replace("NODE core\n", "LINK plain\n\tBANDWIDTH 2G\n\nLINK thick\n\tWIDTH 12\n\nNODE core\n", $conf);
+        $conf .= "\nLINK via-plain\n\tTEMPLATE plain\n\tNODES paris lyon\n"
+            . "\nLINK via-thick\n\tTEMPLATE thick\n\tNODES lyon backup\n"
+            . "\nLINK own-width\n\tTEMPLATE thick\n\tWIDTH 6\n\tNODES paris backup\n";
+        file_put_contents($this->file, $conf);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_width' => 9]]]);
+        $map = $this->editor->load();
+
+        $this->assertEquals(9, $map->links['plain']->width, 'a template without a width of its own follows');
+        $this->assertEquals(9, $map->links['via-plain']->width, 'and so do its links');
+        $this->assertEquals(12, $map->links['thick']->width, 'a template with its own width keeps it');
+        $this->assertEquals(12, $map->links['via-thick']->width);
+        $this->assertEquals(6, $map->links['own-width']->width, 'a width set on the link itself stays');
     }
 
     public function testBadMapPropertiesAreRefused(): void

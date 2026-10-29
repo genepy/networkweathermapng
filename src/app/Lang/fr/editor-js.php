@@ -217,6 +217,7 @@ return [
     'Clouds' => 'Nuages',
     'Network' => 'Réseau',
     'Remove this icon' => 'Retirer cette icône',
+    'Icons shipped with NetworkWeathermapNG cannot be removed.' => 'Les icônes livrées avec NetworkWeathermapNG ne peuvent pas être retirées.',
     'Remove :name' => 'Retirer :name',
     'No icon matches' => 'Aucune icône ne correspond',
     'No icons in public/objects' => 'Aucune icône dans public/objects',

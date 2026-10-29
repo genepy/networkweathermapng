@@ -33,10 +33,29 @@ class IconLibrary
     ];
 
     private SvgRasterizer $rasterizer;
+    /** @var array<string, true> paths of the icons shipped with the project */
+    private array $shipped;
 
-    public function __construct(private string $publicPath, private string $configsPath = '', ?SvgRasterizer $rasterizer = null)
+    /**
+     * @param string[]|null $shipped icons that cannot be removed (default: shipped-icons.php)
+     */
+    public function __construct(private string $publicPath, private string $configsPath = '', ?SvgRasterizer $rasterizer = null, ?array $shipped = null)
     {
         $this->rasterizer = $rasterizer ?? new SvgRasterizer();
+        $this->shipped = array_fill_keys($shipped ?? self::shippedIcons(), true);
+    }
+
+    /** @return string[] */
+    public static function shippedIcons(): array
+    {
+        $list = require __DIR__ . '/shipped-icons.php';
+        return is_array($list) ? $list : [];
+    }
+
+    /** Whether an icon came with the project, so a deployment would bring it back */
+    public function isShipped(string $path): bool
+    {
+        return isset($this->shipped[$path]);
     }
 
     /** The themes drawn for the project, shown before the vendor sets */
@@ -54,6 +73,7 @@ class IconLibrary
                 'path' => $path,
                 'name' => pathinfo($path, PATHINFO_FILENAME),
                 'preview' => is_file($this->publicPath . '/' . self::svgTwin($path)) ? self::svgTwin($path) : $path,
+                'shipped' => $this->isShipped($path),
             ];
         }
         uksort($themes, static function ($a, $b): int {
@@ -163,7 +183,8 @@ class IconLibrary
     }
 
     /**
-     * Remove an icon and its SVG twin. Refused while a map uses it.
+     * Remove an icon and its SVG twin. Refused while a map uses it, and
+     * for the icons shipped with the project.
      */
     public function delete(string $path): void
     {
@@ -171,6 +192,9 @@ class IconLibrary
         $maps = $this->usedBy($path);
         if ($maps) {
             throw new RuntimeException(__('This icon is used by: :maps. Change those nodes first.', ['maps' => implode(', ', $maps)]));
+        }
+        if ($this->isShipped($path)) {
+            throw new RuntimeException(__('This icon comes with NetworkWeathermapNG and cannot be removed'));
         }
 
         foreach ([$path, self::svgTwin($path)] as $rel) {

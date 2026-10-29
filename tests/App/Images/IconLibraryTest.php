@@ -140,9 +140,41 @@ final class IconLibraryTest extends TestCase
         $this->assertFileExists($this->root . '/configs/x.conf');
     }
 
+    public function testAShippedIconIsKept(): void
+    {
+        $library = new IconLibrary($this->root . '/public', $this->root . '/configs', new SvgRasterizer(['false']), ['objects/net/router.png']);
+
+        $net = array_column($library->themes(), 'icons', 'theme')['net'];
+        $this->assertTrue($net[0]['shipped']);
+        $this->expectException(\RuntimeException::class);
+        try {
+            $library->delete('objects/net/router.png');
+        } finally {
+            $this->assertFileExists($this->root . '/public/objects/net/router.png');
+        }
+    }
+
+    public function testTheShippedListIsUpToDate(): void
+    {
+        $src = dirname(__DIR__, 3) . '/src';
+        exec('git -C ' . escapeshellarg($src) . ' ls-files -- public/objects 2>/dev/null', $files, $status);
+        if ($status !== 0 || $files === []) {
+            $this->markTestSkipped('not a git checkout');
+        }
+        $icons = [];
+        foreach ($files as $file) {
+            if (preg_match('#^public/(objects/([^/]+/)?[^/]+\.(png|gif|jpe?g))$#i', $file, $m)) {
+                $icons[] = $m[1];
+            }
+        }
+        sort($icons);
+
+        $this->assertSame($icons, IconLibrary::shippedIcons(), 'run php src/bin/icons-manifest.php');
+    }
+
     private function library(): IconLibrary
     {
-        return new IconLibrary($this->root . '/public', $this->root . '/configs', new SvgRasterizer(['false']));
+        return new IconLibrary($this->root . '/public', $this->root . '/configs', new SvgRasterizer(['false']), []);
     }
 
     private static function png(): string
