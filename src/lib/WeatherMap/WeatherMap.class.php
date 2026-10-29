@@ -567,6 +567,18 @@ class WeatherMap extends WeatherMapBase {
 	 * @param  hex      The colour to draw the test with
 	 * @param  double   The angle to rotate the text on the image
 	 */
+	/**
+	 * The built-in GD fonts draw single bytes in ISO-8859-2, while the
+	 * configuration is read as UTF-8: convert, so accents draw as accents.
+	 */
+	static function gdfonttext($string) {
+		$string = (string) $string;
+		if (preg_match('/[\x80-\xff]/', $string) && mb_check_encoding($string, 'UTF-8')) {
+			return mb_convert_encoding($string, 'ISO-8859-2', 'UTF-8');
+		}
+		return $string;
+	}
+
 	function myimagestring($image, $fontnumber, $x, $y, $string, $colour, $angle = 0) {
 		// if it's supposed to be a special font, and it hasn't been defined, then fall through
 		if ($fontnumber > 5 && !isset($this->fonts[$fontnumber])) {
@@ -596,7 +608,7 @@ class WeatherMap extends WeatherMapBase {
 			 * The x and y coordinates will be different due to the change between
 			 * imagestring and imagettftext as noted above
 			 */
-			imagestring($image, $fontnumber, $x, intval(round($y - imagefontheight($fontnumber))), $string, $colour);
+			imagestring($image, $fontnumber, $x, intval(round($y - imagefontheight($fontnumber))), self::gdfonttext($string), $colour);
 
 			if ($angle != 0) {
 				wm_warn("Angled text doesn't work with non-FreeType fonts [WMWARN02]");
@@ -610,7 +622,7 @@ class WeatherMap extends WeatherMapBase {
 			if ($this->fonts[$fontnumber]->type == 'gd') {
 				imagestring($image, $this->fonts[$fontnumber]->gdnumber,
 					$x, intval(round($y - imagefontheight($this->fonts[$fontnumber]->gdnumber))),
-					$string, $colour
+					self::gdfonttext($string), $colour
 				);
 
 				if ($angle != 0) {
@@ -628,7 +640,7 @@ class WeatherMap extends WeatherMapBase {
 		$maxlinelength = 0;
 
 		foreach($lines as $line) {
-			$l = strlen($line);
+			$l = strlen(self::gdfonttext($line));
 
 			if ($l > $maxlinelength) {
 				$maxlinelength = $l;
@@ -2472,6 +2484,11 @@ class WeatherMap extends WeatherMapBase {
 
 		foreach($lines as $buffer) {
 			$linematched = 0;
+
+			// older maps are often saved in Latin-1 / Windows-1252: read them as UTF-8
+			if (!mb_check_encoding($buffer, 'UTF-8')) {
+				$buffer = mb_convert_encoding($buffer, 'UTF-8', 'Windows-1252');
+			}
 
 			$linecount++;
 

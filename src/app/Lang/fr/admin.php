@@ -335,6 +335,7 @@ return [
     'Side by side' => 'Côte à côte',
     'Differences' => 'Différences',
     'Overlay' => 'Superposition',
+    'Fit to the page width' => 'Ajuster à la largeur de la page',
     'Identical pixels are black: what shows in colour has moved or changed. Live data is not read for either drawing.' => 'Les pixels identiques sont noirs : ce qui apparaît en couleur a bougé ou changé. Les données en direct ne sont lues pour aucun des deux dessins.',
     'Before (PNG, old engine)' => 'Avant (PNG, ancien moteur)',
     'After (SVG)' => 'Après (SVG)',
