@@ -7,11 +7,13 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-27.
+Last updated: 2026-10-29.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch | Notes |
+|------|--------|-------|
+| Map import fixes | `claude/project-thread-cm20ci` | Compare view cuts large maps and its side-by-side layout drops the map below; "d is null" error when importing a php-weathermap 0.97c map; the map's last-updated date is not refreshed after an import |
 
 ## Paused
 
@@ -153,7 +155,6 @@ goes.
 
 | Item | Notes |
 |------|-------|
-| Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
