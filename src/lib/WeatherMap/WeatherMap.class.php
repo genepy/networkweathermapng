@@ -1751,6 +1751,88 @@ class WeatherMap extends WeatherMapBase {
 		);
 	}
 
+	/**
+	 * A card with rounded corners: the title, a bar of the scale colours and
+	 * the 0, 25, 50, 75 and 100% marks under it. KEYSTYLE <scale> modern [width].
+	 */
+	function DrawLegend_Modern($image, $scalename = 'DEFAULT', $width = 240) {
+		$title = (string) $this->keytext[$scalename];
+		$font  = $this->keyfont;
+		$width = max(80, (int) $width);
+		$pad   = 10;
+
+		list($titlewidth, $lineheight) = $this->myimagestringsize($font, $title === '' ? 'Ag' : $title);
+		list($tickwidth, $tickheight)  = $this->myimagestringsize($font, '100%');
+
+		$bar_left   = $pad;
+		$bar_right  = $pad + $width;
+		$bar_top    = $title === '' ? $pad : $pad + $lineheight + 8;
+		$bar_height = max(8, intval(round($tickheight * 0.9)));
+		$bar_bottom = $bar_top + $bar_height;
+		$box_right  = max($bar_right, $pad + $titlewidth) + $pad;
+		$box_bottom = $bar_bottom + 5 + $tickheight + $pad;
+
+		$scale_im  = imagecreatetruecolor(intval($box_right + 1), intval($box_bottom + 1));
+		$scale_ref = 'gdref_legend_' . $scalename;
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+		}
+		imageSaveAlpha($scale_im, true);
+		imagefill($scale_im, 0, 0, imagecolorallocatealpha($scale_im, 128, 0, 0, 127));
+		$this->AllocateScaleColours($scale_im, $scale_ref);
+
+		$card = wm_rounded_rect_points(0, 0, $box_right, $box_bottom, 6);
+		if (!is_none($this->colours['DEFAULT']['KEYBG'])) {
+			wimagefilledpolygon($scale_im, $card, count($card) / 2, $this->colours['DEFAULT']['KEYBG'][$scale_ref]);
+		}
+		if (!is_none($this->colours['DEFAULT']['KEYOUTLINE'])) {
+			wimagepolygon($scale_im, $card, count($card) / 2, $this->colours['DEFAULT']['KEYOUTLINE'][$scale_ref]);
+		}
+
+		$text = $this->colours['DEFAULT']['KEYTEXT'][$scale_ref];
+		if ($title !== '') {
+			$this->myimagestring($scale_im, $font, $pad, $pad + $lineheight, $title, $text);
+		}
+
+		// the bar: one rectangle for each run of 1% steps of the same colour
+		$run_start = 0;
+		$run_colour = null;
+		for ($p = 0; $p <= 101; $p++) {
+			$colour = null;
+			if ($p <= 100) {
+				list($col, $junk) = $this->NewColourFromPercent($p, $scalename);
+				$colour = $col->is_real() ? $col->as_html() : null;
+			}
+			if ($p > 0 && ($colour !== $run_colour || $p == 101)) {
+				if ($run_colour !== null) {
+					list($col, $junk) = $this->NewColourFromPercent($run_start, $scalename);
+					wimagefilledrectangle($scale_im,
+						$bar_left + $width * $run_start / 101, $bar_top,
+						$bar_left + $width * $p / 101, $bar_bottom,
+						$col->gdallocate($scale_im));
+				}
+				$run_start = $p;
+			}
+			$run_colour = $colour;
+		}
+
+		foreach (array(0, 25, 50, 75, 100) as $p) {
+			$x = $bar_left + $width * ($p + 0.5) / 101;
+			wimageline($scale_im, intval(round($x)), $bar_bottom + 1, intval(round($x)), $bar_bottom + 3, $text);
+			$label = $p . '%';
+			list($w, $junk) = $this->myimagestringsize($font, $label);
+			$lx = max($bar_left, min($bar_right - $w, $x - $w / 2));
+			$this->myimagestring($scale_im, $font, $lx, $bar_bottom + 5 + $tickheight, $label, $text);
+		}
+
+		imagecopy($image, $scale_im, $this->keyx[$scalename], $this->keyy[$scalename], 0, 0, imagesx($scale_im), imagesy($scale_im));
+		$this->keyimage[$scalename] = $scale_im;
+
+		$rx = $this->keyx[$scalename];
+		$ry = $this->keyy[$scalename];
+		$this->imap->addArea('Rectangle', "LEGEND:$scalename", '', array($rx, $ry, $rx + $box_right, $ry + $box_bottom));
+	}
+
 	function DrawLegend_Vertical($image, $scalename = 'DEFAULT', $height = 400, $inverted = false) {
 		$title   = $this->keytext[$scalename];
 
@@ -2384,6 +2466,27 @@ class WeatherMap extends WeatherMapBase {
 		if (($pos_x != 0) && ($pos_y != 0)) {
 			$x = $pos_x;
 			$y = $pos_y;
+		}
+
+		// SET timestamp_style pill: the text on a rounded label, in the legend colours
+		if (strtolower(trim((string) $this->get_hint('timestamp_style'))) == 'pill') {
+			$px = 7;
+			$py = 4;
+			if (($pos_x == 0) || ($pos_y == 0)) {
+				// at the default top right corner, keep the label inside the map
+				$x -= $px + 2;
+				$y += $py + 2;
+			}
+			$pill = wm_rounded_rect_points($x - $px, $y - $boxheight - $py, $x + $boxwidth + $px, $y + $py, ($boxheight + 2 * $py) / 2);
+			if (!is_none($this->colours['DEFAULT']['KEYBG'])) {
+				wimagefilledpolygon($image, $pill, count($pill) / 2, $this->colours['DEFAULT']['KEYBG']['gdref1']);
+			}
+			if (!is_none($this->colours['DEFAULT']['KEYOUTLINE'])) {
+				wimagepolygon($image, $pill, count($pill) / 2, $this->colours['DEFAULT']['KEYOUTLINE']['gdref1']);
+			}
+			$this->myimagestring($image, $font, $x, $y, $stamp, $colour);
+			$this->imap->addArea('Rectangle', $which . 'TIMESTAMP', '', array($x - $px, $y + $py, $x + $boxwidth + $px, $y - $boxheight - $py));
+			return;
 		}
 
 		$this->myimagestring($image, $font, $x, $y, $stamp, $colour);
@@ -3262,7 +3365,7 @@ class WeatherMap extends WeatherMapBase {
 					$linematched++;
 				}
 
-				if (preg_match('/^\s*KEYSTYLE\s+([A-Za-z][A-Za-z0-9_]+\s+)?(classic|horizontal|vertical|inverted|tags)\s?(\d+)?\s*$/i', $buffer, $matches)) {
+				if (preg_match('/^\s*KEYSTYLE\s+([A-Za-z][A-Za-z0-9_]+\s+)?(classic|horizontal|vertical|inverted|tags|modern)\s?(\d+)?\s*$/i', $buffer, $matches)) {
 					$whichkey = trim($matches[1]);
 
 					if ($whichkey == '') {
@@ -4102,6 +4205,10 @@ class WeatherMap extends WeatherMapBase {
 
 							if ($this->keystyle[$scalename] == 'tags') {
 								$this->DrawLegend_Classic($image, $scalename, true);
+							}
+
+							if ($this->keystyle[$scalename] == 'modern') {
+								$this->DrawLegend_Modern($image, $scalename, $this->keysize[$scalename]);
 							}
 						}
 					}

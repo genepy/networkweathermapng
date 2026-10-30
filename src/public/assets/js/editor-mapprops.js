@@ -68,9 +68,10 @@
                 field(t('Legend text'), h('input', { name: 'key_text', value: p.key_text, autocomplete: 'off' })),
                 field(t('Style'), choice('key_style', p.key_style, [
                     ['classic', t('Classic: a list of colours')], ['horizontal', t('Horizontal bar')], ['vertical', t('Vertical bar')],
-                    ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')]
+                    ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')],
+                    ['modern', t('Modern: a rounded card with a colour bar')]
                 ])),
-                field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal and vertical bars.')),
+                field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal, vertical and modern bars.')),
                 field(t('Font'), fontSelect('key_font', p.key_font)),
                 field(t('Text colour'), colour('key_text_colour', p.key_text_colour, false)),
                 field(t('Box colour'), colour('key_bg_colour', p.key_bg_colour, true)),
@@ -79,6 +80,9 @@
             timestamp: [
                 field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
                     t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
+                field(t('Style'), choice('stamp_style', p.stamp_style, [
+                    ['plain', t('Plain text')], ['pill', t('On a rounded label, in the legend colours')]
+                ])),
                 field(t('Font'), fontSelect('time_font', p.time_font)),
                 field(t('Colour'), colour('time_colour', p.time_colour, false))
             ],

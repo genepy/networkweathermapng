@@ -2005,6 +2005,29 @@ function wimageline($image, $x1, $y1, $x2, $y2, $color) {
 	return imageline($image, (int) $x1, (int) $y1, (int) $x2, (int) $y2, $color);
 }
 
+/**
+ * The corners of a rectangle with rounded corners, as a flat list of
+ * points for wimagefilledpolygon() / wimagepolygon().
+ */
+function wm_rounded_rect_points($x1, $y1, $x2, $y2, $r, $steps = 5) {
+	$r = max(0, min($r, ($x2 - $x1) / 2, ($y2 - $y1) / 2));
+	$corners = array(
+		array($x2 - $r, $y1 + $r, -90),
+		array($x2 - $r, $y2 - $r, 0),
+		array($x1 + $r, $y2 - $r, 90),
+		array($x1 + $r, $y1 + $r, 180),
+	);
+	$points = array();
+	foreach ($corners as $c) {
+		for ($i = 0; $i <= $steps; $i++) {
+			$a = deg2rad($c[2] + 90 * $i / $steps);
+			$points[] = (int) round($c[0] + $r * cos($a));
+			$points[] = (int) round($c[1] + $r * sin($a));
+		}
+	}
+	return $points;
+}
+
 function wimagepolygon($image, $points, $num_points, $color) {
 	if ($color === null) {
 		return;
