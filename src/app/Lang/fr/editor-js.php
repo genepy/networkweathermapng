@@ -119,14 +119,23 @@ return [
     'Near :node' => 'Près de :node',
 
     // Inspector: interface picker
-    'Pick an interface from a data source' => 'Choisir une interface dans une source de données',
+    'Monitored interface' => 'Interface surveillée',
     'Loading…' => 'Chargement…',
     'Data source' => 'Source de données',
+    'Choose a data source' => 'Choisir une source de données',
     'No data source configured' => 'Aucune source de données configurée',
-    'Host' => 'Équipement',
-    'Interface' => 'Interface',
-    'No interface with traffic data' => 'Aucune interface avec des données de trafic',
     'Source' => 'Source',
+    'Search for a device' => 'Rechercher un équipement',
+    'No device in this data source' => 'Aucun équipement dans cette source de données',
+    'Other device' => 'Autre équipement',
+    'Search for an interface (name or number)' => 'Rechercher une interface (nom ou numéro)',
+    'No interface with traffic data' => 'Aucune interface avec des données de trafic',
+    'Nothing matches' => 'Aucun résultat',
+    ':n more, type to narrow the search' => ':n de plus, précisez la recherche',
+    'no. :n' => 'n° :n',
+    'Change' => 'Modifier',
+    'Device :id' => 'Équipement :id',
+    'Interface :id' => 'Interface :id',
 
     // Copy, cut, paste
     'Select nodes to copy them (links between copied nodes come along).' => 'Sélectionnez des nœuds pour les copier (les liens entre les nœuds copiés suivent).',

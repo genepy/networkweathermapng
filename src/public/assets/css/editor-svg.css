@@ -361,9 +361,25 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 
 #inspector .pair input[type=color] { flex: 0 0 34px; }
 #inspector .pair button { flex: 0 0 auto; }
-#inspector details { margin: 4px 0 8px; }
-#inspector summary { cursor: pointer; color: var(--accent); margin-bottom: 6px; }
 #inspector .pair input:not([type=color]) { min-width: 64px; }
+
+/* Interface picker of a link */
+#inspector .ds-what { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); }
+#inspector .ds-what small, #inspector .ds-result small { color: var(--muted); }
+#inspector .ds-what + .actions { margin-top: 6px; }
+#inspector .ds-chosen { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+#inspector .ds-chosen strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#inspector .ds-chosen button { flex: 0 0 auto; }
+#inspector .ds-results { max-height: 240px; overflow-y: auto; margin-top: 4px; border: 1px solid var(--border); border-radius: 4px; }
+#inspector .ds-results:empty { display: none; }
+#inspector .ds-results .help { padding: 4px 8px; }
+#inspector button.ds-result {
+    display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left;
+    border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none;
+}
+#inspector button.ds-result:last-of-type { border-bottom: 0; }
+#inspector button.ds-result:hover, #inspector button.ds-result:focus { background: var(--accent-soft); outline: none; }
+#inspector button.ds-result small { flex: 0 0 auto; }
 
 /* Overlaps, scale box, traces of hidden labels */
 #overlay .overlap { fill: none; stroke: var(--warn); stroke-width: 2; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; pointer-events: none; }

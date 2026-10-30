@@ -2176,60 +2176,254 @@
         return out;
     }
 
+    // The devices and interfaces of the data sources, fetched once per page
+    var dsCache = { sources: null, hosts: {}, ifaces: {}, lastSource: null };
+
+    function dsFetch(store, key, url) {
+        if (!store[key]) {
+            store[key] = api('GET', url).then(function (d) { return (d && d.data) || []; });
+            store[key].catch(function () { delete store[key]; });
+        }
+        return store[key];
+    }
+    function dsSources() { return dsFetch(dsCache, 'sources', '/api/data-sources'); }
+    function dsHosts(sourceId) {
+        return dsFetch(dsCache.hosts, sourceId, '/api/data-sources/' + encodeURIComponent(sourceId) + '/hosts');
+    }
+    function dsInterfaces(sourceId, hostId) {
+        return dsFetch(dsCache.ifaces, sourceId + '/' + hostId, '/api/data-sources/' + encodeURIComponent(sourceId) + '/hosts/' + encodeURIComponent(hostId) + '/bandwidths');
+    }
+
+    /** Interface number: the SNMP index when the data source gives one */
+    function ifaceNumber(i) {
+        if (i.ifIndex != null && i.ifIndex !== '') { return String(i.ifIndex); }
+        return /^\d+$/.test(String(i.interfaceId)) && !i.target ? String(i.interfaceId) : '';
+    }
+
+    /** The link's data source hint, {sourceId, hostId, interfaceId...}, or null */
+    function parseSelection(value) {
+        if (value === '' || value == null) { return null; }
+        if (/^\d+$/.test(String(value))) { return { sourceId: +value }; }
+        try {
+            var v = JSON.parse(value);
+            return v && v.sourceId ? v : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * A search box over a list. Every word typed must appear in the item's
+     * text; arrows move through the results, Enter picks.
+     */
+    function searchList(opts) {
+        var LIMIT = 50;
+        var input = h('input', { type: 'search', placeholder: opts.placeholder, autocomplete: 'off', 'aria-label': opts.placeholder });
+        var results = h('div', { 'class': 'ds-results', role: 'listbox' }, [h('p', { 'class': 'help', text: t('Loading…') })]);
+        var items = null;
+
+        function render() {
+            if (!items) { return; }
+            var words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+            var found = items.filter(function (i) {
+                var text = opts.haystack(i).toLowerCase();
+                return words.every(function (w) { return text.indexOf(w) >= 0; });
+            });
+            var out = found.slice(0, LIMIT).map(function (i) {
+                return h('button', { type: 'button', role: 'option', 'class': 'ds-result', onclick: function () { opts.onPick(i); } }, [
+                    h('span', { text: opts.text(i) }),
+                    opts.detail && opts.detail(i) ? h('small', { text: opts.detail(i) }) : null
+                ]);
+            });
+            if (!found.length) {
+                out.push(h('p', { 'class': 'help', text: items.length ? t('Nothing matches') : opts.empty }));
+            } else if (found.length > LIMIT) {
+                out.push(h('p', { 'class': 'help', text: t(':n more, type to narrow the search', { n: found.length - LIMIT }) }));
+            }
+            results.replaceChildren.apply(results, out);
+        }
+
+        input.addEventListener('input', render);
+        input.addEventListener('keydown', function (evt) {
+            var first = $('.ds-result', results);
+            if (evt.key === 'ArrowDown' && first) {
+                first.focus();
+            } else if (evt.key === 'Enter') {
+                // from the result, so the inspector can rebuild after the pick
+                if (first) { first.focus(); first.click(); }
+            } else if (evt.key === 'Escape') {
+                if (input.value !== '') {
+                    input.value = '';
+                    render();
+                } else {
+                    input.blur();
+                }
+            } else {
+                return;
+            }
+            evt.preventDefault();
+            evt.stopPropagation();
+        });
+        results.addEventListener('keydown', function (evt) {
+            var list = $$('.ds-result', results), i = list.indexOf(document.activeElement);
+            if (evt.key === 'ArrowDown') {
+                (list[i + 1] || list[i]).focus();
+            } else if (evt.key === 'ArrowUp') {
+                (i > 0 ? list[i - 1] : input).focus();
+            } else if (evt.key === 'Escape') {
+                input.focus();
+            } else {
+                // Typing on a result goes back to the search box, and never
+                // reaches the editor shortcuts (Backspace deletes the link)
+                if (evt.key !== 'Tab' && evt.key !== 'Enter' && evt.key !== ' ' && !evt.ctrlKey && !evt.metaKey) {
+                    input.focus();
+                }
+                evt.stopPropagation();
+                return;
+            }
+            evt.preventDefault();
+            evt.stopPropagation();
+        });
+
+        opts.items.then(function (list) {
+            items = list;
+            render();
+        }).catch(function (e) {
+            results.replaceChildren(h('p', { 'class': 'help', text: e.message }));
+        });
+
+        return { el: h('div', { 'class': 'ds-search' }, [input, results]), input: input };
+    }
+
+    /**
+     * Where the link's traffic comes from: a device, then one of its
+     * interfaces, both found by typing part of their name (or the interface
+     * number). The data source is asked for only when there are several.
+     */
     function interfacePicker(links) {
-        var box = h('details', {}, [h('summary', { text: t('Pick an interface from a data source') })]);
-        var src = h('select', {}, [h('option', { value: '', text: t('Loading…') })]);
-        var host = h('select', { disabled: true }, [h('option', { value: '', text: t('Host') })]);
-        var iface = h('select', { disabled: true }, [h('option', { value: '', text: t('Interface') })]);
-        var items = [];
+        var c = common(links, 'datasource');
+        var current = c.mixed ? null : parseSelection(c.value);
+        var picked = !!(current && current.hostId && current.interfaceId);
+        var box = h('div', { 'class': 'ds-picker' });
 
-        function fill(sel, list, value, label, placeholder) {
-            sel.replaceChildren(h('option', { value: '', text: placeholder }));
-            list.forEach(function (i) { sel.appendChild(h('option', { value: i[value], text: i[label] || i[value] })); });
-        }
-        function get(url) {
-            return api('GET', url).then(function (d) { return d.data || []; });
-        }
-
-        box.addEventListener('toggle', function once() {
-            box.removeEventListener('toggle', once);
-            get('/api/data-sources').then(function (list) {
-                fill(src, list, 'id', 'name', list.length ? t('Data source') : t('No data source configured'));
-            }).catch(function (e) { fill(src, [], 'id', 'name', e.message); });
-        });
-        src.addEventListener('change', function () {
-            host.disabled = iface.disabled = true;
-            if (!src.value) { return; }
-            get('/api/data-sources/' + encodeURIComponent(src.value) + '/hosts').then(function (list) {
-                fill(host, list, 'hostid', 'name', t('Host'));
-                host.disabled = false;
-            }).catch(function (e) { fill(host, [], 'hostid', 'name', e.message); });
-        });
-        host.addEventListener('change', function () {
-            iface.disabled = true;
-            if (!host.value) { return; }
-            get('/api/data-sources/' + encodeURIComponent(src.value) + '/hosts/' + encodeURIComponent(host.value) + '/bandwidths').then(function (list) {
-                items = list;
-                fill(iface, list, 'interfaceId', 'label', list.length ? t('Interface') : t('No interface with traffic data'));
-                iface.disabled = !list.length;
-            }).catch(function (e) { fill(iface, [], 'interfaceId', 'label', e.message); });
-        });
-        iface.addEventListener('change', function () {
-            var it = items.find(function (i) { return String(i.interfaceId) === iface.value; });
-            if (!it) { return; }
-            var selection = { sourceId: +src.value, hostId: String(host.value), interfaceId: String(it.interfaceId), inKey: String(it.rxKey || ''), outKey: String(it.txKey || '') };
+        function apply(sourceId, host, it) {
+            var selection = { sourceId: +sourceId, hostId: String(host.hostid), interfaceId: String(it.interfaceId), inKey: String(it.rxKey || ''), outKey: String(it.txKey || '') };
             var props = {
                 target: it.target || ('zabbix:hostid:' + selection.hostId + ':key:' + selection.inKey + ':' + selection.outKey),
                 datasource: selection
             };
             if (it.bandwidth) { props.bandwidth = it.bandwidth; }
+            dsCache.lastSource = +sourceId;
             send([{ op: 'set_link', names: links.map(function (l) { return l.name; }), props: props }]);
-        });
+        }
 
-        box.appendChild(row(t('Source'), src));
-        box.appendChild(row(t('Host'), host));
-        box.appendChild(row(t('Interface'), iface));
-        return box;
+        function hostName(host) { return host.name || host.host || String(host.hostid); }
+        function ifaceDetail(i) {
+            var n = ifaceNumber(i);
+            return n ? t('no. :n', { n: n }) : '';
+        }
+
+        // What is picked now, with a button to change it
+        function showCurrent() {
+            var what = h('div', { 'class': 'ds-what' }, [h('strong', { text: c.mixed ? t('(mixed)') : t('Loading…') })]);
+            box.replaceChildren(
+                what,
+                h('div', { 'class': 'actions' }, [h('button', { type: 'button', text: t('Change'), onclick: function () { showSearch(true); } })])
+            );
+            if (!current) { return; }
+            Promise.all([dsSources(), dsHosts(current.sourceId), dsInterfaces(current.sourceId, current.hostId)]).then(function (r) {
+                var src = r[0].find(function (s) { return +s.id === +current.sourceId; });
+                var host = r[1].find(function (x) { return String(x.hostid) === String(current.hostId); });
+                var it = r[2].find(function (x) { return String(x.interfaceId) === String(current.interfaceId); });
+                what.replaceChildren(
+                    h('strong', { text: host ? hostName(host) : t('Device :id', { id: current.hostId }) }),
+                    h('span', { text: (it ? it.label : t('Interface :id', { id: current.interfaceId })) + (it && ifaceDetail(it) ? ' · ' + ifaceDetail(it) : '') })
+                );
+                if (r[0].length > 1 && src) { what.appendChild(h('small', { text: src.name })); }
+            }).catch(function () {
+                what.replaceChildren(h('strong', { text: t('Device :id', { id: current.hostId }) }), h('span', { text: t('Interface :id', { id: current.interfaceId }) }));
+            });
+        }
+
+        function showSearch(focus) {
+            var sourceRow = h('div');
+            var steps = h('div');
+            var cancel = (picked || c.mixed) ? h('div', { 'class': 'actions' }, [h('button', { type: 'button', text: t('Cancel'), onclick: showCurrent })]) : null;
+            box.replaceChildren.apply(box, [sourceRow, steps, cancel].filter(Boolean));
+
+            function pickDevice(sourceId) {
+                var list = searchList({
+                    placeholder: t('Search for a device'),
+                    items: dsHosts(sourceId),
+                    text: hostName,
+                    detail: function (x) { return x.host && x.host !== x.name ? x.host : ''; },
+                    haystack: function (x) { return hostName(x) + ' ' + (x.host || ''); },
+                    empty: t('No device in this data source'),
+                    onPick: function (host) { pickInterface(sourceId, host); }
+                });
+                steps.replaceChildren(list.el);
+                return list.input;
+            }
+
+            function pickInterface(sourceId, host) {
+                var list = searchList({
+                    placeholder: t('Search for an interface (name or number)'),
+                    items: dsInterfaces(sourceId, host.hostid),
+                    text: function (i) { return i.label || String(i.interfaceId); },
+                    detail: ifaceDetail,
+                    haystack: function (i) {
+                        var n = ifaceNumber(i);
+                        return [i.label, String(i.interfaceId)].concat(i.names || []).join(' ') + (n ? ' #' + n + ' ' + n : '');
+                    },
+                    empty: t('No interface with traffic data'),
+                    onPick: function (it) { apply(sourceId, host, it); }
+                });
+                steps.replaceChildren(
+                    h('div', { 'class': 'ds-chosen' }, [
+                        h('strong', { text: hostName(host) }),
+                        h('button', { type: 'button', text: t('Other device'), onclick: function () { pickDevice(sourceId).focus(); } })
+                    ]),
+                    list.el
+                );
+                list.input.focus();
+            }
+
+            dsSources().then(function (sources) {
+                if (!sources.length) {
+                    sourceRow.replaceChildren(h('p', { 'class': 'help', text: t('No data source configured') }));
+                    return;
+                }
+                var ids = sources.map(function (s) { return +s.id; });
+                var preferred = [current && +current.sourceId, dsCache.lastSource].find(function (id) { return ids.indexOf(id) >= 0; });
+                var chosen = sources.length === 1 ? ids[0] : preferred;
+                if (sources.length > 1) {
+                    var select = h('select', { 'aria-label': t('Data source') },
+                        (chosen ? [] : [h('option', { value: '', text: t('Choose a data source') })]).concat(sources.map(function (s) {
+                            return h('option', { value: s.id, text: s.name, selected: +s.id === chosen });
+                        })));
+                    select.addEventListener('change', function () {
+                        if (select.value) {
+                            $('option[value=""]', select) && select.removeChild($('option[value=""]', select));
+                            pickDevice(select.value).focus();
+                        }
+                    });
+                    sourceRow.replaceChildren(row(t('Source'), select));
+                }
+                if (chosen) {
+                    var input = pickDevice(chosen);
+                    if (focus) { input.focus(); }
+                }
+            }).catch(function (e) {
+                sourceRow.replaceChildren(h('p', { 'class': 'help', text: e.message }));
+            });
+        }
+
+        if (picked || c.mixed) {
+            showCurrent();
+        } else {
+            showSearch(false);
+        }
+        return h('div', {}, [h('h3', { text: t('Monitored interface') }), box]);
     }
 
     // ------------------------------------------------------------------
@@ -3000,6 +3194,8 @@
      */
     function escape(target) {
         if (cancelDrag()) { return true; }
+        // the interface search boxes handle Escape themselves
+        if (target.closest && target.closest('.ds-search')) { return false; }
         if (menuOpen()) { closeMenu(); return true; }
         var popover = null;
         try { popover = $(':popover-open'); } catch (e) { /* no popover support */ }

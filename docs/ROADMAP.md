@@ -24,7 +24,7 @@ branch.
 
 | Item | Branch | Based on |
 |------|--------|----------|
-| [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | #22 |
+| (none) | | |
 
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
@@ -34,41 +34,33 @@ not run on these branches. Run them before opening the PR. The cause is
 phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 `git clone` of `phpstan/phpstan`.
 
-### Link data source picker
+## Not started
 
-Branch `claude/project-thread-6ggwxe`, commit a4deef9.
+| Item | Notes |
+|------|-------|
+| Time zone in the remaining previews | The old PNG editor previews (`EditorController`) and the import compare view (`MapMigrator`) still draw the timestamp in the server's zone. Wrap their draws in `TimezoneService::using()` as #31 does elsewhere |
+| Import PHP Weathermap 2.0 maps | Read `COMMENTCURVE` and the hints `editor_note`, `editor_note_align`, `editor_note_escaped`, `traffic_pulse`, `background_sizing` and `editor_label_position` without warnings. See [the study](studies/php-weathermap-2.0.md) item 1 |
+| Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
+| Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |
+| Highlight saturated links | Pulse or glow on links at 80 % or more in the viewer, per-map switch, off under `prefers-reduced-motion`. Study item 4 |
+| Comments along curved links | IN/OUT comments on a text path following the curve, straight fallback. Study item 5 |
+| Background library | Upload, delete and search backgrounds from the editor, as #25 does for icons. Study item 6 |
+| Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
+| Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
+| Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
+| Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
-**Done:** the three dropdowns of the link inspector are replaced by search
-boxes: devices by name, interfaces by name or number. The data source is
-asked for only when several exist, and a picked interface shows as a
-summary with a Change button. Files: `editor-svg.js` (`interfacePicker()`
-rewritten, new helpers `dsCache`, `dsFetch`, `dsSources`, `dsHosts`,
-`dsInterfaces`, `ifaceNumber`, `parseSelection`, `searchList`),
-`editor-svg.css` (`.ds-*` rules, unused `#inspector details/summary` rules
-removed), `Lang/fr/editor-js.php`. No server change: it reuses the existing
-`/api/data-sources` endpoints.
+## Stale branches
 
-**Decisions:** filtering is client side, hosts are fetched once per source
-and cached per page. The interface number is `ifIndex`, or else a numeric
-`interfaceId` when the link has no target. Results are capped at 50. The
-last-used source is preselected. The hint format is unchanged: the summary
-resolves names client side, so no names (and no spaces) go into the `SET`
-hint. The heading is "Monitored interface".
-
-**Left:** rebase on `main` (merges cleanly after #23), run phpunit and
-i18n-check, check in a browser in light and dark themes with one data source
-and with several (stub `/api/data-sources*` if no Zabbix or Observium is
-available), open the PR.
-
-**Gotchas:** `renderInspector()` does not rebuild while an input has focus,
-which is why results are buttons. The picker's key handlers call
-`stopPropagation` so they do not reach the global editor shortcuts. The
-legacy editor (`visual.php`) is not changed.
+| Branch | Note |
+|--------|------|
+| `claude/project-thread-9dr755` | "Build the testbed images with the classic Compose builder": superseded by #20 (host-network entitlement). Can be deleted |
 
 ## Recently done
 
 | PR | Item |
 |----|------|
+| #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
 | #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
