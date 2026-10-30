@@ -1,6 +1,8 @@
 # Observium Community Edition for the testbed. Built locally, so it runs on
 # arm64 (Raspberry Pi, Oracle Ampere) as well as amd64.
-FROM alpine:3.20
+# Alpine 3.23 ships PHP 8.3.36, which fixes CVE-2026-109618 and
+# CVE-2026-109619. Alpine 3.20 is end of life and stays on PHP 8.3.15.
+FROM alpine:3.23
 
 RUN apk add --no-cache \
         apache2 php83-apache2 php83 php83-cli php83-mysqli php83-pdo_mysql php83-gd \

@@ -449,7 +449,11 @@ and are listed with a link to their review page.
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.1+, on a release that has the latest security fixes. CVE-2026-109618
+  and CVE-2026-109619 (remote code execution, October 2026) are fixed in
+  PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35. PHP 8.1 has no official fix: use a
+  distribution package that backports it, or upgrade. The Docker image ships
+  PHP 8.5.12.
 - GD extension
 - PDO extension (SQLite or MySQL)
 - cURL extension
