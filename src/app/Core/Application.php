@@ -105,6 +105,9 @@ class Application
         $this->router->post('/editor/source/{id}', 'SvgEditorController@saveSource');
         $this->router->post('/editor/validate/{id}', 'SvgEditorController@validate');
         $this->router->get('/editor/font/{id}/{n}', 'SvgEditorController@font');
+        $this->router->get('/editor/icons', 'SvgEditorController@iconList');
+        $this->router->post('/editor/icons', 'SvgEditorController@addIcons');
+        $this->router->post('/editor/icons/delete', 'SvgEditorController@deleteIcon');
         $this->router->get('/editor/classic/{id}', 'EditorController@edit');
         $this->router->get('/editor/draw/{id}', 'EditorController@draw');
         $this->router->get('/editor/area/{id}', 'EditorController@getAreaData');

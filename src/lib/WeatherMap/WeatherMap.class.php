@@ -1656,6 +1656,9 @@ class WeatherMap extends WeatherMapBase {
 
 		$scale_im  = imagecreatetruecolor(intval(round($box_right+1)), intval(round($box_bottom+1)));
 		$scale_ref = 'gdref_legend_'.$scalename;
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+		}
 
 		// Start with a transparent box, in case the fill or outline colour is 'none'
 		imageSaveAlpha($scale_im, true);
@@ -1681,7 +1684,7 @@ class WeatherMap extends WeatherMapBase {
 			$dx = $p*$scalefactor;
 
 			if (($p % 25) == 0) {
-				imageline(
+				wimageline(
 					$scale_im,
 					intval(round($scale_left + $dx)),
 					intval(round($scale_top - $tileheight)),
@@ -1759,6 +1762,9 @@ class WeatherMap extends WeatherMapBase {
 
 		$scale_im  = imagecreatetruecolor(intval(round($box_right+1)), intval(round($box_bottom+1)));
 		$scale_ref = 'gdref_legend_'.$scalename;
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+		}
 
 		// Start with a transparent box, in case the fill or outline colour is 'none'
 		imageSaveAlpha($scale_im, true);
@@ -1797,7 +1803,7 @@ class WeatherMap extends WeatherMapBase {
 			}
 
 			if (($p % 25) == 0) {
-				imageline(
+				wimageline(
 					$scale_im,
 					intval(round($scale_left - $scalefactor)),
 					intval(round($scale_top + $dy)),
@@ -1922,6 +1928,9 @@ class WeatherMap extends WeatherMapBase {
 
 			$scale_im  = imagecreatetruecolor(intval(round($boxwidth+1)), intval(round($boxheight+1)));
 			$scale_ref = 'gdref_legend_' . $scalename;
+			if (WeatherMapSvg::$active) {
+				WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+			}
 
 			// Start with a transparent box, in case the fill or outline colour is 'none'
 			imageSaveAlpha($scale_im, true);
@@ -4036,21 +4045,15 @@ class WeatherMap extends WeatherMapBase {
 
 				// all the map 'furniture' is fixed at z=1000
 				if ($z==1000) {
-					// for SVG output, the furniture goes on its own transparent layer
-					$main_image = $image;
-					if ($svg) {
-						$svg->begin('furniture', 'furniture');
-						$image = imagecreatetruecolor($this->width, $this->height);
-						imagesavealpha($image, true);
-						imagealphablending($image, false);
-						imagefilledrectangle($image, 0, 0, $this->width, $this->height, imagecolorallocatealpha($image, 0, 0, 0, 127));
-						imagealphablending($image, true);
-					}
-
+					// for SVG output, each piece of furniture is its own group
 					foreach ($this->colours as $scalename => $colours) {
 						wm_debug("Drawing KEY for $scalename if necessary.");
 
 						if ((isset($this->numscales[$scalename])) && (isset($this->keyx[$scalename])) && ($this->keyx[$scalename] >= 0) && ($this->keyy[$scalename] >= 0)) {
+							if ($svg) {
+								$svg->begin('legend', $scalename, 'LEGEND:' . $scalename);
+							}
+
 							if ($this->keystyle[$scalename] == 'classic') {
 								$this->DrawLegend_Classic($image, $scalename, false);
 							}
@@ -4073,22 +4076,33 @@ class WeatherMap extends WeatherMapBase {
 						}
 					}
 
+					if ($svg) {
+						$svg->begin('widthlegend', 'widthlegend', 'WIDTHLEGEND');
+					}
 					$this->DrawWidthLegend($image);
 
+					if ($svg) {
+						$svg->begin('timestamp', '', 'TIMESTAMP');
+					}
 					$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1']);
 
 					if (! is_null($this->min_data_time)) {
+						if ($svg) {
+							$svg->begin('timestamp', 'MIN', 'MINTIMESTAMP');
+						}
 						$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1'], 'MIN');
+						if ($svg) {
+							$svg->begin('timestamp', 'MAX', 'MAXTIMESTAMP');
+						}
 						$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1'], 'MAX');
 					}
 
+					if ($svg) {
+						$svg->begin('title', 'title', 'TITLE');
+					}
 					$this->DrawTitle($image, $this->titlefont, $this->colours['DEFAULT']['TITLE']['gdref1']);
 
 					if ($svg) {
-						$svg->raster($image);
-						imagecopy($main_image, $image, 0, 0, 0, 0, $this->width, $this->height);
-						imagedestroy($image);
-						$image = $main_image;
 						$svg->begin(null);
 					}
 				}

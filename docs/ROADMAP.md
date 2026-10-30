@@ -11,7 +11,9 @@ Last updated: 2026-10-29.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch | Notes |
+|------|--------|-------|
+| (none) | | |
 
 ## Paused
 
@@ -22,28 +24,12 @@ branch.
 
 | Item | Branch | Based on |
 |------|--------|----------|
-| [SVG map furniture drawn as vectors](#svg-map-furniture-drawn-as-vectors) | `claude/project-thread-znx5hy` | #22 |
 | [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | #22 |
 | [Maps pages and editor role](#maps-pages-and-editor-role) | `claude/project-thread-x46foc` | #22 |
 
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
 not run on these branches. Run them before opening the PR.
-
-### SVG map furniture drawn as vectors
-
-Branch `claude/project-thread-znx5hy`, commit 480065c. Not confirmed by its agent yet: written from the commit.
-
-**Done:** the title, legends and timestamps of the SVG render are each their
-own group (`data-kind` legend, title, timestamp, widthlegend) made of rects,
-lines and text, instead of one transparent bitmap over the whole map. Legend
-boxes drawn on a scratch image are recorded at their `KEYPOS` through
-`WeatherMapSvg::adopt()`. Files: `WeatherMap.class.php`,
-`WeatherMap.functions.php`, `WeatherMapSvg.class.php`, `compat.php`,
-`tests/Engine/SvgRenderTest.php`.
-
-**Left:** rebase on `main` (one PR behind), run phpunit, check the
-result in the SVG editor and the viewer, open the PR.
 
 ### Link data source picker
 
@@ -130,6 +116,7 @@ when rebasing.
 
 | PR | Item |
 |----|------|
+| #25 | SVG editor interface and icons: movable toolbars, icon library with themes and the Affinity and Ansible sets, Map properties, vector legends |
 | #29 | Configure kiosk mode per map: zoom and display time |
 | #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
 | #27 | Map import fixes: Latin-1 maps (php-weathermap 0.97 and older), compare view of large maps |
