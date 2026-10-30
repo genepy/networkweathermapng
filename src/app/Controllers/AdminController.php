@@ -9,6 +9,8 @@ namespace App\Controllers;
 
 use App\Services\MapService;
 use App\Services\GroupService;
+use App\Services\KioskService;
+use App\Services\TimezoneService;
 use App\Services\DataSourceService;
 
 class AdminController extends BaseController
@@ -749,6 +751,99 @@ class AdminController extends BaseController
         ]);
     }
     
+    /**
+     * Kiosk mode: display time shared by all maps, and for each map its
+     * zoom and an optional display time of its own.
+     */
+    public function kiosk(array $params): void
+    {
+        $this->requireAdmin();
+
+        $kiosk = new KioskService($this->database);
+        $maps = $this->database->query(
+            "SELECT m.id, m.name, m.active, g.name as group_name
+             FROM maps m
+             LEFT JOIN map_groups g ON m.group_id = g.id
+             ORDER BY g.sort_order, g.name, m.sort_order, m.name"
+        );
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $kiosk->setDefaultDuration((int) ($_POST['duration'] ?? KioskService::DEFAULT_DURATION));
+            $posted = is_array($_POST['maps'] ?? null) ? $_POST['maps'] : [];
+            foreach ($maps as $map) {
+                $row = is_array($posted[$map['id']] ?? null) ? $posted[$map['id']] : [];
+                $duration = trim((string) ($row['duration'] ?? ''));
+                $kiosk->setMapSettings(
+                    (int) $map['id'],
+                    (int) ($row['zoom'] ?? KioskService::ZOOM_FIT),
+                    $duration === '' ? null : (int) $duration
+                );
+            }
+            $this->flash('success', __('Kiosk settings saved'));
+            $this->redirect('/admin/kiosk');
+            return;
+        }
+
+        $this->render('admin/kiosk', [
+            'maps' => $maps,
+            'duration' => $kiosk->getDefaultDuration(),
+            'settings' => $kiosk->getMapSettings(array_column($maps, 'id')),
+            'title' => __('Kiosk mode'),
+        ]);
+    }
+
+    /**
+     * Time zone of the dates shown on maps: a default for all maps, and for
+     * each map an optional zone of its own.
+     */
+    public function timezone(array $params): void
+    {
+        $this->requireAdmin();
+
+        $timezones = TimezoneService::fromConfig($this->database, $this->config);
+        $maps = $this->database->query(
+            "SELECT m.id, m.name, m.active, g.name as group_name
+             FROM maps m
+             LEFT JOIN map_groups g ON m.group_id = g.id
+             ORDER BY g.sort_order, g.name, m.sort_order, m.name"
+        );
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $invalid = [];
+            $default = trim((string) ($_POST['timezone'] ?? ''));
+            if ($default === '' || TimezoneService::isValid($default)) {
+                $timezones->setDefault($default);
+            } else {
+                $invalid[] = $default;
+            }
+            $posted = is_array($_POST['maps'] ?? null) ? $_POST['maps'] : [];
+            foreach ($maps as $map) {
+                $zone = trim((string) ($posted[$map['id']] ?? ''));
+                if ($zone === '' || TimezoneService::isValid($zone)) {
+                    $timezones->setOverride((int) $map['id'], $zone);
+                } else {
+                    $invalid[] = $zone;
+                }
+            }
+            if ($invalid) {
+                $this->flash('error', __('Unknown time zone, not saved: :zones', ['zones' => implode(', ', array_unique($invalid))]));
+            } else {
+                $this->flash('success', __('Time zone settings saved'));
+            }
+            $this->redirect('/admin/timezone');
+            return;
+        }
+
+        $this->render('admin/timezone', [
+            'maps' => $maps,
+            'appZone' => $timezones->getAppZone(),
+            'default' => $timezones->getDefault(),
+            'overrides' => $timezones->getOverrides(array_column($maps, 'id')),
+            'zones' => TimezoneService::identifiers(),
+            'title' => __('Time zone'),
+        ]);
+    }
+
     // Data Sources Management
     
     public function dataSources(array $params): void

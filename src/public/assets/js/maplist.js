@@ -100,6 +100,16 @@
         // State badges: maps with no recent data render are asked for it,
         // two at a time
 
+        // Time of a render, in the map's time zone (the browser's own if it does not know it)
+        function formatTime(seconds, timeZone) {
+            const date = new Date(seconds * 1000);
+            try {
+                return date.toLocaleString([], timeZone ? {timeZone: timeZone} : {});
+            } catch (e) {
+                return date.toLocaleString();
+            }
+        }
+
         function showState(card, st) {
             const badge = card.querySelector('.map-state');
             if (!badge) return;
@@ -116,7 +126,7 @@
                 dot.style.background = st.colour || '';
             }
             if (st.time) {
-                title += ' — ' + fmt('Updated :time', {time: new Date(st.time * 1000).toLocaleString()});
+                title += ' — ' + fmt('Updated :time', {time: formatTime(st.time, card.dataset.timezone)});
             }
             badge.title = title;
             badge.setAttribute('aria-label', title);

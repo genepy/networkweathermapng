@@ -31,8 +31,15 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: gd, pdo_sqlite, mbstring, curl
+          extensions: gd, pdo_sqlite, mbstring, curl, intl
           coverage: none
+
+      # Fail early on a runner image that still ships a PHP release with a
+      # known security hole (8.5.12 fixes CVE-2026-109618 and CVE-2026-109619).
+      - name: Check the PHP patch level
+        run: |
+          php -v
+          php -r 'if (version_compare(PHP_VERSION, "8.5.12", "<")) { fwrite(STDERR, "PHP 8.5.12 or later is required\n"); exit(1); }'
 
       - name: Cache Composer downloads
         uses: actions/cache@v4

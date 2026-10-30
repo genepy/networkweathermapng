@@ -61,6 +61,23 @@ final class MapEditorTest extends TestCase
         $this->assertEquals(700, $map->nodes['lyon']->zorder);
     }
 
+    public function testTheMapLinkWidthCanFollowTheBandwidth(): void
+    {
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['width' => 3]]]);
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_width' => 'auto']]]);
+
+        $map = $this->editor->load();
+        $this->assertSame('auto', $map->links['DEFAULT']->width);
+        $this->assertSame('auto', $map->links['core-paris']->width, 'inherited the old default');
+        $this->assertEquals(3, $map->links['core-lyon']->width, 'its own width is kept');
+        $this->assertStringContainsString("LINK DEFAULT\n\tWIDTH auto", str_replace("\r", '', (string) file_get_contents($this->file)));
+        $this->assertSame('auto', $this->drawnModel()['map']['props']['link_width']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_width' => '5']]]);
+        $map = $this->editor->load();
+        $this->assertEquals(5, $map->links['core-paris']->width);
+    }
+
     public function testAddNodeAndLinkThenDeleteNodeRemovesItsLinks(): void
     {
         $result = $this->editor->apply([
@@ -345,5 +362,103 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => null]]]);
         $this->assertSame(1, substr_count(file_get_contents($this->file), 'LABELOFFSET'), 'only the template keeps one');
         $this->assertSame($before['label_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
+    }
+
+    public function testMapPropertiesAreSavedAndLinkDefaultsFollow(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => [
+            'key_text' => "Load\nper link", 'key_style' => 'horizontal', 'key_size' => 300,
+            'key_bg_colour' => 'none', 'title_colour' => '#102030', 'stamp_text' => 'Updated %H:%M',
+            'title_font' => 4, 'link_bandwidth' => '10G', 'link_width' => 8,
+        ]]]);
+
+        $map = $this->editor->load();
+        $this->assertSame('Load per link', $map->keytext['DEFAULT']);
+        $this->assertSame('horizontal', $map->keystyle['DEFAULT']);
+        $this->assertEquals(300, $map->keysize['DEFAULT']);
+        $this->assertEquals(-1, $map->colours['DEFAULT']['KEYBG']['red1']);
+        $this->assertEquals([16, 32, 48], [$map->colours['DEFAULT']['TITLE']['red1'], $map->colours['DEFAULT']['TITLE']['green1'], $map->colours['DEFAULT']['TITLE']['blue1']]);
+        $this->assertSame('Updated %H:%M', $map->stamptext);
+        $this->assertEquals(4, $map->titlefont);
+
+        // links that had the old default follow it; a link with its own value keeps it
+        $this->assertSame('10G', $map->links['DEFAULT']->max_bandwidth_in_cfg);
+        $this->assertSame('10G', $map->links['core-paris']->max_bandwidth_in_cfg);
+        $this->assertEquals(8, $map->links['core-paris']->width);
+
+        $props = MapEditor::model($map)['map']['props'];
+        $this->assertSame('none', $props['key_bg_colour']);
+        $this->assertSame('#102030', $props['title_colour']);
+        $this->assertSame('10G', $props['link_bandwidth']);
+    }
+
+    public function testTheLegendCanBeHiddenAndShownAgain(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => false]]]);
+        $this->assertFalse(MapEditor::model($this->editor->load())['map']['props']['key_shown']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
+        $map = $this->editor->load();
+        $this->assertEquals([680, 20], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']], 'the legend comes back where it was');
+        $this->assertSame('Trafic', $map->keytext['DEFAULT']);
+    }
+
+    public function testAClassicHiddenLegendIsShownInTheCorner(): void
+    {
+        file_put_contents($this->file, str_replace('KEYPOS DEFAULT 680 20', 'KEYPOS DEFAULT -1 -1', (string) file_get_contents($this->file)));
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
+        $map = $this->editor->load();
+        $this->assertEquals([10, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
+    }
+
+    public function testAnEmptyTemplateIsKeptOnSave(): void
+    {
+        $conf = (string) file_get_contents($this->file);
+        $conf = str_replace("NODE core\n", "NODE bare\n\nLINK plain\n\nNODE core\n", $conf);
+        $conf .= "\nNODE edge\n\tTEMPLATE bare\n\tPOSITION 300 450\n"
+            . "\nLINK via-plain\n\tTEMPLATE plain\n\tNODES paris lyon\n";
+        file_put_contents($this->file, $conf);
+
+        $this->editor->apply([['op' => 'set_map', 'title' => 'Saved']]);
+        $map = $this->editor->load();
+
+        $this->assertArrayHasKey('plain', $map->links);
+        $this->assertSame('plain', $map->links['via-plain']->template);
+        $this->assertArrayHasKey('bare', $map->nodes);
+        $this->assertSame('bare', $map->nodes['edge']->template);
+    }
+
+    public function testLinkDefaultsFollowThroughTemplates(): void
+    {
+        $conf = (string) file_get_contents($this->file);
+        $conf = str_replace("NODE core\n", "LINK plain\n\tBANDWIDTH 2G\n\nLINK thick\n\tWIDTH 12\n\nNODE core\n", $conf);
+        $conf .= "\nLINK via-plain\n\tTEMPLATE plain\n\tNODES paris lyon\n"
+            . "\nLINK via-thick\n\tTEMPLATE thick\n\tNODES lyon backup\n"
+            . "\nLINK own-width\n\tTEMPLATE thick\n\tWIDTH 6\n\tNODES paris backup\n";
+        file_put_contents($this->file, $conf);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_width' => 9]]]);
+        $map = $this->editor->load();
+
+        $this->assertEquals(9, $map->links['plain']->width, 'a template without a width of its own follows');
+        $this->assertEquals(9, $map->links['via-plain']->width, 'and so do its links');
+        $this->assertEquals(12, $map->links['thick']->width, 'a template with its own width keeps it');
+        $this->assertEquals(12, $map->links['via-thick']->width);
+        $this->assertEquals(6, $map->links['own-width']->width, 'a width set on the link itself stays');
+    }
+
+    public function testBadMapPropertiesAreRefused(): void
+    {
+        $before = (string) file_get_contents($this->file);
+        foreach ([['title_colour' => 'none'], ['key_style' => 'round'], ['title_font' => 99], ['link_bandwidth' => '1 Gb'], ['nope' => 1]] as $props) {
+            try {
+                $this->editor->apply([['op' => 'set_map', 'props' => $props]]);
+                $this->fail(json_encode($props) . ' was accepted');
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->assertSame($before, (string) file_get_contents($this->file));
     }
 }

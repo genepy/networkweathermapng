@@ -368,8 +368,8 @@ class MapService
         $result = file_put_contents($configPath, $content);
         
         if ($result !== false) {
-            // Update the map's updated_at timestamp
-            $this->updateMap($id, []);
+            // updateMap() skips an empty change, so set the time here
+            $this->db->update('maps', ['updated_at' => date('Y-m-d H:i:s')], 'id = ?', [$id]);
         }
         
         return $result !== false;
@@ -450,7 +450,11 @@ class MapService
             $previous = \WeatherMapSvg::$active;
             \WeatherMapSvg::$active = $collector;
             try {
-                $wmap->DrawMap($imagePath, $thumbPath);
+                // The timestamp drawn on the map is in the map's time zone
+                TimezoneService::using(
+                    TimezoneService::fromConfig($this->db, $this->config)->forMap($id),
+                    static fn () => $wmap->DrawMap($imagePath, $thumbPath)
+                );
             } finally {
                 \WeatherMapSvg::$active = $previous;
             }
