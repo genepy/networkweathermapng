@@ -102,7 +102,17 @@ when rebasing.
 
 | Item | Notes |
 |------|-------|
+| Time zone in the remaining previews | The old PNG editor previews (`EditorController`) and the import compare view (`MapMigrator`) still draw the timestamp in the server's zone. Wrap their draws in `TimezoneService::using()` as #31 does elsewhere |
+| Import PHP Weathermap 2.0 maps | Read `COMMENTCURVE` and the hints `editor_note`, `editor_note_align`, `editor_note_escaped`, `traffic_pulse`, `background_sizing` and `editor_label_position` without warnings. See [the study](studies/php-weathermap-2.0.md) item 1 |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
+| Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
+| Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |
+| Highlight saturated links | Pulse or glow on links at 80 % or more in the viewer, per-map switch, off under `prefers-reduced-motion`. Study item 4 |
+| Comments along curved links | IN/OUT comments on a text path following the curve, straight fallback. Study item 5 |
+| Background library | Upload, delete and search backgrounds from the editor, as #25 does for icons. Study item 6 |
+| Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
+| Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
+| Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
 ## Stale branches
@@ -116,6 +126,7 @@ when rebasing.
 | PR | Item |
 |----|------|
 | #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
+| #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
 | #25 | SVG editor interface and icons: movable toolbars, icon library with themes and the Affinity and Ansible sets, Map properties, vector legends |
 | #29 | Configure kiosk mode per map: zoom and display time |
 | #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
