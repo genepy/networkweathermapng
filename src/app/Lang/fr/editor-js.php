@@ -194,6 +194,7 @@ return [
     'Zone' => 'Zone',
     ':n zones' => ':n zones',
     'Drag to resize the zone' => 'Faire glisser pour redimensionner la zone',
+    'Click on the map to place the zone. Esc to cancel.' => 'Cliquez sur la carte pour poser la zone. Échap pour annuler.',
     'Fill' => 'Remplissage',
     'Opacity (%)' => 'Opacité (%)',
     'Outline width' => 'Épaisseur du contour',
