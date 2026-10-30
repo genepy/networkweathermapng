@@ -15,6 +15,7 @@ use App\Services\Editor\ConfigSource;
 use App\Services\Editor\MapClipboard;
 use App\Services\Editor\MapEditor;
 use App\Services\MapService;
+use App\Services\TimezoneService;
 use InvalidArgumentException;
 
 class SvgEditorController extends BaseController
@@ -303,9 +304,12 @@ class SvgEditorController extends BaseController
             if ($withData) {
                 $wmap->ReadData();
             }
-            $svg = \WeatherMapSvg::render($wmap, [
-                'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
-            ]);
+            $svg = TimezoneService::using(
+                TimezoneService::fromConfig($this->database, $this->config)->forMap($mapId),
+                static fn () => \WeatherMapSvg::render($wmap, [
+                    'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
+                ])
+            );
         } finally {
             ob_end_clean();
         }

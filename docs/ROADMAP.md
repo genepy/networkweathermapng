@@ -7,11 +7,13 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-29.
+Last updated: 2026-10-30.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch |
+|------|--------|
+| Map time zone: a default for all maps and an override per map (Admin > Time zone) | `claude/project-thread-2vmvd2` |
 
 ## Paused
 
@@ -116,7 +118,6 @@ when rebasing.
 
 | Item | Notes |
 |------|-------|
-| Map date after an import | The maintainer reports that a map's last-updated date stops changing after an import. Not reproduced in #27 (the drawn timestamp, the viewer's "Updated at" and `last_run` all change on a fresh import and on "Convert again"). Ask the maintainer where the date is shown and with which map |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
