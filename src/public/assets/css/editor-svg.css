@@ -241,6 +241,26 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
     aspect-ratio: 1; cursor: grab; background: var(--panel-2);
 }
 .palette-icon img { max-width: 100%; max-height: 100%; }
+/* Icon of the selected nodes: the current one, and a search over the library */
+#inspector .icon-pick { display: contents; }
+.icon-pick-current {
+    display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 6px; text-align: left; cursor: pointer;
+    font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px;
+}
+.icon-pick-current:hover, .icon-pick-current[aria-expanded="true"] { border-color: var(--accent); }
+.icon-pick-current span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-pick-current img, .icon-pick-none { flex: 0 0 22px; width: 22px; height: 22px; object-fit: contain; border-radius: 3px; background: #f4f6f9; }
+.icon-pick-none { border: 1px dashed var(--muted); background: transparent; }
+.icon-pick-pop {
+    grid-column: 1 / -1; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-2);
+}
+.icon-pick-pop input { width: 100%; margin-bottom: 6px; }
+.icon-pick-results { max-height: 320px; overflow-y: auto; }
+.icon-pick-results h4 { margin: 6px 0 2px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+.icon-pick-results .palette-icon { cursor: pointer; }
+.icon-pick-results .palette-icon.on, .icon-pick-shape.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.icon-pick-shapes { display: flex; flex-wrap: wrap; gap: 4px; }
+.icon-pick-shape { flex: 0 0 auto; padding: 2px 6px; cursor: pointer; }
 
 /* Canvas */
 #canvas { grid-area: canvas; position: relative; overflow: hidden; }

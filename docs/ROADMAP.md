@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Editor: search in the icon library | `claude/editor-icon-search` | The palette already had a search box; the node panel's icon list had none |
+| (none) | | |
 
 ## Paused
 
@@ -72,6 +72,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #39 | Editor: pick a node's icon from a searchable library in the properties panel; the palette search matches several words and theme names |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
