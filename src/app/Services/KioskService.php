@@ -16,8 +16,10 @@ class KioskService
     public const MAX_DURATION = 86400;
     /** Zoom 0 fits the map to the screen; otherwise a percentage of its size. */
     public const ZOOM_FIT = 0;
-    public const MIN_ZOOM = 10;
-    public const MAX_ZOOM = 500;
+    public const MIN_ZOOM = 50;
+    public const MAX_ZOOM = 300;
+    /** Zoom choices offered in the admin page, from MIN_ZOOM to MAX_ZOOM. */
+    public const ZOOM_STEPS = [50, 75, 100, 125, 150, 175, 200, 250, 300];
 
     private const DURATION = 'kiosk_duration';
     private const ZOOM = 'kiosk_zoom';

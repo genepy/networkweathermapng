@@ -75,4 +75,10 @@ final class KioskServiceTest extends TestCase
         $this->assertSame(['zoom' => KioskService::MAX_ZOOM, 'duration' => KioskService::MAX_DURATION], $settings[1]);
         $this->assertSame(KioskService::ZOOM_FIT, $settings[2]['zoom']);
     }
+
+    public function testZoomChoicesMatchTheBounds(): void
+    {
+        $this->assertSame(KioskService::MIN_ZOOM, KioskService::ZOOM_STEPS[0]);
+        $this->assertSame(KioskService::MAX_ZOOM, KioskService::ZOOM_STEPS[count(KioskService::ZOOM_STEPS) - 1]);
+    }
 }

@@ -2,7 +2,6 @@
 use App\Services\KioskService;
 
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
-$zooms = [50, 75, 100, 125, 150, 175, 200, 250, 300];
 ?>
 <div class="admin-kiosk-page">
     <div class="page-header">
@@ -43,7 +42,7 @@ $zooms = [50, 75, 100, 125, 150, 175, 200, 250, 300];
                     <?php foreach ($maps as $map):
                         $id = (int) $map['id'];
                         $s = $settings[$id] ?? ['zoom' => KioskService::ZOOM_FIT, 'duration' => null];
-                        $options = $zooms;
+                        $options = KioskService::ZOOM_STEPS;
                         if ($s['zoom'] !== KioskService::ZOOM_FIT && !in_array($s['zoom'], $options, true)) {
                             $options[] = $s['zoom'];
                             sort($options);
