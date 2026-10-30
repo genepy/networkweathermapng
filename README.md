@@ -22,6 +22,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Map Cycling** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Admin > Kiosk mode)
+- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Admin > Time zone)
 - **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
@@ -80,7 +81,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 |----------|-------------|---------|
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
-| `APP_TIMEZONE` | Application timezone | `UTC` |
+| `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Admin > Time zone | `UTC` |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
 | `APP_ROOT` | Application root path | - |

@@ -311,6 +311,18 @@
             });
     }
 
+    // Time of a render, in the map's time zone (the browser's own if it does not know it)
+    function formatTime(seconds) {
+        const options = {hour: '2-digit', minute: '2-digit'};
+        if (root.dataset.timezone) options.timeZone = root.dataset.timezone;
+        try {
+            return new Date(seconds * 1000).toLocaleTimeString([], options);
+        } catch (e) {
+            delete options.timeZone;
+            return new Date(seconds * 1000).toLocaleTimeString([], options);
+        }
+    }
+
     function showState(status) {
         if (!stateBox || !status) return;
         const dot = stateBox.querySelector('.wmv-dot');
@@ -318,7 +330,7 @@
         stateBox.hidden = false;
         stateBox.className = 'wmv-state wmv-level-' + (status.level || 'none');
         dot.style.background = status.colour || '';
-        const when = status.time ? new Date(status.time * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
+        const when = status.time ? formatTime(status.time) : '';
         if (status.max === null || status.max === undefined) {
             text.textContent = t('No data');
             stateBox.title = when ? fmt('Updated at :time', {time: when}) : '';

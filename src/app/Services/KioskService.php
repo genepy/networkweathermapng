@@ -24,20 +24,23 @@ class KioskService
     private const DURATION = 'kiosk_duration';
     private const ZOOM = 'kiosk_zoom';
 
-    public function __construct(private Database $db)
+    private SettingsStore $store;
+
+    public function __construct(Database $db)
     {
+        $this->store = new SettingsStore($db);
     }
 
     /** Display time, in seconds, of the maps without one of their own. */
     public function getDefaultDuration(): int
     {
-        $value = $this->get(0, self::DURATION);
+        $value = $this->store->get(0, self::DURATION);
         return $value === null ? self::DEFAULT_DURATION : self::clampDuration((int) $value);
     }
 
     public function setDefaultDuration(int $seconds): void
     {
-        $this->set(0, self::DURATION, (string) self::clampDuration($seconds));
+        $this->store->set(0, self::DURATION, (string) self::clampDuration($seconds));
     }
 
     /**
@@ -57,18 +60,12 @@ class KioskService
             return [];
         }
 
-        $ids = array_keys($settings);
-        $rows = $this->db->query(
-            'SELECT map_id, name, value FROM settings WHERE name IN (?, ?) AND map_id IN ('
-                . implode(', ', array_fill(0, count($ids), '?')) . ')',
-            array_merge([self::DURATION, self::ZOOM], $ids)
-        );
-        foreach ($rows as $row) {
-            $id = (int) $row['map_id'];
-            if ($row['name'] === self::ZOOM) {
-                $settings[$id]['zoom'] = self::clampZoom((int) $row['value']);
-            } elseif ((string) $row['value'] !== '') {
-                $settings[$id]['duration'] = self::clampDuration((int) $row['value']);
+        foreach ($this->store->getMany([self::DURATION, self::ZOOM], array_keys($settings)) as $id => $values) {
+            if (isset($values[self::ZOOM])) {
+                $settings[$id]['zoom'] = self::clampZoom((int) $values[self::ZOOM]);
+            }
+            if (($values[self::DURATION] ?? '') !== '') {
+                $settings[$id]['duration'] = self::clampDuration((int) $values[self::DURATION]);
             }
         }
         return $settings;
@@ -85,14 +82,14 @@ class KioskService
         }
         $zoom = self::clampZoom($zoom);
         if ($zoom === self::ZOOM_FIT) {
-            $this->remove($mapId, self::ZOOM);
+            $this->store->remove($mapId, self::ZOOM);
         } else {
-            $this->set($mapId, self::ZOOM, (string) $zoom);
+            $this->store->set($mapId, self::ZOOM, (string) $zoom);
         }
         if ($duration === null) {
-            $this->remove($mapId, self::DURATION);
+            $this->store->remove($mapId, self::DURATION);
         } else {
-            $this->set($mapId, self::DURATION, (string) self::clampDuration($duration));
+            $this->store->set($mapId, self::DURATION, (string) self::clampDuration($duration));
         }
     }
 
@@ -123,24 +120,5 @@ class KioskService
     public static function clampZoom(int $zoom): int
     {
         return $zoom < self::MIN_ZOOM ? self::ZOOM_FIT : min(self::MAX_ZOOM, $zoom);
-    }
-
-    private function get(int $mapId, string $name): ?string
-    {
-        $row = $this->db->queryOne('SELECT value FROM settings WHERE map_id = ? AND name = ?', [$mapId, $name]);
-        return $row === null ? null : (string) $row['value'];
-    }
-
-    private function set(int $mapId, string $name, string $value): void
-    {
-        if ($this->db->update('settings', ['value' => $value], 'map_id = ? AND name = ?', [$mapId, $name]) === 0
-            && $this->get($mapId, $name) === null) {
-            $this->db->insert('settings', ['map_id' => $mapId, 'name' => $name, 'value' => $value]);
-        }
-    }
-
-    private function remove(int $mapId, string $name): void
-    {
-        $this->db->delete('settings', 'map_id = ? AND name = ?', [$mapId, $name]);
     }
 }

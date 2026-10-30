@@ -450,7 +450,11 @@ class MapService
             $previous = \WeatherMapSvg::$active;
             \WeatherMapSvg::$active = $collector;
             try {
-                $wmap->DrawMap($imagePath, $thumbPath);
+                // The timestamp drawn on the map is in the map's time zone
+                TimezoneService::using(
+                    TimezoneService::fromConfig($this->db, $this->config)->forMap($id),
+                    static fn () => $wmap->DrawMap($imagePath, $thumbPath)
+                );
             } finally {
                 \WeatherMapSvg::$active = $previous;
             }
