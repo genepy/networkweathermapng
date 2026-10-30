@@ -3,6 +3,7 @@
 return [
     // Server and drawing
     'The server answered :status' => 'Le serveur a répondu :status',
+    'The server sent an unreadable answer' => 'Le serveur a envoyé une réponse illisible',
     'The map could not be drawn' => 'La carte n’a pas pu être dessinée',
 
     // Handles on the map

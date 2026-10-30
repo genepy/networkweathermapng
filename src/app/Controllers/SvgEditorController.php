@@ -351,17 +351,19 @@ class SvgEditorController extends BaseController
             ['WMWARN41']
         )));
 
-        $wmap = (new MapEditor($file))->load();
-
-        if ($withData) {
-            ob_start();
-            $wmap->ReadData();
+        // a warning printed by the engine would make the answer unreadable JSON
+        ob_start();
+        try {
+            $wmap = (new MapEditor($file))->load();
+            if ($withData) {
+                $wmap->ReadData();
+            }
+            $svg = \WeatherMapSvg::render($wmap, [
+                'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
+            ]);
+        } finally {
             ob_end_clean();
         }
-
-        $svg = \WeatherMapSvg::render($wmap, [
-            'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
-        ]);
 
         clearstatcache(true, $file);
 

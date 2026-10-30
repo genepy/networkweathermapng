@@ -368,8 +368,8 @@ class MapService
         $result = file_put_contents($configPath, $content);
         
         if ($result !== false) {
-            // Update the map's updated_at timestamp
-            $this->updateMap($id, []);
+            // updateMap() skips an empty change, so set the time here
+            $this->db->update('maps', ['updated_at' => date('Y-m-d H:i:s')], 'id = ?', [$id]);
         }
         
         return $result !== false;

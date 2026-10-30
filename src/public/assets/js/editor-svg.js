@@ -81,6 +81,9 @@
                 if (!r.ok) {
                     throw new Error((data && data.error) || t('The server answered :status', { status: r.status }));
                 }
+                if (!data) {
+                    throw new Error(t('The server sent an unreadable answer'));
+                }
                 return data;
             });
         });
