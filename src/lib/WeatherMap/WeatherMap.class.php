@@ -557,6 +557,46 @@ class WeatherMap extends WeatherMapBase {
     }
 
 	/**
+	 * The built-in GD fonts draw single bytes in ISO-8859-2, while the
+	 * configuration is read as UTF-8: convert, so accents draw as accents.
+	 * Letters that ISO-8859-2 lacks (à, è, ê, ù, œ...) lose their accent
+	 * instead of turning into "?".
+	 */
+	static function gdfonttext($string) {
+		$string = (string) $string;
+		if (!preg_match('/[\x80-\xff]/', $string) || !mb_check_encoding($string, 'UTF-8')) {
+			return $string;
+		}
+		$out = '';
+		foreach (mb_str_split($string) as $char) {
+			$out .= self::gdfontchar($char);
+		}
+		return $out;
+	}
+
+	/** One UTF-8 character as ISO-8859-2 bytes, without its accent if it has no ISO-8859-2 form. */
+	private static function gdfontchar($char) {
+		static $ligatures = ['œ' => 'oe', 'Œ' => 'OE', 'æ' => 'ae', 'Æ' => 'AE', '€' => 'EUR'];
+		if (strlen($char) === 1) {
+			return $char;
+		}
+		$bytes = mb_convert_encoding($char, 'ISO-8859-2', 'UTF-8');
+		if (mb_convert_encoding($bytes, 'UTF-8', 'ISO-8859-2') === $char) {
+			return $bytes;
+		}
+		if (isset($ligatures[$char])) {
+			return $ligatures[$char];
+		}
+		if (class_exists('Normalizer')) {
+			$base = preg_replace('/\p{Mn}+/u', '', \Normalizer::normalize($char, \Normalizer::FORM_D));
+			if ($base !== $char && $base !== '' && $base !== null) {
+				return self::gdfontchar($base);
+			}
+		}
+		return '?';
+	}
+
+	/**
 	 * myimagestring - Function to draw a string on an image
 	 *
 	 * @param  object - An image object
@@ -567,18 +607,6 @@ class WeatherMap extends WeatherMapBase {
 	 * @param  hex      The colour to draw the test with
 	 * @param  double   The angle to rotate the text on the image
 	 */
-	/**
-	 * The built-in GD fonts draw single bytes in ISO-8859-2, while the
-	 * configuration is read as UTF-8: convert, so accents draw as accents.
-	 */
-	static function gdfonttext($string) {
-		$string = (string) $string;
-		if (preg_match('/[\x80-\xff]/', $string) && mb_check_encoding($string, 'UTF-8')) {
-			return mb_convert_encoding($string, 'ISO-8859-2', 'UTF-8');
-		}
-		return $string;
-	}
-
 	function myimagestring($image, $fontnumber, $x, $y, $string, $colour, $angle = 0) {
 		// if it's supposed to be a special font, and it hasn't been defined, then fall through
 		if ($fontnumber > 5 && !isset($this->fonts[$fontnumber])) {

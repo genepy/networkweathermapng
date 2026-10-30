@@ -61,6 +61,13 @@ final class ConfigRoundTripTest extends TestCase
         $this->assertSame("\xe9t\xe9", \WeatherMap::gdfonttext('été'), 'built-in GD fonts draw ISO-8859-2 bytes');
     }
 
+    public function testGdFontTextDropsAccentsLatin2Lacks(): void
+    {
+        $this->assertSame("a la fete, \xe9t\xe9 c\xf4tier", \WeatherMap::gdfonttext('à la fête, été côtier'));
+        $this->assertSame('OEuvre ? 5 EUR', \WeatherMap::gdfonttext('Œuvre ✓ 5 €'));
+        $this->assertSame('plain', \WeatherMap::gdfonttext('plain'));
+    }
+
     private function load(string $file): \WeatherMap
     {
         $map = new \WeatherMap();
