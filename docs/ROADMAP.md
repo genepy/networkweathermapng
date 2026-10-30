@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| Editor: resize icons | `claude/editor-icon-size` | Engine already reads ICON w h file; adding a corner handle and size fields |
 
 ## Paused
 
@@ -51,7 +51,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 | Editor: properties panel stuck on one object | Bug: at times the edit panel keeps showing the same object and no longer follows the selection when another object is clicked. Find the steps to reproduce first |
 | Editor: fields apply on blur and on Enter | Clicking outside a field leaves it and applies the change; Enter in a field validates and applies the pending change |
-| Editor: resize icons | Resize a node's icon from the editor (handles and a size field) |
 | Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
 | Editor: link widths up to 800G | Allow link bandwidths up to 800G in the editor fields and the parser, and check the scaling of widths and labels |
 | Editor: place a new zone with the mouse | Adding a zone shows it under the pointer; a click drops it on the map (Esc cancels) |
