@@ -86,6 +86,8 @@ class Application
         $this->router->get('/map/{id}/link/{linkId}/graph', 'MapController@linkGraph');
         $this->router->get('/map/{id}/svg', 'MapController@svg');
         $this->router->get('/map/{id}/status', 'MapController@status');
+        $this->router->get('/map/{id}/history', 'MapController@history');
+        $this->router->get('/map/{id}/history/{time}', 'MapController@historyFrame');
         $this->router->get('/map/{id}/font/{n}', 'MapController@font');
         $this->router->post('/map/{id}/favourite', 'MapController@favourite');
         
@@ -182,6 +184,8 @@ class Application
         $this->router->get('/admin/settings', 'AdminController@settings');
         $this->router->get('/admin/kiosk', 'AdminController@kiosk');
         $this->router->post('/admin/kiosk', 'AdminController@kiosk');
+        $this->router->get('/admin/recording', 'AdminController@recording');
+        $this->router->post('/admin/recording', 'AdminController@recording');
         $this->router->get('/admin/timezone', 'AdminController@timezone');
         $this->router->post('/admin/timezone', 'AdminController@timezone');
         $this->router->get('/admin/check-db', 'AdminController@checkDatabase');

@@ -140,7 +140,8 @@
          data-refresh="<?= max(30, $dataRefresh) ?>"
          data-fullscreen="<?= $isFullscreen ? '1' : '0' ?>"
          data-normal-url="<?= htmlspecialchars($normalUrl) ?>"
-         data-png-url="/map/<?= $mapId ?>/image">
+         data-png-url="/map/<?= $mapId ?>/image"
+         data-history="<?= !empty($history) ? '1' : '0' ?>">
         <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
             <div class="wmv-stage"></div>
             <div class="wmv-message" role="status"><?= e__('Loading the map…') ?></div>
@@ -155,11 +156,28 @@
             <button type="button" class="wmv-btn" data-act="in" title="<?= e__('Zoom in (+)') ?>" aria-label="<?= e__('Zoom in') ?>">+</button>
             <button type="button" class="wmv-btn wmv-btn-text" data-act="fit" title="<?= e__('Fit the map to the window (0)') ?>"><?= e__('Fit') ?></button>
             <button type="button" class="wmv-btn wmv-btn-text" data-act="actual" title="<?= e__('Actual size (1)') ?>">100 %</button>
+            <?php if (!empty($history)): ?>
+            <button type="button" class="wmv-btn wmv-btn-text" data-act="history" aria-pressed="false" title="<?= e__('Play back the recorded hours (H)') ?>"><?= e__('History') ?></button>
+            <?php endif; ?>
             <?php if ($isFullscreen): ?>
             <a class="wmv-btn wmv-btn-text" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" title="<?= e__('Leave fullscreen (Esc)') ?>"><?= e__('Exit') ?></a>
             <?php endif; ?>
             <span class="wmv-state" hidden><span class="wmv-dot"></span><span class="wmv-state-text"></span></span>
         </div>
+        <?php if (!empty($history)): ?>
+        <div class="wmv-history" role="group" aria-label="<?= e__('Playback') ?>" hidden>
+            <button type="button" class="wmv-btn" data-hist="play" title="<?= e__('Play or pause (Space)') ?>" aria-label="<?= e__('Play') ?>">▶</button>
+            <input type="range" class="wmv-history-slider" min="0" max="0" value="0" aria-label="<?= e__('Time of the frame shown') ?>">
+            <span class="wmv-history-time" aria-live="polite"></span>
+            <select class="wmv-history-speed" aria-label="<?= e__('Playback speed') ?>">
+                <option value="1000">1×</option>
+                <option value="400" selected>2×</option>
+                <option value="150">5×</option>
+                <option value="60">10×</option>
+            </select>
+            <button type="button" class="wmv-btn wmv-btn-text" data-hist="live" title="<?= e__('Back to the live map (Esc)') ?>"><?= e__('Live') ?></button>
+        </div>
+        <?php endif; ?>
         <div class="wmv-minimap" hidden aria-hidden="true">
             <img alt="">
             <div class="wmv-minimap-view"></div>

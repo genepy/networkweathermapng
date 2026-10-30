@@ -21,4 +21,9 @@ return [
     'No data yet' => 'Pas encore de données',
     'Max load :pct %' => 'Charge max. :pct %',
     'Updated :time' => 'Mis à jour le :time',
+    'This frame could not be loaded.' => 'Cette image n’a pas pu être chargée.',
+    'Nothing recorded yet: the first frames come within a few minutes.' => 'Rien d’enregistré pour l’instant : les premières images arrivent dans quelques minutes.',
+    'The recording could not be loaded.' => 'L’enregistrement n’a pas pu être chargé.',
+    'Play' => 'Lecture',
+    'Pause' => 'Pause',
 ];

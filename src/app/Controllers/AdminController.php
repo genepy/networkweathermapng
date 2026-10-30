@@ -9,6 +9,7 @@ namespace App\Controllers;
 
 use App\Services\GroupService;
 use App\Services\KioskService;
+use App\Services\RecordingService;
 use App\Services\TimezoneService;
 use App\Services\DataSourceService;
 
@@ -436,6 +437,53 @@ class AdminController extends BaseController
         ]);
     }
     
+    /**
+     * Map recording: whether it is allowed at all, the interval and how
+     * long frames are kept, and which maps are recorded (none by default).
+     */
+    public function recording(array $params): void
+    {
+        $this->requireAdmin();
+
+        $recording = new RecordingService($this->database, $this->config);
+        $maps = $this->database->query(
+            "SELECT m.id, m.name, m.active, g.name as group_name
+             FROM maps m
+             LEFT JOIN map_groups g ON m.group_id = g.id
+             ORDER BY g.sort_order, g.name, m.sort_order, m.name"
+        );
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $recording->setAllowed(!empty($_POST['allowed']));
+            $recording->setInterval((int) ($_POST['interval'] ?? RecordingService::DEFAULT_INTERVAL));
+            $recording->setRetention((int) ($_POST['retention'] ?? RecordingService::DEFAULT_RETENTION));
+            $posted = is_array($_POST['maps'] ?? null) ? $_POST['maps'] : [];
+            foreach ($maps as $map) {
+                $recording->setRecorded((int) $map['id'], !empty($posted[$map['id']]));
+            }
+            $this->flash('success', __('Recording settings saved'));
+            $this->redirect('/admin/recording');
+            return;
+        }
+
+        $recorded = $recording->recordedMaps();
+        $frames = [];
+        foreach ($recorded as $id) {
+            $frames[$id] = count($recording->frames($id));
+        }
+
+        $this->render('admin/recording', [
+            'maps' => $maps,
+            'allowed' => $recording->isAllowed(),
+            'interval' => $recording->getInterval(),
+            'retention' => $recording->getRetention(),
+            'recorded' => $recorded,
+            'frames' => $frames,
+            'diskUsage' => $recording->diskUsage(),
+            'title' => __('Map recording'),
+        ]);
+    }
+
     /**
      * Kiosk mode: display time shared by all maps, and for each map its
      * zoom and an optional display time of its own.

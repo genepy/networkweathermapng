@@ -29,4 +29,13 @@ return [
     'Remove from favourites' => 'Retirer des favoris',
     'Add to favourites' => 'Ajouter aux favoris',
     'Favourite: :name' => 'Favori : :name',
+    'This map is not recorded' => 'Cette carte n’est pas enregistrée',
+    'This frame is not recorded' => 'Cette image n’est pas enregistrée',
+    'Play back the recorded hours (H)' => 'Rejouer les heures enregistrées (H)',
+    'Playback' => 'Relecture',
+    'Play or pause (Space)' => 'Lecture ou pause (Espace)',
+    'Time of the frame shown' => 'Heure de l’image affichée',
+    'Playback speed' => 'Vitesse de lecture',
+    'Back to the live map (Esc)' => 'Revenir à la carte en direct (Échap)',
+    'Live' => 'Direct',
 ];

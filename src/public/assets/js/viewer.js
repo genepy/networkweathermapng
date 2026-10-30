@@ -719,14 +719,156 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 if (!data || !data.version) return;
-                if (S.version !== null && data.version !== S.version) load();
+                if (S.version !== null && data.version !== S.version && !H.on) load();
                 S.version = data.version;
             })
             .catch(function () {});
     }
 
+    // ------------------------------------------------------------------
+    // History: play back the frames the server recorded (Admin > Recording)
+
+    const H = {
+        on: false, frames: [], i: 0, playing: false, timer: 0, cache: {}, want: null, busy: false,
+        bar: root.querySelector('.wmv-history'),
+        button: root.querySelector('[data-act="history"]')
+    };
+
+    function formatWhen(seconds) {
+        const options = {weekday: 'short', hour: '2-digit', minute: '2-digit'};
+        if (root.dataset.timezone) options.timeZone = root.dataset.timezone;
+        try {
+            return new Date(seconds * 1000).toLocaleString([], options);
+        } catch (e) {
+            delete options.timeZone;
+            return new Date(seconds * 1000).toLocaleString([], options);
+        }
+    }
+
+    function frameData(time) {
+        if (!H.cache[time]) {
+            H.cache[time] = fetch('/map/' + mapId + '/history/' + time, {credentials: 'same-origin'})
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                });
+            H.cache[time].catch(function () { delete H.cache[time]; });
+        }
+        return H.cache[time];
+    }
+
+    /** Show frame i; while one loads, only the last one asked for is shown next */
+    function showFrame(i) {
+        H.i = Math.max(0, Math.min(H.frames.length - 1, i));
+        const slider = H.bar.querySelector('.wmv-history-slider');
+        slider.value = H.i;
+        const time = H.frames[H.i];
+        H.bar.querySelector('.wmv-history-time').textContent = formatWhen(time);
+        H.want = time;
+        if (H.busy) return;
+        H.busy = true;
+        frameData(time).then(function (data) {
+            if (!H.on) return;
+            installSvg(data.svg, data.items);
+            showState(data.status);
+            showMessage('');
+            // load the next one ahead, for a smooth playback
+            if (H.frames[H.i + 1]) frameData(H.frames[H.i + 1]);
+        }).catch(function () {
+            showMessage(t('This frame could not be loaded.'), true);
+        }).finally(function () {
+            H.busy = false;
+            if (H.on && H.want !== time) showFrame(H.frames.indexOf(H.want));
+        });
+    }
+
+    function setPlaying(on) {
+        H.playing = on && H.frames.length > 1;
+        clearInterval(H.timer);
+        const b = H.bar.querySelector('[data-hist="play"]');
+        b.textContent = H.playing ? '❚❚' : '▶';
+        b.setAttribute('aria-label', H.playing ? t('Pause') : t('Play'));
+        if (!H.playing) return;
+        if (H.i >= H.frames.length - 1) showFrame(0);
+        H.timer = setInterval(function () {
+            if (H.busy) return;
+            if (H.i >= H.frames.length - 1) {
+                setPlaying(false);
+                return;
+            }
+            showFrame(H.i + 1);
+        }, parseInt(H.bar.querySelector('.wmv-history-speed').value, 10));
+    }
+
+    function openHistory() {
+        fetch('/map/' + mapId + '/history', {cache: 'no-store', credentials: 'same-origin'})
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                H.frames = data.frames || [];
+                if (!H.frames.length) {
+                    showMessage(t('Nothing recorded yet: the first frames come within a few minutes.'), true);
+                    setTimeout(function () { showMessage(''); }, 5000);
+                    return;
+                }
+                H.on = true;
+                H.bar.hidden = false;
+                H.button.setAttribute('aria-pressed', 'true');
+                H.button.classList.add('wmv-active');
+                root.classList.add('wmv-in-history');
+                const slider = H.bar.querySelector('.wmv-history-slider');
+                slider.max = H.frames.length - 1;
+                showFrame(0);
+                setPlaying(true);
+            })
+            .catch(function () { showMessage(t('The recording could not be loaded.'), true); });
+    }
+
+    function closeHistory() {
+        if (!H.on) return;
+        setPlaying(false);
+        H.on = false;
+        H.bar.hidden = true;
+        H.button.setAttribute('aria-pressed', 'false');
+        H.button.classList.remove('wmv-active');
+        root.classList.remove('wmv-in-history');
+        load();
+    }
+
+    if (H.bar && H.button) {
+        H.button.addEventListener('click', function () { if (H.on) closeHistory(); else openHistory(); });
+        H.bar.querySelector('[data-hist="play"]').addEventListener('click', function () { setPlaying(!H.playing); });
+        H.bar.querySelector('[data-hist="live"]').addEventListener('click', closeHistory);
+        H.bar.querySelector('.wmv-history-slider').addEventListener('input', function (e) {
+            setPlaying(false);
+            showFrame(parseInt(e.target.value, 10));
+        });
+        H.bar.querySelector('.wmv-history-speed').addEventListener('change', function () {
+            if (H.playing) setPlaying(true);
+        });
+        document.addEventListener('keydown', function (e) {
+            const tag = (e.target && e.target.tagName) || '';
+            if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) && e.target.type !== 'range') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (!fullscreen && !root.contains(document.activeElement)) return;
+            if (e.key === 'h' || e.key === 'H') {
+                if (H.on) closeHistory(); else openHistory();
+            } else if (H.on && e.key === ' ') {
+                setPlaying(!H.playing);
+            } else if (H.on && e.key === 'Escape') {
+                closeHistory();
+            } else {
+                return;
+            }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }, true);
+    }
+
     load();
-    setInterval(function () { if (!document.hidden) load(); }, refreshMs);
+    setInterval(function () { if (!document.hidden && !H.on) load(); }, refreshMs);
     setInterval(checkVersion, 10000);
     document.addEventListener('visibilitychange', checkVersion);
 })();
