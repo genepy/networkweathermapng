@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-29.
+Last updated: 2026-10-30.
 
 ## In progress
 
@@ -102,7 +102,7 @@ when rebasing.
 
 | Item | Notes |
 |------|-------|
-| Map date after an import | The maintainer reports that a map's last-updated date stops changing after an import. Not reproduced in #27 (the drawn timestamp, the viewer's "Updated at" and `last_run` all change on a fresh import and on "Convert again"). Ask the maintainer where the date is shown and with which map |
+| Time zone in the remaining previews | The old PNG editor previews (`EditorController`) and the import compare view (`MapMigrator`) still draw the timestamp in the server's zone. Wrap their draws in `TimezoneService::using()` as #31 does elsewhere |
 | Import PHP Weathermap 2.0 maps | Read `COMMENTCURVE` and the hints `editor_note`, `editor_note_align`, `editor_note_escaped`, `traffic_pulse`, `background_sizing` and `editor_label_position` without warnings. See [the study](studies/php-weathermap-2.0.md) item 1 |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
@@ -125,6 +125,7 @@ when rebasing.
 
 | PR | Item |
 |----|------|
+| #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
 | #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
 | #25 | SVG editor interface and icons: movable toolbars, icon library with themes and the Affinity and Ansible sets, Map properties, vector legends |
 | #29 | Configure kiosk mode per map: zoom and display time |

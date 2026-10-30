@@ -44,6 +44,7 @@
         <?php foreach ($maps as $i => $map): ?>
         <?php
             $mid = (int) $map['id'];
+            $timezone = $timezones[$mid];
             $isFav = in_array($mid, $favourites, true);
             $st = $statuses[$mid] ?? null;
             $title = $map['title_cache'] ?: $map['name'];
@@ -54,10 +55,10 @@
                 $stText = round((float) $st['max']) . ' %';
             }
             if ($st !== null && !empty($st['time'])) {
-                $stTitle .= ' — ' . __('Updated :time', ['time' => date('Y-m-d H:i', (int) $st['time'])]);
+                $stTitle .= ' — ' . __('Updated :time', ['time' => \App\Services\TimezoneService::formatTimestamp((int) $st['time'], $timezone, 'Y-m-d H:i')]);
             }
         ?>
-        <div class="map-card" data-map-id="<?= $mid ?>" data-order="<?= (int) ($map['list_order'] ?? $i) ?>"
+        <div class="map-card" data-map-id="<?= $mid ?>" data-timezone="<?= htmlspecialchars($timezone) ?>" data-order="<?= (int) ($map['list_order'] ?? $i) ?>"
              data-name="<?= htmlspecialchars(mb_strtolower($title . ' ' . $map['name'] . ' ' . ($map['group_name'] ?? ''))) ?>"
              data-fav="<?= $isFav ? '1' : '0' ?>"
              data-stale="<?= ($st === null || !empty($st['stale'])) ? '1' : '0' ?>">

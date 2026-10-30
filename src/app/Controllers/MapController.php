@@ -10,6 +10,7 @@ namespace App\Controllers;
 use App\Services\MapService;
 use App\Services\DataSourceService;
 use App\Services\KioskService;
+use App\Services\TimezoneService;
 
 class MapController extends BaseController
 {
@@ -93,6 +94,7 @@ class MapController extends BaseController
             'maps' => $maps,
             'favourites' => $favourites,
             'statuses' => $statuses,
+            'timezones' => $this->timezones()->forMaps(array_column($maps, 'id')),
             'groups' => $visibleGroups,
             'currentGroup' => $groupId,
             'title' => __('Network Weathermaps'),
@@ -156,7 +158,7 @@ class MapController extends BaseController
                 $wmap->htmlstyle = 'overlib';
 
                 // DrawMap('null') populates imagemap regions without writing an image file.
-                $wmap->DrawMap('null');
+                TimezoneService::using($this->timezones()->forMap($mapId), static fn () => $wmap->DrawMap('null'));
 
                 // MakeHTML uses imageuri when provided.
                 $wmap->imageuri = '/map/' . $mapId . '/image?t=' . time();
@@ -195,8 +197,13 @@ class MapController extends BaseController
         // The zoomable SVG is the default view; ?view=png keeps the picture
         $viewKind = ($mode === 'preview' || (string) $this->getInput('view', '') === 'png') ? 'png' : 'svg';
 
+        $timezones = $this->timezones();
+        $timezone = $timezones->forMap($mapId);
+
         $this->render('maps/view', [
             'map' => $map,
+            'timezone' => $timezone,
+            'lastRun' => $map['last_run'] ? $timezones->formatStored((string) $map['last_run'], $timezone) : null,
             'mapHtml' => $mapHtml,
             'viewKind' => $viewKind,
             'fullscreen' => $fullscreen,
@@ -434,7 +441,7 @@ class MapController extends BaseController
             // drawn as "No Data" rather than a broken picture in the hover panel
             $data = [];
         }
-        $png = $this->renderBandwidthGraphPng($data, $minutes);
+        $png = $this->renderBandwidthGraphPng($data, $minutes, $this->timezones()->forMap($mapId));
 
         // Save to cache
         file_put_contents($cacheFile, $png);
@@ -450,6 +457,11 @@ class MapController extends BaseController
         header('Cache-Control: public, max-age=300');
         echo $png;
         exit;
+    }
+
+    private function timezones(): TimezoneService
+    {
+        return TimezoneService::fromConfig($this->database, $this->config);
     }
 
     private function serveImage(string $path, string $contentType): void
@@ -468,7 +480,7 @@ class MapController extends BaseController
         exit;
     }
 
-    private function renderBandwidthGraphPng(array $data, int $minutes): string
+    private function renderBandwidthGraphPng(array $data, int $minutes, string $timezone): string
     {
         $w = 600;
         $h = 300;
@@ -555,7 +567,7 @@ class MapController extends BaseController
             imageline($im, $x, $padT, $x, $padT + $plotH, $grid);
             
             $tVal = $minT + (($maxT - $minT) * $i / 5);
-            $tLabel = date('H:i', (int)$tVal);
+            $tLabel = TimezoneService::formatTimestamp((int) $tVal, $timezone, 'H:i');
             imagestring($im, 2, $x - 12, $padT + $plotH + 5, $tLabel, $txt);
         }
 

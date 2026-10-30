@@ -175,6 +175,8 @@ class Application
         $this->router->get('/admin/settings', 'AdminController@settings');
         $this->router->get('/admin/kiosk', 'AdminController@kiosk');
         $this->router->post('/admin/kiosk', 'AdminController@kiosk');
+        $this->router->get('/admin/timezone', 'AdminController@timezone');
+        $this->router->post('/admin/timezone', 'AdminController@timezone');
         $this->router->get('/admin/check-db', 'AdminController@checkDatabase');
         $this->router->post('/admin/check-db', 'AdminController@checkDatabase');
         
