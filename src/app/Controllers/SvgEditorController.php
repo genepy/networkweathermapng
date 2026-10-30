@@ -57,14 +57,14 @@ class SvgEditorController extends BaseController
     /** GET: the icon library, by theme */
     public function iconList(): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         $this->json($this->iconLibrary());
     }
 
     /** POST multipart: theme, icons[] (PNG, GIF, JPEG or SVG files) */
     public function addIcons(): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $theme = (string) ($_POST['theme'] ?? '');
         $files = $_FILES['icons'] ?? null;
@@ -94,7 +94,7 @@ class SvgEditorController extends BaseController
     /** POST {path}: remove an icon no map uses */
     public function deleteIcon(): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         try {
             $this->icons()->delete((string) ($this->body()['path'] ?? ''));
