@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-27.
+Last updated: 2026-10-29.
 
 ## In progress
 
@@ -167,6 +167,7 @@ goes.
 
 | PR | Item |
 |----|------|
+| #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |
