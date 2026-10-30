@@ -60,7 +60,7 @@ code.
 
 | Idea | From | License of the source | Link |
 |---|---|---|---|
-| The ideas listed in [docs/studies/php-weathermap-2.0.md](docs/studies/php-weathermap-2.0.md) (map notes, colour presets, saturated link pulse, curved comments, image libraries, background fit, label presets), once built | PHP Network Weathermap 2.0, The Cacti Group, Inc. and contributors, after Howard Jones | GPL-2.0-or-later: ideas only, no code taken | https://github.com/Cacti/plugin_weathermap |
+| The ideas listed in [docs/studies/php-weathermap-2.0.md](docs/studies/php-weathermap-2.0.md) (map notes, colour presets, saturated link pulse, curved comments, image libraries, background fit, label presets, undo refused after an outside change), once built | PHP Network Weathermap 2.0, The Cacti Group, Inc. and contributors, after Howard Jones | GPL-2.0-or-later: ideas only, no code taken | https://github.com/Cacti/plugin_weathermap |
 
 ## Images
 

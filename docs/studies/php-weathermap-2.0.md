@@ -63,7 +63,7 @@ copied.
    and dark themes and safe for colour-blind people. This goes with the
    maintainer's "contrast and colours in dark/light mode" request.
 4. **Highlight saturated links.** In the viewer, links at 80 % or more
-   pulse or glow, switchable per map, and still under
+   pulse or glow, switchable per map, and off under
    `prefers-reduced-motion`. Cheap in SVG (CSS animation on the link path).
 5. **Comments along curved links.** Draw IN/OUT comments on a text path that
    follows the curve, falling back to straight text when the bend is too
