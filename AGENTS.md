@@ -75,7 +75,7 @@ PHP application, no framework, Composer autoload (PSR-4).
 |------|---------|
 | `src/public/` | Web root: `index.php` (front controller), `assets/` (CSS, JS of the editor and the viewer, icons), `objects/`, `backgrounds/`, `fonts/` |
 | `src/app/Core/` | Router, auth, CSRF, i18n (`helpers.php`), config |
-| `src/app/Controllers/` | HTTP controllers: maps, admin, API, legacy editor (`EditorController`), SVG editor (`SvgEditorController`), migration |
+| `src/app/Controllers/` | HTTP controllers: maps, map management of the Editor tab (`MapManagementController`), admin, API, legacy editor (`EditorController`), SVG editor (`SvgEditorController`), migration |
 | `src/app/Services/` | Business logic: maps, groups, data sources (Zabbix, Observium), editor, images, migration from php-weathermap |
 | `src/app/Views/` | PHP templates |
 | `src/app/Lang/<code>/` | Translation catalogues (English is the key, no `en` folder) |

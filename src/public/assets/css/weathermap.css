@@ -644,7 +644,16 @@ button.btn {
 }
 @media (max-width: 640px) {
     .maps-table .col-group,
+    .maps-table .map-file,
     .status-toggle-label { display: none; }
+    .maps-table th,
+    .maps-table td { padding: 10px 8px; }
+    .row-actions { gap: 4px; }
+    .row-actions .btn { padding: 6px 8px; }
+}
+@media (max-width: 480px) {
+    /* Bulk selection is for larger screens */
+    .maps-table .col-check { display: none; }
 }
 
 /* Status Badges */
@@ -737,6 +746,15 @@ button.btn {
 
 /* Responsive */
 @media (max-width: 768px) {
+    /* The header wraps on two lines: let it grow instead of covering the page */
+    .main-header {
+        height: auto;
+    }
+
+    .user-menu {
+        flex-wrap: wrap;
+    }
+
     .header-container {
         flex-wrap: wrap;
         padding: 10px 15px;
