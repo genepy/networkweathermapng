@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| Editor: link widths up to 800G | `claude/editor-800g` | Auto width stopped at 400G; wide links on short spans were not drawn at all |
 
 ## Paused
 
@@ -53,7 +53,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Editor: fields apply on blur and on Enter | Clicking outside a field leaves it and applies the change; Enter in a field validates and applies the pending change |
 | Editor: resize icons | Resize a node's icon from the editor (handles and a size field) |
 | Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
-| Editor: link widths up to 800G | Allow link bandwidths up to 800G in the editor fields and the parser, and check the scaling of widths and labels |
 | Editor: place a new zone with the mouse | Adding a zone shows it under the pointer; a click drops it on the map (Esc cancels) |
 | Editor: zone resize per side and guides | Resize a zone from one side only (horizontal or vertical) as well as both at once, and show the alignment guides while resizing |
 | Editor: right-angle routing per link | Route one link with right angles (orthogonal via points) without applying it to the whole map |
