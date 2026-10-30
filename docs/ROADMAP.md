@@ -167,6 +167,7 @@ goes.
 
 | PR | Item |
 |----|------|
+| #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
 | #27 | Map import fixes: Latin-1 maps (php-weathermap 0.97 and older), compare view of large maps |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |

@@ -91,7 +91,7 @@ the environment variables (for example `OBSERVIUM_PUBLIC_URL`).
 
 ## Development and tests
 
-Requires PHP 8.5 (the only version tested in CI) with `gd`, `pdo_sqlite`,
+Requires PHP 8.5.12 or later (8.5 is the only version tested in CI) with `gd`, `pdo_sqlite`,
 `mbstring`, `curl`.
 
 ```bash
