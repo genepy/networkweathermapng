@@ -8,7 +8,7 @@ on:
 
 jobs:
   remove-artifacts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       actions: write # Nécessaire pour supprimer les artefacts
       contents: read

@@ -31,7 +31,7 @@ address.
 ## Deployment
 
 ```
-merge on main ──> "CI" (GitHub, ubuntu-latest) ──green──> "Deploy testbed" (the Pi's runner)
+merge on main ──> "CI" (GitHub, ubuntu-24.04) ──green──> "Deploy testbed" (the Pi's runner)
 ```
 
 - **Automatic**: every push to `main` whose CI passes is deployed, exactly the
