@@ -153,7 +153,7 @@ goes.
 
 | Item | Notes |
 |------|-------|
-| Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps |
+| Map date after an import | The maintainer reports that a map's last-updated date stops changing after an import. Not reproduced in #27 (the drawn timestamp, the viewer's "Updated at" and `last_run` all change on a fresh import and on "Convert again"). Ask the maintainer where the date is shown and with which map |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
@@ -168,6 +168,7 @@ goes.
 | PR | Item |
 |----|------|
 | #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
+| #27 | Map import fixes: Latin-1 maps (php-weathermap 0.97 and older), compare view of large maps |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |
