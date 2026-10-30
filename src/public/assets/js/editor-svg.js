@@ -2149,8 +2149,8 @@
         out.push(
             row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
             row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
-            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12'].map(function (v) { return h('option', { value: v }); })),
-            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '400G'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
             h('h3', { text: t('Shape') }),
