@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| Editor: place a new zone with the mouse | `claude/editor-zone-place` | The Zone button dropped the zone in the middle of the view |
 
 ## Paused
 
@@ -54,7 +54,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Editor: resize icons | Resize a node's icon from the editor (handles and a size field) |
 | Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
 | Editor: link widths up to 800G | Allow link bandwidths up to 800G in the editor fields and the parser, and check the scaling of widths and labels |
-| Editor: place a new zone with the mouse | Adding a zone shows it under the pointer; a click drops it on the map (Esc cancels) |
 | Editor: zone resize per side and guides | Resize a zone from one side only (horizontal or vertical) as well as both at once, and show the alignment guides while resizing |
 | Editor: right-angle routing per link | Route one link with right angles (orthogonal via points) without applying it to the whole map |
 | Editor: clearer layers note | The Layers panel note "Only in this editor, in this browser." is unclear: say that hiding a layer only changes this editor view, is remembered in this browser and is not saved in the map |
