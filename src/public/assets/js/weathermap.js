@@ -126,7 +126,8 @@
         el.style.zIndex = '9999';
         el.style.pointerEvents = 'none';
         el.style.minWidth = 'min(320px, calc(100vw - 16px))';
-        el.style.maxWidth = 'min(520px, calc(100vw - 16px))';
+        // a traffic graph widens the panel, see wmGraphSize()
+        el.style.maxWidth = 'calc(100vw - 16px)';
         el.style.boxSizing = 'border-box';
         el.style.background = 'rgba(15, 18, 24, 0.92)';
         el.style.border = '1px solid rgba(255,255,255,0.12)';
@@ -207,6 +208,22 @@
     }
 
     /**
+     * How wide the traffic graph of the hover panel is drawn: a share of the
+     * window, so it stays readable on large screens without zooming the map.
+     * Our own graphs (/map/{id}/link/{id}/graph) are then asked for at a
+     * larger scale so they stay sharp.
+     */
+    function wmGraphSize(url) {
+        const width = Math.round(Math.max(500, Math.min(1400, window.innerWidth * 0.4, window.innerWidth - 42)));
+        let out = url;
+        const scale = Math.min(3, Math.ceil(width * (window.devicePixelRatio || 1) / 600));
+        if (scale > 1 && /^\/map\/\d+\/link\/\d+\/graph(\?|$)/.test(url)) {
+            out += (url.indexOf('?') >= 0 ? '&' : '?') + 'scale=' + scale;
+        }
+        return {width: Math.min(width, window.innerWidth - 42), url: out};
+    }
+
+    /**
      * The hover panel of a link: in/out now and the last 24 h.
      * info: {title, ds (data source selection, JSON text), in, out, inpct,
      * outpct (values from the last map render), graph (picture URL),
@@ -277,10 +294,15 @@
 
                 const hint = info.hint ? `<div style="opacity:0.75;margin-top:6px;">${wmEsc(info.hint)}</div>` : '';
 
+                el.style.width = '';
                 if (!selection) {
-                    el.innerHTML = title + now
-                        + (info.graph ? `<img src="${wmEsc(info.graph)}" alt="" style="display:block;width:500px;max-width:100%;height:auto;margin-top:6px;border-radius:4px;">` : '')
-                        + hint;
+                    let graph = '';
+                    if (info.graph) {
+                        const size = wmGraphSize(info.graph);
+                        el.style.width = (size.width + 26) + 'px';
+                        graph = `<img src="${wmEsc(size.url)}" alt="" style="display:block;width:100%;height:auto;margin-top:6px;border-radius:4px;">`;
+                    }
+                    el.innerHTML = title + now + graph + hint;
                     const img = el.querySelector('img');
                     if (img) {
                         // the panel grows when the picture arrives: keep it on screen

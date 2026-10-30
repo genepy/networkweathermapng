@@ -621,9 +621,16 @@ class WeatherMapLink extends WeatherMapItem {
 						$angle = 0;
 					}
 
-					$map->DrawLabelRotated($image, $task[0], $task[1], $angle, $thelabel, $this->bwfont, $padding,
+					$args = array($task[0], $task[1], $angle, $thelabel, $this->bwfont, $padding,
 						$this->name, $this->bwfontcolour, $this->bwboxcolour, $this->bwoutlinecolour, $map, $task[7]
 					);
+
+					// DrawMap() draws the labels once all the links of the layer are drawn
+					if (is_array($map->pending_bwlabels)) {
+						$map->pending_bwlabels[] = array($this, $args);
+					} else {
+						$map->DrawLabelRotated($image, ...$args);
+					}
 
 					// imagearc($image, $task[0], $task[1], 10,10,0,360,$map->selected);
 				}

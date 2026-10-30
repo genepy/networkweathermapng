@@ -138,6 +138,33 @@ final class SvgRenderTest extends TestCase
         $this->assertLessThan($centre($default, 'out')[0] - 20, $centre($moved, 'out')[0]);
     }
 
+    #[DataProvider('maps')]
+    public function testBwLabelsAreDrawnOverEveryLink(string $file): void
+    {
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $doc->loadXML(\WeatherMapSvg::render($map));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $lastArrow = -1;
+        $firstLabel = null;
+        foreach ($xpath->query('//s:g[@data-kind="link"]/*') as $i => $el) {
+            $class = $el->getAttribute('class');
+            if ($class === 'wm-arrow') {
+                $lastArrow = $i;
+            } elseif ($firstLabel === null && str_starts_with($class, 'wm-bwlabel-')) {
+                $firstLabel = $i;
+            }
+        }
+
+        if ($firstLabel === null) {
+            $this->markTestSkipped('no bandwidth label on this map');
+        }
+        // links all sit in the default layer of these maps
+        $this->assertGreaterThan($lastArrow, $firstLabel, 'a link drawn later would hide a label');
+    }
+
     public function testVectorIcons(): void
     {
         $conf = "WIDTH 300\nHEIGHT 200\n"

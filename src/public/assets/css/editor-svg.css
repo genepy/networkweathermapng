@@ -250,6 +250,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #paper { fill: #fff; filter: drop-shadow(0 1px 4px var(--paper-shadow)); }
 #map g[data-kind="node"], #map g[data-kind="link"] { cursor: pointer; }
 #map g.dimmed { opacity: .25; }
+#map g.copy-ghost { opacity: .6; pointer-events: none; }
 #grid-layer { display: none; }
 #stage.snap #grid-layer { display: inline; }
 

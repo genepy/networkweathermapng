@@ -104,7 +104,6 @@ when rebasing.
 |------|-------|
 | Time zone in the remaining previews | The old PNG editor previews (`EditorController`) and the import compare view (`MapMigrator`) still draw the timestamp in the server's zone. Wrap their draws in `TimezoneService::using()` as #31 does elsewhere |
 | Import PHP Weathermap 2.0 maps | Read `COMMENTCURVE` and the hints `editor_note`, `editor_note_align`, `editor_note_escaped`, `traffic_pulse`, `background_sizing` and `editor_label_position` without warnings. See [the study](studies/php-weathermap-2.0.md) item 1 |
-| SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
 | Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |
 | Highlight saturated links | Pulse or glow on links at 80 % or more in the viewer, per-map switch, off under `prefers-reduced-motion`. Study item 4 |
@@ -125,6 +124,7 @@ when rebasing.
 
 | PR | Item |
 |----|------|
+| #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
 | #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
 | #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
 | #25 | SVG editor interface and icons: movable toolbars, icon library with themes and the Affinity and Ansible sets, Map properties, vector legends |

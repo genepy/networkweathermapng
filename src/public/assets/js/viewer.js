@@ -521,7 +521,9 @@
         if (dragging || touch) return;
         const it = itemOf(e.target);
         const g = it && it.g.classList.contains('wm-link') ? it.g : null;
-        if (g === hovered) return;
+        // a link and its labels are two groups with the same id
+        const id = g ? g.getAttribute('data-id') : null;
+        if (id === (hovered ? hovered.getAttribute('data-id') : null)) return;
         hovered = g;
         if (!g || !it.data) {
             if (window.WM && WM.hover) WM.hover.hide();
@@ -543,7 +545,7 @@
         const it = itemOf(e.target);
         if (touch) {
             const link = it && it.data && it.g.classList.contains('wm-link') ? it.g : null;
-            if (link && link !== tapped) {
+            if (link && (!tapped || link.getAttribute('data-id') !== tapped.getAttribute('data-id'))) {
                 hidePanel();
                 if (showPanel(link, it.data, e)) {
                     tapped = link;

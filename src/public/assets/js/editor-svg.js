@@ -656,11 +656,14 @@
 
     /** The bandwidth labels of a link as drawn: {dir: in|out, rect} */
     function bwLabelBoxes(link) {
-        var g = $$('#map g[data-kind="link"]').filter(function (e) { return e.dataset.name === link.name; })[0];
+        // the labels sit in a group of their own, drawn over all the links
+        var groups = $$('#map g[data-kind="link"]').filter(function (e) { return e.dataset.name === link.name; });
         var out = [];
-        if (!g) { return out; }
         ['in', 'out'].forEach(function (dir) {
-            var box = g.querySelector('polygon.wm-bwlabel-' + dir) || g.querySelector('text.wm-bwlabel-' + dir);
+            var box = null;
+            groups.forEach(function (g) {
+                box = box || g.querySelector('polygon.wm-bwlabel-' + dir) || g.querySelector('text.wm-bwlabel-' + dir);
+            });
             if (!box) { return; }
             var bb = box.getBBox();
             out.push({ dir: dir, w: bb.width, h: bb.height, rect: [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height] });
@@ -684,7 +687,7 @@
     function updateToolbar() {
         $('[data-cmd="undo"]').disabled = !state.history.undo;
         $('[data-cmd="redo"]').disabled = !state.history.redo;
-        var nodes = selected('node').length, any = state.selection.size, objects = selectedObjects().length;
+        var nodes = selected('node').length, any = state.selection.size, objects = alignUnits(selectedObjects()).length;
         $$('[data-needs]').forEach(function (e) {
             var need = e.dataset.needs, ok = true;
             if (need === 'nodes1') { ok = nodes >= 1; }
@@ -832,12 +835,20 @@
         var k = key(item.kind, item.name);
         var keys = withGroups([k], evt.altKey);
 
+        // Ctrl+click on a selected object takes it out of the selection,
+        // unless the click turns into a drag, which duplicates the selection
+        var unselect = null;
         if (evt.shiftKey || ctrl) {
-            var removing = state.selection.has(k);
-            keys.forEach(function (kk) { if (removing) { state.selection.delete(kk); } else { state.selection.add(kk); } });
-            refresh();
-            if (removing) {
-                return;
+            if (state.selection.has(k)) {
+                if (evt.shiftKey || item.kind === 'link') {
+                    keys.forEach(function (kk) { state.selection.delete(kk); });
+                    refresh();
+                    return;
+                }
+                unselect = keys;
+            } else {
+                keys.forEach(function (kk) { state.selection.add(kk); });
+                refresh();
             }
         } else if (!state.selection.has(k)) {
             state.selection = new Set(keys);
@@ -847,15 +858,17 @@
         if (item.kind === 'link') {
             return;
         }
-        startMove(evt, k, p);
+        startMove(evt, k, p, unselect);
     });
 
     /**
      * Drag what is selected: unlocked nodes and zones, legends, timestamps
      * and the title move together. A zone moves alone: the nodes on it
-     * only follow when they are grouped with it.
+     * only follow when they are grouped with it. With Ctrl (Cmd on a Mac)
+     * held when the drag ends, the selected nodes are copied there instead.
+     * `unselect` is what a click without a drag takes out of the selection.
      */
-    function startMove(evt, clicked, p) {
+    function startMove(evt, clicked, p, unselect) {
         var objects = selectedObjects();
         if (!objects.length) {
             var c = parseKey(clicked), it = itemOf(c.kind, c.name);
@@ -872,7 +885,7 @@
         var lead = objects.filter(function (o) { return o.key === clicked; })[0] || objects[0];
         var origin = lead.kind === 'node' ? [lead.item.x, lead.item.y] : [lead.box[0], lead.box[1]];
         startDrag(evt, {
-            type: 'move', start: p, moved: moved, origin: origin, clicked: clicked, multi: state.selection.size > 1,
+            type: 'move', start: p, moved: moved, origin: origin, clicked: clicked, multi: state.selection.size > 1, unselect: unselect, copy: false,
             box: unionBox(objects.map(function (o) { return o.box; })), targets: guideTargets(objects)
         });
     }
@@ -1032,7 +1045,8 @@
                 d.moved.dx = snap(d.origin[0] + p.x - d.start.x) - d.origin[0];
                 d.moved.dy = snap(d.origin[1] + p.y - d.start.y) - d.origin[1];
                 applyGuides(d, evt.altKey);
-                previewMove(d.moved);
+                d.copy = (evt.ctrlKey || evt.metaKey) && Object.keys(d.moved.nodes).length > 0;
+                previewMove(d.moved, d.copy);
                 break;
 
             case 'zone-size':
@@ -1086,9 +1100,25 @@
     });
     stage.addEventListener('pointerleave', function () { state.mouse = null; });
 
-    /** Show the moved objects at their new place, before the server draws them */
-    function previewMove(moved) {
+    /**
+     * Show the moved objects at their new place, before the server draws
+     * them. When copying, the nodes stay and their copies follow the pointer.
+     */
+    function previewMove(moved, copy) {
         var shift = (moved.dx || moved.dy) ? 'translate(' + moved.dx + ' ' + moved.dy + ')' : null;
+        $$('#map .copy-ghost').forEach(function (g) { g.remove(); });
+        if (copy && shift) {
+            $$('#map g[data-kind="node"]').forEach(function (g) {
+                if (!moved.nodes[g.dataset.name]) { return; }
+                var ghost = g.cloneNode(true);
+                ghost.removeAttribute('data-kind');
+                ghost.classList.add('copy-ghost');
+                ghost.setAttribute('transform', shift);
+                mapLayer.appendChild(ghost);
+            });
+            moved = noMove();
+            shift = null;
+        }
         function place(g, on) {
             if (on && shift) { g.setAttribute('transform', shift); } else { g.removeAttribute('transform'); }
         }
@@ -1171,8 +1201,16 @@
                     if (!d.started && d.multi && !(evt.shiftKey || evt.ctrlKey || evt.metaKey)) {
                         state.selection = new Set(withGroups([d.clicked], evt.altKey));
                     }
+                    if (!d.started && d.unselect) {
+                        d.unselect.forEach(function (kk) { state.selection.delete(kk); });
+                    }
                     previewMove(noMove());
                     refresh();
+                    return;
+                }
+                if (d.copy) {
+                    previewMove(noMove());
+                    send([{ op: 'clone', nodes: Object.keys(d.moved.nodes), dx: d.moved.dx, dy: d.moved.dy }], createdKeys);
                     return;
                 }
                 send([moveOp(d.moved)]);
@@ -1423,54 +1461,87 @@
     }
 
     /**
+     * What align and distribute move as one: each group of the selection,
+     * and each object outside a group. When everything selected belongs to
+     * one group, its members line up one by one. A unit has a key, its
+     * objects, its box and, for a single node, the node itself.
+     */
+    function alignUnits(objects) {
+        var byGroup = new Map(), units = [];
+        objects.forEach(function (o) {
+            var g = groupOf(o.item);
+            if (g) {
+                if (!byGroup.has(g)) { byGroup.set(g, []); }
+                byGroup.get(g).push(o);
+            } else {
+                units.push([o]);
+            }
+        });
+        if (!units.length && byGroup.size === 1) {
+            units = objects.map(function (o) { return [o]; });
+        } else {
+            byGroup.forEach(function (members) { units.push(members); });
+        }
+        return units.map(function (members) {
+            return {
+                key: members[0].key, objects: members,
+                box: unionBox(members.map(function (o) { return o.box; })),
+                node: members.length === 1 && members[0].kind === 'node' ? members[0].item : null
+            };
+        });
+    }
+
+    /**
      * Line up, or space evenly, the selected nodes, zones, legends,
-     * timestamps and title, by their boxes.
+     * timestamps and title, by their boxes. Groups move as a whole.
      */
     function align(how) {
-        var objects = selectedObjects();
-        if (objects.length < 2) {
+        var units = alignUnits(selectedObjects());
+        if (units.length < 2) {
             return;
         }
-        var all = unionBox(objects.map(function (o) { return o.box; }));
+        var all = unionBox(units.map(function (u) { return u.box; }));
         var minX = all[0], minY = all[1], maxX = all[2], maxY = all[3];
         var shift = {};
 
-        objects.forEach(function (o) {
-            var b = o.box, dx = 0, dy = 0;
+        units.forEach(function (u) {
+            var b = u.box, dx = 0, dy = 0;
             if (how === 'left') { dx = minX - b[0]; }
             if (how === 'right') { dx = maxX - b[2]; }
-            if (how === 'hcenter') { dx = (minX + maxX) / 2 - centre(o, 'x'); }
+            if (how === 'hcenter') { dx = (minX + maxX) / 2 - centre(u, 'x'); }
             if (how === 'top') { dy = minY - b[1]; }
             if (how === 'bottom') { dy = maxY - b[3]; }
-            if (how === 'vcenter') { dy = (minY + maxY) / 2 - centre(o, 'y'); }
-            shift[o.key] = [dx, dy];
+            if (how === 'vcenter') { dy = (minY + maxY) / 2 - centre(u, 'y'); }
+            shift[u.key] = [dx, dy];
         });
 
         if (how === 'distribute-h' || how === 'distribute-v') {
             var axis = how === 'distribute-h' ? 'x' : 'y';
-            var sorted = objects.slice().sort(function (a, b) { return centre(a, axis) - centre(b, axis); });
+            var sorted = units.slice().sort(function (a, b) { return centre(a, axis) - centre(b, axis); });
             var first = centre(sorted[0], axis), last = centre(sorted[sorted.length - 1], axis);
             var step = (last - first) / (sorted.length - 1);
-            sorted.forEach(function (o, i) {
-                var d = first + step * i - centre(o, axis);
-                shift[o.key] = axis === 'x' ? [d, 0] : [0, d];
+            sorted.forEach(function (u, i) {
+                var d = first + step * i - centre(u, axis);
+                shift[u.key] = axis === 'x' ? [d, 0] : [0, d];
             });
         }
 
         var op = { op: 'move', nodes: {}, zones: {}, furniture: {} };
-        objects.forEach(function (o) {
-            var dx = Math.round(shift[o.key][0]), dy = Math.round(shift[o.key][1]);
-            if (o.kind === 'node') { op.nodes[o.item.name] = [o.item.x + dx, o.item.y + dy]; }
-            else if (o.kind === 'zone') { op.zones[o.item.name] = [o.item.x + dx, o.item.y + dy]; }
-            else { op.furniture[o.key] = [o.item.pos[0] + dx, o.item.pos[1] + dy]; }
+        units.forEach(function (u) {
+            var dx = Math.round(shift[u.key][0]), dy = Math.round(shift[u.key][1]);
+            u.objects.forEach(function (o) {
+                if (o.kind === 'node') { op.nodes[o.item.name] = [o.item.x + dx, o.item.y + dy]; }
+                else if (o.kind === 'zone') { op.zones[o.item.name] = [o.item.x + dx, o.item.y + dy]; }
+                else { op.furniture[o.key] = [o.item.pos[0] + dx, o.item.pos[1] + dy]; }
+            });
         });
         send([op]);
     }
 
-    /** The centre a node is aligned by is its position; for the rest, its box */
-    function centre(o, axis) {
-        if (o.kind === 'node') { return axis === 'x' ? o.item.x : o.item.y; }
-        return axis === 'x' ? (o.box[0] + o.box[2]) / 2 : (o.box[1] + o.box[3]) / 2;
+    /** The centre a single node is aligned by is its position; for the rest, the box */
+    function centre(u, axis) {
+        if (u.node) { return axis === 'x' ? u.node.x : u.node.y; }
+        return axis === 'x' ? (u.box[0] + u.box[2]) / 2 : (u.box[1] + u.box[3]) / 2;
     }
 
     function itemsByKind() {
@@ -1891,6 +1962,7 @@
                 ['Esc', t('cancel the drag, close the menu, or select nothing')],
                 [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
                 [t('Alt while dragging'), t('no snapping to the other objects')],
+                [t('Ctrl+drag'), t('duplicate the selected nodes')],
                 [t('Double-click a link'), t('add a bend point there')],
                 ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')],
                 [t('Ctrl+D / Delete'), t('duplicate / delete')],
@@ -2566,7 +2638,7 @@
 
     function menuEntries(at) {
         var nodes = selected('node'), links = selected('link'), zones = selected('zone'), any = nodes.length + links.length + zones.length;
-        var all = nodes.concat(links, zones), objects = selectedObjects().length;
+        var all = nodes.concat(links, zones), objects = alignUnits(selectedObjects()).length;
         var locked = all.length && all.every(function (i) { return i.locked; });
         var grouped = all.some(function (i) { return i.group; });
         var entries = [
