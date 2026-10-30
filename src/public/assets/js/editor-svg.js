@@ -2325,9 +2325,9 @@
                 var it = r[2].find(function (x) { return String(x.interfaceId) === String(current.interfaceId); });
                 what.replaceChildren(
                     h('strong', { text: host ? hostName(host) : t('Device :id', { id: current.hostId }) }),
-                    h('span', { text: (it ? it.label : t('Interface :id', { id: current.interfaceId })) + (it && ifaceDetail(it) ? ' · ' + ifaceDetail(it) : '') }),
-                    r[0].length > 1 ? h('small', { text: src ? src.name : '' }) : null
+                    h('span', { text: (it ? it.label : t('Interface :id', { id: current.interfaceId })) + (it && ifaceDetail(it) ? ' · ' + ifaceDetail(it) : '') })
                 );
+                if (r[0].length > 1 && src) { what.appendChild(h('small', { text: src.name })); }
             }).catch(function () {
                 what.replaceChildren(h('strong', { text: t('Device :id', { id: current.hostId }) }), h('span', { text: t('Interface :id', { id: current.interfaceId }) }));
             });
@@ -2337,7 +2337,7 @@
             var sourceRow = h('div');
             var steps = h('div');
             var cancel = (current || c.mixed) ? h('div', { 'class': 'actions' }, [h('button', { type: 'button', text: t('Cancel'), onclick: showCurrent })]) : null;
-            box.replaceChildren(sourceRow, steps, cancel);
+            box.replaceChildren.apply(box, [sourceRow, steps, cancel].filter(Boolean));
 
             function pickDevice(sourceId) {
                 var list = searchList({
