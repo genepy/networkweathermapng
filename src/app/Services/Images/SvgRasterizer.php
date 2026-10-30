@@ -31,7 +31,7 @@ class SvgRasterizer
     }
 
     /** PNG data, or null when no converter is installed or it failed. */
-    public function toPng(string $svg): ?string
+    public function toPng(string $svg, int $maxSide = self::MAX_SIDE): ?string
     {
         $dir = sys_get_temp_dir() . '/wm-svg-' . bin2hex(random_bytes(6));
         if (!@mkdir($dir, 0700)) {
@@ -42,7 +42,7 @@ class SvgRasterizer
         file_put_contents($in, $svg);
 
         try {
-            $command = $this->commandFor($in, $out, self::targetSize($svg));
+            $command = $this->commandFor($in, $out, self::targetSize($svg, $maxSide) ?? ($maxSide < self::MAX_SIDE ? [$maxSide, $maxSide] : null));
             if ($command === null || !$this->run($command) || !is_file($out)) {
                 return null;
             }
@@ -60,12 +60,12 @@ class SvgRasterizer
     }
 
     /**
-     * Size to draw at: the SVG's own size, scaled down to fit MAX_SIDE.
+     * Size to draw at: the SVG's own size, scaled down to fit $maxSide.
      * Null when the SVG gives no usable size (the converter's default then).
      *
      * @return array{int, int}|null
      */
-    public static function targetSize(string $svg): ?array
+    public static function targetSize(string $svg, int $maxSide = self::MAX_SIDE): ?array
     {
         if (!preg_match('/<svg\b[^>]*>/is', $svg, $tag)) {
             return null;
@@ -91,7 +91,7 @@ class SvgRasterizer
             return null;
         }
 
-        $scale = min(1.0, self::MAX_SIDE / max($width, $height));
+        $scale = min(1.0, min($maxSide, self::MAX_SIDE) / max($width, $height));
 
         return [max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale))];
     }
