@@ -311,7 +311,9 @@
         var w = canvas.clientWidth / state.zoom;
         var hh = canvas.clientHeight / state.zoom;
         stage.setAttribute('viewBox', [state.view.x, state.view.y, w, hh].join(' '));
-        $('#zoom-level').textContent = Math.round(state.zoom * 100) + '%';
+        var zoom = Math.round(state.zoom * 100);
+        $('#zoom-value').textContent = zoom + '%';
+        $('#zoom-level').title = t('Zoom of the editor view: :p%. Click for actual size (0)', { p: zoom });
         if (state.model) {
             var s = 12 / state.zoom;
             resizeHandle.setAttribute('x', state.model.map.width - s / 2);
@@ -1943,33 +1945,12 @@
         })));
         bg.addEventListener('change', function () { send([{ op: 'set_map', background: bg.value }]); });
 
-        // the WIDTH of LINK DEFAULT: links without a width of their own follow it
-        var autoWidth = m.link_width === 'auto';
-        var widthMode = h('select', { name: 'link_width_mode' }, [
-            h('option', { value: 'auto', text: t('From the bandwidth'), selected: autoWidth }),
-            h('option', { value: 'fixed', text: t('Fixed'), selected: !autoWidth })
-        ]);
-        var widthPx = h('input', { name: 'link_width', type: 'number', min: 1, max: 999, value: autoWidth ? '' : m.link_width, placeholder: 'px', hidden: autoWidth });
-        widthMode.addEventListener('change', function () {
-            if (widthMode.value === 'auto') {
-                send([{ op: 'set_map', link_width: 'auto' }]);
-            } else {
-                widthPx.hidden = false;
-                widthPx.value = widthPx.value || '6';
-                send([{ op: 'set_map', link_width: widthPx.value }]);
-            }
-        });
-        widthPx.addEventListener('change', function () {
-            if (+widthPx.value >= 1) { send([{ op: 'set_map', link_width: String(Math.round(+widthPx.value)) }]); }
-        });
-
         return [
             h('h2', { text: t('Map') }),
             row(t('Title'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
-            row(t('Link width'), h('div', { 'class': 'pair' }, [widthMode, widthPx])),
-            h('p', { 'class': 'help', text: t('From the bandwidth: 2 px up to 1G, 4 px for 10G, 9 px for 100G… A link with its own width keeps it.') }),
+            propsButton('general', t('Map properties…')),
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) }),
             h('h3', { text: t('Shortcuts') }),
             help([
@@ -2087,7 +2068,20 @@
             out.push(row(t('Position'), h('div', { 'class': 'pair' }, [x, y])));
         }
         out.push(h('p', { 'class': 'help', text: t('Drag it on the map, or use the arrow keys. It lines up with the other objects while dragged.') }));
+        if (single && single.kind === 'legend') {
+            out.push(h('p', { 'class': 'help', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth.') }));
+        }
+        if (single && single.kind !== 'widthlegend') {
+            out.push(propsButton(single.kind === 'legend' ? 'legend' : single.kind === 'title' ? 'title' : 'timestamp', t('Text, font and colours…')));
+        }
         return out;
+    }
+
+    /** Opens the Map properties dialog (editor-mapprops.js) at a section */
+    function propsButton(section, text) {
+        return h('button', { type: 'button', 'class': 'props-open', text: text, onclick: function () {
+            if (window.WMEditor.openMapProperties) { window.WMEditor.openMapProperties(section); }
+        } });
     }
 
     function zonePanel(zones) {
@@ -2969,8 +2963,8 @@
         'zoom-fit': zoomFit
     };
 
-    $('#toolbar').addEventListener('click', function (evt) {
-        var b = evt.target.closest('button[data-cmd]');
+    document.addEventListener('click', function (evt) {
+        var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd]');
         if (b && state.textMode && b.dataset.cmd !== 'text-mode') {
             return;
         }
@@ -3007,6 +3001,9 @@
     function escape(target) {
         if (cancelDrag()) { return true; }
         if (menuOpen()) { closeMenu(); return true; }
+        var popover = null;
+        try { popover = $(':popover-open'); } catch (e) { /* no popover support */ }
+        if (popover) { popover.hidePopover(); return true; }
         if (!$('#layers-panel').hidden) {
             toggleLayersPanel(false);
             $('[data-cmd="layers"]').focus();
@@ -3112,6 +3109,10 @@
     window.WMEditor = {
         state: state, send: send, load: load, autoRoute: autoRoute, untangle: untangle, align: align,
         spreadApart: spreadApart, copy: copySelection, paste: paste, openMenu: openMenu, setLayer: setLayer,
-        openText: openText, closeText: closeText
+        openText: openText, closeText: closeText,
+        // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
+        t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
+        selected: selected
     };
+    document.dispatchEvent(new CustomEvent('wm-editor-ready'));
 })();

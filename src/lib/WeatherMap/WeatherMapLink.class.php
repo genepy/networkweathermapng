@@ -870,7 +870,9 @@ class WeatherMapLink extends WeatherMapItem {
 				}
 			}
 
-			if ($output != '') {
+			// a template that sets nothing of its own is still written:
+			// the links that name it in TEMPLATE need it to exist
+			if ($output != '' || ($this->a === null && $this->name != 'DEFAULT')) {
 				$output = 'LINK ' . $this->name . EOL . $output . EOL;
 			}
 		}

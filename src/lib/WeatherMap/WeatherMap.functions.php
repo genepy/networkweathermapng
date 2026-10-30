@@ -1964,6 +1964,10 @@ function wimagefilledrectangle( $image ,$x1, $y1, $x2, $y2, $color ) {
 
 	metadump("FRECT $x1 $y1 $x2 $y2 $r $g $b $a");
 
+	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+		WeatherMapSvg::$active->rect((int) $x1, (int) $y1, (int) $x2, (int) $y2, $color, true);
+	}
+
 	return(imagefilledrectangle($image, (int) $x1, (int) $y1, (int) $x2, (int) $y2, $color));
 }
 
@@ -1985,7 +1989,20 @@ function wimagerectangle($image ,$x1, $y1, $x2, $y2, $color) {
 
 	metadump("RECT $x1 $y1 $x2 $y2 $r $g $b $a");
 
+	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+		WeatherMapSvg::$active->rect((int) $x1, (int) $y1, (int) $x2, (int) $y2, $color, false);
+	}
+
 	return(imagerectangle($image, (int) $x1, (int) $y1, (int) $x2, (int) $y2, $color));
+}
+
+/** imageline(), also reported to the SVG collector */
+function wimageline($image, $x1, $y1, $x2, $y2, $color) {
+	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+		WeatherMapSvg::$active->line((int) $x1, (int) $y1, (int) $x2, (int) $y2, $color);
+	}
+
+	return imageline($image, (int) $x1, (int) $y1, (int) $x2, (int) $y2, $color);
 }
 
 function wimagepolygon($image, $points, $num_points, $color) {

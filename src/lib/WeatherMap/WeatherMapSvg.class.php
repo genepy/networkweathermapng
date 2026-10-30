@@ -4,9 +4,9 @@
  *
  * The PNG renderer stays the reference: while a collector is active, the
  * drawing helpers (wimagefilledpolygon, wimagepolygon, myimagestring, node
- * blits) report each shape here as well. Links, link labels and node labels
- * come out as vectors; icons, the background picture and the map furniture
- * (title, legend, timestamp) are embedded as images.
+ * blits) report each shape here as well. Links, link labels, node labels and
+ * the map furniture (title, legends, timestamps) come out as vectors; icons
+ * without an .svg twin and the background picture are embedded as images.
  *
  * Usage:
  *   $svg = WeatherMapSvg::render($map);            // after ReadConfig/ReadData
@@ -23,6 +23,10 @@ class WeatherMapSvg {
 	/** What the shapes being drawn are for, such as "bwlabel-in" */
 	var $role = null;
 	var $options = array();
+	/** Other GD images whose drawing is part of the map: id => [dx, dy] */
+	var $adopted = array();
+	/** Offset of the image accepted last, applied to what is recorded next */
+	var $offset = array(0, 0);
 
 	function __construct(&$map, $options = array()) {
 		$this->map = $map;
@@ -53,8 +57,77 @@ class WeatherMapSvg {
 		$this->image = $image;
 	}
 
+	/**
+	 * Whether shapes drawn on $image are recorded. A true answer also sets
+	 * the offset applied to the shape reported next.
+	 */
 	function accepts($image) {
-		return $this->image !== null && $image === $this->image;
+		if ($this->image === null || !is_object($image)) {
+			return false;
+		}
+		if ($image === $this->image) {
+			$this->offset = array(0, 0);
+			return true;
+		}
+		$id = spl_object_id($image);
+		if (isset($this->adopted[$id]) && $this->adopted[$id][0] === $image) {
+			$this->offset = array($this->adopted[$id][1], $this->adopted[$id][2]);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * A scratch image (such as a legend box) that is later copied onto the
+	 * map at ($dx, $dy): what is drawn on it is recorded at that place.
+	 */
+	function adopt($image, $dx, $dy) {
+		if (is_object($image)) {
+			$this->adopted[spl_object_id($image)] = array($image, $dx, $dy);
+		}
+	}
+
+	/**
+	 * A GD rectangle. Only recorded for a map item (the furniture): the
+	 * canvas fill is reported by background().
+	 */
+	function rect($x1, $y1, $x2, $y2, $colour, $filled) {
+		if ($this->owner === null) {
+			return;
+		}
+		$rgba = $this->rgba($colour);
+		if (!$rgba) {
+			return;
+		}
+		list($dx, $dy) = $this->offset;
+		$this->items[] = array(
+			'type'   => 'rect',
+			'owner'  => $this->owner,
+			'x1'     => min($x1, $x2) + $dx,
+			'y1'     => min($y1, $y2) + $dy,
+			'x2'     => max($x1, $x2) + $dx,
+			'y2'     => max($y1, $y2) + $dy,
+			'colour' => $rgba,
+			'filled' => $filled,
+		);
+	}
+
+	/** A one-pixel GD line, recorded for a map item only */
+	function line($x1, $y1, $x2, $y2, $colour) {
+		if ($this->owner === null) {
+			return;
+		}
+		$rgba = $this->rgba($colour);
+		if (!$rgba) {
+			return;
+		}
+		list($dx, $dy) = $this->offset;
+		$this->items[] = array(
+			'type'   => 'line',
+			'owner'  => $this->owner,
+			'points' => array($x1 + $dx, $y1 + $dy, $x2 + $dx, $y2 + $dy),
+			'colour' => $rgba,
+		);
 	}
 
 	/** Everything recorded until the next call belongs to this map item. */
@@ -73,6 +146,7 @@ class WeatherMapSvg {
 	function polygon($points, $colour, $filled) {
 		$rgba = $this->rgba($colour);
 		$last = count($this->items) - 1;
+		$points = $this->shift(array_values($points));
 
 		// An outline drawn right after the fill of the same shape belongs to it
 		if (!$filled && $last >= 0 && $this->items[$last]['type'] == 'polygon'
@@ -85,13 +159,15 @@ class WeatherMapSvg {
 			'type'   => 'polygon',
 			'owner'  => $this->owner,
 			'role'   => $this->role,
-			'points' => array_values($points),
+			'points' => $points,
 			'fill'   => $filled ? $rgba : null,
 			'stroke' => $filled ? null : $rgba,
 		);
 	}
 
 	function text($fontnumber, $x, $y, $string, $colour, $angle) {
+		$x += $this->offset[0];
+		$y += $this->offset[1];
 		$this->items[] = array(
 			'type'   => 'text',
 			'owner'  => $this->owner,
@@ -126,6 +202,18 @@ class WeatherMapSvg {
 		}
 
 		$this->items[] = array_merge(array('type' => 'node', 'owner' => $this->owner), $node->svgparts);
+	}
+
+	/** Flat x, y list moved by the current offset */
+	function shift($points) {
+		if ($this->offset[0] == 0 && $this->offset[1] == 0) {
+			return $points;
+		}
+		for ($i = 0; $i + 1 < count($points); $i += 2) {
+			$points[$i] += $this->offset[0];
+			$points[$i + 1] += $this->offset[1];
+		}
+		return $points;
 	}
 
 	/** A transparent layer painted with things we do not draw as vectors. */
@@ -283,6 +371,25 @@ class WeatherMapSvg {
 						$item['dashed'] ? sprintf(' stroke-dasharray="%s"', self::num(6 + 2 * $item['width'])) : '');
 				}
 				return $s;
+
+			case 'rect':
+				// GD fills both end pixels; its outline is a 1 px line on them
+				if ($item['filled']) {
+					return sprintf('<rect x="%s" y="%s" width="%s" height="%s"%s shape-rendering="crispEdges"/>',
+						self::num($item['x1']), self::num($item['y1']),
+						self::num($item['x2'] - $item['x1'] + 1), self::num($item['y2'] - $item['y1'] + 1),
+						self::paint('fill', $item['colour']));
+				}
+				return sprintf('<rect x="%s" y="%s" width="%s" height="%s" fill="none" stroke-width="1"%s shape-rendering="crispEdges"/>',
+					self::num($item['x1'] + 0.5), self::num($item['y1'] + 0.5),
+					self::num($item['x2'] - $item['x1']), self::num($item['y2'] - $item['y1']),
+					self::paint('stroke', $item['colour']));
+
+			case 'line':
+				$p = $item['points'];
+				return sprintf('<line x1="%s" y1="%s" x2="%s" y2="%s" stroke-width="1"%s shape-rendering="crispEdges"/>',
+					self::num($p[0] + 0.5), self::num($p[1] + 0.5), self::num($p[2] + 0.5), self::num($p[3] + 0.5),
+					self::paint('stroke', $item['colour']));
 
 			case 'raster':
 				return sprintf('<image class="wm-furniture" pointer-events="none" x="0" y="0" width="%d" height="%d" href="%s"/>', $this->map->width, $this->map->height, $item['href']);

@@ -59,6 +59,12 @@
         #tb_preview, #tb_viewmap {
             background: #13324a;
         }
+        #tb_neweditor {
+            background: #2563eb;
+        }
+        #tb_neweditor:hover {
+            background: #1d4ed8;
+        }
         #tb_preview:hover, #tb_viewmap:hover {
             background: #1f5070;
         }
@@ -543,6 +549,7 @@
     <div id="toolbar">
         <ul>
             <li class="back-btn" onclick="window.location.href='/editor'">← Back to<br>Map List</li>
+            <li class="tb_active" id="tb_neweditor" title="<?= e__('Open this map in the new SVG editor') ?>"><?= e__('New editor') ?></li>
             <li class="tb_active" id="tb_addnode">Add<br>Node</li>
             <li class="tb_active" id="tb_addlink">Add<br>Link</li>
             <li class="tb_active" id="tb_poslegend">Position<br>Legend</li>
@@ -1892,6 +1899,11 @@
 
     document.getElementById('mapPreview').onclick = function() {
         showMapPreview(false);
+    };
+
+    document.getElementById('tb_neweditor').onclick = function(e) {
+        e.preventDefault();
+        window.location.href = '/editor/edit/<?= (int) $mapId ?>';
     };
 
     document.getElementById('tb_viewmap').onclick = function(e) {

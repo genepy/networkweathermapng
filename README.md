@@ -248,9 +248,9 @@ and saves each change straight into the map's `.conf` file.
   icon (`LABELOFFSET`).
 - **Add**: drag a node or an icon from the left panel, or Ctrl+click an
   empty spot.
-- **Edit**: the right panel changes every selected item at once. With
-  nothing selected, it shows the map settings, among them the width of the
-  links: fixed, or from the bandwidth (`WIDTH auto` in `LINK DEFAULT`).
+- **Edit**: the right panel changes every selected item at once. The
+  width of all the links of a map is set in *Map properties* (a number of
+  pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
   the links between them, also into another map open in another tab (the
   copy is kept in the browser). Pasted items take free names (`name_2`…),
