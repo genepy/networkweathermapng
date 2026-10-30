@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| More open-source fonts | `claude/more-fonts` | Bundling Fira Sans, Barlow Semi Condensed, IBM Plex Mono; Fonts tab in Map properties |
 
 ## Paused
 
@@ -60,7 +60,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Editor: clearer layers note | The Layers panel note "Only in this editor, in this browser." is unclear: say that hiding a layer only changes this editor view, is remembered in this browser and is not saved in the map |
 | Editor: custom layers | User-defined layers: name a group of nodes, or a set of nodes and links, then show, hide or lock it as a whole |
 | Modern legend styles | Several styles for the legends and labels (traffic load scale, "Created:" timestamp…) with a more modern look, chosen per map |
-| More open-source fonts | Bundle a few modern open-source fonts (licences in THIRD-PARTY-NOTICES.md) usable in SVG and PNG output |
 | Map recording and playback | Record a map's states over a period (for example the last 24 hours) and play them back as an animation. Off by default, switched on per map, and the admin can disable the feature to protect the server (storage and polling load) |
 
 ## Stale branches
