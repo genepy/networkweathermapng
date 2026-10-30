@@ -193,7 +193,8 @@ return [
     // Zones
     'Zone' => 'Zone',
     ':n zones' => ':n zones',
-    'Drag to resize the zone' => 'Faire glisser pour redimensionner la zone',
+    'Drag to resize the zone (Shift keeps proportions)' => 'Faire glisser pour redimensionner la zone (Maj garde les proportions)',
+    'Drag to resize the zone on this side' => 'Faire glisser pour redimensionner la zone de ce côté',
     'Fill' => 'Remplissage',
     'Opacity (%)' => 'Opacité (%)',
     'Outline width' => 'Épaisseur du contour',
