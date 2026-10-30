@@ -314,7 +314,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 }
 #inspector input[type=color] { padding: 0 2px; height: 26px; }
 #inspector input[type=checkbox] { width: auto; }
-#inspector .pair { display: flex; gap: 4px; align-items: center; }
+#inspector .pair { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 #inspector .pair > * { flex: 1; }
 #inspector .pair > label { flex: 0 0 auto; white-space: nowrap; }
 #inspector .mixed::placeholder { font-style: italic; }
@@ -361,7 +361,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 
 #inspector .pair input[type=color] { flex: 0 0 34px; }
 #inspector .pair button { flex: 0 0 auto; }
-#inspector .pair input:not([type=color]) { min-width: 64px; }
+#inspector .pair input:not([type=color]) { min-width: 3.2em; }
 
 /* Interface picker of a link */
 #inspector .ds-what { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); }

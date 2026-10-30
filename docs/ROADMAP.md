@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Editor: resize icons | `claude/editor-icon-size` | Engine already reads ICON w h file; adding a corner handle and size fields |
+| (none) | | |
 
 ## Paused
 
@@ -72,6 +72,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #38 | Editor: resize node icons with a corner handle or width/height fields (ICON w h file), shapes get a size |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
