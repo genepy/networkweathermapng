@@ -61,6 +61,26 @@ final class MapEditorTest extends TestCase
         $this->assertEquals(700, $map->nodes['lyon']->zorder);
     }
 
+    public function testTheMapLinkWidthCanFollowTheBandwidth(): void
+    {
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['width' => 3]]]);
+        $this->editor->apply([['op' => 'set_map', 'link_width' => 'auto']]);
+
+        $map = $this->editor->load();
+        $this->assertSame('auto', $map->links['DEFAULT']->width);
+        $this->assertSame('auto', $map->links['core-paris']->width, 'inherited the old default');
+        $this->assertEquals(3, $map->links['core-lyon']->width, 'its own width is kept');
+        $this->assertStringContainsString("LINK DEFAULT\n\tWIDTH auto", str_replace("\r", '', (string) file_get_contents($this->file)));
+        $this->assertSame('auto', $this->drawnModel()['map']['link_width']);
+
+        $this->editor->apply([['op' => 'set_map', 'link_width' => '5']]);
+        $map = $this->editor->load();
+        $this->assertEquals(5, $map->links['core-paris']->width);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_map', 'link_width' => 'wide']]);
+    }
+
     public function testAddNodeAndLinkThenDeleteNodeRemovesItsLinks(): void
     {
         $result = $this->editor->apply([

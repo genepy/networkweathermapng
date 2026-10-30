@@ -104,6 +104,7 @@ return [
     'A link needs two different nodes' => 'Un lien doit relier deux nœuds différents',
     'Unknown editor setting: :key' => 'Réglage d’éditeur inconnu : :key',
     'Invalid background: :value' => 'Arrière-plan invalide : :value',
+    'Invalid link width: :value' => 'Largeur de lien invalide : :value',
     'Unknown node: :name' => 'Nœud inconnu : :name',
     'Unknown link: :name' => 'Lien inconnu : :name',
     'A position is [x, y]' => 'Une position s’écrit [x, y]',

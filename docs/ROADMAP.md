@@ -11,9 +11,7 @@ Last updated: 2026-10-27.
 
 ## In progress
 
-| Item | Branch | Notes |
-|------|--------|-------|
-| SVG editor polish | `claude/project-thread-g3jixk` | Ctrl+drag duplicates, distribute keeps groups together, link width from bandwidth, link labels kept above other links, readable traffic graph popup on large screens |
+Nothing is in progress right now.
 
 ## Paused
 
@@ -168,6 +166,7 @@ goes.
 
 | PR | Item |
 |----|------|
+| #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, map-wide link width from the bandwidth, link labels over other links, larger traffic graph |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |

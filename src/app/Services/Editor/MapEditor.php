@@ -686,6 +686,10 @@ class MapEditor
             $map->background = $bg;
         }
 
+        if (isset($op['link_width'])) {
+            $this->setDefaultLinkWidth($map, (string) $op['link_width']);
+        }
+
         if (isset($op['width']) || isset($op['height'])) {
             $w = max(1, (int) ($op['width'] ?? $map->width));
             $h = max(1, (int) ($op['height'] ?? $map->height));
@@ -695,6 +699,41 @@ class MapEditor
             } else {
                 $map->width = $w;
                 $map->height = $h;
+            }
+        }
+    }
+
+    /**
+     * The width of the links of the map: pixels, or "auto" to follow each
+     * link's bandwidth. It is the WIDTH of LINK DEFAULT; the links (and
+     * templates) that inherited the old value follow, the others keep
+     * their own width.
+     */
+    private function setDefaultLinkWidth(\WeatherMap $map, string $value): void
+    {
+        $value = strtolower(trim($value));
+        if ($value !== 'auto') {
+            if (!preg_match('/^\d{1,3}$/', $value) || (int) $value < 1) {
+                throw new InvalidArgumentException(__('Invalid link width: :value', ['value' => $value]));
+            }
+            $value = (int) $value;
+        }
+
+        if (!isset($map->links['DEFAULT'])) {
+            return;
+        }
+        $old = (string) $map->links['DEFAULT']->width;
+        $map->links['DEFAULT']->width = $value;
+
+        // templates come before the links that use them
+        $followed = ['DEFAULT' => true];
+        foreach ($map->links as $name => $link) {
+            if ($name === 'DEFAULT' || $name === ':: DEFAULT ::') {
+                continue;
+            }
+            if (isset($followed[$link->template]) && (string) $link->width === $old) {
+                $link->width = $value;
+                $followed[$name] = true;
             }
         }
     }
@@ -837,6 +876,7 @@ class MapEditor
                 'height' => (int) $map->height,
                 'title' => (string) $map->title,
                 'background' => (string) $map->background,
+                'link_width' => isset($map->links['DEFAULT']) ? (string) $map->links['DEFAULT']->width : '',
             ],
             'nodes' => $nodes,
             'links' => $links,

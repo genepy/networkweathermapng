@@ -1940,11 +1940,33 @@
         })));
         bg.addEventListener('change', function () { send([{ op: 'set_map', background: bg.value }]); });
 
+        // the WIDTH of LINK DEFAULT: links without a width of their own follow it
+        var autoWidth = m.link_width === 'auto';
+        var widthMode = h('select', { name: 'link_width_mode' }, [
+            h('option', { value: 'auto', text: t('From the bandwidth'), selected: autoWidth }),
+            h('option', { value: 'fixed', text: t('Fixed'), selected: !autoWidth })
+        ]);
+        var widthPx = h('input', { name: 'link_width', type: 'number', min: 1, max: 999, value: autoWidth ? '' : m.link_width, placeholder: 'px', hidden: autoWidth });
+        widthMode.addEventListener('change', function () {
+            if (widthMode.value === 'auto') {
+                send([{ op: 'set_map', link_width: 'auto' }]);
+            } else {
+                widthPx.hidden = false;
+                widthPx.value = widthPx.value || '6';
+                send([{ op: 'set_map', link_width: widthPx.value }]);
+            }
+        });
+        widthPx.addEventListener('change', function () {
+            if (+widthPx.value >= 1) { send([{ op: 'set_map', link_width: String(Math.round(+widthPx.value)) }]); }
+        });
+
         return [
             h('h2', { text: t('Map') }),
             row(t('Title'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
+            row(t('Link width'), h('div', { 'class': 'pair' }, [widthMode, widthPx])),
+            h('p', { 'class': 'help', text: t('From the bandwidth: 2 px up to 1G, 4 px for 10G, 9 px for 100G… A link with its own width keeps it.') }),
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) }),
             h('h3', { text: t('Shortcuts') }),
             help([
