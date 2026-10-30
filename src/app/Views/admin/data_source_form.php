@@ -1,6 +1,6 @@
 <div class="admin-container">
     <div class="page-header">
-        <h1><?= htmlspecialchars($title) ?></h1>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Data Sources'), '/admin/data-sources'], [$title]]) ?>
     </div>
     
     <?php

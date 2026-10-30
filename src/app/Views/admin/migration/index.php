@@ -1,8 +1,6 @@
 <div class="admin-container migration-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Migration') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Migration')]]) ?>
     </div>
 
     <section class="panel">

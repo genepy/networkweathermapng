@@ -115,9 +115,7 @@
     </style>
     <?php if (!$isFullscreen): ?>
         <div class="page-header">
-            <div class="breadcrumb">
-                <a href="/"><?= e__('Maps') ?></a> &raquo; <?= htmlspecialchars($map['title_cache'] ?: $map['name']) ?>
-            </div>
+            <?= breadcrumb([[__('Maps'), '/'], [$map['title_cache'] ?: $map['name']]]) ?>
             <div class="page-actions">
                 <?php if ($isSvg): ?>
                 <a href="<?= $svgFsUrl ?>" class="btn btn-secondary" id="wmv-fullscreen-link"><?= e__('Fullscreen') ?></a>
@@ -128,7 +126,7 @@
                 <a href="<?= $fsOrigUrl ?>&amp;view=png" class="btn btn-secondary"><?= e__('Fullscreen (Original)') ?></a>
                 <?php endif; ?>
                 <a href="<?= $previewUrl ?>" class="btn btn-success"><?= e__('Preview') ?></a>
-                <?php if ($auth->isAdmin()): ?>
+                <?php if ($auth->canEdit()): ?>
                 <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn btn-primary"><?= e__('Edit Map') ?></a>
                 <?php endif; ?>
             </div>

@@ -22,23 +22,12 @@ class EditorController extends BaseController
         $this->configPath = $this->config->getConfigsPath();
     }
     
-    public function index(array $params): void
-    {
-        $this->requireAdmin();
-        $maps = $this->mapService->getAllMaps();
-        
-        $this->render('editor/index', [
-            'maps' => $maps,
-            'title' => __('Map Editor'),
-        ]);
-    }
-    
     /**
      * Visual map editor - main entry point
      */
     public function edit(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         if ($id <= 0) {
@@ -94,7 +83,7 @@ class EditorController extends BaseController
 
     public function config(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
 
         $id = (int) ($params['id'] ?? 0);
         if ($id <= 0) {
@@ -122,7 +111,7 @@ class EditorController extends BaseController
      */
     public function draw(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         $selected = $_GET['selected'] ?? '';
@@ -200,7 +189,7 @@ class EditorController extends BaseController
      */
     public function getMapData(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         $map = $this->mapService->getMap($id);
@@ -242,7 +231,7 @@ class EditorController extends BaseController
      */
     public function getAreaData(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         $map = $this->mapService->getMap($id);
@@ -281,7 +270,7 @@ class EditorController extends BaseController
      */
     public function getMapJS(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         $map = $this->mapService->getMap($id);
@@ -321,7 +310,7 @@ class EditorController extends BaseController
     public function action(array $params): void
     {
         ob_start();
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         $action = $_REQUEST['action'] ?? '';
@@ -917,7 +906,7 @@ class EditorController extends BaseController
      */
     public function save(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         $config = $this->getInput('config', '');
@@ -945,7 +934,7 @@ class EditorController extends BaseController
      */
     public function preview(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $id = (int) ($params['id'] ?? 0);
         
@@ -975,7 +964,7 @@ class EditorController extends BaseController
      */
     public function loadAreaData(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $mapName = $_GET['mapname'] ?? '';
         if (!$mapName) {
@@ -1007,7 +996,7 @@ class EditorController extends BaseController
      */
     public function loadMapJavascript(array $params): void
     {
-        $this->requireAdmin();
+        $this->requireEditor();
         
         $mapName = $_GET['mapname'] ?? '';
         if (!$mapName) {

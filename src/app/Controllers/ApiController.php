@@ -32,7 +32,7 @@ class ApiController extends BaseController
         );
         
         // Filter by permissions
-        if ($this->config->isAuthEnabled() && !$this->auth->isAdmin()) {
+        if ($this->config->isAuthEnabled() && !$this->auth->canEdit()) {
             $maps = array_filter($maps, fn($map) => $this->auth->canViewMap((int) $map['id']));
             $maps = array_values($maps);
         }

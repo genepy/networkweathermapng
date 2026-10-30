@@ -1,12 +1,9 @@
-<div class="content-header">
-    <h1><?= e__('Database Integrity Check') ?></h1>
-    <div class="header-actions">
-        <a href="/admin" class="btn btn-secondary">← <?= e__('Back to Dashboard') ?></a>
-    </div>
+<div class="page-header">
+    <?= breadcrumb([[__('Admin'), '/admin'], [__('Database Integrity Check')]]) ?>
 </div>
-<br>
-<div class="card">
-    <div class="card-body">
+
+<div class="form-card">
+    <div>
         <?php if ($results['status'] === 'ok'): ?>
             <div class="alert alert-success">
                 <strong>✅ <?= e__('Database integrity check passed.') ?></strong> <?= e__('All required tables and columns are present.') ?>

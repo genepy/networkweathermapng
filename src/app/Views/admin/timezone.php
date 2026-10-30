@@ -3,9 +3,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
 ?>
 <div class="admin-timezone-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Time zone') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Time zone')]]) ?>
     </div>
 
     <form method="post" action="/admin/timezone">

@@ -1,9 +1,9 @@
-<div class="content-header">
-    <h1><?= htmlspecialchars($title ?? __('Change password')) ?></h1>
+<div class="page-header">
+    <?= breadcrumb([[$title ?? __('Change password')]]) ?>
 </div>
 
-<div class="card">
-    <div class="card-body">
+<div class="form-card">
+    <div>
         <form method="POST" action="/account/password">
             <div class="form-group">
                 <label for="current_password"><?= e__('Current password') ?> *</label>
