@@ -98,7 +98,7 @@ Used only for development and tests (not in the Docker image):
 
 ## Docker image
 
-The image is built from the official `php:8.5-fpm-alpine` image (PHP License
+The image is built from the official `php:8.5.12-fpm-alpine` image (PHP License
 3.01 for PHP, Alpine Linux packages under their own licenses) and adds Composer
 (MIT) and these Alpine packages:
 

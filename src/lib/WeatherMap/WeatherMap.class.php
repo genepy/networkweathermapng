@@ -559,6 +559,46 @@ class WeatherMap extends WeatherMapBase {
     }
 
 	/**
+	 * The built-in GD fonts draw single bytes in ISO-8859-2, while the
+	 * configuration is read as UTF-8: convert, so accents draw as accents.
+	 * Letters that ISO-8859-2 lacks (à, è, ê, ù, œ...) lose their accent
+	 * instead of turning into "?".
+	 */
+	static function gdfonttext($string) {
+		$string = (string) $string;
+		if (!preg_match('/[\x80-\xff]/', $string) || !mb_check_encoding($string, 'UTF-8')) {
+			return $string;
+		}
+		$out = '';
+		foreach (mb_str_split($string) as $char) {
+			$out .= self::gdfontchar($char);
+		}
+		return $out;
+	}
+
+	/** One UTF-8 character as ISO-8859-2 bytes, without its accent if it has no ISO-8859-2 form. */
+	private static function gdfontchar($char) {
+		static $ligatures = ['œ' => 'oe', 'Œ' => 'OE', 'æ' => 'ae', 'Æ' => 'AE', '€' => 'EUR'];
+		if (strlen($char) === 1) {
+			return $char;
+		}
+		$bytes = mb_convert_encoding($char, 'ISO-8859-2', 'UTF-8');
+		if (mb_convert_encoding($bytes, 'UTF-8', 'ISO-8859-2') === $char) {
+			return $bytes;
+		}
+		if (isset($ligatures[$char])) {
+			return $ligatures[$char];
+		}
+		if (class_exists('Normalizer')) {
+			$base = preg_replace('/\p{Mn}+/u', '', \Normalizer::normalize($char, \Normalizer::FORM_D));
+			if ($base !== $char && $base !== '' && $base !== null) {
+				return self::gdfontchar($base);
+			}
+		}
+		return '?';
+	}
+
+	/**
 	 * myimagestring - Function to draw a string on an image
 	 *
 	 * @param  object - An image object
@@ -598,7 +638,7 @@ class WeatherMap extends WeatherMapBase {
 			 * The x and y coordinates will be different due to the change between
 			 * imagestring and imagettftext as noted above
 			 */
-			imagestring($image, $fontnumber, $x, intval(round($y - imagefontheight($fontnumber))), $string, $colour);
+			imagestring($image, $fontnumber, $x, intval(round($y - imagefontheight($fontnumber))), self::gdfonttext($string), $colour);
 
 			if ($angle != 0) {
 				wm_warn("Angled text doesn't work with non-FreeType fonts [WMWARN02]");
@@ -612,7 +652,7 @@ class WeatherMap extends WeatherMapBase {
 			if ($this->fonts[$fontnumber]->type == 'gd') {
 				imagestring($image, $this->fonts[$fontnumber]->gdnumber,
 					$x, intval(round($y - imagefontheight($this->fonts[$fontnumber]->gdnumber))),
-					$string, $colour
+					self::gdfonttext($string), $colour
 				);
 
 				if ($angle != 0) {
@@ -630,7 +670,7 @@ class WeatherMap extends WeatherMapBase {
 		$maxlinelength = 0;
 
 		foreach($lines as $line) {
-			$l = strlen($line);
+			$l = strlen(self::gdfonttext($line));
 
 			if ($l > $maxlinelength) {
 				$maxlinelength = $l;
@@ -2500,6 +2540,11 @@ class WeatherMap extends WeatherMapBase {
 
 		foreach($lines as $buffer) {
 			$linematched = 0;
+
+			// older maps are often saved in Latin-1 / Windows-1252: read them as UTF-8
+			if (!mb_check_encoding($buffer, 'UTF-8')) {
+				$buffer = mb_convert_encoding($buffer, 'UTF-8', 'Windows-1252');
+			}
 
 			$linecount++;
 

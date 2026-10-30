@@ -21,7 +21,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Observium Integration** - API, MySQL or RRD, Community edition included
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
-- **Map Cycling** - Auto-rotate through maps for NOC displays
+- **Map Cycling** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Admin > Kiosk mode)
 - **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
@@ -454,7 +454,11 @@ and are listed with a link to their review page.
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.1+, on a release that has the latest security fixes. CVE-2026-109618
+  and CVE-2026-109619 (remote code execution, October 2026) are fixed in
+  PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35. PHP 8.1 has no official fix: use a
+  distribution package that backports it, or upgrade. The Docker image ships
+  PHP 8.5.12.
 - GD extension
 - PDO extension (SQLite or MySQL)
 - cURL extension

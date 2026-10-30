@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-27.
+Last updated: 2026-10-29.
 
 ## In progress
 
@@ -25,7 +25,6 @@ branch.
 | [SVG map furniture drawn as vectors](#svg-map-furniture-drawn-as-vectors) | `claude/project-thread-znx5hy` | #22 |
 | [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | #22 |
 | [Maps pages and editor role](#maps-pages-and-editor-role) | `claude/project-thread-x46foc` | #22 |
-| [Kiosk mode settings](#kiosk-mode-settings) | `claude/project-thread-shzu2l` | #22 |
 
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
@@ -113,47 +112,11 @@ themes, screenshots, open the PR.
 conflicts in `AdminController` and the admin views with the kiosk branch
 when rebasing.
 
-### Kiosk mode settings
-
-Branch `claude/project-thread-shzu2l`, commit 67e4ab0.
-
-**Done:** a global display time (default 30 s, 5 to 86400 s), and per map a
-zoom (Fit to screen, or 50 to 300 %) plus an optional display time that
-overrides the global one. They are stored in the existing `settings` table
-(`map_id` 0 holds `kiosk_duration`, `map_id` N holds `kiosk_zoom` and
-`kiosk_duration`): no schema change, and deleting a map already purges its
-rows. New page Admin > Kiosk mode at `/admin/kiosk` (admin only) with a
-dashboard tile. `/cycle` gives each map its own `setTimeout` duration.
-"Fit" scales the map up or down; a percentage applies to the natural size,
-centred and cropped. `/cycle?group=N` now works as a query parameter, which
-fixes the fullscreen link. Admins get a "Kiosk settings" button on the cycle
-page. French strings added, `i18n-check fr` shows 0 missing.
-
-Files: new `Services/KioskService.php`, `Views/admin/kiosk.php`,
-`tests/App/KioskServiceTest.php`; changed `AdminController::kiosk`,
-`MapController::cycle`, `Core/Application.php` (routes),
-`Views/admin/index.php`, `Views/maps/cycle.php`, `weathermap.css`
-(`.cycle-*`), `Lang/fr/admin.php` and `public.php`.
-
-**Decision:** the default changed from shrink-only to fit to screen, which
-also enlarges small maps.
-
-**Left:** rebase on `main`, run phpunit (`KioskServiceTest` only passed as a
-standalone script) and phpstan, check `/admin/kiosk` and `/cycle` in a
-browser (fullscreen and normal, fit and fixed zoom, light and dark themes),
-open the PR.
-
-**Gotchas:** a fresh database forces a password change for admin/admin, so
-set `ADMIN_PASSWORD`. With `php -S`, do not pass `index.php` as the router,
-or static assets return 404 and POSTs return 419. If "Maps pages and editor
-role" merges first, keep `kiosk()` admin only and check where the admin tile
-goes.
-
 ## Not started
 
 | Item | Notes |
 |------|-------|
-| Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps |
+| Map date after an import | The maintainer reports that a map's last-updated date stops changing after an import. Not reproduced in #27 (the drawn timestamp, the viewer's "Updated at" and `last_run` all change on a fresh import and on "Convert again"). Ask the maintainer where the date is shown and with which map |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 
 ## Stale branches
@@ -167,6 +130,9 @@ goes.
 | PR | Item |
 |----|------|
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, map-wide link width from the bandwidth, link labels over other links, larger traffic graph |
+| #29 | Configure kiosk mode per map: zoom and display time |
+| #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
+| #27 | Map import fixes: Latin-1 maps (php-weathermap 0.97 and older), compare view of large maps |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |

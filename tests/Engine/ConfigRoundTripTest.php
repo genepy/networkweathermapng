@@ -49,6 +49,25 @@ final class ConfigRoundTripTest extends TestCase
         $this->assertFileEquals($first, $second, 'Writing the same map twice must give the same file');
     }
 
+    public function testLatin1ConfigIsReadAsUtf8(): void
+    {
+        $file = TESTS_OUTPUT . '/latin1.conf';
+        file_put_contents($file, "TITLE R\xe9seau\nNODE a\n\tLABEL \xe9t\xe9\n\tPOSITION 10 10\n");
+
+        $map = $this->load($file);
+
+        $this->assertSame('Réseau', $map->title);
+        $this->assertSame('été', $map->nodes['a']->label);
+        $this->assertSame("\xe9t\xe9", \WeatherMap::gdfonttext('été'), 'built-in GD fonts draw ISO-8859-2 bytes');
+    }
+
+    public function testGdFontTextDropsAccentsLatin2Lacks(): void
+    {
+        $this->assertSame("a la fete, \xe9t\xe9 c\xf4tier", \WeatherMap::gdfonttext('à la fête, été côtier'));
+        $this->assertSame('OEuvre ? 5 EUR', \WeatherMap::gdfonttext('Œuvre ✓ 5 €'));
+        $this->assertSame('plain', \WeatherMap::gdfonttext('plain'));
+    }
+
     private function load(string $file): \WeatherMap
     {
         $map = new \WeatherMap();

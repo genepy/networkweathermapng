@@ -9,6 +9,7 @@ namespace App\Controllers;
 
 use App\Services\MapService;
 use App\Services\DataSourceService;
+use App\Services\KioskService;
 
 class MapController extends BaseController
 {
@@ -787,13 +788,14 @@ class MapController extends BaseController
     {
         $this->requireAuth();
         
-        $groupId = (int) ($params['group'] ?? 0);
+        $groupId = (int) ($params['group'] ?? $this->getInput('group', 0));
         $fullscreen = (bool) $this->getInput('fullscreen', false);
         
         $maps = $this->getMapsForUser($groupId);
         
         $this->render('maps/cycle', [
             'maps' => $maps,
+            'kiosk' => (new KioskService($this->database))->resolve($maps),
             'groupId' => $groupId,
             'fullscreen' => $fullscreen,
             'refreshInterval' => (int) $this->config->get('MAP_REFRESH_INTERVAL', 300),
