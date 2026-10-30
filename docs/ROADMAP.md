@@ -11,9 +11,7 @@ Last updated: 2026-10-30.
 
 ## In progress
 
-| Item | Branch |
-|------|--------|
-| Map time zone: a default for all maps and an override per map (Admin > Time zone) | `claude/project-thread-2vmvd2` |
+Nothing is in progress right now.
 
 ## Paused
 
@@ -131,6 +129,7 @@ when rebasing.
 
 | PR | Item |
 |----|------|
+| #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
 | #29 | Configure kiosk mode per map: zoom and display time |
 | #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
 | #27 | Map import fixes: Latin-1 maps (php-weathermap 0.97 and older), compare view of large maps |
