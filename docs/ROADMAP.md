@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Link data source picker | `claude/project-thread-6ggwxe` | Search boxes for devices (name) and interfaces (name or number) in the link inspector; data source asked for only when several exist; summary with a Change button once picked. Browser-checked with stubbed data sources, pull request open |
+| (none) | | |
 
 ## Paused
 
@@ -92,6 +92,7 @@ when rebasing.
 
 | PR | Item |
 |----|------|
+| #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
 | #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
 | #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
