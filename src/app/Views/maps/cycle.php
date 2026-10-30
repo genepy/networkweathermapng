@@ -12,10 +12,7 @@
         body { margin: 0; padding: 0; background: var(--bg-color); }
         .cycle-fullscreen { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
         .cycle-controls { background: rgba(0,0,0,0.8); padding: 10px; color: #fff; text-align: center; }
-        .cycle-map-container { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .cycle-map-container img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .cycle-map { display: none; }
-        .cycle-map.active { display: block; }
+        .cycle-map-container { flex: 1; height: auto; min-height: 0; overflow: hidden; }
     </style>
 </head>
 <body>
@@ -34,6 +31,9 @@
         </span>
         <?php if (!$fullscreen): ?>
         <a href="/cycle?fullscreen=1&group=<?= $groupId ?>" class="btn btn-sm"><?= e__('Fullscreen') ?></a>
+        <?php if ($auth->isAdmin()): ?>
+        <a href="/admin/kiosk" class="btn btn-sm"><?= e__('Kiosk settings') ?></a>
+        <?php endif; ?>
         <a href="/" class="btn btn-sm"><?= e__('Exit') ?></a>
         <?php else: ?>
         <a href="/cycle?group=<?= $groupId ?>" class="btn btn-sm"><?= e__('Exit Fullscreen') ?></a>
@@ -41,8 +41,13 @@
     </div>
     
     <div class="cycle-map-container">
-        <?php foreach ($maps as $index => $map): ?>
-        <div class="cycle-map <?= $index === 0 ? 'active' : '' ?>" data-map-id="<?= $map['id'] ?>">
+        <?php foreach ($maps as $index => $map):
+            $settings = $kiosk[(int) $map['id']] ?? ['zoom' => 0, 'duration' => 30];
+        ?>
+        <div class="cycle-map <?= $settings['zoom'] ? 'zoom-fixed' : 'zoom-fit' ?> <?= $index === 0 ? 'active' : '' ?>"
+             data-map-id="<?= $map['id'] ?>"
+             data-zoom="<?= (int) $settings['zoom'] ?>"
+             data-duration="<?= (int) $settings['duration'] ?>">
             <img src="/map/<?= $map['id'] ?>/image?t=<?= time() ?>" 
                  alt="<?= htmlspecialchars($map['name']) ?>">
         </div>
@@ -55,7 +60,18 @@
     const maps = document.querySelectorAll('.cycle-map');
     const totalMaps = maps.length;
     const refreshInterval = <?= $refreshInterval ?> * 1000;
-    const cycleInterval = Math.max(5000, refreshInterval / totalMaps);
+    
+    // A fixed zoom is a percentage of the map's own size
+    maps.forEach(function(mapDiv) {
+        const zoom = parseInt(mapDiv.dataset.zoom, 10) || 0;
+        const img = mapDiv.querySelector('img');
+        if (!zoom || !img) return;
+        function size() {
+            if (img.naturalWidth) img.style.width = (img.naturalWidth * zoom / 100) + 'px';
+        }
+        img.addEventListener('load', size);
+        if (img.complete) size();
+    });
     
     let currentIndex = 0;
     let isPaused = false;
@@ -78,13 +94,18 @@
         showMap(currentIndex);
     }
     
+    // Each map stays on screen for its own display time
     function startCycle() {
-        if (timer) clearInterval(timer);
-        timer = setInterval(nextMap, cycleInterval);
+        stopCycle();
+        const seconds = parseInt(maps[currentIndex].dataset.duration, 10) || 30;
+        timer = setTimeout(function() {
+            nextMap();
+            startCycle();
+        }, Math.max(5, seconds) * 1000);
     }
     
     function stopCycle() {
-        if (timer) clearInterval(timer);
+        if (timer) clearTimeout(timer);
         timer = null;
     }
     

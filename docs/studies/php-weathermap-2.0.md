@@ -37,7 +37,7 @@ copied.
 | Comments that follow curved links (`COMMENTCURVE 0/1`, default on) | Missing. Comments are straight; `COMMENTCURVE` is "Unrecognised config" on import |
 | Traffic colour presets for the DEFAULT scale (7 palettes) | Missing. The SVG editor has no colour scale editor at all |
 | Optional pulse/glow on links at 80 % load or more (`SET traffic_pulse`) | Missing |
-| Separate icon and background libraries: upload, delete, searchable picker | Partly: a picker lists files, but upload only happens through a migration zip |
+| Separate icon and background libraries: upload, delete, searchable picker | Icons done in #25 (themes, add and remove from the editor). Backgrounds still have no upload outside a migration zip |
 | Background fit or stretch to the canvas (`SET background_sizing fit/stretch/image`) | Missing |
 | Node label position presets inside the icon: top, centre, bottom (`SET editor_label_position N60/C/S60`) | Partly: the label can be dragged (#23); no one-click presets |
 | Readable defaults for a new blank map (1400 x 750, compact arrows, TrueType font) | To check: new maps start from our own template |
@@ -53,7 +53,7 @@ copied.
    `editor_note`, `editor_note_align`, `editor_note_escaped`,
    `traffic_pulse`, `background_sizing` and `editor_label_position`. Notes
    become our notes (item 2), the others map to items 4 to 7. Escaped note
-   text decodes `\\` and `\n`. Fits the existing "Map import fixes" item.
+   text decodes `\\` and `\n`. Its own roadmap item, after the import fixes of #27.
 2. **Map notes.** A free-text block (several lines, left/centre/right,
    font, colour, optional box) placed anywhere, drawn sharp in the SVG and
    PNG renders, editable in the SVG editor. Useful for legends, contacts,
@@ -68,10 +68,8 @@ copied.
 5. **Comments along curved links.** Draw IN/OUT comments on a text path that
    follows the curve, falling back to straight text when the bend is too
    tight. Helps with the maintainer's "labels hidden by other links" request.
-6. **Icon and background library.** Upload, rename, delete and search
-   images from the editor, icons and backgrounds kept apart, SVG sanitised
-   (we already have `SvgSanitizer`). This is the maintainer's "network icons
-   with easy add and remove in the editor" request: do it there.
+6. **Background library.** Upload, delete and search backgrounds from the
+   editor, the way #25 now does for icons.
 7. **Background fit or stretch.** One map setting: natural size, fit
    (keep the ratio) or stretch to the canvas.
 8. **Label position presets.** Top, centre or bottom of the icon in one

@@ -11,7 +11,9 @@ Last updated: 2026-10-29.
 
 ## In progress
 
-Nothing is in progress right now.
+| Item | Branch | Notes |
+|------|--------|-------|
+| (none) | | |
 
 ## Paused
 
@@ -22,29 +24,12 @@ branch.
 
 | Item | Branch | Based on |
 |------|--------|----------|
-| [SVG map furniture drawn as vectors](#svg-map-furniture-drawn-as-vectors) | `claude/project-thread-znx5hy` | #22 |
 | [Link data source picker](#link-data-source-picker) | `claude/project-thread-6ggwxe` | #22 |
 | [Maps pages and editor role](#maps-pages-and-editor-role) | `claude/project-thread-x46foc` | #22 |
-| [Kiosk mode settings](#kiosk-mode-settings) | `claude/project-thread-shzu2l` | #22 |
 
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
 not run on these branches. Run them before opening the PR.
-
-### SVG map furniture drawn as vectors
-
-Branch `claude/project-thread-znx5hy`, commit 480065c. Not confirmed by its agent yet: written from the commit.
-
-**Done:** the title, legends and timestamps of the SVG render are each their
-own group (`data-kind` legend, title, timestamp, widthlegend) made of rects,
-lines and text, instead of one transparent bitmap over the whole map. Legend
-boxes drawn on a scratch image are recorded at their `KEYPOS` through
-`WeatherMapSvg::adopt()`. Files: `WeatherMap.class.php`,
-`WeatherMap.functions.php`, `WeatherMapSvg.class.php`, `compat.php`,
-`tests/Engine/SvgRenderTest.php`.
-
-**Left:** rebase on `main` (one PR behind), run phpunit, check the
-result in the SVG editor and the viewer, open the PR.
 
 ### Link data source picker
 
@@ -113,53 +98,18 @@ themes, screenshots, open the PR.
 conflicts in `AdminController` and the admin views with the kiosk branch
 when rebasing.
 
-### Kiosk mode settings
-
-Branch `claude/project-thread-shzu2l`, commit 67e4ab0.
-
-**Done:** a global display time (default 30 s, 5 to 86400 s), and per map a
-zoom (Fit to screen, or 50 to 300 %) plus an optional display time that
-overrides the global one. They are stored in the existing `settings` table
-(`map_id` 0 holds `kiosk_duration`, `map_id` N holds `kiosk_zoom` and
-`kiosk_duration`): no schema change, and deleting a map already purges its
-rows. New page Admin > Kiosk mode at `/admin/kiosk` (admin only) with a
-dashboard tile. `/cycle` gives each map its own `setTimeout` duration.
-"Fit" scales the map up or down; a percentage applies to the natural size,
-centred and cropped. `/cycle?group=N` now works as a query parameter, which
-fixes the fullscreen link. Admins get a "Kiosk settings" button on the cycle
-page. French strings added, `i18n-check fr` shows 0 missing.
-
-Files: new `Services/KioskService.php`, `Views/admin/kiosk.php`,
-`tests/App/KioskServiceTest.php`; changed `AdminController::kiosk`,
-`MapController::cycle`, `Core/Application.php` (routes),
-`Views/admin/index.php`, `Views/maps/cycle.php`, `weathermap.css`
-(`.cycle-*`), `Lang/fr/admin.php` and `public.php`.
-
-**Decision:** the default changed from shrink-only to fit to screen, which
-also enlarges small maps.
-
-**Left:** rebase on `main`, run phpunit (`KioskServiceTest` only passed as a
-standalone script) and phpstan, check `/admin/kiosk` and `/cycle` in a
-browser (fullscreen and normal, fit and fixed zoom, light and dark themes),
-open the PR.
-
-**Gotchas:** a fresh database forces a password change for admin/admin, so
-set `ADMIN_PASSWORD`. With `php -S`, do not pass `index.php` as the router,
-or static assets return 404 and POSTs return 419. If "Maps pages and editor
-role" merges first, keep `kiosk()` admin only and check where the admin tile
-goes.
-
 ## Not started
 
 | Item | Notes |
 |------|-------|
-| Map import fixes | Fix the remaining differences when importing php-weathermap maps (`src/app/Services/Migration/`, `tests/fixtures/migration/`). Ask the maintainer for the failing maps. Include the PHP Weathermap 2.0 keywords and hints listed in [the study](studies/php-weathermap-2.0.md) item 1 |
+| Map date after an import | The maintainer reports that a map's last-updated date stops changing after an import. Not reproduced in #27 (the drawn timestamp, the viewer's "Updated at" and `last_run` all change on a fresh import and on "Convert again"). Ask the maintainer where the date is shown and with which map |
+| Import PHP Weathermap 2.0 maps | Read `COMMENTCURVE` and the hints `editor_note`, `editor_note_align`, `editor_note_escaped`, `traffic_pulse`, `background_sizing` and `editor_label_position` without warnings. See [the study](studies/php-weathermap-2.0.md) item 1 |
 | SVG editor polish | Smaller editing improvements after #23. Ask the maintainer for the current list |
 | Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
 | Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |
 | Highlight saturated links | Pulse or glow on links at 80 % or more in the viewer, per-map switch, off under `prefers-reduced-motion`. Study item 4 |
 | Comments along curved links | IN/OUT comments on a text path following the curve, straight fallback. Study item 5 |
-| Icon and background library | Upload, delete and search images from the editor, icons and backgrounds apart, SVG sanitised. Study item 6 |
+| Background library | Upload, delete and search backgrounds from the editor, as #25 does for icons. Study item 6 |
 | Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
@@ -176,6 +126,10 @@ goes.
 | PR | Item |
 |----|------|
 | #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |
+| #25 | SVG editor interface and icons: movable toolbars, icon library with themes and the Affinity and Ansible sets, Map properties, vector legends |
+| #29 | Configure kiosk mode per map: zoom and display time |
+| #28 | Update PHP for CVE-2026-109618 and CVE-2026-109619 (8.5.12 in the image and CI, Alpine 3.23 for the Observium testbed) |
+| #27 | Map import fixes: Latin-1 maps (php-weathermap 0.97 and older), compare view of large maps |
 | #23 | Improve canvas interactions in the SVG editor |
 | #22 | Show the traffic graph of a link and open its monitoring page |
 | #21 | Test and build on the latest stable PHP only (8.5) |

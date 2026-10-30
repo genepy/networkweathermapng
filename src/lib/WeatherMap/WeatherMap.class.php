@@ -557,6 +557,46 @@ class WeatherMap extends WeatherMapBase {
     }
 
 	/**
+	 * The built-in GD fonts draw single bytes in ISO-8859-2, while the
+	 * configuration is read as UTF-8: convert, so accents draw as accents.
+	 * Letters that ISO-8859-2 lacks (à, è, ê, ù, œ...) lose their accent
+	 * instead of turning into "?".
+	 */
+	static function gdfonttext($string) {
+		$string = (string) $string;
+		if (!preg_match('/[\x80-\xff]/', $string) || !mb_check_encoding($string, 'UTF-8')) {
+			return $string;
+		}
+		$out = '';
+		foreach (mb_str_split($string) as $char) {
+			$out .= self::gdfontchar($char);
+		}
+		return $out;
+	}
+
+	/** One UTF-8 character as ISO-8859-2 bytes, without its accent if it has no ISO-8859-2 form. */
+	private static function gdfontchar($char) {
+		static $ligatures = ['œ' => 'oe', 'Œ' => 'OE', 'æ' => 'ae', 'Æ' => 'AE', '€' => 'EUR'];
+		if (strlen($char) === 1) {
+			return $char;
+		}
+		$bytes = mb_convert_encoding($char, 'ISO-8859-2', 'UTF-8');
+		if (mb_convert_encoding($bytes, 'UTF-8', 'ISO-8859-2') === $char) {
+			return $bytes;
+		}
+		if (isset($ligatures[$char])) {
+			return $ligatures[$char];
+		}
+		if (class_exists('Normalizer')) {
+			$base = preg_replace('/\p{Mn}+/u', '', \Normalizer::normalize($char, \Normalizer::FORM_D));
+			if ($base !== $char && $base !== '' && $base !== null) {
+				return self::gdfontchar($base);
+			}
+		}
+		return '?';
+	}
+
+	/**
 	 * myimagestring - Function to draw a string on an image
 	 *
 	 * @param  object - An image object
@@ -596,7 +636,7 @@ class WeatherMap extends WeatherMapBase {
 			 * The x and y coordinates will be different due to the change between
 			 * imagestring and imagettftext as noted above
 			 */
-			imagestring($image, $fontnumber, $x, intval(round($y - imagefontheight($fontnumber))), $string, $colour);
+			imagestring($image, $fontnumber, $x, intval(round($y - imagefontheight($fontnumber))), self::gdfonttext($string), $colour);
 
 			if ($angle != 0) {
 				wm_warn("Angled text doesn't work with non-FreeType fonts [WMWARN02]");
@@ -610,7 +650,7 @@ class WeatherMap extends WeatherMapBase {
 			if ($this->fonts[$fontnumber]->type == 'gd') {
 				imagestring($image, $this->fonts[$fontnumber]->gdnumber,
 					$x, intval(round($y - imagefontheight($this->fonts[$fontnumber]->gdnumber))),
-					$string, $colour
+					self::gdfonttext($string), $colour
 				);
 
 				if ($angle != 0) {
@@ -628,7 +668,7 @@ class WeatherMap extends WeatherMapBase {
 		$maxlinelength = 0;
 
 		foreach($lines as $line) {
-			$l = strlen($line);
+			$l = strlen(self::gdfonttext($line));
 
 			if ($l > $maxlinelength) {
 				$maxlinelength = $l;
@@ -1616,6 +1656,9 @@ class WeatherMap extends WeatherMapBase {
 
 		$scale_im  = imagecreatetruecolor(intval(round($box_right+1)), intval(round($box_bottom+1)));
 		$scale_ref = 'gdref_legend_'.$scalename;
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+		}
 
 		// Start with a transparent box, in case the fill or outline colour is 'none'
 		imageSaveAlpha($scale_im, true);
@@ -1641,7 +1684,7 @@ class WeatherMap extends WeatherMapBase {
 			$dx = $p*$scalefactor;
 
 			if (($p % 25) == 0) {
-				imageline(
+				wimageline(
 					$scale_im,
 					intval(round($scale_left + $dx)),
 					intval(round($scale_top - $tileheight)),
@@ -1719,6 +1762,9 @@ class WeatherMap extends WeatherMapBase {
 
 		$scale_im  = imagecreatetruecolor(intval(round($box_right+1)), intval(round($box_bottom+1)));
 		$scale_ref = 'gdref_legend_'.$scalename;
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+		}
 
 		// Start with a transparent box, in case the fill or outline colour is 'none'
 		imageSaveAlpha($scale_im, true);
@@ -1757,7 +1803,7 @@ class WeatherMap extends WeatherMapBase {
 			}
 
 			if (($p % 25) == 0) {
-				imageline(
+				wimageline(
 					$scale_im,
 					intval(round($scale_left - $scalefactor)),
 					intval(round($scale_top + $dy)),
@@ -1882,6 +1928,9 @@ class WeatherMap extends WeatherMapBase {
 
 			$scale_im  = imagecreatetruecolor(intval(round($boxwidth+1)), intval(round($boxheight+1)));
 			$scale_ref = 'gdref_legend_' . $scalename;
+			if (WeatherMapSvg::$active) {
+				WeatherMapSvg::$active->adopt($scale_im, $this->keyx[$scalename], $this->keyy[$scalename]);
+			}
 
 			// Start with a transparent box, in case the fill or outline colour is 'none'
 			imageSaveAlpha($scale_im, true);
@@ -2472,6 +2521,11 @@ class WeatherMap extends WeatherMapBase {
 
 		foreach($lines as $buffer) {
 			$linematched = 0;
+
+			// older maps are often saved in Latin-1 / Windows-1252: read them as UTF-8
+			if (!mb_check_encoding($buffer, 'UTF-8')) {
+				$buffer = mb_convert_encoding($buffer, 'UTF-8', 'Windows-1252');
+			}
 
 			$linecount++;
 
@@ -3991,21 +4045,15 @@ class WeatherMap extends WeatherMapBase {
 
 				// all the map 'furniture' is fixed at z=1000
 				if ($z==1000) {
-					// for SVG output, the furniture goes on its own transparent layer
-					$main_image = $image;
-					if ($svg) {
-						$svg->begin('furniture', 'furniture');
-						$image = imagecreatetruecolor($this->width, $this->height);
-						imagesavealpha($image, true);
-						imagealphablending($image, false);
-						imagefilledrectangle($image, 0, 0, $this->width, $this->height, imagecolorallocatealpha($image, 0, 0, 0, 127));
-						imagealphablending($image, true);
-					}
-
+					// for SVG output, each piece of furniture is its own group
 					foreach ($this->colours as $scalename => $colours) {
 						wm_debug("Drawing KEY for $scalename if necessary.");
 
 						if ((isset($this->numscales[$scalename])) && (isset($this->keyx[$scalename])) && ($this->keyx[$scalename] >= 0) && ($this->keyy[$scalename] >= 0)) {
+							if ($svg) {
+								$svg->begin('legend', $scalename, 'LEGEND:' . $scalename);
+							}
+
 							if ($this->keystyle[$scalename] == 'classic') {
 								$this->DrawLegend_Classic($image, $scalename, false);
 							}
@@ -4028,22 +4076,33 @@ class WeatherMap extends WeatherMapBase {
 						}
 					}
 
+					if ($svg) {
+						$svg->begin('widthlegend', 'widthlegend', 'WIDTHLEGEND');
+					}
 					$this->DrawWidthLegend($image);
 
+					if ($svg) {
+						$svg->begin('timestamp', '', 'TIMESTAMP');
+					}
 					$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1']);
 
 					if (! is_null($this->min_data_time)) {
+						if ($svg) {
+							$svg->begin('timestamp', 'MIN', 'MINTIMESTAMP');
+						}
 						$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1'], 'MIN');
+						if ($svg) {
+							$svg->begin('timestamp', 'MAX', 'MAXTIMESTAMP');
+						}
 						$this->DrawTimestamp($image, $this->timefont, $this->colours['DEFAULT']['TIME']['gdref1'], 'MAX');
 					}
 
+					if ($svg) {
+						$svg->begin('title', 'title', 'TITLE');
+					}
 					$this->DrawTitle($image, $this->titlefont, $this->colours['DEFAULT']['TITLE']['gdref1']);
 
 					if ($svg) {
-						$svg->raster($image);
-						imagecopy($main_image, $image, 0, 0, 0, 0, $this->width, $this->height);
-						imagedestroy($image);
-						$image = $main_image;
 						$svg->begin(null);
 					}
 				}

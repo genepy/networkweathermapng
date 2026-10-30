@@ -105,6 +105,9 @@ class Application
         $this->router->post('/editor/source/{id}', 'SvgEditorController@saveSource');
         $this->router->post('/editor/validate/{id}', 'SvgEditorController@validate');
         $this->router->get('/editor/font/{id}/{n}', 'SvgEditorController@font');
+        $this->router->get('/editor/icons', 'SvgEditorController@iconList');
+        $this->router->post('/editor/icons', 'SvgEditorController@addIcons');
+        $this->router->post('/editor/icons/delete', 'SvgEditorController@deleteIcon');
         $this->router->get('/editor/classic/{id}', 'EditorController@edit');
         $this->router->get('/editor/draw/{id}', 'EditorController@draw');
         $this->router->get('/editor/area/{id}', 'EditorController@getAreaData');
@@ -170,6 +173,8 @@ class Application
         $this->router->post('/admin/users/edit/{id}', 'AdminController@editUser');
         $this->router->post('/admin/users/delete/{id}', 'AdminController@deleteUser');
         $this->router->get('/admin/settings', 'AdminController@settings');
+        $this->router->get('/admin/kiosk', 'AdminController@kiosk');
+        $this->router->post('/admin/kiosk', 'AdminController@kiosk');
         $this->router->get('/admin/check-db', 'AdminController@checkDatabase');
         $this->router->post('/admin/check-db', 'AdminController@checkDatabase');
         

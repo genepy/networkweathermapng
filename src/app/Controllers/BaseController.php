@@ -62,7 +62,8 @@ abstract class BaseController
     {
         http_response_code($status);
         header('Content-Type: application/json');
-        echo json_encode($data);
+        // invalid UTF-8 must not turn the whole answer into an empty body
+        echo json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
     }
     
     protected function redirect(string $url): void

@@ -74,6 +74,7 @@ class MigrationImporter
 
         $ids = [];
         foreach ($confs as $file => $conf) {
+            $conf = self::toUtf8($conf);
             $title = preg_match('/^\s*TITLE\s+(.+)$/mi', $conf, $m) ? trim($m[1]) : '';
             $ids[] = $this->store->create($title !== '' ? $title : pathinfo($file, PATHINFO_FILENAME), $file, $conf);
         }
@@ -206,6 +207,26 @@ class MigrationImporter
             }
         }
         return true;
+    }
+
+    /**
+     * php-weathermap (0.97 and older) wrote its files in the server's
+     * charset, often Latin-1 or Windows-1252. Lines that are not valid UTF-8
+     * are read as Windows-1252, so labels keep their accents and the map can
+     * be sent as JSON.
+     */
+    public static function toUtf8(string $text): string
+    {
+        if (mb_check_encoding($text, 'UTF-8')) {
+            return $text;
+        }
+        $lines = explode("\n", $text);
+        foreach ($lines as $i => $line) {
+            if (!mb_check_encoding($line, 'UTF-8')) {
+                $lines[$i] = mb_convert_encoding($line, 'UTF-8', 'Windows-1252');
+            }
+        }
+        return implode("\n", $lines);
     }
 
     private function isImage(string $ext): bool

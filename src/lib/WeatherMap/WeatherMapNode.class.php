@@ -981,7 +981,9 @@ class WeatherMapNode extends WeatherMapItem {
 				}
 			}
 
-			if ($output != '') {
+			// a template that sets nothing of its own is still written:
+			// the nodes that name it in TEMPLATE need it to exist
+			if ($output != '' || ($this->x === null && $this->name != 'DEFAULT')) {
 				$output = 'NODE ' . $this->name . EOL . "$output" . EOL;
 			}
 		}

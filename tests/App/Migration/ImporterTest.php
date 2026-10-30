@@ -55,6 +55,24 @@ final class ImporterTest extends TestCase
         $this->assertContains('core-2', $names);
     }
 
+    public function testLatin1MapIsStoredAsUtf8(): void
+    {
+        $file = $this->root . '/old.conf';
+        file_put_contents($file, "TITLE R\xe9seau\nNODE a\n\tLABEL C\xf4t\xe9 \x80\n\tPOSITION 10 10\n");
+
+        $store = new MigrationStore($this->root . '/migration');
+        $result = (new MigrationImporter($store, $this->root . '/public'))->import(['old.conf' => $file]);
+
+        $this->assertSame('Réseau', $store->get($result['migrations'][0])['name']);
+        $this->assertStringContainsString("LABEL Côté €\n", $store->original($result['migrations'][0]));
+    }
+
+    public function testToUtf8KeepsUtf8Lines(): void
+    {
+        $this->assertSame("NODE é\nLABEL é", MigrationImporter::toUtf8("NODE é\nLABEL \xe9"));
+        $this->assertSame("plain ascii", MigrationImporter::toUtf8("plain ascii"));
+    }
+
     public function testStore(): void
     {
         $store = new MigrationStore($this->root . '/migration');
