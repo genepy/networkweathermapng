@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| More open-source fonts | `claude/more-fonts` | Bundling Fira Sans, Barlow Semi Condensed, IBM Plex Mono; Fonts tab in Map properties |
+| (none) | | |
 
 ## Paused
 
@@ -72,6 +72,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #46 | Fira Sans, Barlow Semi Condensed and IBM Plex Mono shipped (OFL); a Fonts tab in Map properties adds them to a map, and font lists show names instead of numbers |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |

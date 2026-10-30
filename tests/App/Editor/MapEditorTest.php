@@ -329,6 +329,47 @@ final class MapEditorTest extends TestCase
         $this->assertFalse($this->drawnModel()['zones'][0]['locked']);
     }
 
+    public function testAShippedFontIsAddedToTheMap(): void
+    {
+        $cwd = getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public'); // the editor runs from the web root
+        try {
+            $result = $this->editor->apply([['op' => 'define_font', 'file' => 'fonts/FiraSans-Regular.ttf', 'size' => 11]]);
+            $n = $result['created']['fonts'][0];
+            $this->assertGreaterThanOrEqual(10, $n);
+            $this->assertStringContainsString("FONTDEFINE $n fonts/FiraSans-Regular.ttf 11", file_get_contents($this->file));
+
+            $info = $this->drawnModel()['font_info'][$n];
+            $this->assertSame(['label' => 'Fira Sans', 'size' => 11, 'file' => 'fonts/FiraSans-Regular.ttf'], $info);
+
+            $this->editor->apply([['op' => 'define_font', 'n' => $n, 'file' => 'fonts/FiraSans-Regular.ttf', 'size' => 14]]);
+            $this->assertStringContainsString("FONTDEFINE $n fonts/FiraSans-Regular.ttf 14", file_get_contents($this->file));
+        } finally {
+            chdir($cwd);
+        }
+    }
+
+    public function testOnlyShippedOrUsedFontsCanBeAdded(): void
+    {
+        foreach (['/etc/passwd', 'fonts/../../app.key.ttf', 'fonts/Missing.ttf'] as $file) {
+            try {
+                $this->editor->apply([['op' => 'define_font', 'file' => $file, 'size' => 10]]);
+                $this->fail("$file was accepted");
+            } catch (InvalidArgumentException $e) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'define_font', 'file' => 'fonts/FiraSans-Regular.ttf', 'size' => 500]]);
+    }
+
+    public function testFontLabels(): void
+    {
+        $this->assertSame('IBM Plex Mono Semi Bold', MapEditor::fontLabel('fonts/IBMPlexMono-SemiBold.ttf'));
+        $this->assertSame('DejaVu Sans Mono', MapEditor::fontLabel('/usr/share/fonts/DejaVuSansMono.ttf'));
+        $this->assertContains('fonts/BarlowSemiCondensed-Regular.ttf', array_column(MapEditor::shippedFonts(), 'file'));
+    }
+
     public function testANodeLabelMovesAwayFromItsIconAndBack(): void
     {
         $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);

@@ -352,6 +352,14 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #mapprops-dialog input[type=color] { display: block; width: 64px; height: 28px; padding: 1px; margin-top: 2px; }
 #mapprops-dialog .pair { display: flex; gap: 10px; align-items: center; }
 #mapprops-dialog .pair label { margin: 0; }
+#mapprops-dialog .font-list { display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow-y: auto; }
+#mapprops-dialog .font-row { display: grid; grid-template-columns: 40px 1fr 64px; gap: 8px; align-items: center; }
+#mapprops-dialog .font-n { color: var(--muted); font-size: 12px; }
+#mapprops-dialog .font-sample { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#mapprops-dialog .font-add select { flex: 1; min-width: 0; }
+#mapprops-dialog .font-add input { width: 64px; }
+#mapprops-dialog > form > .mapprops-body h4 { margin: 12px 0 6px; }
+#mapprops-dialog .font-add + .font-sample { display: block; margin-top: 8px; padding: 6px 8px; background: #fff; color: #000; border: 1px solid var(--border); border-radius: 4px; }
 .find-count { color: var(--muted); min-height: 1.2em; }
 
 @media (max-width: 900px) {
