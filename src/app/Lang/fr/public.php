@@ -67,15 +67,11 @@ return [
 
     // Editor list
     'Map Editor' => 'Éditeur de cartes',
-    'Create New Map' => 'Créer une carte',
-    'No maps available to edit.' => 'Aucune carte à modifier.',
     'Name' => 'Nom',
-    'Config File' => 'Fichier de configuration',
     'Status' => 'État',
     'Actions' => 'Actions',
     'Active' => 'Active',
     'Inactive' => 'Inactive',
-    'Edit Config' => 'Modifier la configuration',
     'View' => 'Voir',
 
     // Editor / API messages

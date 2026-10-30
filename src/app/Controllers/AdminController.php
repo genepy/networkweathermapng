@@ -7,7 +7,6 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Services\MapService;
 use App\Services\GroupService;
 use App\Services\KioskService;
 use App\Services\TimezoneService;
@@ -25,14 +24,12 @@ class AdminController extends BaseController
         'rrd_dir', 'rrdcached', 'verify_tls',
     ];
 
-    private MapService $mapService;
     private GroupService $groupService;
     private DataSourceService $dataSourceService;
     
     public function __construct(array $context)
     {
         parent::__construct($context);
-        $this->mapService = new MapService($this->database, $this->config);
         $this->groupService = new GroupService($this->database);
         $this->dataSourceService = new DataSourceService($this->database);
     }
@@ -54,318 +51,6 @@ class AdminController extends BaseController
         ]);
     }
     
-    public function maps(array $params): void
-    {
-        $this->requireAdmin();
-        
-        $maps = $this->database->query(
-            "SELECT m.*, g.name as group_name 
-             FROM maps m 
-             LEFT JOIN map_groups g ON m.group_id = g.id 
-             ORDER BY m.sort_order, m.name"
-        );
-        
-        $groups = $this->groupService->getAllGroups();
-        
-        $this->render('admin/maps', [
-            'maps' => $maps,
-            'groups' => $groups,
-            'title' => __('Manage Maps'),
-        ]);
-    }
-    
-    /**
-     * Create a new map
-     */
-    public function createMap(array $params): void
-    {
-        $this->requireAdmin();
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name = MapService::cleanName((string) ($_POST['name'] ?? ''));
-            $groupId = (int) ($_POST['group_id'] ?? 1);
-            $template = (int) ($_POST['template'] ?? 0);
-
-            if ($name === '') {
-                $this->flash('error', __('Map name is required'));
-                $this->redirect('/admin/maps/create');
-                return;
-            }
-
-            try {
-                if ($template > 0) {
-                    $mapId = $this->mapService->duplicateMap($template, $name, $groupId, isset($_POST['active']));
-                    if (!$mapId) {
-                        throw new \RuntimeException(__('Map not found'));
-                    }
-                } else {
-                    $mapId = $this->mapService->createMap([
-                        'name' => $name,
-                        'group_id' => $groupId,
-                        'active' => isset($_POST['active']) ? 1 : 0,
-                        'width' => (int) ($_POST['width'] ?? 800),
-                        'height' => (int) ($_POST['height'] ?? 600),
-                    ]);
-                }
-
-                $this->flash('success', __('Map ":name" created', ['name' => $name]));
-                $this->redirect('/editor/edit/' . $mapId);
-            } catch (\Exception $e) {
-                $this->flash('error', __('Failed to create map: :error', ['error' => $e->getMessage()]));
-                $this->redirect('/admin/maps');
-            }
-            return;
-        }
-
-        // Show create form
-        $groups = $this->groupService->getAllGroups();
-        
-        $this->render('admin/map_form', [
-            'map' => null,
-            'groups' => $groups,
-            'maps' => $this->mapService->getAllMaps(),
-            'title' => __('New map'),
-            'action' => 'create'
-        ]);
-    }
-    
-    /**
-     * Edit an existing map
-     */
-    public function editMap(array $params): void
-    {
-        $this->requireAdmin();
-        
-        $id = (int) ($params['id'] ?? 0);
-        $map = $this->mapService->getMap($id);
-        
-        if (!$map) {
-            $this->flash('error', __('Map not found'));
-            $this->redirect('/admin/maps');
-            return;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $name = MapService::cleanName((string) ($_POST['name'] ?? ''));
-
-            if ($name === '') {
-                $this->flash('error', __('Map name is required'));
-                $this->redirect('/admin/maps/edit/' . $id);
-                return;
-            }
-
-            try {
-                if ($name !== $map['name'] || isset($_POST['rename_file'])) {
-                    $this->mapService->renameMap($id, $name, isset($_POST['rename_file']));
-                }
-                $this->mapService->updateMap($id, [
-                    'group_id' => (int) ($_POST['group_id'] ?? 1),
-                    'active' => isset($_POST['active']) ? 1 : 0,
-                ]);
-
-                $this->flash('success', __('Map ":name" saved', ['name' => $name]));
-                $this->redirect('/admin/maps');
-            } catch (\Exception $e) {
-                $this->flash('error', __('Failed to update map: :error', ['error' => $e->getMessage()]));
-                $this->redirect('/admin/maps/edit/' . $id);
-            }
-            return;
-        }
-
-        $groups = $this->groupService->getAllGroups();
-        
-        $this->render('admin/map_form', [
-            'map' => $map,
-            'groups' => $groups,
-            'title' => __('Map properties') . ': ' . $map['name'],
-            'action' => 'edit'
-        ]);
-    }
-    
-    /**
-     * Delete a map
-     */
-    public function deleteMap(array $params): void
-    {
-        $this->requireAdmin();
-        
-        $id = (int) ($params['id'] ?? 0);
-        $map = $this->mapService->getMap($id);
-        
-        if (!$map) {
-            $this->flash('error', __('Map not found'));
-            $this->redirect('/admin/maps');
-            return;
-        }
-        
-        try {
-            $this->mapService->deleteMap($id);
-            $this->flash('success', __('Map ":name" and all its data deleted', ['name' => $map['name']]));
-        } catch (\Exception $e) {
-            $this->flash('error', __('Failed to delete map: :error', ['error' => $e->getMessage()]));
-        }
-        
-        $this->redirect('/admin/maps');
-    }
-    
-    /**
-     * Duplicate a map
-     */
-    public function duplicateMap(array $params): void
-    {
-        $this->requireAdmin();
-        
-        $id = (int) ($params['id'] ?? 0);
-        $map = $this->mapService->getMap($id);
-        
-        if (!$map) {
-            $this->flash('error', __('Map not found'));
-            $this->redirect('/admin/maps');
-            return;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->render('admin/map_form', [
-                'map' => $map,
-                'groups' => $this->groupService->getAllGroups(),
-                'title' => __('Duplicate') . ': ' . $map['name'],
-                'action' => 'duplicate',
-            ]);
-            return;
-        }
-
-        try {
-            $newId = $this->mapService->duplicateMap(
-                $id,
-                (string) ($_POST['name'] ?? ''),
-                (int) ($_POST['group_id'] ?? 0) ?: null,
-                isset($_POST['active'])
-            );
-            $this->flash('success', __('Map duplicated'));
-            $this->redirect('/editor/edit/' . $newId);
-        } catch (\Exception $e) {
-            $this->flash('error', __('Failed to duplicate map: :error', ['error' => $e->getMessage()]));
-            $this->redirect('/admin/maps');
-        }
-    }
-
-    /** POST ids[] and action: activate, deactivate, move (group_id), delete, export */
-    public function bulkMaps(array $params): void
-    {
-        $this->requireAdmin();
-
-        $ids = array_values(array_filter(array_map('intval', (array) ($_POST['ids'] ?? []))));
-        $action = (string) ($_POST['action'] ?? '');
-        if (!$ids) {
-            $this->flash('error', __('Select at least one map.'));
-            $this->redirect('/admin/maps');
-            return;
-        }
-
-        if ($action === 'export') {
-            $this->sendZip($ids);
-            return;
-        }
-
-        $done = 0;
-        foreach ($ids as $id) {
-            $ok = match ($action) {
-                'activate' => $this->mapService->updateMap($id, ['active' => 1]),
-                'deactivate' => $this->mapService->updateMap($id, ['active' => 0]),
-                'move' => (int) ($_POST['group_id'] ?? 0) > 0 && $this->groupService->getGroup((int) $_POST['group_id'])
-                    && $this->mapService->updateMap($id, ['group_id' => (int) $_POST['group_id']]),
-                'delete' => $this->mapService->deleteMap($id),
-                default => false,
-            };
-            $done += $ok ? 1 : 0;
-        }
-
-        $message = $action === 'delete' ? __(':n map(s) deleted with all their data', ['n' => $done]) : __(':n map(s) updated', ['n' => $done]);
-        $this->flash($done ? 'success' : 'error', $message);
-        $this->redirect('/admin/maps');
-    }
-
-    /** GET: the map's .conf file */
-    public function exportMap(array $params): void
-    {
-        $this->requireAdmin();
-
-        $map = $this->mapService->getMap((int) ($params['id'] ?? 0));
-        $content = $map ? $this->mapService->getMapConfig((int) $map['id']) : null;
-        if ($content === null) {
-            http_response_code(404);
-            return;
-        }
-
-        header('Content-Type: text/plain; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . basename($map['config_file']) . '"');
-        echo $content;
-    }
-
-    /** GET: every map with its images, as a zip Admin > Migration can import */
-    public function exportMaps(array $params): void
-    {
-        $this->requireAdmin();
-        $this->sendZip([]);
-    }
-
-    private function sendZip(array $ids): void
-    {
-        $file = tempnam(sys_get_temp_dir(), 'wm_export_');
-        try {
-            $this->mapService->exportZip($ids, $file);
-            header('Content-Type: application/zip');
-            header('Content-Disposition: attachment; filename="weathermap-maps-' . date('Ymd-His') . '.zip"');
-            header('Content-Length: ' . filesize($file));
-            readfile($file);
-        } finally {
-            @unlink($file);
-        }
-    }
-
-    /**
-     * Move a map to a different group (AJAX)
-     */
-    public function moveMap(array $params): void
-    {
-        $this->requireAdmin();
-        
-        $id = (int) ($params['id'] ?? 0);
-        $map = $this->mapService->getMap($id);
-        
-        if (!$map) {
-            $this->json(['success' => false, 'error' => __('Map not found')], 404);
-            return;
-        }
-        
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Get JSON input
-            $input = json_decode(file_get_contents('php://input'), true);
-            $groupId = (int) ($input['group_id'] ?? 0);
-            
-            if ($groupId <= 0) {
-                $this->json(['success' => false, 'error' => __('Invalid group ID')], 400);
-                return;
-            }
-            
-            // Verify group exists
-            $group = $this->groupService->getGroup($groupId);
-            if (!$group) {
-                $this->json(['success' => false, 'error' => __('Group not found')], 404);
-                return;
-            }
-            
-            try {
-                $this->mapService->updateMap($id, ['group_id' => $groupId]);
-                $this->json(['success' => true]);
-            } catch (\Exception $e) {
-                $this->json(['success' => false, 'error' => $e->getMessage()], 500);
-            }
-            return;
-        }
-        
-        $this->json(['success' => false, 'error' => __('Invalid request method')], 405);
-    }
     
     public function groups(array $params): void
     {
@@ -547,7 +232,7 @@ class AdminController extends BaseController
                 return;
             }
 
-            if (!in_array($role, ['admin', 'viewer'], true)) {
+            if (!in_array($role, \App\Core\Auth::ROLES, true)) {
                 $this->flash('error', __('Invalid role'));
                 $this->redirect('/admin/users/create');
                 return;
@@ -636,7 +321,7 @@ class AdminController extends BaseController
             $password = (string) ($_POST['password'] ?? '');
             $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
-            if (!in_array($role, ['admin', 'viewer'], true)) {
+            if (!in_array($role, \App\Core\Auth::ROLES, true)) {
                 $this->flash('error', __('Invalid role'));
                 $this->redirect('/admin/users/edit/' . $id);
                 return;

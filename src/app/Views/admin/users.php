@@ -1,8 +1,6 @@
 <div class="admin-users-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Users') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Users')]]) ?>
         <div class="page-actions">
             <a class="btn btn-primary" href="/admin/users/create"><?= e__('Add User') ?></a>
         </div>

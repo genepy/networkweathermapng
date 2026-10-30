@@ -12,4 +12,5 @@ return [
     'Change password' => 'Changer le mot de passe',
     'Logout' => 'Déconnexion',
     'Login' => 'Connexion',
+    'Breadcrumb' => 'Fil d’Ariane',
 ];

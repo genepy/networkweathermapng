@@ -24,47 +24,15 @@ branch.
 
 | Item | Branch | Based on |
 |------|--------|----------|
-| [Maps pages and editor role](#maps-pages-and-editor-role) | `claude/project-thread-x46foc` | #22 |
+| (none) | | |
 
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
 authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
-not run on these branches. Run them before opening the PR.
-
-### Maps pages and editor role
-
-Branch `claude/project-thread-x46foc`, commit 2657f7a.
-
-**Done:**
-- Editor role: `Auth::ROLES` (viewer, editor, admin), `Auth::canEdit()`,
-  `BaseController::requireEditor()`. Editors see and edit every map, with no
-  access to users, groups, data sources, settings or migration. The legacy
-  and SVG editors, `MapController` and `ApiController` use `canEdit`. The
-  role select of `user_form` has a help text.
-- Map management moved from Admin to the Editor tab, in a new
-  `MapManagementController` (taken out of `AdminController`). Views:
-  `editor/index.php` (`admin/maps.php` deleted) and `editor/map_form.php`
-  (moved from `admin/`). Each row has Edit, View and Preview with icons
-  (labels hidden under 900px), a "more" menu (Properties, Duplicate, .conf,
-  Delete) and an active switch (`POST /editor/maps/toggle/{id}`).
-- Routes are `/editor/maps/*`. `/admin/maps/*` are kept as aliases, and
-  `GET /admin/maps` redirects to `/editor`.
-- Map forms take `?return=` (local paths only, `safeReturn`), so Cancel and
-  Save go back to where the user came from.
-- A `breadcrumb()` helper (`Core/helpers.php`) gives every page the same
-  header, with the last crumb as the h1.
-- Dark mode: the admin counters, active tabs and breadcrumb hover use
-  `--link-color`.
-- French strings added, `i18n-check fr` shows 0 missing.
-
-**Left:** run phpunit (`AuthRolesTest` has never run) and phpstan, fix what
-breaks, check in a browser as admin, editor and viewer in light and dark
-themes, screenshots, open the PR.
-
-**Gotchas:** the `.data-table-container` overflow is overridden on
-`.maps-admin-page` so the menu is not clipped. Delete always returns to
-`/editor`. Import and the Migration hint show for admins only. Expect
-conflicts in `AdminController` and the admin views with the kiosk branch
-when rebasing.
+not run on these branches. Run them before opening the PR. The cause is
+`phpstan/phpstan`, which only ships as a GitHub zip: install the rest with
+`--prefer-source` from a copy of `composer.json`/`composer.lock` without
+phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
+`git clone` of `phpstan/phpstan`.
 
 ## Not started
 
@@ -93,6 +61,7 @@ when rebasing.
 | PR | Item |
 |----|------|
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
+| #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
 | #31 | Set the time zone of map dates: a default for all maps and an override per map (Admin > Time zone) |
 | #30 | Study of PHP Network Weathermap 2.0 ([docs/studies/php-weathermap-2.0.md](studies/php-weathermap-2.0.md)) |

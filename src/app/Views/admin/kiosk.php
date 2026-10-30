@@ -5,9 +5,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
 ?>
 <div class="admin-kiosk-page">
     <div class="page-header">
-        <div class="breadcrumb">
-            <a href="/admin"><?= e__('Admin') ?></a> &raquo; <?= e__('Kiosk mode') ?>
-        </div>
+        <?= breadcrumb([[__('Admin'), '/admin'], [__('Kiosk mode')]]) ?>
         <div class="page-actions">
             <a href="/cycle?fullscreen=1" class="btn btn-secondary"><?= e__('Open kiosk mode') ?></a>
         </div>
