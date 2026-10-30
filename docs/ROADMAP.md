@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Editor: fields apply on blur and on Enter | `claude/editor-fields-apply` | Enter in the dialogs pressed Cancel (their first button); Enter in the panel keeps the field focused |
+| (none) | | |
 
 ## Paused
 
@@ -72,6 +72,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #37 | Editor: Enter applies a field and leaves it (the panel follows a rename), Enter in the dialogs applies instead of cancelling |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
