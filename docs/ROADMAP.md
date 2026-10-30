@@ -13,7 +13,7 @@ Last updated: 2026-10-30.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Editor: custom layers | `claude/editor-custom-layers` | Named sets saved as SET editor_layer, hidden per browser |
+| (none) | | |
 
 ## Paused
 
@@ -72,6 +72,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #45 | Editor: custom layers: name a set of nodes, links and zones (saved in the map), then hide it in the editor, lock it or select it from the Layers panel |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |

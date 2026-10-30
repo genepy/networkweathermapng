@@ -72,7 +72,7 @@ class MapEditor
     private const ANCHORS = ['C', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'];
 
     /** Hints the editor owns: grouping and locking */
-    public const EDITOR_HINTS = ['editor_group', 'editor_lock'];
+    public const EDITOR_HINTS = ['editor_group', 'editor_lock', 'editor_layer'];
 
     /**
      * Map furniture the editor can move, by image map area name:
@@ -937,6 +937,7 @@ class MapEditor
                 'infourl' => (string) ($node->infourl[IN] ?? ''),
                 'group' => (string) ($node->hints['editor_group'] ?? ''),
                 'locked' => !empty($node->hints['editor_lock']),
+                'layer' => (string) ($node->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -989,6 +990,7 @@ class MapEditor
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),
+                'layer' => (string) ($link->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -1011,6 +1013,7 @@ class MapEditor
                 'outlinestyle' => (string) $zone->outlinestyle,
                 'group' => (string) ($zone->hints['editor_group'] ?? ''),
                 'locked' => !empty($zone->hints['editor_lock']),
+                'layer' => (string) ($zone->hints['editor_layer'] ?? ''),
             ];
         }
 

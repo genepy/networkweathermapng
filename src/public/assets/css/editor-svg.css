@@ -411,6 +411,17 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #dock-bottom #layers-panel { top: auto; bottom: calc(100% + 4px); }
 #layers-panel label { display: flex; gap: 6px; align-items: center; white-space: nowrap; cursor: pointer; }
 #layers-panel small { color: var(--muted); }
+#custom-layers { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+#custom-layers small { white-space: normal; max-width: 240px; }
+.custom-layer { display: flex; align-items: center; gap: 4px; }
+.custom-layer label { flex: 1; }
+.custom-layer .icon-count { margin-left: 4px; }
+.custom-layer button {
+    font: inherit; font-size: 12px; padding: 1px 6px; cursor: pointer; color: var(--text);
+    background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px;
+}
+.custom-layer button.on { border-color: var(--accent); }
+#map g.layer-hidden { display: none; }
 
 /* Context menu */
 #ctx-menu {
