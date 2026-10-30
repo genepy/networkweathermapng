@@ -49,6 +49,19 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
+| Editor: properties panel stuck on one object | Bug: at times the edit panel keeps showing the same object and no longer follows the selection when another object is clicked. Find the steps to reproduce first |
+| Editor: fields apply on blur and on Enter | Clicking outside a field leaves it and applies the change; Enter in a field validates and applies the pending change |
+| Editor: resize icons | Resize a node's icon from the editor (handles and a size field) |
+| Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
+| Editor: link widths up to 800G | Allow link bandwidths up to 800G in the editor fields and the parser, and check the scaling of widths and labels |
+| Editor: place a new zone with the mouse | Adding a zone shows it under the pointer; a click drops it on the map (Esc cancels) |
+| Editor: zone resize per side and guides | Resize a zone from one side only (horizontal or vertical) as well as both at once, and show the alignment guides while resizing |
+| Editor: right-angle routing per link | Route one link with right angles (orthogonal via points) without applying it to the whole map |
+| Editor: clearer layers note | The Layers panel note "Only in this editor, in this browser." is unclear: say that hiding a layer only changes this editor view, is remembered in this browser and is not saved in the map |
+| Editor: custom layers | User-defined layers: name a group of nodes, or a set of nodes and links, then show, hide or lock it as a whole |
+| Modern legend styles | Several styles for the legends and labels (traffic load scale, "Created:" timestamp…) with a more modern look, chosen per map |
+| More open-source fonts | Bundle a few modern open-source fonts (licences in THIRD-PARTY-NOTICES.md) usable in SVG and PNG output |
+| Map recording and playback | Record a map's states over a period (for example the last 24 hours) and play them back as an animation. Off by default, switched on per map, and the admin can disable the feature to protect the server (storage and polling load) |
 
 ## Stale branches
 
