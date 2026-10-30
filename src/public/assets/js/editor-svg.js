@@ -2249,10 +2249,15 @@
             if (evt.key === 'ArrowDown' && first) {
                 first.focus();
             } else if (evt.key === 'Enter') {
-                if (first) { first.click(); }
-            } else if (evt.key === 'Escape' && input.value !== '') {
-                input.value = '';
-                render();
+                // from the result, so the inspector can rebuild after the pick
+                if (first) { first.focus(); first.click(); }
+            } else if (evt.key === 'Escape') {
+                if (input.value !== '') {
+                    input.value = '';
+                    render();
+                } else {
+                    input.blur();
+                }
             } else {
                 return;
             }
@@ -2268,6 +2273,12 @@
             } else if (evt.key === 'Escape') {
                 input.focus();
             } else {
+                // Typing on a result goes back to the search box, and never
+                // reaches the editor shortcuts (Backspace deletes the link)
+                if (evt.key !== 'Tab' && evt.key !== 'Enter' && evt.key !== ' ' && !evt.ctrlKey && !evt.metaKey) {
+                    input.focus();
+                }
+                evt.stopPropagation();
                 return;
             }
             evt.preventDefault();
@@ -2292,6 +2303,7 @@
     function interfacePicker(links) {
         var c = common(links, 'datasource');
         var current = c.mixed ? null : parseSelection(c.value);
+        var picked = !!(current && current.hostId && current.interfaceId);
         var box = h('div', { 'class': 'ds-picker' });
 
         function apply(sourceId, host, it) {
@@ -2336,7 +2348,7 @@
         function showSearch(focus) {
             var sourceRow = h('div');
             var steps = h('div');
-            var cancel = (current || c.mixed) ? h('div', { 'class': 'actions' }, [h('button', { type: 'button', text: t('Cancel'), onclick: showCurrent })]) : null;
+            var cancel = (picked || c.mixed) ? h('div', { 'class': 'actions' }, [h('button', { type: 'button', text: t('Cancel'), onclick: showCurrent })]) : null;
             box.replaceChildren.apply(box, [sourceRow, steps, cancel].filter(Boolean));
 
             function pickDevice(sourceId) {
@@ -2406,7 +2418,7 @@
             });
         }
 
-        if (current && current.hostId && current.interfaceId || c.mixed) {
+        if (picked || c.mixed) {
             showCurrent();
         } else {
             showSearch(false);
@@ -3182,6 +3194,8 @@
      */
     function escape(target) {
         if (cancelDrag()) { return true; }
+        // the interface search boxes handle Escape themselves
+        if (target.closest && target.closest('.ds-search')) { return false; }
         if (menuOpen()) { closeMenu(); return true; }
         var popover = null;
         try { popover = $(':popover-open'); } catch (e) { /* no popover support */ }
