@@ -49,7 +49,37 @@ final class SvgRenderTest extends TestCase
             $this->assertGreaterThanOrEqual(1, $arrows->length, "link $name has arrows");
         }
 
-        $this->assertSame(1, $xpath->query('//s:image[@class="wm-furniture"]')->length);
+        // the furniture is drawn as vectors, one group per piece
+        $this->assertSame(0, $xpath->query('//s:image[@class="wm-furniture"]')->length);
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="title"]')->length, 'title');
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"][@data-name=""]/s:text')->length, 'timestamp');
+    }
+
+    public function testLegendsAreVectorsAtTheirPlace(): void
+    {
+        $conf = "WIDTH 700\nHEIGHT 500\nTITLE Legends\nTITLEPOS 20 30\n"
+            . "KEYPOS DEFAULT 10 40 Load\nKEYSTYLE DEFAULT horizontal 300\n"
+            . "KEYPOS other 400 40 Other\nKEYSTYLE other vertical 200\n"
+            . "SCALE other 0 50 0 255 0\nSCALE other 50 100 255 0 0\n"
+            . "SET width_legend 200 300\nSET link_width_table 1G:2 10G:6\n";
+        $file = TESTS_OUTPUT . '/legends.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        foreach (['DEFAULT' => [10, 40], 'other' => [400, 40]] as $scale => [$x, $y]) {
+            $box = $xpath->query('//s:g[@data-kind="legend"][@data-name="' . $scale . '"]/s:rect')->item(0);
+            $this->assertNotNull($box, "legend $scale");
+            $this->assertSame([(string) $x, (string) $y], [$box->getAttribute('x'), $box->getAttribute('y')], "legend $scale is drawn at its KEYPOS");
+        }
+        $this->assertGreaterThan(0, $xpath->query('//s:g[@data-kind="legend"][@data-name="DEFAULT"]/s:line')->length, 'tick marks');
+        $this->assertSame('Legends', $xpath->query('//s:g[@data-kind="title"]/s:text')->item(0)->textContent);
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="widthlegend"]')->length);
+        $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
     }
 
     public function testPngIsUnchangedWhileCollecting(): void
@@ -106,6 +136,33 @@ final class SvgRenderTest extends TestCase
         // core (400) -> lyon (650): IN moves towards lyon, OUT towards core
         $this->assertGreaterThan($centre($default, 'in')[0] + 20, $centre($moved, 'in')[0]);
         $this->assertLessThan($centre($default, 'out')[0] - 20, $centre($moved, 'out')[0]);
+    }
+
+    #[DataProvider('maps')]
+    public function testBwLabelsAreDrawnOverEveryLink(string $file): void
+    {
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $doc->loadXML(\WeatherMapSvg::render($map));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $lastArrow = -1;
+        $firstLabel = null;
+        foreach ($xpath->query('//s:g[@data-kind="link"]/*') as $i => $el) {
+            $class = $el->getAttribute('class');
+            if ($class === 'wm-arrow') {
+                $lastArrow = $i;
+            } elseif ($firstLabel === null && str_starts_with($class, 'wm-bwlabel-')) {
+                $firstLabel = $i;
+            }
+        }
+
+        if ($firstLabel === null) {
+            $this->markTestSkipped('no bandwidth label on this map');
+        }
+        // links all sit in the default layer of these maps
+        $this->assertGreaterThan($lastArrow, $firstLabel, 'a link drawn later would hide a label');
     }
 
     public function testVectorIcons(): void

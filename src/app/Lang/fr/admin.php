@@ -330,11 +330,36 @@ return [
     'Side by side' => 'Côte à côte',
     'Differences' => 'Différences',
     'Overlay' => 'Superposition',
+    'Fit to the page width' => 'Ajuster à la largeur de la page',
     'Identical pixels are black: what shows in colour has moved or changed. Live data is not read for either drawing.' => 'Les pixels identiques sont noirs : ce qui apparaît en couleur a bougé ou changé. Les données en direct ne sont lues pour aucun des deux dessins.',
     'Before (PNG, old engine)' => 'Avant (PNG, ancien moteur)',
     'After (SVG)' => 'Après (SVG)',
     'Administrator' => 'Administrateur',
     ':n map(s) deleted with all their data' => ':n carte(s) supprimée(s) avec toutes leurs données',
+
+    // Kiosk mode
+    'Kiosk mode' => 'Mode kiosque',
+    'Kiosk settings saved' => 'Paramètres du mode kiosque enregistrés',
+    'Display time and zoom of each map in the map cycle' => "Durée d'affichage et zoom de chaque carte dans le défilement",
+    'Open kiosk mode' => 'Ouvrir le mode kiosque',
+    'Display time of each map (seconds)' => "Durée d'affichage de chaque carte (secondes)",
+    'Used for every map, unless the map has a display time of its own below.' => "Utilisée pour toutes les cartes, sauf celles qui ont leur propre durée ci-dessous.",
+    'Zoom' => 'Zoom',
+    'Display time (seconds)' => "Durée d'affichage (secondes)",
+    'Fit to screen' => "Ajuster à l'écran",
+    'Default (:seconds s)' => 'Par défaut (:seconds s)',
+    'Fit to screen enlarges or shrinks the map to fill the screen. A percentage shows the map at that share of its size, centred; what does not fit is cut off. Leave the display time empty to use the one above. Inactive maps are not shown in kiosk mode.' => "« Ajuster à l'écran » agrandit ou réduit la carte pour remplir l'écran. Un pourcentage affiche la carte à cette proportion de sa taille, centrée ; ce qui dépasse est coupé. Laissez la durée vide pour utiliser celle du dessus. Les cartes inactives ne sont pas affichées en mode kiosque.",
+
+    // Time zone
+    'Time zone' => 'Fuseau horaire',
+    'Time zone of the dates shown on maps' => 'Fuseau horaire des dates affichées sur les cartes',
+    'Default time zone' => 'Fuseau horaire par défaut',
+    'Server setting (:zone)' => 'Réglage du serveur (:zone)',
+    'Used for every map, unless the map has a time zone of its own below.' => 'Utilisé pour toutes les cartes, sauf celles qui ont leur propre fuseau ci-dessous.',
+    'Default (:zone)' => 'Par défaut (:zone)',
+    'The time zone applies to the date drawn on the map, the last update time and the traffic graphs. Leave a map empty to use the default time zone. A map shows the change at its next refresh.' => "Le fuseau horaire s'applique à la date dessinée sur la carte, à l'heure de dernière mise à jour et aux graphiques de trafic. Laissez une carte vide pour utiliser le fuseau par défaut. Une carte affiche le changement à sa prochaine actualisation.",
+    'Time zone settings saved' => 'Fuseaux horaires enregistrés',
+    'Unknown time zone, not saved: :zones' => 'Fuseau horaire inconnu, non enregistré : :zones',
 
     // Map list of the Editor tab, roles
     'Map ":name" activated' => 'Carte « :name » activée',

@@ -21,7 +21,8 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Observium Integration** - API, MySQL or RRD, Community edition included
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
-- **Map Cycling** - Auto-rotate through maps for NOC displays
+- **Map Cycling** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Admin > Kiosk mode)
+- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Admin > Time zone)
 - **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
@@ -80,7 +81,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 |----------|-------------|---------|
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
-| `APP_TIMEZONE` | Application timezone | `UTC` |
+| `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Admin > Time zone | `UTC` |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
 | `APP_ROOT` | Application root path | - |
@@ -219,22 +220,38 @@ The editor (Editor > Edit) draws the map as SVG, so zooming stays sharp,
 and saves each change straight into the map's `.conf` file.
 
 - **Select**: click, Shift+click to add, drag on empty space for an area,
-  Ctrl+A for everything, or *Select…* (Ctrl+F) to pick by name, label,
-  target, group, width or bandwidth.
+  Ctrl+A for everything (zones, legends, timestamps and title included), or
+  *Select…* (Ctrl+F) to pick by name, label, target, group, width or
+  bandwidth. Esc cancels a drag, closes the open menu, or empties the
+  selection.
 - **Move**: drag the selection, or use the arrow keys (Shift for 10 px).
-  *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
-- **Arrange**: align and distribute nodes, group them (Ctrl+G; Alt+click
-  picks one member), lock them (Ctrl+L), bring to front or send to back.
-  Groups and locks are stored as `SET editor_group` and `SET editor_lock`.
+  Nodes, zones, legends (`KEYPOS`), timestamps (`TIMEPOS`) and the title
+  (`TITLEPOS`) move alike. While dragging, pink guides show the edges and
+  centres the selection lines up with, and it snaps to them (hold Alt not
+  to). *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
+  A zone moves alone: group it with its nodes to move them together.
+  Hold Ctrl (Cmd on a Mac) while dragging to drop a copy of the selected
+  nodes, and of the links between them, instead of moving them.
+- **Arrange**: align and distribute nodes, zones, legends and the title
+  (a group moves as one block, unless everything selected is one group),
+  group nodes, links and zones (Ctrl+G; Alt+click picks one member), lock
+  them (Ctrl+L), bring to front or send to back. Groups and locks are stored
+  as `SET editor_group` and `SET editor_lock`.
 - **Links**: drag from the blue dot next to a selected node to another node,
-  or use the *Link* tool (L). On a selected link, drag the red points to
-  bend it, double-click one to remove it, and click a square around a node
-  to attach that end to a side (`NODES a:N b:E`).
+  or use the *Link* tool (L). Double-click a link to add a bend point there;
+  on a selected link, drag the red points to bend it (as many as needed),
+  double-click one to remove it, and click a square around a node to attach
+  that end to a side (`NODES a:N b:E`).
   *Auto-route* bends links around the nodes in their way; *Untangle labels*
   moves bandwidth labels that overlap (`BWLABELPOS`).
-- **Add**: drag a node or an icon from the left panel, or double-click an
+- **Labels**: drag a bandwidth label of the selected link along it
+  (`BWLABELPOS`), or the label of a selected node with an icon away from the
+  icon (`LABELOFFSET`).
+- **Add**: drag a node or an icon from the left panel, or Ctrl+click an
   empty spot.
-- **Edit**: the right panel changes every selected item at once.
+- **Edit**: the right panel changes every selected item at once. The
+  width of all the links of a map is set in *Map properties* (a number of
+  pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
   the links between them, also into another map open in another tab (the
   copy is kept in the browser). Pasted items take free names (`name_2`…),
@@ -285,7 +302,7 @@ Admin > Maps lists every map:
 
 - **Map list** (`/`): type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
 - **Map view** (`/map/{id}`): the map is drawn as SVG and can be zoomed with the mouse wheel or a pinch, moved by dragging, or with the toolbar (+, −, Fit, 100 %) and the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows, `/` to search). "Find a node" centres the map on a node by label or name. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
-- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; clicking a link or node opens its INFOURL in a new tab.
+- Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; the traffic graph takes about 40 % of the window width (500 to 1400 px) and is drawn sharper on large or high-density screens. Clicking a link or node opens its INFOURL in a new tab.
 - The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
 - **Fullscreen** fits the map to the screen for a NOC wall, follows the light/dark theme and hides the toolbar when the mouse is idle; Esc leaves it. The **PNG** button keeps the classic picture (also used for thumbnails, exports and the cycle page).
 
@@ -438,7 +455,11 @@ and are listed with a link to their review page.
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.1+, on a release that has the latest security fixes. CVE-2026-109618
+  and CVE-2026-109619 (remote code execution, October 2026) are fixed in
+  PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35. PHP 8.1 has no official fix: use a
+  distribution package that backports it, or upgrade. The Docker image ships
+  PHP 8.5.12.
 - GD extension
 - PDO extension (SQLite or MySQL)
 - cURL extension

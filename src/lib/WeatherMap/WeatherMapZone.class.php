@@ -39,6 +39,8 @@ class WeatherMapZone {
 	var $outlinestyle = 'solid';
 	var $configline = 0;
 	var $defined_in = '';
+	/** SET lines of the block, such as the editor's grouping */
+	var $hints = array();
 
 	function __construct($name = '') {
 		$this->name = $name;
@@ -79,6 +81,8 @@ class WeatherMapZone {
 			$this->outlinewidth = min(20, (int) $m[1]);
 		} elseif (preg_match('/^OUTLINESTYLE\s+(solid|dashed)$/i', $line, $m)) {
 			$this->outlinestyle = strtolower($m[1]);
+		} elseif (preg_match('/^SET\s+(\S+)\s+(.*)$/i', $line, $m)) {
+			$this->hints[$m[1]] = trim($m[2]);
 		} else {
 			return false;
 		}
@@ -122,6 +126,9 @@ class WeatherMapZone {
 		}
 		if ($this->outlinestyle != $d->outlinestyle) {
 			$out .= "\tOUTLINESTYLE {$this->outlinestyle}\n";
+		}
+		foreach ($this->hints as $name => $value) {
+			$out .= "\tSET {$name} {$value}\n";
 		}
 
 		return $out . "\n";

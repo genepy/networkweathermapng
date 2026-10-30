@@ -12,6 +12,10 @@
     var SVGNS = 'http://www.w3.org/2000/svg';
     var GRID = 10;
     var ANCHORS = ['NW', 'N', 'NE', 'W', 'C', 'E', 'SW', 'S', 'SE'];
+    /** Map furniture: drawn by the map itself, placed by KEYPOS, TIMEPOS, TITLEPOS... */
+    var FURNITURE = ['legend', 'timestamp', 'title', 'widthlegend'];
+    /** Distance, in screen pixels, at which a moved object snaps to a guide */
+    var GUIDE_SNAP = 6;
 
     /** Translation of an interface text (window.WM_T), :name placeholders replaced */
     function t(s, params) {
@@ -44,7 +48,8 @@
         nodes: new Map(),
         links: new Map(),
         zones: new Map(),
-        selection: new Set(),     // "node:NAME", "link:NAME" or "zone:NAME"
+        furniture: new Map(),     // by key: "legend:DEFAULT", "timestamp:", "title:"...
+        selection: new Set(),     // "node:NAME", "link:NAME", "zone:NAME" or a furniture key
         view: { x: 0, y: 0 },
         zoom: 1,
         tool: 'select',
@@ -75,6 +80,9 @@
             return r.json().catch(function () { return null; }).then(function (data) {
                 if (!r.ok) {
                     throw new Error((data && data.error) || t('The server answered :status', { status: r.status }));
+                }
+                if (!data) {
+                    throw new Error(t('The server sent an unreadable answer'));
                 }
                 return data;
             });
@@ -138,6 +146,7 @@
         state.nodes = new Map(d.model.nodes.map(function (n) { return [n.name, n]; }));
         state.links = new Map(d.model.links.map(function (l) { return [l.name, l]; }));
         state.zones = new Map((d.model.zones || []).map(function (z) { return [z.name, z]; }));
+        state.furniture = new Map((d.model.furniture || []).map(function (f) { return [key(f.kind, f.name), f]; }));
         computeOverlaps();
 
         var w = d.model.map.width, h = d.model.map.height;
@@ -173,8 +182,44 @@
 
     function key(kind, name) { return kind + ':' + name; }
     function itemOf(kind, name) {
+        if (isFurniture(kind)) {
+            return state.furniture.get(key(kind, name));
+        }
         var m = kind === 'node' ? state.nodes : kind === 'link' ? state.links : kind === 'zone' ? state.zones : null;
         return m ? m.get(name) : undefined;
+    }
+    function isFurniture(kind) { return FURNITURE.indexOf(kind) >= 0; }
+
+    /** The selected legends, timestamps and title */
+    function selectedFurniture() {
+        var out = [];
+        state.selection.forEach(function (k) {
+            var p = parseKey(k);
+            if (isFurniture(p.kind) && itemOf(p.kind, p.name)) {
+                out.push(itemOf(p.kind, p.name));
+            }
+        });
+        return out;
+    }
+
+    /** [x1, y1, x2, y2] of a node, zone or piece of furniture */
+    function boxOf1(kind, item) {
+        if (kind === 'zone') {
+            return [item.x, item.y, item.x + item.width, item.y + item.height];
+        }
+        return item.box;
+    }
+
+    /**
+     * What can be moved, aligned and snapped: unlocked nodes and zones, and
+     * the furniture. Each entry has its kind, item, key and box.
+     */
+    function selectedObjects() {
+        var out = [];
+        selected('node').forEach(function (n) { if (!n.locked) { out.push({ kind: 'node', item: n, key: key('node', n.name), box: n.box }); } });
+        selected('zone').forEach(function (z) { if (!z.locked) { out.push({ kind: 'zone', item: z, key: key('zone', z.name), box: boxOf1('zone', z) }); } });
+        selectedFurniture().forEach(function (f) { out.push({ kind: f.kind, item: f, key: key(f.kind, f.name), box: f.box }); });
+        return out;
     }
     function parseKey(k) { var i = k.indexOf(':'); return { kind: k.slice(0, i), name: k.slice(i + 1) }; }
 
@@ -255,6 +300,7 @@
         var out = new Set(keys);
         state.nodes.forEach(function (n) { if (groups.has(n.group)) { out.add(key('node', n.name)); } });
         state.links.forEach(function (l) { if (groups.has(l.group)) { out.add(key('link', l.name)); } });
+        state.zones.forEach(function (z) { if (groups.has(z.group)) { out.add(key('zone', z.name)); } });
         return Array.from(out);
     }
 
@@ -265,7 +311,9 @@
         var w = canvas.clientWidth / state.zoom;
         var hh = canvas.clientHeight / state.zoom;
         stage.setAttribute('viewBox', [state.view.x, state.view.y, w, hh].join(' '));
-        $('#zoom-level').textContent = Math.round(state.zoom * 100) + '%';
+        var zoom = Math.round(state.zoom * 100);
+        $('#zoom-value').textContent = zoom + '%';
+        $('#zoom-level').title = t('Zoom of the editor view: :p%. Click for actual size (0)', { p: zoom });
         if (state.model) {
             var s = 12 / state.zoom;
             resizeHandle.setAttribute('x', state.model.map.width - s / 2);
@@ -338,8 +386,8 @@
         var a = state.nodes.get(link.a), b = state.nodes.get(link.b);
         var pa = anchorPoint(a, link.a_offset), pb = anchorPoint(b, link.b_offset);
         if (moved) {
-            if (moved[link.a]) { pa = [pa[0] + moved.dx, pa[1] + moved.dy]; }
-            if (moved[link.b]) { pb = [pb[0] + moved.dx, pb[1] + moved.dy]; }
+            if (moved.nodes[link.a]) { pa = [pa[0] + moved.dx, pa[1] + moved.dy]; }
+            if (moved.nodes[link.b]) { pb = [pb[0] + moved.dx, pb[1] + moved.dy]; }
         }
         return [pa, pb];
     }
@@ -363,21 +411,73 @@
     function linkPath(link, moved) {
         var ends = linkEnds(link, moved);
         var vias = link.via.map(function (v) {
-            return (moved && moved[link.a] && moved[link.b]) ? [v[0] + moved.dx, v[1] + moved.dy] : v;
+            return (moved && moved.nodes[link.a] && moved.nodes[link.b]) ? [v[0] + moved.dx, v[1] + moved.dy] : v;
         });
         return [ends[0]].concat(vias, [ends[1]]);
+    }
+
+    /**
+     * The line drawn through key points, as the engine draws it: a
+     * Catmull-Rom curve for curved links, straight segments otherwise.
+     * Each point says which span (between key points i and i+1) it is on.
+     */
+    function curveOf(points, curved, steps) {
+        var out = [];
+        if (!curved || points.length < 3) {
+            points.forEach(function (p, i) { out.push({ x: p[0], y: p[1], span: Math.max(0, Math.min(i, points.length - 2)) }); });
+            return out;
+        }
+        steps = steps || 16;
+        var pts = [points[0]].concat(points, [points[points.length - 1]]);
+        for (var i = 0; i < pts.length - 3; i++) {
+            for (var j = (i === 0 ? 0 : 1); j <= steps; j++) {
+                var c = spanPoint(pts[i], pts[i + 1], pts[i + 2], pts[i + 3], j / steps);
+                out.push({ x: c[0], y: c[1], span: i });
+            }
+        }
+        return out;
+    }
+
+    function spanPoint(p0, p1, p2, p3, t) {
+        var t2 = t * t, t3 = t2 * t;
+        return [0, 1].map(function (k) {
+            return ((-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3 + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + p2[k]) * t + 2 * p1[k]) / 2;
+        });
+    }
+
+    /** Where a span of the drawn link is half way, to put a handle there */
+    function spanMiddle(points, curved, i) {
+        if (!curved || points.length < 3) {
+            return [(points[i][0] + points[i + 1][0]) / 2, (points[i][1] + points[i + 1][1]) / 2];
+        }
+        var p0 = points[Math.max(0, i - 1)], p3 = points[Math.min(points.length - 1, i + 2)];
+        return spanPoint(p0, points[i], points[i + 1], p3, 0.5);
+    }
+
+    function curvePoints(points, curved) {
+        return curveOf(points, curved).map(function (c) { return c.x + ',' + c.y; }).join(' ');
+    }
+
+    /** The span of a link nearest to a map point, for inserting a bend there */
+    function spanAt(link, p) {
+        var best = null, dist = Infinity;
+        curveOf(linkPath(link), link.viastyle !== 'angled', 24).forEach(function (c) {
+            var d = Math.hypot(c.x - p.x, c.y - p.y);
+            if (d < dist) { dist = d; best = c.span; }
+        });
+        return best === null ? 0 : best;
     }
 
     function renderOverlay() {
         overlay.replaceChildren();
         var drag = state.drag;
-        var moved = drag && (drag.type === 'nodes' || drag.type === 'zone') && drag.started ? drag.moved : null;
+        var moved = drag && drag.type === 'move' && drag.started ? drag.moved : null;
 
         // Links being dragged with their nodes
         if (moved) {
             state.links.forEach(function (l) {
-                if (moved[l.a] || moved[l.b]) {
-                    el('polyline', { 'class': 'ghost', points: linkPath(l, moved).join(' ') }, overlay);
+                if (moved.nodes[l.a] || moved.nodes[l.b]) {
+                    el('polyline', { 'class': 'ghost', points: curvePoints(linkPath(l, moved), l.viastyle !== 'angled') }, overlay);
                 }
             });
         }
@@ -389,7 +489,7 @@
             if (p.kind === 'node') {
                 var n = state.nodes.get(p.name);
                 if (!n) { return; }
-                var dx = moved && moved[n.name] ? moved.dx : 0, dy = moved && moved[n.name] ? moved.dy : 0;
+                var dx = moved && moved.nodes[n.name] ? moved.dx : 0, dy = moved && moved.nodes[n.name] ? moved.dy : 0;
                 var scaled = drag && drag.type === 'scale' && drag.started && drag.pos[n.name];
                 if (scaled) { dx = scaled[0] - n.x; dy = scaled[1] - n.y; }
                 el('rect', {
@@ -403,6 +503,15 @@
                 }
             } else if (p.kind === 'zone') {
                 renderZoneBox(state.zones.get(p.name), drag);
+            } else if (isFurniture(p.kind)) {
+                var f = itemOf(p.kind, p.name);
+                if (!f) { return; }
+                var on = moved && moved.furniture.indexOf(k) >= 0;
+                var fx = on ? moved.dx : 0, fy = on ? moved.dy : 0;
+                el('rect', {
+                    'class': 'sel-box furniture', x: f.box[0] - 3 + fx, y: f.box[1] - 3 + fy,
+                    width: f.box[2] - f.box[0] + 6, height: f.box[3] - f.box[1] + 6
+                }, overlay);
             } else {
                 var l = state.links.get(p.name);
                 if (l) {
@@ -413,14 +522,15 @@
 
         var nodes = selected('node'), links = selected('link');
 
-        // One link: its VIAs, the points to add one, and its anchors
-        if (links.length === 1 && nodes.length === 0 && !moved) {
+        // One link: its VIAs, the points to add one, its anchors and labels
+        if (links.length === 1 && state.selection.size === 1 && !moved) {
             renderLinkHandles(links[0]);
         }
 
-        // One node: a handle to pull a new link from
-        if (nodes.length === 1 && links.length === 0 && !moved && state.tool === 'select') {
+        // One node: a handle to pull a new link from, and one to move its label
+        if (nodes.length === 1 && state.selection.size === 1 && !moved && state.tool === 'select') {
             var n1 = nodes[0];
+            renderNodeLabelHandle(n1, drag);
             el('circle', { 'class': 'connector', cx: n1.box[2] + 8 / state.zoom, cy: (n1.box[1] + n1.box[3]) / 2, r: 5 / state.zoom, 'data-handle': 'connector' }, overlay)
                 .appendChild(el('title', {})).textContent = t('Drag to another node to link them');
         }
@@ -443,7 +553,13 @@
         }
 
         if (drag && drag.type === 'via' && drag.started) {
-            el('polyline', { 'class': 'ghost', points: drag.points.join(' ') }, overlay);
+            var vl = state.links.get(drag.link);
+            el('polyline', { 'class': 'ghost', points: curvePoints(drag.points, vl && vl.viastyle !== 'angled') }, overlay);
+            drag.vias.forEach(function (v) { el('circle', { 'class': 'via', cx: v[0], cy: v[1], r: 5 / state.zoom }, overlay); });
+        }
+
+        if (drag && drag.type === 'bwlabel' && drag.started) {
+            el('rect', { 'class': 'label-ghost', x: drag.at[0] - drag.w / 2, y: drag.at[1] - drag.h / 2, width: drag.w, height: drag.h }, overlay);
         }
 
         if (drag && drag.type === 'resize' && drag.started) {
@@ -454,34 +570,59 @@
         if (nodes.length >= 2 && state.tool === 'select' && !moved) {
             renderScaleBox(nodes);
         }
+
+        renderGuides(drag);
+    }
+
+    /** Lines showing the edges and centres the moved objects line up with */
+    function renderGuides(drag) {
+        if (!drag || !drag.started || !drag.guides) { return; }
+        drag.guides.forEach(function (g) {
+            el('line', g.axis === 'x'
+                ? { 'class': 'guide', x1: g.at, x2: g.at, y1: g.from, y2: g.to }
+                : { 'class': 'guide', y1: g.at, y2: g.at, x1: g.from, x2: g.to }, overlay);
+        });
     }
 
     /** A selected zone: its outline and, alone, a handle to resize it */
     function renderZoneBox(z, drag) {
         if (!z) { return; }
         var x = z.x, y = z.y, w = z.width, hh = z.height;
-        if (drag && drag.type === 'zone' && drag.started && drag.zones.indexOf(z.name) >= 0) {
+        var moving = drag && drag.type === 'move' && drag.started && drag.moved.zones.indexOf(z.name) >= 0;
+        if (moving) {
             x += drag.moved.dx; y += drag.moved.dy;
         }
         if (drag && drag.type === 'zone-size' && drag.started && drag.zone === z.name) {
             w = drag.w; hh = drag.h;
         }
-        el('rect', { 'class': 'sel-box zone', x: x - 3, y: y - 3, width: w + 6, height: hh + 6 }, overlay);
-        if (state.selection.size === 1 && !(drag && drag.type === 'zone' && drag.started)) {
+        el('rect', { 'class': 'sel-box zone' + (z.group ? ' grouped' : ''), x: x - 3, y: y - 3, width: w + 6, height: hh + 6 }, overlay);
+        if (state.selection.size === 1 && !moving && !z.locked) {
             var r = 5 / state.zoom;
             el('rect', { 'class': 'scale-handle', x: x + w - r, y: y + hh - r, width: 2 * r, height: 2 * r, 'data-handle': 'zone-size' }, overlay)
                 .appendChild(el('title', {})).textContent = t('Drag to resize the zone');
         }
     }
 
+    /** With an icon, the label of the selected node can be dragged on its own */
+    function renderNodeLabelHandle(n, drag) {
+        if (!n.label_box || n.locked) { return; }
+        var b = n.label_box, dx = 0, dy = 0;
+        if (drag && drag.type === 'nodelabel' && drag.started) { dx = drag.dx; dy = drag.dy; }
+        el('rect', {
+            'class': 'label-handle', x: b[0] - 1 + dx, y: b[1] - 1 + dy, width: b[2] - b[0] + 2, height: b[3] - b[1] + 2,
+            'data-handle': 'nodelabel'
+        }, overlay).appendChild(el('title', {})).textContent = t('Drag to move the label');
+    }
+
     function renderLinkHandles(link) {
         var r = 5 / state.zoom;
-        var pts = linkPath(link);
+        var pts = linkPath(link), curved = link.viastyle !== 'angled';
 
-        // a dot in the middle of each segment adds a VIA there
+        // a dot in the middle of each span adds a VIA there
         for (var i = 0; i < pts.length - 1; i++) {
+            var mid = spanMiddle(pts, curved, i);
             el('circle', {
-                'class': 'via-add', cx: (pts[i][0] + pts[i + 1][0]) / 2, cy: (pts[i][1] + pts[i + 1][1]) / 2,
+                'class': 'via-add', cx: mid[0], cy: mid[1],
                 r: r * 0.9, 'data-handle': 'via-add', 'data-index': i
             }, overlay).appendChild(el('title', {})).textContent = t('Drag to bend the link here');
         }
@@ -490,6 +631,15 @@
             el('circle', { 'class': 'via', cx: v[0], cy: v[1], r: r, 'data-handle': 'via', 'data-index': idx }, overlay)
                 .appendChild(el('title', {})).textContent = t('Drag to move, double-click to remove');
         });
+
+        if (!link.locked) {
+            bwLabelBoxes(link).forEach(function (lab) {
+                el('rect', {
+                    'class': 'label-handle', x: lab.rect[0] - 1, y: lab.rect[1] - 1, width: lab.rect[2] - lab.rect[0] + 2, height: lab.rect[3] - lab.rect[1] + 2,
+                    'data-handle': 'bwlabel', 'data-dir': lab.dir
+                }, overlay).appendChild(el('title', {})).textContent = t('Drag along the link to move this label');
+            });
+        }
 
         [['a', link.a, link.a_offset], ['b', link.b, link.b_offset]].forEach(function (end) {
             var node = state.nodes.get(end[1]);
@@ -502,6 +652,23 @@
                 }, overlay).appendChild(el('title', {})).textContent = a === 'C' ? t('Attach this end at the centre') : t('Attach this end to :anchor', { anchor: a });
             });
         });
+    }
+
+    /** The bandwidth labels of a link as drawn: {dir: in|out, rect} */
+    function bwLabelBoxes(link) {
+        // the labels sit in a group of their own, drawn over all the links
+        var groups = $$('#map g[data-kind="link"]').filter(function (e) { return e.dataset.name === link.name; });
+        var out = [];
+        ['in', 'out'].forEach(function (dir) {
+            var box = null;
+            groups.forEach(function (g) {
+                box = box || g.querySelector('polygon.wm-bwlabel-' + dir) || g.querySelector('text.wm-bwlabel-' + dir);
+            });
+            if (!box) { return; }
+            var bb = box.getBBox();
+            out.push({ dir: dir, w: bb.width, h: bb.height, rect: [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height] });
+        });
+        return out;
     }
 
     function rectOf(p, q) {
@@ -520,12 +687,14 @@
     function updateToolbar() {
         $('[data-cmd="undo"]').disabled = !state.history.undo;
         $('[data-cmd="redo"]').disabled = !state.history.redo;
-        var nodes = selected('node').length, any = state.selection.size;
+        var nodes = selected('node').length, any = state.selection.size, objects = alignUnits(selectedObjects()).length;
         $$('[data-needs]').forEach(function (e) {
             var need = e.dataset.needs, ok = true;
             if (need === 'nodes1') { ok = nodes >= 1; }
             if (need === 'nodes2') { ok = nodes >= 2; }
             if (need === 'nodes3') { ok = nodes >= 3; }
+            if (need === 'objects2') { ok = objects >= 2; }
+            if (need === 'objects3') { ok = objects >= 3; }
             if (need === 'any') { ok = any > 0; }
             if (e.tagName === 'BUTTON') { e.disabled = !ok; } else { e.classList.toggle('unavailable', !ok); }
         });
@@ -549,12 +718,29 @@
         if (g && (g.dataset.kind === 'node' || g.dataset.kind === 'link')) {
             return { kind: g.dataset.kind, name: g.dataset.name };
         }
+        if (g && isFurniture(g.dataset.kind) && itemOf(g.dataset.kind, g.dataset.name)) {
+            return { kind: g.dataset.kind, name: g.dataset.name };
+        }
         if (g && g.dataset.kind === 'zone' && evt.target.classList.contains('wm-zone-label')) {
             return { kind: 'zone', name: g.dataset.name };
         }
+        var p = toMap(evt);
+        var f = furnitureAt(p);
+        if (f) {
+            return { kind: f.kind, name: f.name };
+        }
         // a zone is picked by its edge, so its inside stays free for selecting an area
-        var z = zoneEdgeAt(toMap(evt));
+        var z = zoneEdgeAt(p);
         return z ? { kind: 'zone', name: z.name } : null;
+    }
+
+    /** The legend, timestamp or title under a map point (they may be drawn as one picture) */
+    function furnitureAt(p) {
+        var found = null;
+        state.furniture.forEach(function (f) {
+            if (p.x >= f.box[0] && p.x <= f.box[2] && p.y >= f.box[1] && p.y <= f.box[3]) { found = f; }
+        });
+        return found;
     }
 
     function zoneEdgeAt(p) {
@@ -568,15 +754,6 @@
         return found;
     }
 
-    /** Unlocked nodes whose centre is inside the zone */
-    function nodesIn(z) {
-        var out = [];
-        state.nodes.forEach(function (n) {
-            if (!n.locked && n.x >= z.x && n.x <= z.x + z.width && n.y >= z.y && n.y <= z.y + z.height) { out.push(n); }
-        });
-        return out;
-    }
-
     function nodeAtPoint(p) {
         var found = null;
         state.nodes.forEach(function (n) {
@@ -585,6 +762,23 @@
             }
         });
         return found;
+    }
+
+    function linkAtPoint(p) {
+        var tol = 6 / state.zoom, found = null;
+        state.links.forEach(function (l) {
+            var s = l.spine;
+            for (var i = 0; i + 1 < s.length && !found; i++) {
+                if (distToSegment(p, s[i], s[i + 1]) <= tol + (l.drawn_width || 0) / 2) { found = l; }
+            }
+        });
+        return found;
+    }
+
+    function distToSegment(p, a, b) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], len = dx * dx + dy * dy;
+        var u = len ? Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / len)) : 0;
+        return Math.hypot(p.x - a[0] - u * dx, p.y - a[1] - u * dy);
     }
 
     stage.addEventListener('pointerdown', function (evt) {
@@ -631,47 +825,147 @@
             return;
         }
 
+        var ctrl = evt.ctrlKey || evt.metaKey;
         if (!item) {
-            startDrag(evt, { type: 'lasso', start: p, now: p, add: evt.shiftKey || evt.ctrlKey || evt.metaKey });
+            // Ctrl+click on empty space adds a node; Ctrl or Shift+drag adds an area to the selection
+            startDrag(evt, { type: 'lasso', start: p, now: p, add: evt.shiftKey || ctrl, create: ctrl && !evt.shiftKey });
             return;
         }
 
         var k = key(item.kind, item.name);
         var keys = withGroups([k], evt.altKey);
 
-        if (evt.shiftKey || evt.ctrlKey || evt.metaKey) {
-            var removing = state.selection.has(k);
-            keys.forEach(function (kk) { if (removing) { state.selection.delete(kk); } else { state.selection.add(kk); } });
-            refresh();
-            if (removing) {
-                return;
+        // Ctrl+click on a selected object takes it out of the selection,
+        // unless the click turns into a drag, which duplicates the selection
+        var unselect = null;
+        if (evt.shiftKey || ctrl) {
+            if (state.selection.has(k)) {
+                if (evt.shiftKey || item.kind === 'link') {
+                    keys.forEach(function (kk) { state.selection.delete(kk); });
+                    refresh();
+                    return;
+                }
+                unselect = keys;
+            } else {
+                keys.forEach(function (kk) { state.selection.add(kk); });
+                refresh();
             }
         } else if (!state.selection.has(k)) {
             state.selection = new Set(keys);
             refresh();
         }
 
-        if (item.kind === 'node') {
-            var movable = selected('node').filter(function (n) { return !n.locked; });
-            if (!movable.length) {
-                if (state.nodes.get(item.name).locked) { toast(t('This node is locked. Unlock it to move it.')); }
-                return;
-            }
-            var moved = { dx: 0, dy: 0 };
-            movable.forEach(function (n) { moved[n.name] = true; });
-            var lead = state.nodes.get(item.name);
-            startDrag(evt, { type: 'nodes', start: p, moved: moved, lead: lead.locked ? movable[0] : lead, clicked: k, multi: state.selection.size > 1 });
+        if (item.kind === 'link') {
+            return;
         }
-
-        if (item.kind === 'zone') {
-            // a zone takes its nodes along, unless Alt is held
-            var zones = selected('zone'), zmoved = { dx: 0, dy: 0 };
-            if (!evt.altKey) {
-                zones.forEach(function (z) { nodesIn(z).forEach(function (n) { zmoved[n.name] = true; }); });
-            }
-            startDrag(evt, { type: 'zone', start: p, moved: zmoved, lead: state.zones.get(item.name), zones: zones.map(function (z) { return z.name; }), clicked: k, multi: state.selection.size > 1 });
-        }
+        startMove(evt, k, p, unselect);
     });
+
+    /**
+     * Drag what is selected: unlocked nodes and zones, legends, timestamps
+     * and the title move together. A zone moves alone: the nodes on it
+     * only follow when they are grouped with it. With Ctrl (Cmd on a Mac)
+     * held when the drag ends, the selected nodes are copied there instead.
+     * `unselect` is what a click without a drag takes out of the selection.
+     */
+    function startMove(evt, clicked, p, unselect) {
+        var objects = selectedObjects();
+        if (!objects.length) {
+            var c = parseKey(clicked), it = itemOf(c.kind, c.name);
+            if (it && it.locked) { toast(t('This item is locked. Unlock it to move it.')); }
+            return;
+        }
+        var moved = { dx: 0, dy: 0, nodes: {}, zones: [], furniture: [] };
+        objects.forEach(function (o) {
+            if (o.kind === 'node') { moved.nodes[o.item.name] = true; }
+            else if (o.kind === 'zone') { moved.zones.push(o.item.name); }
+            else { moved.furniture.push(o.key); }
+        });
+        // the clicked object is the one snapped to the grid
+        var lead = objects.filter(function (o) { return o.key === clicked; })[0] || objects[0];
+        var origin = lead.kind === 'node' ? [lead.item.x, lead.item.y] : [lead.box[0], lead.box[1]];
+        startDrag(evt, {
+            type: 'move', start: p, moved: moved, origin: origin, clicked: clicked, multi: state.selection.size > 1, unselect: unselect, copy: false,
+            box: unionBox(objects.map(function (o) { return o.box; })), targets: guideTargets(objects)
+        });
+    }
+
+    function unionBox(boxes) {
+        return [
+            Math.min.apply(null, boxes.map(function (b) { return b[0]; })),
+            Math.min.apply(null, boxes.map(function (b) { return b[1]; })),
+            Math.max.apply(null, boxes.map(function (b) { return b[2]; })),
+            Math.max.apply(null, boxes.map(function (b) { return b[3]; }))
+        ];
+    }
+
+    // ------------------------------------------------------------------
+    // Guides: line up the moved objects with the edges and centres of the others
+
+    /** Boxes of what does not move, and of the map itself */
+    function guideTargets(moving) {
+        var skip = {};
+        moving.forEach(function (o) { skip[o.key] = true; });
+        var out = [[0, 0, state.model.map.width, state.model.map.height]];
+        state.nodes.forEach(function (n) { if (!skip[key('node', n.name)]) { out.push(n.box); } });
+        state.zones.forEach(function (z) { if (!skip[key('zone', z.name)] && state.layers.zones) { out.push(boxOf1('zone', z)); } });
+        state.furniture.forEach(function (f, k) { if (!skip[k]) { out.push(f.box); } });
+        return out;
+    }
+
+    function lines(b, axis) {
+        return axis === 'x' ? [b[0], (b[0] + b[2]) / 2, b[2]] : [b[1], (b[1] + b[3]) / 2, b[3]];
+    }
+
+    /**
+     * The shift that brings box `b` onto the nearest guide along one axis,
+     * within `tol` map pixels, or null.
+     */
+    function guideShift(b, targets, axis, tol) {
+        var best = null;
+        lines(b, axis).forEach(function (v) {
+            targets.forEach(function (tb) {
+                lines(tb, axis).forEach(function (w) {
+                    var d = w - v;
+                    if (Math.abs(d) <= tol && (best === null || Math.abs(d) < Math.abs(best))) { best = d; }
+                });
+            });
+        });
+        return best;
+    }
+
+    /** The guide lines box `b` touches, to draw them */
+    function guidesFor(b, targets) {
+        var out = [];
+        ['x', 'y'].forEach(function (axis) {
+            var other = axis === 'x' ? [1, 3] : [0, 2];
+            lines(b, axis).forEach(function (v) {
+                var from = b[other[0]], to = b[other[1]], hit = false;
+                targets.forEach(function (tb) {
+                    if (lines(tb, axis).some(function (w) { return Math.abs(w - v) < 0.5; })) {
+                        hit = true;
+                        from = Math.min(from, tb[other[0]]);
+                        to = Math.max(to, tb[other[1]]);
+                    }
+                });
+                if (hit) { out.push({ axis: axis, at: v, from: from, to: to }); }
+            });
+        });
+        return out;
+    }
+
+    /** Snap a move to the guides (Alt held: no guides) and keep the lines to draw */
+    function applyGuides(d, off) {
+        d.guides = [];
+        if (off) { return; }
+        var tol = GUIDE_SNAP / state.zoom;
+        var b = [d.box[0] + d.moved.dx, d.box[1] + d.moved.dy, d.box[2] + d.moved.dx, d.box[3] + d.moved.dy];
+        var sx = guideShift(b, d.targets, 'x', tol), sy = guideShift(b, d.targets, 'y', tol);
+        if (sx !== null) { d.moved.dx = Math.round(d.moved.dx + sx); }
+        if (sy !== null) { d.moved.dy = Math.round(d.moved.dy + sy); }
+        b = [d.box[0] + d.moved.dx, d.box[1] + d.moved.dy, d.box[2] + d.moved.dx, d.box[3] + d.moved.dy];
+        d.guides = guidesFor(b, d.targets);
+    }
 
     function handleDown(evt, handle, p) {
         if (handle === 'scale') {
@@ -683,8 +977,20 @@
             startDrag(evt, { type: 'zone-size', zone: z.name, start: p, w: z.width, h: z.height });
             return;
         }
+        if (handle === 'nodelabel') {
+            var n = selected('node')[0];
+            startDrag(evt, { type: 'nodelabel', node: n.name, start: p, dx: 0, dy: 0 });
+            return;
+        }
         var link = selected('link')[0];
         var idx = +evt.target.dataset.index;
+
+        if (handle === 'bwlabel') {
+            var lab = bwLabelBoxes(link).filter(function (l) { return l.dir === evt.target.dataset.dir; })[0];
+            if (!lab || link.spine.length < 2) { return; }
+            startDrag(evt, { type: 'bwlabel', link: link.name, dir: lab.dir, w: lab.w, h: lab.h, at: [(lab.rect[0] + lab.rect[2]) / 2, (lab.rect[1] + lab.rect[3]) / 2], pct: null });
+            return;
+        }
 
         if (handle === 'via' || handle === 'via-add') {
             var vias = link.via.map(function (v) { return v.slice(); });
@@ -735,24 +1041,31 @@
                 updateView();
                 return;
 
-            case 'nodes':
-                var nx = snap(d.lead.x + p.x - d.start.x), ny = snap(d.lead.y + p.y - d.start.y);
-                d.moved.dx = nx - d.lead.x;
-                d.moved.dy = ny - d.lead.y;
-                moveNodeGroups(d.moved);
-                break;
-
-            case 'zone':
-                d.moved.dx = snap(d.lead.x + p.x - d.start.x) - d.lead.x;
-                d.moved.dy = snap(d.lead.y + p.y - d.start.y) - d.lead.y;
-                moveNodeGroups(d.moved);
-                moveZoneGroups(d.zones, d.moved);
+            case 'move':
+                d.moved.dx = snap(d.origin[0] + p.x - d.start.x) - d.origin[0];
+                d.moved.dy = snap(d.origin[1] + p.y - d.start.y) - d.origin[1];
+                applyGuides(d, evt.altKey);
+                d.copy = (evt.ctrlKey || evt.metaKey) && Object.keys(d.moved.nodes).length > 0;
+                previewMove(d.moved, d.copy);
                 break;
 
             case 'zone-size':
                 var zs = state.zones.get(d.zone);
                 d.w = Math.max(10, snap(zs.x + zs.width + p.x - d.start.x) - zs.x);
                 d.h = Math.max(10, snap(zs.y + zs.height + p.y - d.start.y) - zs.y);
+                break;
+
+            case 'nodelabel':
+                d.dx = Math.round(p.x - d.start.x);
+                d.dy = Math.round(p.y - d.start.y);
+                previewLabel(d.node, d.dx, d.dy);
+                break;
+
+            case 'bwlabel':
+                var bl = state.links.get(d.link);
+                var q = projectOnSpine(bl.spine, p);
+                d.pct = Math.max(1, Math.min(99, q.pct));
+                d.at = pointAlong(bl.spine, d.pct);
                 break;
 
             case 'lasso':
@@ -787,66 +1100,120 @@
     });
     stage.addEventListener('pointerleave', function () { state.mouse = null; });
 
-    function moveNodeGroups(moved) {
-        $$('#map g[data-kind="node"]').forEach(function (g) {
-            if (moved[g.dataset.name]) {
-                g.setAttribute('transform', 'translate(' + moved.dx + ' ' + moved.dy + ')');
+    /**
+     * Show the moved objects at their new place, before the server draws
+     * them. When copying, the nodes stay and their copies follow the pointer.
+     */
+    function previewMove(moved, copy) {
+        var shift = (moved.dx || moved.dy) ? 'translate(' + moved.dx + ' ' + moved.dy + ')' : null;
+        $$('#map .copy-ghost').forEach(function (g) { g.remove(); });
+        if (copy && shift) {
+            $$('#map g[data-kind="node"]').forEach(function (g) {
+                if (!moved.nodes[g.dataset.name]) { return; }
+                var ghost = g.cloneNode(true);
+                ghost.removeAttribute('data-kind');
+                ghost.classList.add('copy-ghost');
+                ghost.setAttribute('transform', shift);
+                mapLayer.appendChild(ghost);
+            });
+            moved = noMove();
+            shift = null;
+        }
+        function place(g, on) {
+            if (on && shift) { g.setAttribute('transform', shift); } else { g.removeAttribute('transform'); }
+        }
+        $$('#map g[data-kind]').forEach(function (g) {
+            var kind = g.dataset.kind, name = g.dataset.name;
+            if (kind === 'node') {
+                place(g, !!moved.nodes[name]);
+            } else if (kind === 'zone') {
+                place(g, moved.zones.indexOf(name) >= 0);
+            } else if (isFurniture(kind)) {
+                place(g, moved.furniture.indexOf(key(kind, name)) >= 0);
+            } else if (kind === 'link') {
+                var l = state.links.get(name);
+                g.classList.toggle('dimmed', !!(l && (moved.nodes[l.a] || moved.nodes[l.b]) && shift));
             }
-        });
-        $$('#map g[data-kind="link"]').forEach(function (g) {
-            var l = state.links.get(g.dataset.name);
-            g.classList.toggle('dimmed', !!(l && (moved[l.a] || moved[l.b]) && (moved.dx || moved.dy)));
         });
     }
 
-    function moveZoneGroups(names, moved) {
-        $$('#map g[data-kind="zone"]').forEach(function (g) {
-            if (names.indexOf(g.dataset.name) >= 0) {
-                g.setAttribute('transform', 'translate(' + moved.dx + ' ' + moved.dy + ')');
-            }
+    function noMove() { return { dx: 0, dy: 0, nodes: {}, zones: [], furniture: [] }; }
+
+    /** Move the label of a node, not its icon, while it is dragged */
+    function previewLabel(name, dx, dy) {
+        $$('#map g[data-kind="node"]').forEach(function (g) {
+            if (g.dataset.name !== name) { return; }
+            Array.prototype.forEach.call(g.children, function (c) {
+                if (c.classList.contains('wm-icon')) { return; }
+                if (dx || dy) { c.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')'); } else { c.removeAttribute('transform'); }
+            });
         });
+    }
+
+    /** The nearest point of a polyline to p: {pct} of its length */
+    function projectOnSpine(spine, p) {
+        var total = 0, best = { d: Infinity, at: 0 };
+        for (var i = 1; i < spine.length; i++) {
+            var a = spine[i - 1], b = spine[i];
+            var len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            var dx = b[0] - a[0], dy = b[1] - a[1];
+            var u = len ? Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / (len * len))) : 0;
+            var d = Math.hypot(p.x - a[0] - u * dx, p.y - a[1] - u * dy);
+            if (d < best.d) { best = { d: d, at: total + u * len }; }
+            total += len;
+        }
+        return { pct: total ? Math.round(best.at / total * 100) : 50 };
     }
 
     stage.addEventListener('pointerup', endDrag);
     stage.addEventListener('pointercancel', function (evt) { endDrag(evt, true); });
+
+    /** Stop a drag without saving anything (Esc, or the browser took the pointer) */
+    function cancelDrag() {
+        var d = state.drag;
+        if (!d) { return false; }
+        state.drag = null;
+        stage.classList.remove('panning');
+        try { stage.releasePointerCapture(d.pointer); } catch (e) { /* already released */ }
+        previewMove(noMove());
+        previewPositions({});
+        if (d.type === 'nodelabel') { previewLabel(d.node, 0, 0); }
+        refresh();
+        return true;
+    }
 
     function endDrag(evt, cancelled) {
         var d = state.drag;
         if (!d || d.pointer !== evt.pointerId) {
             return;
         }
-        state.drag = null;
-        stage.classList.remove('panning');
         if (cancelled) {
-            load();
+            cancelDrag();
             return;
         }
+        state.drag = null;
+        stage.classList.remove('panning');
 
         switch (d.type) {
-            case 'nodes':
+            case 'move':
                 if (!d.started || (!d.moved.dx && !d.moved.dy)) {
                     // a plain click in a multi-selection keeps only what was clicked
                     if (!d.started && d.multi && !(evt.shiftKey || evt.ctrlKey || evt.metaKey)) {
                         state.selection = new Set(withGroups([d.clicked], evt.altKey));
                     }
-                    moveNodeGroups({ dx: 0, dy: 0 });
+                    if (!d.started && d.unselect) {
+                        d.unselect.forEach(function (kk) { state.selection.delete(kk); });
+                    }
+                    previewMove(noMove());
                     refresh();
+                    return;
+                }
+                if (d.copy) {
+                    previewMove(noMove());
+                    send([{ op: 'clone', nodes: Object.keys(d.moved.nodes), dx: d.moved.dx, dy: d.moved.dy }], createdKeys);
                     return;
                 }
                 send([moveOp(d.moved)]);
-                return;
-
-            case 'zone':
-                if (!d.started || (!d.moved.dx && !d.moved.dy)) {
-                    if (!d.started && d.multi && !(evt.shiftKey || evt.ctrlKey || evt.metaKey)) {
-                        state.selection = new Set([d.clicked]);
-                    }
-                    moveNodeGroups({ dx: 0, dy: 0 });
-                    moveZoneGroups(d.zones, { dx: 0, dy: 0 });
-                    refresh();
-                    return;
-                }
-                send([moveOp(d.moved, d.zones)]);
                 return;
 
             case 'zone-size':
@@ -858,8 +1225,37 @@
                 send([{ op: 'set_zone', names: [d.zone], props: { width: d.w, height: d.h } }]);
                 return;
 
+            case 'nodelabel':
+                var ln = state.nodes.get(d.node);
+                if (!d.started || (!d.dx && !d.dy) || !ln) {
+                    previewLabel(d.node, 0, 0);
+                    renderOverlay();
+                    return;
+                }
+                send([{ op: 'set_node', names: [d.node], props: { labelshift: [ln.label_shift[0] + d.dx, ln.label_shift[1] + d.dy] } }]);
+                return;
+
+            case 'bwlabel':
+                if (!d.started || d.pct === null) {
+                    renderOverlay();
+                    return;
+                }
+                var bl = state.links.get(d.link), pos = effectivePos(bl);
+                pos[d.dir] = d.pct;
+                // on a two-way link, the "in" label stays on the B side of the "out" one
+                if (bl.linkstyle !== 'oneway') {
+                    if (d.dir === 'in') { pos.in = Math.max(pos.in, Math.round(pos.out) + 1); } else { pos.out = Math.min(pos.out, Math.round(pos.in) - 1); }
+                }
+                send([{ op: 'set_link', names: [d.link], props: { labelpos_in: Math.round(pos.in), labelpos_out: Math.round(pos.out) } }]);
+                return;
+
             case 'lasso':
                 if (!d.started) {
+                    if (d.create) {
+                        var at = toMap(evt);
+                        addNode({ x: snap(at.x), y: snap(at.y) });
+                        return;
+                    }
                     if (!d.add) {
                         state.selection.clear();
                     }
@@ -868,6 +1264,7 @@
                 }
                 var r = rectOf(d.start, toMap(evt));
                 var keys = d.add ? Array.from(state.selection) : [];
+                var inside = function (b) { return b[0] >= r[0] && b[2] <= r[2] && b[1] >= r[1] && b[3] <= r[3]; };
                 state.nodes.forEach(function (n) {
                     if (n.x >= r[0] && n.x <= r[2] && n.y >= r[1] && n.y <= r[3]) { keys.push(key('node', n.name)); }
                 });
@@ -875,6 +1272,8 @@
                     var m = midpoint(l);
                     if (m && m[0] >= r[0] && m[0] <= r[2] && m[1] >= r[1] && m[1] <= r[3]) { keys.push(key('link', l.name)); }
                 });
+                state.zones.forEach(function (z) { if (inside(boxOf1('zone', z))) { keys.push(key('zone', z.name)); } });
+                state.furniture.forEach(function (f, k) { if (inside(f.box)) { keys.push(k); } });
                 state.selection = new Set(withGroups(keys, evt.altKey));
                 refresh();
                 return;
@@ -914,24 +1313,27 @@
         return s && s.length ? s[Math.floor(s.length / 2)] : null;
     }
 
-    function moveOp(moved, zoneNames) {
-        var nodes = {}, vias = {}, zones = {};
-        (zoneNames || []).forEach(function (name) {
+    function moveOp(moved) {
+        var nodes = {}, vias = {}, zones = {}, furniture = {};
+        moved.zones.forEach(function (name) {
             var z = state.zones.get(name);
             zones[name] = [z.x + moved.dx, z.y + moved.dy];
         });
-        Object.keys(moved).forEach(function (name) {
-            if (name === 'dx' || name === 'dy') { return; }
+        Object.keys(moved.nodes).forEach(function (name) {
             var n = state.nodes.get(name);
             nodes[name] = [n.x + moved.dx, n.y + moved.dy];
         });
+        moved.furniture.forEach(function (k) {
+            var f = state.furniture.get(k);
+            furniture[k] = [f.pos[0] + moved.dx, f.pos[1] + moved.dy];
+        });
         // links whose two ends move keep their shape
         state.links.forEach(function (l) {
-            if (l.via.length && moved[l.a] && moved[l.b]) {
+            if (l.via.length && moved.nodes[l.a] && moved.nodes[l.b]) {
                 vias[l.name] = l.via.map(function (v) { return [v[0] + moved.dx, v[1] + moved.dy]; });
             }
         });
-        return { op: 'move', nodes: nodes, vias: vias, zones: zones };
+        return { op: 'move', nodes: nodes, vias: vias, zones: zones, furniture: furniture };
     }
 
     stage.addEventListener('dblclick', function (evt) {
@@ -943,16 +1345,29 @@
             send([{ op: 'set_link', names: [link.name], props: { via: vias } }]);
             return;
         }
+        if (handle) {
+            return;
+        }
+        var p = toMap(evt);
         var item = itemAt(evt);
+        // double-click on a link: a new bend point there
+        var onLink = item && item.kind === 'link' ? state.links.get(item.name) : (!item ? linkAtPoint(p) : null);
+        if (onLink && !onLink.locked && state.tool === 'select') {
+            addBend(onLink, p);
+            return;
+        }
         if (item && (item.kind === 'node' || item.kind === 'zone')) {
             var input = $('#inspector input[name="label"]');
             if (input) { input.focus(); input.select(); }
         }
-        if (!item && !handle && state.tool === 'select') {
-            var p = toMap(evt);
-            addNode({ x: snap(p.x), y: snap(p.y) });
-        }
     });
+
+    /** Add a bend point (VIA) to a link, in the part of the link nearest to p */
+    function addBend(link, p) {
+        var vias = link.via.map(function (v) { return v.slice(); });
+        vias.splice(spanAt(link, p), 0, [snap(p.x), snap(p.y)]);
+        send([{ op: 'set_link', names: [link.name], props: { via: vias } }], [key('link', link.name)]);
+    }
 
     stage.addEventListener('wheel', function (evt) {
         evt.preventDefault();
@@ -1045,49 +1460,97 @@
         return (c.nodes || []).map(function (n) { return key('node', n); }).concat((c.links || []).map(function (n) { return key('link', n); }));
     }
 
+    /**
+     * What align and distribute move as one: each group of the selection,
+     * and each object outside a group. When everything selected belongs to
+     * one group, its members line up one by one. A unit has a key, its
+     * objects, its box and, for a single node, the node itself.
+     */
+    function alignUnits(objects) {
+        var byGroup = new Map(), units = [];
+        objects.forEach(function (o) {
+            var g = groupOf(o.item);
+            if (g) {
+                if (!byGroup.has(g)) { byGroup.set(g, []); }
+                byGroup.get(g).push(o);
+            } else {
+                units.push([o]);
+            }
+        });
+        if (!units.length && byGroup.size === 1) {
+            units = objects.map(function (o) { return [o]; });
+        } else {
+            byGroup.forEach(function (members) { units.push(members); });
+        }
+        return units.map(function (members) {
+            return {
+                key: members[0].key, objects: members,
+                box: unionBox(members.map(function (o) { return o.box; })),
+                node: members.length === 1 && members[0].kind === 'node' ? members[0].item : null
+            };
+        });
+    }
+
+    /**
+     * Line up, or space evenly, the selected nodes, zones, legends,
+     * timestamps and title, by their boxes. Groups move as a whole.
+     */
     function align(how) {
-        var nodes = selected('node').filter(function (n) { return !n.locked; });
-        if (nodes.length < 2) {
+        var units = alignUnits(selectedObjects());
+        if (units.length < 2) {
             return;
         }
-        var minX = Math.min.apply(null, nodes.map(function (n) { return n.box[0]; }));
-        var maxX = Math.max.apply(null, nodes.map(function (n) { return n.box[2]; }));
-        var minY = Math.min.apply(null, nodes.map(function (n) { return n.box[1]; }));
-        var maxY = Math.max.apply(null, nodes.map(function (n) { return n.box[3]; }));
-        var pos = {};
+        var all = unionBox(units.map(function (u) { return u.box; }));
+        var minX = all[0], minY = all[1], maxX = all[2], maxY = all[3];
+        var shift = {};
 
-        nodes.forEach(function (n) {
-            var x = n.x, y = n.y;
-            if (how === 'left') { x += minX - n.box[0]; }
-            if (how === 'right') { x += maxX - n.box[2]; }
-            if (how === 'hcenter') { x = Math.round((minX + maxX) / 2); }
-            if (how === 'top') { y += minY - n.box[1]; }
-            if (how === 'bottom') { y += maxY - n.box[3]; }
-            if (how === 'vcenter') { y = Math.round((minY + maxY) / 2); }
-            pos[n.name] = [x, y];
+        units.forEach(function (u) {
+            var b = u.box, dx = 0, dy = 0;
+            if (how === 'left') { dx = minX - b[0]; }
+            if (how === 'right') { dx = maxX - b[2]; }
+            if (how === 'hcenter') { dx = (minX + maxX) / 2 - centre(u, 'x'); }
+            if (how === 'top') { dy = minY - b[1]; }
+            if (how === 'bottom') { dy = maxY - b[3]; }
+            if (how === 'vcenter') { dy = (minY + maxY) / 2 - centre(u, 'y'); }
+            shift[u.key] = [dx, dy];
         });
 
         if (how === 'distribute-h' || how === 'distribute-v') {
             var axis = how === 'distribute-h' ? 'x' : 'y';
-            var sorted = nodes.slice().sort(function (a, b) { return a[axis] - b[axis]; });
-            var first = sorted[0][axis], last = sorted[sorted.length - 1][axis];
+            var sorted = units.slice().sort(function (a, b) { return centre(a, axis) - centre(b, axis); });
+            var first = centre(sorted[0], axis), last = centre(sorted[sorted.length - 1], axis);
             var step = (last - first) / (sorted.length - 1);
-            sorted.forEach(function (n, i) {
-                var v = Math.round(first + step * i);
-                pos[n.name] = axis === 'x' ? [v, n.y] : [n.x, v];
+            sorted.forEach(function (u, i) {
+                var d = first + step * i - centre(u, axis);
+                shift[u.key] = axis === 'x' ? [d, 0] : [0, d];
             });
         }
 
-        send([{ op: 'move', nodes: pos }]);
+        var op = { op: 'move', nodes: {}, zones: {}, furniture: {} };
+        units.forEach(function (u) {
+            var dx = Math.round(shift[u.key][0]), dy = Math.round(shift[u.key][1]);
+            u.objects.forEach(function (o) {
+                if (o.kind === 'node') { op.nodes[o.item.name] = [o.item.x + dx, o.item.y + dy]; }
+                else if (o.kind === 'zone') { op.zones[o.item.name] = [o.item.x + dx, o.item.y + dy]; }
+                else { op.furniture[o.key] = [o.item.pos[0] + dx, o.item.pos[1] + dy]; }
+            });
+        });
+        send([op]);
+    }
+
+    /** The centre a single node is aligned by is its position; for the rest, the box */
+    function centre(u, axis) {
+        if (u.node) { return axis === 'x' ? u.node.x : u.node.y; }
+        return axis === 'x' ? (u.box[0] + u.box[2]) / 2 : (u.box[1] + u.box[3]) / 2;
     }
 
     function itemsByKind() {
-        return { node: selected('node'), link: selected('link') };
+        return { node: selected('node'), link: selected('link'), zone: selected('zone') };
     }
 
     function hintOps(keyName, value, filter) {
         var by = itemsByKind(), ops = [];
-        ['node', 'link'].forEach(function (kind) {
+        ['node', 'link', 'zone'].forEach(function (kind) {
             var names = by[kind].filter(filter || function () { return true; }).map(function (i) { return i.name; });
             if (names.length) {
                 ops.push({ op: 'hint', kind: kind, names: names, key: keyName, value: value });
@@ -1097,7 +1560,8 @@
     }
 
     function group() {
-        if (state.selection.size < 2) {
+        var by = itemsByKind();
+        if (by.node.length + by.link.length + by.zone.length < 2) {
             toast(t('Select at least two items to group them.'));
             return;
         }
@@ -1109,7 +1573,7 @@
     }
 
     function toggleLock() {
-        var by = itemsByKind(), all = by.node.concat(by.link);
+        var by = itemsByKind(), all = by.node.concat(by.link, by.zone);
         var lock = !all.every(function (i) { return i.locked; });
         send(hintOps('editor_lock', lock ? '1' : null));
     }
@@ -1128,6 +1592,8 @@
         var keys = [];
         state.nodes.forEach(function (n) { keys.push(key('node', n.name)); });
         state.links.forEach(function (l) { keys.push(key('link', l.name)); });
+        state.zones.forEach(function (z) { keys.push(key('zone', z.name)); });
+        state.furniture.forEach(function (f, k) { keys.push(k); });
         state.selection = new Set(keys);
         refresh();
     }
@@ -1437,18 +1903,19 @@
             return;
         }
         inspector.dataset.stale = '';
-        var nodes = selected('node'), links = selected('link'), zones = selected('zone');
+        var nodes = selected('node'), links = selected('link'), zones = selected('zone'), furniture = selectedFurniture();
         var parts = [];
 
-        if (!nodes.length && !links.length && !zones.length) {
+        if (!nodes.length && !links.length && !zones.length && !furniture.length) {
             parts = mapPanel();
         } else {
             if (nodes.length) { parts = parts.concat(nodePanel(nodes)); }
             if (links.length) { parts = parts.concat(linkPanel(links)); }
             if (zones.length) { parts = parts.concat(zonePanel(zones)); }
+            if (furniture.length) { parts = parts.concat(furniturePanel(furniture)); }
             parts.push(h('div', { 'class': 'actions' }, [
                 h('button', { type: 'button', text: t('Duplicate'), title: 'Ctrl+D', onclick: duplicateSelection, disabled: !nodes.length }),
-                h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection })
+                h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection, disabled: !nodes.length && !links.length && !zones.length })
             ]));
         }
         inspector.replaceChildren.apply(inspector, parts);
@@ -1483,15 +1950,20 @@
             row(t('Title'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
+            propsButton('general', t('Map properties…')),
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) }),
             h('h3', { text: t('Shortcuts') }),
             help([
                 [t('Click, Shift+click'), t('select, add to selection')],
                 [t('Drag on empty space'), t('select an area')],
                 [t('Alt+click'), t('one item of a group')],
-                [t('Double-click empty space'), t('new node')],
-                ['Ctrl+A / Esc', t('select all / nothing')],
+                [t('Ctrl+click empty space'), t('new node')],
+                ['Ctrl+A', t('select everything, zones and legends included')],
+                ['Esc', t('cancel the drag, close the menu, or select nothing')],
                 [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
+                [t('Alt while dragging'), t('no snapping to the other objects')],
+                [t('Ctrl+drag'), t('duplicate the selected nodes')],
+                [t('Double-click a link'), t('add a bend point there')],
                 ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')],
                 [t('Ctrl+D / Delete'), t('duplicate / delete')],
                 ['Ctrl+G / Ctrl+Shift+G', t('group / ungroup')],
@@ -1555,10 +2027,61 @@
             row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true }))
         );
 
+        if (single && single.label_box) {
+            out.push(
+                h('p', { 'class': 'help', text: t('Drag the label of the selected node to move it away from the icon.') }),
+                h('div', { 'class': 'actions' }, [
+                    h('button', {
+                        type: 'button', text: t('Reset label position'), disabled: !single.label_shift[0] && !single.label_shift[1],
+                        onclick: function () { send([{ op: 'set_node', names: [single.name], props: { labelshift: null } }]); }
+                    })
+                ])
+            );
+        }
+
         if (nodes.some(function (n) { return n.group; })) {
             out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
         return out;
+    }
+
+    function furnitureName(f) {
+        if (f.kind === 'legend') { return t('Legend :name', { name: f.name }); }
+        if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Timestamp'); }
+        if (f.kind === 'title') { return t('Title'); }
+        return t('Link width legend');
+    }
+
+    /** Legends, timestamps and title: where they are */
+    function furniturePanel(items) {
+        var single = items.length === 1 ? items[0] : null;
+        var out = [h('h2', { text: single ? furnitureName(single) : t(':n map items', { n: items.length }) })];
+        if (single) {
+            var x = h('input', { type: 'number', min: 0, value: single.pos[0] }), y = h('input', { type: 'number', min: 0, value: single.pos[1] });
+            var place = function () {
+                var f = {};
+                f[key(single.kind, single.name)] = [+x.value, +y.value];
+                send([{ op: 'move', furniture: f }]);
+            };
+            x.addEventListener('change', place);
+            y.addEventListener('change', place);
+            out.push(row(t('Position'), h('div', { 'class': 'pair' }, [x, y])));
+        }
+        out.push(h('p', { 'class': 'help', text: t('Drag it on the map, or use the arrow keys. It lines up with the other objects while dragged.') }));
+        if (single && single.kind === 'legend') {
+            out.push(h('p', { 'class': 'help', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth.') }));
+        }
+        if (single && single.kind !== 'widthlegend') {
+            out.push(propsButton(single.kind === 'legend' ? 'legend' : single.kind === 'title' ? 'title' : 'timestamp', t('Text, font and colours…')));
+        }
+        return out;
+    }
+
+    /** Opens the Map properties dialog (editor-mapprops.js) at a section */
+    function propsButton(section, text) {
+        return h('button', { type: 'button', 'class': 'props-open', text: text, onclick: function () {
+            if (window.WMEditor.openMapProperties) { window.WMEditor.openMapProperties(section); }
+        } });
     }
 
     function zonePanel(zones) {
@@ -1596,7 +2119,7 @@
                 ['NW', t('Top left')], ['N', t('Top centre')], ['NE', t('Top right')],
                 ['SW', t('Bottom left')], ['S', t('Bottom centre')], ['SE', t('Bottom right')]
             ] })),
-            h('p', { 'class': 'help', text: t('Zones are drawn under links and nodes. Dragging a zone by its edge moves the nodes inside it too; hold Alt to move the zone alone.') })
+            h('p', { 'class': 'help', text: t('Zones are drawn under links and nodes. Dragging a zone by its edge or label moves the zone alone; group it with nodes (Ctrl+G) to move them together.') })
         );
         return out;
     }
@@ -1640,7 +2163,7 @@
         if (single) {
             out.push(
                 row(t('Ends'), h('div', { 'class': 'pair' }, [anchorPicker(single, 'a'), anchorPicker(single, 'b')])),
-                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it. Double-click a point to remove it.') }),
+                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it, or double-click the link to add one. Double-click a point to remove it. Drag a bandwidth label along the link to move it.') }),
                 h('div', { 'class': 'actions' }, [
                     h('button', { type: 'button', text: t('Straighten'), disabled: !single.via.length, onclick: function () { send([{ op: 'set_link', names: [single.name], props: { via: [] } }]); } }),
                     h('button', { type: 'button', text: t('Auto-route'), onclick: autoRoute })
@@ -1972,7 +2495,7 @@
         }
         state.overlaps.forEach(function (name) {
             var n = state.nodes.get(name);
-            if (!n || (moved && moved[name])) { return; }
+            if (!n || (moved && moved.nodes[name])) { return; }
             el('rect', { 'class': 'overlap', x: n.box[0] - 1, y: n.box[1] - 1, width: n.box[2] - n.box[0] + 2, height: n.box[3] - n.box[1] + 2 }, overlay)
                 .appendChild(el('title', {})).textContent = t('Overlaps another node');
         });
@@ -2114,8 +2637,8 @@
     function menuOpen() { return !menu.hidden; }
 
     function menuEntries(at) {
-        var nodes = selected('node'), links = selected('link'), any = nodes.length + links.length + selected('zone').length;
-        var all = nodes.concat(links);
+        var nodes = selected('node'), links = selected('link'), zones = selected('zone'), any = nodes.length + links.length + zones.length;
+        var all = nodes.concat(links, zones), objects = alignUnits(selectedObjects()).length;
         var locked = all.length && all.every(function (i) { return i.locked; });
         var grouped = all.some(function (i) { return i.group; });
         var entries = [
@@ -2125,7 +2648,7 @@
             { label: t('Duplicate'), kbd: 'Ctrl+D', run: duplicateSelection, off: !nodes.length },
             { label: t('Delete'), kbd: t('Del'), run: deleteSelection, off: !any, danger: true }
         ];
-        if (nodes.length + links.length) {
+        if (all.length) {
             entries.push('-',
                 { label: t('Group'), kbd: 'Ctrl+G', run: group, off: any < 2 },
                 { label: t('Ungroup'), kbd: 'Ctrl+Shift+G', run: ungroup, off: !grouped },
@@ -2133,12 +2656,12 @@
                 { label: t('Bring to front'), kbd: 'Ctrl+]', run: function () { zorder('front'); } },
                 { label: t('Send to back'), kbd: 'Ctrl+[', run: function () { zorder('back'); } });
         }
-        if (nodes.length >= 2) {
+        if (objects >= 2) {
             entries.push('-', {
                 row: t('Align'), items: [
                     ['⎸←', t('Align left edges'), 'left'], ['↕', t('Align centres vertically'), 'hcenter'], ['→⎹', t('Align right edges'), 'right'],
                     ['⤒', t('Align top edges'), 'top'], ['↔', t('Align centres horizontally'), 'vcenter'], ['⤓', t('Align bottom edges'), 'bottom']
-                ].concat(nodes.length >= 3 ? [['⋯', t('Space evenly, left to right'), 'distribute-h'], ['⋮', t('Space evenly, top to bottom'), 'distribute-v']] : [])
+                ].concat(objects >= 3 ? [['⋯', t('Space evenly, left to right'), 'distribute-h'], ['⋮', t('Space evenly, top to bottom'), 'distribute-v']] : [])
             });
         }
         entries.push('-',
@@ -2440,8 +2963,8 @@
         'zoom-fit': zoomFit
     };
 
-    $('#toolbar').addEventListener('click', function (evt) {
-        var b = evt.target.closest('button[data-cmd]');
+    document.addEventListener('click', function (evt) {
+        var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd]');
         if (b && state.textMode && b.dataset.cmd !== 'text-mode') {
             return;
         }
@@ -2451,22 +2974,73 @@
     });
 
     function nudge(dx, dy) {
-        var nodes = selected('node').filter(function (n) { return !n.locked; });
-        var zones = selected('zone').map(function (z) { return z.name; });
-        if (!nodes.length && !zones.length) { return; }
-        var n = state.nudge || (state.nudge = { moved: { dx: 0, dy: 0 }, zones: zones });
-        nodes.forEach(function (node) { n.moved[node.name] = true; });
+        var objects = selectedObjects();
+        if (!objects.length) { return; }
+        var n = state.nudge || (state.nudge = { moved: noMove() });
+        objects.forEach(function (o) {
+            if (o.kind === 'node') { n.moved.nodes[o.item.name] = true; }
+            else if (o.kind === 'zone') { if (n.moved.zones.indexOf(o.item.name) < 0) { n.moved.zones.push(o.item.name); } }
+            else if (n.moved.furniture.indexOf(o.key) < 0) { n.moved.furniture.push(o.key); }
+        });
         n.moved.dx += dx;
         n.moved.dy += dy;
-        moveNodeGroups(n.moved);
-        moveZoneGroups(n.zones, n.moved);
+        previewMove(n.moved);
         clearTimeout(n.timer);
         // a burst of key presses is saved as one change
         n.timer = setTimeout(function () {
             state.nudge = null;
-            send([moveOp(n.moved, n.zones)]);
+            send([moveOp(n.moved)]);
         }, 400);
     }
+
+    /**
+     * Esc leaves what is going on, one thing at a time: a drag, a menu or
+     * panel, a field being typed in (its change is dropped), the link tool,
+     * then the selection. Dialogs close themselves; text mode has its own.
+     */
+    function escape(target) {
+        if (cancelDrag()) { return true; }
+        if (menuOpen()) { closeMenu(); return true; }
+        var popover = null;
+        try { popover = $(':popover-open'); } catch (e) { /* no popover support */ }
+        if (popover) { popover.hidePopover(); return true; }
+        if (!$('#layers-panel').hidden) {
+            toggleLayersPanel(false);
+            $('[data-cmd="layers"]').focus();
+            return true;
+        }
+        var open = $$('#app details[open]').filter(function (d) { return d.contains(target) || d.closest('#toolbar'); });
+        if (open.length) {
+            open.forEach(function (d) { d.open = false; });
+            return true;
+        }
+        if (target.closest && target.closest('#inspector') && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) {
+            if (target.tagName === 'SELECT') {
+                Array.prototype.forEach.call(target.options, function (o) { o.selected = o.defaultSelected; });
+            } else {
+                target.value = target.defaultValue;
+            }
+            target.blur();
+            return true;
+        }
+        if (state.tool === 'link' || state.linkFrom) { setTool('select'); return true; }
+        if (state.selection.size) {
+            state.selection.clear();
+            refresh();
+            return true;
+        }
+        return false;
+    }
+
+    document.addEventListener('keydown', function (evt) {
+        if (evt.key !== 'Escape' || state.textMode || $('dialog[open]')) {
+            return;
+        }
+        if (escape(evt.target)) {
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+    }, true);
 
     document.addEventListener('keydown', function (evt) {
         var tgt = evt.target;
@@ -2498,9 +3072,6 @@
         var step = evt.shiftKey ? 10 : 1;
         switch (k) {
             case 'Delete': case 'Backspace': deleteSelection(); break;
-            case 'Escape':
-                if (state.tool === 'link') { setTool('select'); } else { state.selection.clear(); refresh(); }
-                break;
             case 'ArrowLeft': nudge(-step, 0); break;
             case 'ArrowRight': nudge(step, 0); break;
             case 'ArrowUp': nudge(0, -step); break;
@@ -2538,6 +3109,10 @@
     window.WMEditor = {
         state: state, send: send, load: load, autoRoute: autoRoute, untangle: untangle, align: align,
         spreadApart: spreadApart, copy: copySelection, paste: paste, openMenu: openMenu, setLayer: setLayer,
-        openText: openText, closeText: closeText
+        openText: openText, closeText: closeText,
+        // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
+        t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
+        selected: selected
     };
+    document.dispatchEvent(new CustomEvent('wm-editor-ready'));
 })();

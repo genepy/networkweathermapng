@@ -40,6 +40,16 @@
                     <span class="menu-title"><?= e__('Users') ?></span>
                     <span class="menu-desc"><?= e__('Manage user accounts and permissions') ?></span>
                 </a>
+                <a href="/admin/kiosk" class="menu-item">
+                    <span class="menu-icon">📺</span>
+                    <span class="menu-title"><?= e__('Kiosk mode') ?></span>
+                    <span class="menu-desc"><?= e__('Display time and zoom of each map in the map cycle') ?></span>
+                </a>
+                <a href="/admin/timezone" class="menu-item">
+                    <span class="menu-icon">🕒</span>
+                    <span class="menu-title"><?= e__('Time zone') ?></span>
+                    <span class="menu-desc"><?= e__('Time zone of the dates shown on maps') ?></span>
+                </a>
                 <a href="/admin/data-sources" class="menu-item">
                     <span class="menu-icon">🔌</span>
                     <span class="menu-title"><?= e__('Data Sources') ?></span>

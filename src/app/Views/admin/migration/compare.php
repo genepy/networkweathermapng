@@ -12,10 +12,11 @@
         <button type="button" class="btn btn-sm" data-mode="diff"><?= e__('Differences') ?></button>
         <button type="button" class="btn btn-sm" data-mode="fade"><?= e__('Overlay') ?></button>
         <input type="range" min="0" max="100" value="50" class="fade-range" hidden aria-label="<?= e__('Overlay') ?>">
+        <label class="compare-fit"><input type="checkbox" checked> <?= e__('Fit to the page width') ?></label>
     </div>
     <p class="text-muted small compare-help" data-for="diff" hidden><?= e__('Identical pixels are black: what shows in colour has moved or changed. Live data is not read for either drawing.') ?></p>
 
-    <div class="compare mode-side">
+    <div class="compare fit mode-side">
         <figure>
             <figcaption><?= e__('Before (PNG, old engine)') ?></figcaption>
             <img src="/admin/migration/<?= $id ?>/image/old.png" alt="">
@@ -35,12 +36,16 @@
     document.querySelectorAll('.compare-modes [data-mode]').forEach(function (b) {
         b.addEventListener('click', function () {
             document.querySelectorAll('.compare-modes [data-mode]').forEach(function (o) { o.classList.toggle('active', o === b); });
-            box.className = 'compare mode-' + b.dataset.mode;
+            box.classList.remove('mode-side', 'mode-diff', 'mode-fade');
+            box.classList.add('mode-' + b.dataset.mode);
             range.hidden = b.dataset.mode !== 'fade';
             help.hidden = b.dataset.mode !== 'diff';
             after.style.opacity = b.dataset.mode === 'fade' ? range.value / 100 : '';
         });
     });
     range.addEventListener('input', function () { after.style.opacity = range.value / 100; });
+    document.querySelector('.compare-fit input').addEventListener('change', function () {
+        box.classList.toggle('fit', this.checked);
+    });
 })();
 </script>

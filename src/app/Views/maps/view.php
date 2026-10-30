@@ -136,6 +136,7 @@
     <?php if ($isSvg): ?>
     <div class="wmv<?= $isFullscreen ? ' wmv-fullscreen' : '' ?>" id="wmv"
          data-map-id="<?= $mapId ?>"
+         data-timezone="<?= htmlspecialchars($timezone) ?>"
          data-refresh="<?= max(30, $dataRefresh) ?>"
          data-fullscreen="<?= $isFullscreen ? '1' : '0' ?>"
          data-normal-url="<?= htmlspecialchars($normalUrl) ?>"
@@ -180,8 +181,8 @@
     <?php endif; ?>
 
     <div class="map-meta">
-        <?php if ($map['last_run']): ?>
-        <span class="last-updated"><?= e__('Last updated:') ?> <?= htmlspecialchars($map['last_run']) ?></span>
+        <?php if ($lastRun !== null): ?>
+        <span class="last-updated" title="<?= htmlspecialchars($timezone) ?>"><?= e__('Last updated:') ?> <?= htmlspecialchars($lastRun) ?></span>
         <?php endif; ?>
     </div>
 </div>

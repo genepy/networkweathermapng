@@ -9,6 +9,8 @@ namespace App\Controllers;
 
 use App\Services\MapService;
 use App\Services\DataSourceService;
+use App\Services\KioskService;
+use App\Services\TimezoneService;
 
 class MapController extends BaseController
 {
@@ -92,6 +94,7 @@ class MapController extends BaseController
             'maps' => $maps,
             'favourites' => $favourites,
             'statuses' => $statuses,
+            'timezones' => $this->timezones()->forMaps(array_column($maps, 'id')),
             'groups' => $visibleGroups,
             'currentGroup' => $groupId,
             'title' => __('Network Weathermaps'),
@@ -155,7 +158,7 @@ class MapController extends BaseController
                 $wmap->htmlstyle = 'overlib';
 
                 // DrawMap('null') populates imagemap regions without writing an image file.
-                $wmap->DrawMap('null');
+                TimezoneService::using($this->timezones()->forMap($mapId), static fn () => $wmap->DrawMap('null'));
 
                 // MakeHTML uses imageuri when provided.
                 $wmap->imageuri = '/map/' . $mapId . '/image?t=' . time();
@@ -194,8 +197,13 @@ class MapController extends BaseController
         // The zoomable SVG is the default view; ?view=png keeps the picture
         $viewKind = ($mode === 'preview' || (string) $this->getInput('view', '') === 'png') ? 'png' : 'svg';
 
+        $timezones = $this->timezones();
+        $timezone = $timezones->forMap($mapId);
+
         $this->render('maps/view', [
             'map' => $map,
+            'timezone' => $timezone,
+            'lastRun' => $map['last_run'] ? $timezones->formatStored((string) $map['last_run'], $timezone) : null,
             'mapHtml' => $mapHtml,
             'viewKind' => $viewKind,
             'fullscreen' => $fullscreen,
@@ -410,13 +418,14 @@ class MapController extends BaseController
         if ($minutes <= 0) {
             $minutes = 1440;
         }
+        $scale = max(1, min(3, (int) $this->getInput('scale', 1)));
 
         // Cache implementation
         $cacheDir = $this->config->getOutputPath() . '/graphs';
         if (!file_exists($cacheDir)) {
             @mkdir($cacheDir, 0775, true);
         }
-        $cacheKey = sprintf('map_%d_link_%d_min_%d', $mapId, $linkId, $minutes);
+        $cacheKey = sprintf('map_%d_link_%d_min_%d', $mapId, $linkId, $minutes) . ($scale > 1 ? '_x' . $scale : '');
         $cacheFile = $cacheDir . '/' . $cacheKey . '.png';
 
         // Check cache validity (5 minutes)
@@ -433,7 +442,7 @@ class MapController extends BaseController
             // drawn as "No Data" rather than a broken picture in the hover panel
             $data = [];
         }
-        $png = $this->renderBandwidthGraphPng($data, $minutes);
+        $png = $this->renderBandwidthGraphPng($data, $minutes, $this->timezones()->forMap($mapId), $scale);
 
         // Save to cache
         file_put_contents($cacheFile, $png);
@@ -449,6 +458,11 @@ class MapController extends BaseController
         header('Cache-Control: public, max-age=300');
         echo $png;
         exit;
+    }
+
+    private function timezones(): TimezoneService
+    {
+        return TimezoneService::fromConfig($this->database, $this->config);
     }
 
     private function serveImage(string $path, string $contentType): void
@@ -467,17 +481,24 @@ class MapController extends BaseController
         exit;
     }
 
-    private function renderBandwidthGraphPng(array $data, int $minutes): string
+    /**
+     * The traffic graph of a link as a PNG. `scale` (1 to 3) draws it larger
+     * with the same layout, so the hover panel stays sharp on large or
+     * high-density screens.
+     */
+    private function renderBandwidthGraphPng(array $data, int $minutes, string $timezone, int $scale = 1): string
     {
-        $w = 600;
-        $h = 300;
-        $padL = 75;
-        $padR = 20;
-        $padT = 35;
-        $padB = 50;
+        $k = max(1, min(3, $scale));
+        $w = 600 * $k;
+        $h = 300 * $k;
+        $padL = 75 * $k;
+        $padR = 20 * $k;
+        $padT = 35 * $k;
+        $padB = 50 * $k;
 
         $im = imagecreatetruecolor($w, $h);
         imagesavealpha($im, true);
+        imageantialias($im, true);
 
         $bg = imagecolorallocate($im, 255, 255, 255);
         $grid = imagecolorallocate($im, 230, 230, 230);
@@ -487,6 +508,26 @@ class MapController extends BaseController
         $txt = imagecolorallocate($im, 50, 50, 50);
 
         imagefilledrectangle($im, 0, 0, $w - 1, $h - 1, $bg);
+
+        // TrueType text scales with the picture; GD's own fonts are the fallback
+        $font = $this->config->getPublicPath() . '/fonts/DejaVuSansMono.ttf';
+        $ttf = function_exists('imagettftext') && is_readable($font);
+        $gdSize = [2 => 8.0, 3 => 9.0, 4 => 10.0];
+        $textWidth = function (int $size, string $s) use ($ttf, $font, $gdSize, $k): int {
+            if ($ttf) {
+                $box = imagettfbbox($gdSize[$size] * $k, 0, $font, $s);
+                return $box ? (int) abs($box[2] - $box[0]) : 0;
+            }
+            return imagefontwidth($size) * strlen($s);
+        };
+        // (x, y) is the top left corner of the text, as for imagestring()
+        $text = function (int $size, int $x, int $y, string $s) use ($im, $txt, $ttf, $font, $gdSize, $k): void {
+            if ($ttf) {
+                imagettftext($im, $gdSize[$size] * $k, 0, $x, $y + (int) round($gdSize[$size] * $k * 1.2), $txt, $font, $s);
+            } else {
+                imagestring($im, $size, $x, $y, $s, $txt);
+            }
+        };
 
         $inSeries = (array) (($data['in']['series'] ?? []));
         $outSeries = (array) (($data['out']['series'] ?? []));
@@ -512,7 +553,7 @@ class MapController extends BaseController
         }
 
         if ($minT === null || $maxT === null || $maxT <= $minT) {
-            imagestring($im, 4, (int)($w/2 - 30), (int)($h/2), 'No Data', $txt);
+            $text(4, (int) ($w / 2 - $textWidth(4, 'No Data') / 2), (int) ($h / 2), 'No Data');
             ob_start();
             imagepng($im);
             $out = ob_get_clean();
@@ -538,44 +579,46 @@ class MapController extends BaseController
             return round($val, 1) . ' ' . $prefixes[$pow] . $unit;
         };
 
+        imagesetthickness($im, $k);
+
         // grid horizontal (values)
         for ($i = 0; $i <= 4; $i++) {
             $y = (int) ($padT + ($plotH * $i / 4));
             imageline($im, $padL, $y, $padL + $plotW, $y, $grid);
-            
+
             $val = $maxV * (1 - ($i / 4));
             $label = $formatVal($val);
-            imagestring($im, 2, 5, $y - 7, str_pad($label, 10, ' ', STR_PAD_LEFT), $txt);
+            $text(2, $padL - 5 * $k - $textWidth(2, $label), $y - 7 * $k, $label);
         }
-        
+
         // grid vertical (time)
         for ($i = 0; $i <= 5; $i++) {
             $x = (int) ($padL + ($plotW * $i / 5));
             imageline($im, $x, $padT, $x, $padT + $plotH, $grid);
-            
+
             $tVal = $minT + (($maxT - $minT) * $i / 5);
-            $tLabel = date('H:i', (int)$tVal);
-            imagestring($im, 2, $x - 12, $padT + $plotH + 5, $tLabel, $txt);
+            $tLabel = TimezoneService::formatTimestamp((int) $tVal, $timezone, 'H:i');
+            $text(2, $x - (int) ($textWidth(2, $tLabel) / 2), $padT + $plotH + 5 * $k, $tLabel);
         }
 
         // axis box
         imagerectangle($im, $padL, $padT, $padL + $plotW, $padT + $plotH, $axis);
 
+        imagesetthickness($im, 2 * $k);
+
         $drawSeries = function(array $series, int $color) use ($im, $padL, $padT, $plotW, $plotH, $minT, $maxT, $maxV): void {
             $prev = null;
             // Sort by time
             usort($series, fn($a, $b) => ((int)$a['t']) <=> ((int)$b['t']));
-            
+
             foreach ($series as $p) {
                 $t = (int) ($p['t'] ?? 0);
                 $v = (float) ($p['v'] ?? 0);
                 $x = (int) round($padL + (($t - $minT) / max(1, ($maxT - $minT))) * $plotW);
                 $y = (int) round($padT + (1 - ($v / $maxV)) * $plotH);
-                
+
                 if ($prev !== null) {
                     imageline($im, $prev[0], $prev[1], $x, $y, $color);
-                    // Bold line
-                    imageline($im, $prev[0], $prev[1]+1, $x, $y+1, $color);
                 }
                 $prev = [$x, $y];
             }
@@ -584,37 +627,37 @@ class MapController extends BaseController
         $drawSeries($outSeries, $outCol);
         $drawSeries($inSeries, $inCol);
 
+        imagesetthickness($im, 1);
+
         // Title
         $hostName = $data['hostname'] ?? '';
         $itemName = $data['in']['name'] ?? '';
-        
+
         // Clean up interface name
         if (preg_match('/^Interface\s+(.+?):/i', $itemName, $m)) {
             $itemName = $m[1];
         }
-        
+
         $titlePart = $itemName ?: 'Traffic';
         if ($hostName !== '') {
             $titlePart = $hostName . ' - ' . $titlePart;
         }
 
         $title = $titlePart;
-        $fw = imagefontwidth(4) * strlen($title);
-        $titleX = (int) (($w - $fw) / 2);
-        imagestring($im, 4, $titleX, 8, $title, $txt);
-        
+        $text(4, (int) (($w - $textWidth(4, $title)) / 2), 8 * $k, $title);
+
         // Legend
-        $lx = $padL + (int)($plotW/2) - 80;
-        $ly = $h - 25;
-        
+        $lx = $padL + (int)($plotW/2) - 80 * $k;
+        $ly = $h - 25 * $k;
+
         // In
-        imagefilledrectangle($im, $lx, $ly, $lx+10, $ly+10, $inCol);
-        imagestring($im, 3, $lx+16, $ly-2, "Inbound", $txt);
-        
+        imagefilledrectangle($im, $lx, $ly, $lx + 10 * $k, $ly + 10 * $k, $inCol);
+        $text(3, $lx + 16 * $k, $ly - 2 * $k, 'Inbound');
+
         // Out
-        $lx += 100;
-        imagefilledrectangle($im, $lx, $ly, $lx+10, $ly+10, $outCol);
-        imagestring($im, 3, $lx+16, $ly-2, "Outbound", $txt);
+        $lx += 100 * $k;
+        imagefilledrectangle($im, $lx, $ly, $lx + 10 * $k, $ly + 10 * $k, $outCol);
+        $text(3, $lx + 16 * $k, $ly - 2 * $k, 'Outbound');
 
         ob_start();
         imagepng($im);
@@ -622,7 +665,7 @@ class MapController extends BaseController
         imagedestroy($im);
         return $out;
     }
-    
+
     public function image(array $params): void
     {
         $mapId = (int) ($params['id'] ?? 0);
@@ -757,13 +800,14 @@ class MapController extends BaseController
     {
         $this->requireAuth();
         
-        $groupId = (int) ($params['group'] ?? 0);
+        $groupId = (int) ($params['group'] ?? $this->getInput('group', 0));
         $fullscreen = (bool) $this->getInput('fullscreen', false);
         
         $maps = $this->getMapsForUser($groupId);
         
         $this->render('maps/cycle', [
             'maps' => $maps,
+            'kiosk' => (new KioskService($this->database))->resolve($maps),
             'groupId' => $groupId,
             'fullscreen' => $fullscreen,
             'refreshInterval' => (int) $this->config->get('MAP_REFRESH_INTERVAL', 300),

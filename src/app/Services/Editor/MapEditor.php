@@ -74,6 +74,18 @@ class MapEditor
     /** Hints the editor owns: grouping and locking */
     public const EDITOR_HINTS = ['editor_group', 'editor_lock'];
 
+    /**
+     * Map furniture the editor can move, by image map area name:
+     * area name => [kind, name]. Legends are LEGEND:<scale>.
+     */
+    private const FURNITURE_AREAS = [
+        'TIMESTAMP' => ['timestamp', ''],
+        'MINTIMESTAMP' => ['timestamp', 'MIN'],
+        'MAXTIMESTAMP' => ['timestamp', 'MAX'],
+        'TITLE' => ['title', ''],
+        'WIDTHLEGEND' => ['widthlegend', ''],
+    ];
+
     private string $file;
 
     public function __construct(string $file)
@@ -158,8 +170,10 @@ class MapEditor
     // Operations
 
     /**
-     * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]}}
-     * Positions are absolute map pixels.
+     * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]},
+     *  furniture: {"legend:DEFAULT" | "timestamp:" | "timestamp:MIN" | "title:" | "widthlegend:": [x, y]}}
+     * Positions are absolute map pixels; for furniture, the position its
+     * keyword takes (KEYPOS, TIMEPOS, TITLEPOS, SET width_legend), as in model().
      */
     private function move(\WeatherMap $map, array $op): void
     {
@@ -187,6 +201,49 @@ class MapEditor
             $zone = $this->zone($map, (string) $name);
             [$zone->x, $zone->y] = $this->point($pos);
         }
+
+        foreach ((array) ($op['furniture'] ?? []) as $key => $pos) {
+            $this->moveFurniture($map, (string) $key, $this->point($pos));
+        }
+    }
+
+    /** Place the legend of a scale, a timestamp, the title or the width legend */
+    private function moveFurniture(\WeatherMap $map, string $key, array $pos): void
+    {
+        [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
+        // negative positions mean "hidden" or "from the far edge" for these keywords
+        [$x, $y] = [max(0, $pos[0]), max(0, $pos[1])];
+
+        switch ($kind) {
+            case 'legend':
+                if (!isset($map->keyx[$name])) {
+                    throw new InvalidArgumentException(__('Unknown legend: :name', ['name' => $name]));
+                }
+                $map->keyx[$name] = $x;
+                $map->keyy[$name] = $y;
+                return;
+
+            case 'timestamp':
+                // TIMEPOS 0 0 means "top right corner"
+                $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
+                if ($prefix === null) {
+                    throw new InvalidArgumentException(__('Unknown timestamp: :name', ['name' => $name]));
+                }
+                $map->{$prefix . 'timex'} = max(1, $x);
+                $map->{$prefix . 'timey'} = max(1, $y);
+                return;
+
+            case 'title':
+                $map->titlex = $x;
+                $map->titley = $y;
+                return;
+
+            case 'widthlegend':
+                $map->add_hint('width_legend', $x . ' ' . $y);
+                return;
+        }
+
+        throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
     }
 
     /** {op: add_zone, x, y, width?, height?, label?, name?} */
@@ -300,6 +357,25 @@ class MapEditor
                     $node->targets = $this->targets((string) $value);
                 } elseif ($key === 'position') {
                     [$node->x, $node->y] = $this->point($value);
+                } elseif ($key === 'labelshift') {
+                    // where the label sits from its default place, in pixels; null puts it back
+                    $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
+                    $inherited = $template === null ? '' : (string) $template->labeloffset;
+                    if ($value === null) {
+                        $node->labeloffsetx = $template === null ? 0 : $template->labeloffsetx;
+                        $node->labeloffsety = $template === null ? 0 : $template->labeloffsety;
+                        $node->labeloffset = $inherited;
+                    } elseif ($inherited === '') {
+                        [$node->labeloffsetx, $node->labeloffsety] = $this->point($value);
+                        $node->labeloffset = '';
+                    } else {
+                        // a compass offset from the template wins over LABELOFFSET x y,
+                        // so override it with a pixel one (LABELOFFSET dx:dy)
+                        [$dx, $dy] = $this->point($value);
+                        $node->labeloffset = $dx . ':' . $dy;
+                        $node->labeloffsetx = $template->labeloffsetx;
+                        $node->labeloffsety = $template->labeloffsety;
+                    }
                 } else {
                     throw new InvalidArgumentException(__('Unknown node property: :key', ['key' => $key]));
                 }
@@ -570,7 +646,7 @@ class MapEditor
         return MapClipboard::paste($map, $op['text'], $at, (int) ($op['dx'] ?? 0), (int) ($op['dy'] ?? 0));
     }
 
-    /** {op: hint, kind: node|link, names, key, value} - value null removes it */
+    /** {op: hint, kind: node|link|zone, names, key, value} - value null removes it */
     private function hint(\WeatherMap $map, array $op): void
     {
         $key = (string) ($op['key'] ?? '');
@@ -582,7 +658,11 @@ class MapEditor
         $value = ($value === null || $value === '' || $value === false) ? null : $this->name((string) $value);
 
         foreach ((array) ($op['names'] ?? []) as $name) {
-            $item = ($op['kind'] ?? 'node') === 'link' ? $this->link($map, (string) $name) : $this->node($map, (string) $name);
+            $item = match ($op['kind'] ?? 'node') {
+                'link' => $this->link($map, (string) $name),
+                'zone' => $this->zone($map, (string) $name),
+                default => $this->node($map, (string) $name),
+            };
             if ($value === null) {
                 unset($item->hints[$key]);
             } else {
@@ -591,7 +671,7 @@ class MapEditor
         }
     }
 
-    /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?} */
+    /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?, background?, props?: {...}} */
     private function setMap(\WeatherMap $map, array $op): void
     {
         if (isset($op['title'])) {
@@ -617,6 +697,189 @@ class MapEditor
                 $map->height = $h;
             }
         }
+
+        if (isset($op['props'])) {
+            $this->setMapProps($map, (array) $op['props']);
+        }
+    }
+
+    /** Colours of the map furniture, by request key => colour name in the engine */
+    private const MAP_COLOURS = [
+        'bg_colour' => 'BG', 'title_colour' => 'TITLE', 'time_colour' => 'TIME',
+        'key_text_colour' => 'KEYTEXT', 'key_bg_colour' => 'KEYBG', 'key_outline_colour' => 'KEYOUTLINE',
+    ];
+
+    private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags'];
+
+    /**
+     * The Map properties dialog: texts, fonts and colours of the title,
+     * legend and timestamp, and the defaults of the links. A new link
+     * default also applies to the links that had the old one.
+     */
+    private function setMapProps(\WeatherMap $map, array $props): void
+    {
+        $fonts = array_merge([1, 2, 3, 4, 5], array_keys($map->fonts));
+
+        foreach ($props as $key => $value) {
+            if (isset(self::MAP_COLOURS[$key])) {
+                $c = $this->colour($value);
+                if ($c[0] === -3 || ($c[0] === -1 && !in_array($key, ['key_bg_colour', 'key_outline_colour'], true))) {
+                    throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => $value]));
+                }
+                $ref = &$map->colours['DEFAULT'][self::MAP_COLOURS[$key]];
+                $ref['red1'] = $c[0];
+                $ref['green1'] = $c[1];
+                $ref['blue1'] = $c[2];
+                $ref['bottom'] = -2;
+                $ref['top'] = -1;
+                $ref['special'] = 1;
+                unset($ref);
+            } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
+                if (!in_array((int) $value, $fonts, true)) {
+                    throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value]));
+                }
+                $field = ['title_font' => 'titlefont', 'time_font' => 'timefont', 'key_font' => 'keyfont'][$key];
+                $map->$field = (int) $value;
+            } elseif ($key === 'key_text') {
+                $map->keytext['DEFAULT'] = $this->text($value);
+            } elseif ($key === 'key_style') {
+                if (!in_array($value, self::KEY_STYLES, true)) {
+                    throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
+                }
+                $map->keystyle['DEFAULT'] = $value;
+            } elseif ($key === 'key_size') {
+                $map->keysize['DEFAULT'] = max(50, min(2000, (int) $value));
+            } elseif ($key === 'key_shown') {
+                [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']] = self::legendPosition(
+                    (bool) $value,
+                    $map->keyx['DEFAULT'] ?? -1,
+                    $map->keyy['DEFAULT'] ?? -1
+                );
+                $map->keytext['DEFAULT'] ??= 'Traffic Load';
+            } elseif ($key === 'stamp_text') {
+                $map->stamptext = $this->text($value);
+            } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont'], true)) {
+                $this->setLinkDefault($map, $key, $value, $fonts);
+            } else {
+                throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
+            }
+        }
+    }
+
+    /**
+     * The engine hides a legend placed at a negative position. A hidden
+     * legend keeps its place as (-x - 1, -y - 1), so showing it again puts
+     * it back where it was; the classic -1 -1 comes back at 10, 40.
+     *
+     * @return array{int, int}
+     */
+    private static function legendPosition(bool $shown, mixed $x, mixed $y): array
+    {
+        $x = is_numeric($x) ? (int) $x : -1;
+        $y = is_numeric($y) ? (int) $y : -1;
+        $hidden = $x < 0 || $y < 0;
+
+        if ($shown) {
+            if (!$hidden) {
+                return [$x, $y];
+            }
+            if ($x === -1 && $y === -1) {
+                return [10, 40];
+            }
+            return [$x < 0 ? -$x - 1 : $x, $y < 0 ? -$y - 1 : $y];
+        }
+
+        return $hidden ? [$x, $y] : [-$x - 1, -$y - 1];
+    }
+
+    private function setLinkDefault(\WeatherMap $map, string $key, mixed $value, array $fonts): void
+    {
+        $default = $map->links['DEFAULT'] ?? null;
+        if (!$default) {
+            throw new InvalidArgumentException(__('This map has no DEFAULT link'));
+        }
+
+        $fields = match ($key) {
+            'link_bandwidth' => ['max_bandwidth_in_cfg', 'max_bandwidth_out_cfg'],
+            'link_width' => ['width'],
+            'link_labelstyle' => ['labelstyle'],
+            'link_bwfont' => ['bwfont'],
+        };
+        $new = match ($key) {
+            'link_bandwidth' => $this->bandwidth((string) $value),
+            'link_width' => strtolower((string) $value) === 'auto' ? 'auto' : max(1, (int) $value),
+            'link_labelstyle' => in_array($value, self::LINK_CHOICES['labelstyle'], true) ? $value
+                : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
+            'link_bwfont' => in_array((int) $value, $fonts, true) ? (int) $value
+                : throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value])),
+        };
+
+        foreach ($fields as $field) {
+            // find all the followers first: changing one would hide its children
+            $followers = array_filter(
+                $map->links,
+                static fn ($link, $name) => $name !== 'DEFAULT' && $name !== ':: DEFAULT ::' && self::inheritsFromDefault($map, $link, $field),
+                ARRAY_FILTER_USE_BOTH
+            );
+            foreach ($followers as $link) {
+                $link->$field = $new;
+            }
+            $default->$field = $new;
+        }
+    }
+
+    /**
+     * Whether a link (or a link template) has $field from DEFAULT: each
+     * template between them has the same value as DEFAULT, so none of them
+     * sets its own.
+     */
+    private static function inheritsFromDefault(\WeatherMap $map, object $link, string $field): bool
+    {
+        $value = (string) $link->$field;
+        $seen = [];
+        while (($template = (string) $link->template) !== 'DEFAULT') {
+            $parent = $map->links[$template] ?? null;
+            if ($parent === null || isset($seen[$template]) || (string) $parent->$field !== $value) {
+                return false;
+            }
+            $seen[$template] = true;
+            $link = $parent;
+        }
+        return $value === (string) $map->links['DEFAULT']->$field;
+    }
+
+    /** What the Map properties dialog shows */
+    private static function mapProps(\WeatherMap $map): array
+    {
+        $colour = static function (string $name) use ($map): string {
+            $c = $map->colours['DEFAULT'][$name] ?? null;
+            if (!$c || $c['red1'] < 0) {
+                return 'none';
+            }
+            return sprintf('#%02x%02x%02x', $c['red1'], $c['green1'], $c['blue1']);
+        };
+        $default = $map->links['DEFAULT'] ?? null;
+
+        return [
+            'title_font' => (int) $map->titlefont,
+            'title_colour' => $colour('TITLE'),
+            'bg_colour' => $colour('BG'),
+            'key_shown' => ($map->keyx['DEFAULT'] ?? -1) >= 0 && ($map->keyy['DEFAULT'] ?? -1) >= 0,
+            'key_text' => (string) ($map->keytext['DEFAULT'] ?? ''),
+            'key_style' => (string) ($map->keystyle['DEFAULT'] ?? 'classic'),
+            'key_size' => (int) ($map->keysize['DEFAULT'] ?? 400),
+            'key_font' => (int) $map->keyfont,
+            'key_text_colour' => $colour('KEYTEXT'),
+            'key_bg_colour' => $colour('KEYBG'),
+            'key_outline_colour' => $colour('KEYOUTLINE'),
+            'stamp_text' => (string) $map->stamptext,
+            'time_font' => (int) $map->timefont,
+            'time_colour' => $colour('TIME'),
+            'link_bandwidth' => $default ? (string) $default->max_bandwidth_in_cfg : '',
+            'link_width' => $default ? (string) $default->width : '',
+            'link_labelstyle' => $default ? (string) $default->labelstyle : 'percent',
+            'link_bwfont' => $default ? (int) $default->bwfont : 2,
+        ];
     }
 
     // ------------------------------------------------------------------
@@ -646,6 +909,11 @@ class MapEditor
             }
             $box ??= [$node->x - 5, $node->y - 5, $node->x + 5, $node->y + 5];
 
+            // with an icon, the label is the second box and can move on its own
+            $labelBox = count($node->boundingboxes) >= 2 && (string) $node->label !== ''
+                ? array_map(static fn ($v) => (int) round((float) $v), end($node->boundingboxes))
+                : null;
+
             $nodes[] = [
                 'name' => $name,
                 'id' => 'N' . $node->id,
@@ -655,6 +923,8 @@ class MapEditor
                 'w' => (int) round((float) $node->width),
                 'h' => (int) round((float) $node->height),
                 'label' => (string) $node->label,
+                'label_box' => $labelBox,
+                'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
                 'icon' => (string) $node->iconfile,
                 'template' => (string) $node->template,
                 'relative_to' => (string) $node->relative_to,
@@ -739,6 +1009,8 @@ class MapEditor
                 'opacity' => (int) $zone->opacity,
                 'outlinewidth' => (int) $zone->outlinewidth,
                 'outlinestyle' => (string) $zone->outlinestyle,
+                'group' => (string) ($zone->hints['editor_group'] ?? ''),
+                'locked' => !empty($zone->hints['editor_lock']),
             ];
         }
 
@@ -748,13 +1020,50 @@ class MapEditor
                 'height' => (int) $map->height,
                 'title' => (string) $map->title,
                 'background' => (string) $map->background,
+                'props' => self::mapProps($map),
             ],
             'nodes' => $nodes,
             'links' => $links,
             'zones' => $zones,
+            'furniture' => self::furnitureOut($map),
             'templates' => $templates,
             'fonts' => array_values(array_unique(array_merge([1, 2, 3, 4, 5], array_keys($map->fonts)))),
         ];
+    }
+
+    /**
+     * The legends, timestamps, title and width legend as drawn: their box
+     * (from the image map) and the position their keyword holds.
+     */
+    private static function furnitureOut(\WeatherMap $map): array
+    {
+        $found = [];
+        foreach ((array) ($map->imap->shapes ?? []) as $area) {
+            if (!$area instanceof \HTML_ImageMap_Area_Rectangle) {
+                continue;
+            }
+            $name = (string) $area->name;
+            if (str_starts_with($name, 'LEGEND:')) {
+                [$kind, $item] = ['legend', substr($name, 7)];
+            } elseif (isset(self::FURNITURE_AREAS[$name])) {
+                [$kind, $item] = self::FURNITURE_AREAS[$name];
+            } else {
+                continue;
+            }
+
+            $box = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
+            $pos = match ($kind) {
+                'legend' => [(int) ($map->keyx[$item] ?? $box[0]), (int) ($map->keyy[$item] ?? $box[1])],
+                // text is placed by the left end of its baseline
+                'timestamp', 'title' => [$box[0], $box[3]],
+                default => [$box[0], $box[1]],
+            };
+
+            // the last drawing wins, if an area was recorded twice
+            $found[$kind . ':' . $item] = ['kind' => $kind, 'name' => $item, 'box' => $box, 'pos' => $pos];
+        }
+
+        return array_values($found);
     }
 
     // ------------------------------------------------------------------
