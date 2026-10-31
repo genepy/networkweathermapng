@@ -195,6 +195,11 @@ return [
     // Zones
     'Zone' => 'Zone',
     ':n zones' => ':n zones',
+    'Drag to resize the icon' => 'Faire glisser pour redimensionner l’icône',
+    'Icon size' => 'Taille de l’icône',
+    'Icon width' => 'Largeur de l’icône',
+    'Icon height' => 'Hauteur de l’icône',
+    'The picture at its own size' => 'L’image à sa taille d’origine',
     'Right angles' => 'Angles droits',
     'Across, then up or down' => 'D’abord à l’horizontale, puis à la verticale',
     'Up or down, then across' => 'D’abord à la verticale, puis à l’horizontale',

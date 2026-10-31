@@ -532,6 +532,7 @@
         if (nodes.length === 1 && state.selection.size === 1 && !moved && state.tool === 'select') {
             var n1 = nodes[0];
             renderNodeLabelHandle(n1, drag);
+            renderIconHandle(n1, drag);
             el('circle', { 'class': 'connector', cx: n1.box[2] + 8 / state.zoom, cy: (n1.box[1] + n1.box[3]) / 2, r: 5 / state.zoom, 'data-handle': 'connector' }, overlay)
                 .appendChild(el('title', {})).textContent = t('Drag to another node to link them');
         }
@@ -617,6 +618,19 @@
                     : t('Drag to resize the zone on this side');
             });
         }
+    }
+
+    /** The icon of the selected node, resized from its corner */
+    function renderIconHandle(n, drag) {
+        if (!n.icon_box || n.locked) { return; }
+        var b = n.icon_box, r = 4 / state.zoom;
+        if (drag && drag.type === 'iconsize' && drag.started) {
+            var cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+            b = [cx - drag.w / 2, cy - drag.h / 2, cx + drag.w / 2, cy + drag.h / 2];
+            el('rect', { 'class': 'lasso', x: b[0], y: b[1], width: drag.w, height: drag.h }, overlay);
+        }
+        el('rect', { 'class': 'scale-handle', x: b[2] - r, y: b[3] - r, width: 2 * r, height: 2 * r, 'data-handle': 'iconsize' }, overlay)
+            .appendChild(el('title', {})).textContent = t('Drag to resize the icon');
     }
 
     /** With an icon, the label of the selected node can be dragged on its own */
@@ -1051,6 +1065,11 @@
             });
             return;
         }
+        if (handle === 'iconsize') {
+            var ni = selected('node')[0], ib = ni.icon_box;
+            startDrag(evt, { type: 'iconsize', node: ni.name, box: ib, w: ib[2] - ib[0], h: ib[3] - ib[1] });
+            return;
+        }
         if (handle === 'nodelabel') {
             var n = selected('node')[0];
             startDrag(evt, { type: 'nodelabel', node: n.name, start: p, dx: 0, dy: 0 });
@@ -1125,6 +1144,10 @@
 
             case 'zone-size':
                 zoneSizeMove(d, p, evt.shiftKey, evt.altKey);
+                break;
+
+            case 'iconsize':
+                iconSizeMove(d, p, evt.shiftKey);
                 break;
 
             case 'nodelabel':
@@ -1305,6 +1328,15 @@
                 send([{ op: 'set_zone', names: [d.zone], props: zp }]);
                 return;
 
+            case 'iconsize':
+                var bw = d.box[2] - d.box[0], bh = d.box[3] - d.box[1];
+                if (!d.started || (d.w === bw && d.h === bh)) {
+                    renderOverlay();
+                    return;
+                }
+                send([{ op: 'set_node', names: [d.node], props: { iconscalew: d.w, iconscaleh: d.h } }]);
+                return;
+
             case 'nodelabel':
                 var ln = state.nodes.get(d.node);
                 if (!d.started || (!d.dx && !d.dy) || !ln) {
@@ -1386,6 +1418,27 @@
                 scaleEnd(d);
                 return;
         }
+    }
+
+    /** Icons the engine draws itself: their width and height are free */
+    var SHAPES = ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'];
+
+    /**
+     * The new size of an icon dragged by its corner, the icon staying
+     * centred on the node. A picture keeps its proportions; a shape keeps
+     * them with Shift.
+     */
+    function iconSizeMove(d, p, keep) {
+        var b = d.box, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+        var w0 = Math.max(1, b[2] - b[0]), h0 = Math.max(1, b[3] - b[1]);
+        var w = Math.max(8, 2 * Math.abs(p.x - cx)), hh = Math.max(8, 2 * Math.abs(p.y - cy));
+        if (keep || SHAPES.indexOf(state.nodes.get(d.node).icon) < 0) {
+            var k = Math.max(w / w0, hh / h0);
+            w = Math.max(8, w0 * k);
+            hh = Math.max(8, h0 * k);
+        }
+        d.w = Math.min(1024, Math.round(w));
+        d.h = Math.min(1024, Math.round(hh));
     }
 
     function midpoint(link) {
@@ -2174,6 +2227,7 @@
 
         out.push(
             row(t('Icon'), field(nodes, 'icon', 'node', { options: iconOptions() })),
+            iconSizeRow(nodes),
             h('h3', { text: t('Label style') }),
             row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
@@ -2200,7 +2254,35 @@
         if (nodes.some(function (n) { return n.group; })) {
             out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
-        return out;
+        return out.filter(Boolean);
+    }
+
+    /** Width and height of the icons; empty is a picture's own size */
+    function iconSizeRow(nodes) {
+        var withIcon = nodes.filter(function (n) { return n.icon && n.icon !== 'none'; });
+        if (!withIcon.length) { return null; }
+        var names = withIcon.map(function (n) { return n.name; });
+        function input(name, label) {
+            var c = common(withIcon, name);
+            var i = h('input', {
+                type: 'number', name: name, min: 0, max: 1024, value: c.mixed || !+c.value ? '' : c.value,
+                placeholder: c.mixed ? t('(mixed)') : t('auto'), 'class': c.mixed ? 'mixed' : '', 'aria-label': label
+            });
+            i.addEventListener('change', function () {
+                var props = {};
+                props[name] = +i.value || 0;
+                send([{ op: 'set_node', names: names, props: props }]);
+            });
+            return i;
+        }
+        var own = withIcon.every(function (n) { return !n.iconscalew && !n.iconscaleh; });
+        return row(t('Icon size'), h('div', { 'class': 'pair' }, [
+            input('iconscalew', t('Icon width')), h('label', { text: '×' }), input('iconscaleh', t('Icon height')),
+            h('button', {
+                type: 'button', text: t('auto'), title: t('The picture at its own size'), disabled: own,
+                onclick: function () { send([{ op: 'set_node', names: names, props: { iconscalew: 0, iconscaleh: 0 } }]); }
+            })
+        ]));
     }
 
     function furnitureName(f) {
