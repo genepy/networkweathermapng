@@ -142,6 +142,7 @@ class MapEditor
                 'add_zone' => $this->addZone($map, $op),
                 'set_zone' => $this->setZones($map, $op),
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
+                'define_font' => $this->defineFont($map, $op),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
@@ -698,6 +699,78 @@ class MapEditor
         }
     }
 
+    /**
+     * {op: define_font, file, size, n?} - a TrueType font for the map: one
+     * shipped in public/fonts, or a file the map already uses. Without n,
+     * it takes the next free number. Returns {fonts: [n]}.
+     */
+    private function defineFont(\WeatherMap $map, array $op): array
+    {
+        $file = trim((string) ($op['file'] ?? ''));
+        $used = [];
+        foreach ($map->fonts as $font) {
+            if ($font->type === 'truetype') {
+                $used[] = (string) $font->file;
+            }
+        }
+        if (!in_array($file, $used, true) && !self::isShippedFont($file)) {
+            throw new InvalidArgumentException(__('Unknown font: :file', ['file' => $file]));
+        }
+        $size = (int) ($op['size'] ?? 10);
+        if ($size < 4 || $size > 96) {
+            throw new InvalidArgumentException(__('A font size is between 4 and 96'));
+        }
+        $n = isset($op['n']) ? (int) $op['n'] : max(10, max(array_merge([0], array_keys($map->fonts))) + 1);
+        if ($n < 6 || $n > 999) {
+            throw new InvalidArgumentException(__('Invalid font number: :n', ['n' => $n]));
+        }
+
+        $font = new \WMFont();
+        $font->type = 'truetype';
+        $font->file = $file;
+        $font->size = $size;
+        $map->fonts[$n] = $font;
+
+        return ['fonts' => [$n]];
+    }
+
+    /** The web root, where icons and shipped fonts are, relative to the map files */
+    private static function publicDir(): string
+    {
+        return dirname(__DIR__, 3) . '/public';
+    }
+
+    /** fonts/<name>.ttf shipped with the application */
+    private static function isShippedFont(string $file): bool
+    {
+        return (bool) preg_match('#^fonts/[A-Za-z0-9._-]+\.ttf$#', $file) && is_file(self::publicDir() . '/' . $file);
+    }
+
+    /**
+     * The TrueType fonts shipped in public/fonts, for the editor:
+     * [{file: fonts/<name>.ttf, label}], sorted by label.
+     */
+    public static function shippedFonts(): array
+    {
+        $out = [];
+        foreach (glob(self::publicDir() . '/fonts/*.ttf') ?: [] as $path) {
+            $file = 'fonts/' . basename($path);
+            $out[] = ['file' => $file, 'label' => self::fontLabel($file)];
+        }
+        usort($out, static fn ($a, $b) => strcmp($a['label'], $b['label']));
+        return $out;
+    }
+
+    /** "fonts/FiraSans-SemiBold.ttf" => "Fira Sans SemiBold" */
+    public static function fontLabel(string $file): string
+    {
+        $name = preg_replace('/\.ttf$/i', '', basename($file));
+        $name = str_replace(['-', '_'], ' ', (string) $name);
+        $name = (string) preg_replace('/(?<=[a-z])(?=[A-Z])/', ' ', $name);
+        $name = str_replace(['Deja Vu', 'IBMPlex', ' Regular'], ['DejaVu', 'IBM Plex', ''], $name);
+        return trim($name);
+    }
+
     /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?, background?, props?: {...}} */
     private function setMap(\WeatherMap $map, array $op): void
     {
@@ -1066,6 +1139,12 @@ class MapEditor
             'furniture' => self::furnitureOut($map),
             'templates' => $templates,
             'fonts' => array_values(array_unique(array_merge([1, 2, 3, 4, 5], array_keys($map->fonts)))),
+            // what each defined font is: family (from the file name) and size
+            // (the built-in GD fonts have no file and are left out)
+            'font_info' => array_map(static fn ($f) => $f->type === 'truetype'
+                ? ['label' => self::fontLabel((string) $f->file), 'size' => (int) $f->size, 'file' => (string) $f->file]
+                : ['label' => basename((string) $f->file), 'size' => 0, 'file' => (string) $f->file],
+                array_filter($map->fonts, static fn ($f) => (string) $f->file !== '')),
         ];
     }
 

@@ -2216,7 +2216,15 @@
     }
 
     function fontOptions() {
-        return state.model.fonts.map(function (f) { return [f, f <= 5 ? t('Built-in :n', { n: f }) : t('Font :n', { n: f })]; });
+        return state.model.fonts.map(function (f) { return [f, fontName(f)]; });
+    }
+
+    /** "Fira Sans 10", or "Built-in 3" for the fonts drawn by GD itself */
+    function fontName(n) {
+        var info = state.model.font_info && state.model.font_info[n];
+        if (info && info.size) { return info.label + ' ' + info.size; }
+        if (info && info.label) { return info.label; }
+        return n <= 5 ? t('Built-in :n', { n: n }) : t('Font :n', { n: n });
     }
 
     function nodePanel(nodes) {
@@ -3713,7 +3721,7 @@
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
-        selected: selected
+        selected: selected, fontName: fontName
     };
     document.dispatchEvent(new CustomEvent('wm-editor-ready'));
 })();

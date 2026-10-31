@@ -195,6 +195,13 @@ return [
     // Zones
     'Zone' => 'Zone',
     ':n zones' => ':n zones',
+    'Fonts' => 'Polices',
+    'Size of font :n' => 'Taille de la police :n',
+    'This map uses only the built-in fonts.' => 'Cette carte n’utilise que les polices intégrées.',
+    'Add the font' => 'Ajouter la police',
+    'Font :name added: pick it in the Font lists.' => 'Police :name ajoutée : choisissez-la dans les listes Police.',
+    'The fonts the map can use. Changes here are saved at once. Add a font, then choose it for the title, legend, timestamp, labels or links.' => 'Les polices que la carte peut utiliser. Les changements ici sont enregistrés tout de suite. Ajoutez une police, puis choisissez-la pour le titre, la légende, la date, les étiquettes ou les liens.',
+    'Add a font' => 'Ajouter une police',
     'Add to a layer…' => 'Ajouter à un calque…',
     'Take out of its layer' => 'Retirer de son calque',
     'Your layers' => 'Vos calques',

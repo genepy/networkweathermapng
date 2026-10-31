@@ -81,6 +81,9 @@ code.
 | Files | Authors | License | Link |
 |---|---|---|---|
 | `src/public/fonts/DejaVuSansMono.ttf`, `DejaVuSansMono-Bold.ttf` | DejaVu fonts team, based on Bitstream Vera (Bitstream, Inc.) | Bitstream Vera license, DejaVu changes in the public domain; full text in `src/public/fonts/DejaVu-LICENSE.txt` | https://dejavu-fonts.github.io/ |
+| `src/public/fonts/FiraSans-Regular.ttf`, `FiraSans-SemiBold.ttf` | The Mozilla Foundation and Telefonica S.A. (Carrois Apostrophe) | SIL Open Font License 1.1; full text in `src/public/fonts/FiraSans-LICENSE.txt` | https://github.com/mozilla/Fira |
+| `src/public/fonts/BarlowSemiCondensed-Regular.ttf`, `BarlowSemiCondensed-SemiBold.ttf` | The Barlow Project Authors (Jeremy Tribby) | SIL Open Font License 1.1; full text in `src/public/fonts/BarlowSemiCondensed-LICENSE.txt` | https://github.com/jpt/barlow |
+| `src/public/fonts/IBMPlexMono-Regular.ttf`, `IBMPlexMono-SemiBold.ttf` | IBM Corp. | SIL Open Font License 1.1, Reserved Font Name "Plex"; full text in `src/public/fonts/IBMPlexMono-LICENSE.txt` | https://github.com/IBM/plex |
 
 ## PHP packages (Composer)
 

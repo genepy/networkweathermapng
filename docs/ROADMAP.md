@@ -50,7 +50,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 | Modern legend styles | Several styles for the legends and labels (traffic load scale, "Created:" timestamp…) with a more modern look, chosen per map |
-| More open-source fonts | Bundle a few modern open-source fonts (licences in THIRD-PARTY-NOTICES.md) usable in SVG and PNG output |
 | Map recording and playback | Record a map's states over a period (for example the last 24 hours) and play them back as an animation. Off by default, switched on per map, and the admin can disable the feature to protect the server (storage and polling load) |
 
 ## Stale branches
@@ -63,6 +62,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #46 | Fira Sans, Barlow Semi Condensed and IBM Plex Mono shipped (OFL); a Fonts tab in Map properties adds them to a map, and font lists show names instead of numbers |
 | #45 | Editor: custom layers: name a set of nodes, links and zones (saved in the map), then hide it in the editor, lock it or select it from the Layers panel |
 | #39 | Editor: pick a node's icon from a searchable library in the properties panel; the palette search matches several words and theme names |
 | #38 | Editor: resize node icons with a corner handle or width/height fields (ICON w h file), shapes get a size |

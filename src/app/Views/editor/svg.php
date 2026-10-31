@@ -301,7 +301,8 @@ window.WM_EDITOR = {
     mapId: <?= $mapId ?>,
     icons: <?= json_encode(array_values($icons), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     iconThemes: <?= json_encode($iconThemes, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-    backgrounds: <?= json_encode(array_values($backgrounds), JSON_HEX_TAG | JSON_HEX_AMP) ?>
+    backgrounds: <?= json_encode(array_values($backgrounds), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+    fonts: <?= json_encode($fonts, JSON_HEX_TAG | JSON_HEX_AMP) ?>
 };
 </script>
 <script src="/assets/js/editor-svg.js"></script>
