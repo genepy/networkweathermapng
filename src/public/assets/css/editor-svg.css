@@ -265,7 +265,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 /* Canvas */
 #canvas { grid-area: canvas; position: relative; overflow: hidden; }
 #stage { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
-#stage.tool-link { cursor: crosshair; }
+#stage.tool-link, #stage.placing { cursor: crosshair; }
 #stage.panning { cursor: grabbing; }
 #paper { fill: #fff; filter: drop-shadow(0 1px 4px var(--paper-shadow)); }
 #map g[data-kind="node"], #map g[data-kind="link"] { cursor: pointer; }
@@ -282,6 +282,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #overlay .lock-mark { font-size: 11px; pointer-events: none; }
 #overlay .lasso { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 #overlay .ghost { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+#overlay .zone-ghost { fill: var(--accent-soft); }
 #overlay .via { fill: #fff; stroke: var(--danger); stroke-width: 2; vector-effect: non-scaling-stroke; cursor: move; }
 #overlay .via-add { fill: var(--danger); fill-opacity: .25; stroke: none; cursor: copy; }
 #overlay .anchor { fill: #fff; stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: pointer; }
@@ -334,7 +335,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 }
 #inspector input[type=color] { padding: 0 2px; height: 26px; }
 #inspector input[type=checkbox] { width: auto; }
-#inspector .pair { display: flex; gap: 4px; align-items: center; }
+#inspector .pair { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 #inspector .pair > * { flex: 1; }
 #inspector .pair > label { flex: 0 0 auto; white-space: nowrap; }
 #inspector .mixed::placeholder { font-style: italic; }
@@ -381,7 +382,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 
 #inspector .pair input[type=color] { flex: 0 0 34px; }
 #inspector .pair button { flex: 0 0 auto; }
-#inspector .pair input:not([type=color]) { min-width: 64px; }
+#inspector .pair input:not([type=color]) { min-width: 3.2em; }
 
 /* Interface picker of a link */
 #inspector .ds-what { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel-2); }
