@@ -788,10 +788,23 @@
         return Math.hypot(p.x - a[0] - u * dx, p.y - a[1] - u * dy);
     }
 
+    /**
+     * Leave the panel field being typed in, which saves it. A press on the
+     * map does not take the focus (the drags prevent it), and the panel is
+     * not rebuilt under a focused field: it would stay on the old object.
+     */
+    function leaveField() {
+        var a = document.activeElement;
+        if (a && a !== document.body && $('#inspector').contains(a)) {
+            a.blur();
+        }
+    }
+
     stage.addEventListener('pointerdown', function (evt) {
         if (!state.model) {
             return;
         }
+        leaveField();
         var p = toMap(evt);
 
         if (evt.button === 1 || (evt.button === 0 && state.spaceDown)) {
@@ -1971,6 +1984,17 @@
         inspector.replaceChildren.apply(inspector, parts);
     }
 
+    // Enter in a field applies it and leaves it, so the panel is rebuilt
+    // (after a rename, it would still edit the old name). The searches of
+    // the interface picker handle Enter themselves.
+    inspector.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || tgt.tagName !== 'INPUT' || /^(button|checkbox|radio|color|file)$/.test(tgt.type)) { return; }
+        if (tgt.closest('.ds-search')) { return; }
+        evt.preventDefault();
+        tgt.blur();
+    });
+
     inspector.addEventListener('focusout', function () {
         setTimeout(function () {
             if (inspector.dataset.stale && !inspector.contains(document.activeElement)) {
@@ -2010,6 +2034,7 @@
                 [t('Ctrl+click empty space'), t('new node')],
                 ['Ctrl+A', t('select everything, zones and legends included')],
                 ['Esc', t('cancel the drag, close the menu, or select nothing')],
+                [t('Enter in a field'), t('apply the change')],
                 [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
                 [t('Alt while dragging'), t('no snapping to the other objects')],
                 [t('Ctrl+drag'), t('duplicate the selected nodes')],
@@ -2199,8 +2224,8 @@
         out.push(
             row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
             row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
-            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12'].map(function (v) { return h('option', { value: v }); })),
-            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '400G'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
             h('h3', { text: t('Shape') }),
@@ -3337,6 +3362,18 @@
 
     document.addEventListener('keyup', function (evt) {
         if (evt.key === ' ') { state.spaceDown = false; }
+    });
+
+    // Enter in a field of a dialog applies it. The first button of the
+    // dialogs is Cancel, and the browser would press that one.
+    document.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || evt.shiftKey || evt.ctrlKey || evt.metaKey || evt.altKey) { return; }
+        if (!tgt.form || !/^(INPUT|SELECT)$/.test(tgt.tagName) || /^(button|submit|reset|file)$/.test(tgt.type)) { return; }
+        var dlg = tgt.closest('dialog'), ok = dlg && dlg.querySelector('button.primary');
+        if (!ok || ok.disabled || !tgt.form.contains(ok)) { return; }
+        evt.preventDefault();
+        tgt.form.requestSubmit(ok);
     });
 
     // Other people (or the classic editor) may change the map: reload when
