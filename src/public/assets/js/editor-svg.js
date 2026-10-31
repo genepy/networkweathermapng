@@ -781,10 +781,23 @@
         return Math.hypot(p.x - a[0] - u * dx, p.y - a[1] - u * dy);
     }
 
+    /**
+     * Leave the panel field being typed in, which saves it. A press on the
+     * map does not take the focus (the drags prevent it), and the panel is
+     * not rebuilt under a focused field: it would stay on the old object.
+     */
+    function leaveField() {
+        var a = document.activeElement;
+        if (a && a !== document.body && $('#inspector').contains(a)) {
+            a.blur();
+        }
+    }
+
     stage.addEventListener('pointerdown', function (evt) {
         if (!state.model) {
             return;
         }
+        leaveField();
         var p = toMap(evt);
 
         if (evt.button === 1 || (evt.button === 0 && state.spaceDown)) {

@@ -50,6 +50,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 | Editor: properties panel stuck on one object | Bug: at times the edit panel keeps showing the same object and no longer follows the selection when another object is clicked. Find the steps to reproduce first |
+| Editor: fields apply on blur and on Enter | Clicking outside a field leaves it and applies the change; Enter in a field validates and applies the pending change |
 | Editor: resize icons | Resize a node's icon from the editor (handles and a size field) |
 | Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
 | Editor: link widths up to 800G | Allow link bandwidths up to 800G in the editor fields and the parser, and check the scaling of widths and labels |
@@ -73,6 +74,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | PR | Item |
 |----|------|
 | #37 | Editor: Enter applies a field and leaves it (the panel follows a rename), Enter in the dialogs applies instead of cancelling |
+| #36 | Editor: the properties panel follows the selection again after editing a field (a click on the map now leaves the field and saves it) |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
 | #33 | Editor role, one maps page in the Editor tab (action buttons, active switch), forms go back where they came from, shared page headers, dark theme counters |
 | #26 | Polish link and object editing in the SVG editor: Ctrl+drag duplicates, align keeps groups, link labels over other links, larger traffic graph |
