@@ -88,6 +88,22 @@ final class SvgRenderTest extends TestCase
             . "TIMEPOS 300 280 Created: %H:%M\nSET timestamp_style pill\n"
             . "SCALE DEFAULT 0 50 0 255 0\nSCALE DEFAULT 50 100 255 0 0\n";
         $file = TESTS_OUTPUT . '/modern-legend.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $legend = '//s:g[@data-kind="legend"][@data-name="DEFAULT"]';
+        $this->assertSame(1, $xpath->query($legend . '/s:polygon')->length, 'the rounded card');
+        $this->assertSame(2, $xpath->query($legend . '/s:rect')->length, 'one bar piece per colour');
+        $this->assertSame(['Traffic load', '0%', '25%', '50%', '75%', '100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query($legend . '/s:text'))));
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"]/s:polygon')->length, 'the pill');
+        $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
+    }
+
     /** A wide link between close nodes gets shorter arrowheads instead of vanishing */
     public function testAWideShortLinkIsStillDrawn(): void
     {
@@ -104,13 +120,6 @@ final class SvgRenderTest extends TestCase
         $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
         $xpath = new \DOMXPath($doc);
         $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
-
-        $legend = '//s:g[@data-kind="legend"][@data-name="DEFAULT"]';
-        $this->assertSame(1, $xpath->query($legend . '/s:polygon')->length, 'the rounded card');
-        $this->assertSame(2, $xpath->query($legend . '/s:rect')->length, 'one bar piece per colour');
-        $this->assertSame(['Traffic load', '0%', '25%', '50%', '75%', '100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query($legend . '/s:text'))));
-        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"]/s:polygon')->length, 'the pill');
-        $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
         foreach (['fast', 'short', 'tiny'] as $link) {
             $this->assertSame(2, $xpath->query('//s:g[@data-kind="link"][@data-name="' . $link . '"]/s:polygon[@class="wm-arrow"]')->length, "both arrows of $link");
         }
