@@ -137,11 +137,13 @@ LINK router1-switch1
 
 | Setting | Effect |
 |---------|--------|
-| `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 12 px for 400G |
+| `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 10 px for 200G, 12 px for 400G, 15 px for 800G |
 | `SET link_width_table 1G:2 10G:4 100G:9` | The map's own speed → width table for `WIDTH auto` |
 | `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium, or Zabbix for links picked in the editor: the `net.if.speed[...]` item of the SNMP templates, or the sysfs speed of the Linux agent); an aggregated link adds up its members. Falls back to 1G when unknown |
 | `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge) |
 | `SET width_legend_title Speed` | Title of that legend (default `Link speed`) |
+| `KEYSTYLE DEFAULT modern 240` | Legend as a rounded card with a colour bar 240 px long and the 0 to 100% marks under it (other styles: `classic`, `horizontal`, `vertical`, `inverted`, `tags`) |
+| `SET timestamp_style pill` | Draws the timestamps on a rounded label in the legend colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`) |
 | `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
 
 Resizing a map in the editor (by dragging its border, or in Map Properties)

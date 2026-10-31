@@ -46,14 +46,26 @@
         try { localStorage.setItem(FOLD_KEY, JSON.stringify(state.open)); } catch (e) { /* this page only */ }
     }
 
+    /**
+     * The icons of a theme that match a search: every word typed must
+     * appear in the icon name, the theme folder or the theme name.
+     */
+    function matching(theme, q) {
+        var words = q.toLowerCase().split(/\s+/).filter(Boolean);
+        if (!words.length) { return theme.icons; }
+        var where = theme.theme + ' ' + label(theme.theme).toLowerCase();
+        return theme.icons.filter(function (i) {
+            var text = i.name.toLowerCase().replace(/[-_.]+/g, ' ') + ' ' + i.name.toLowerCase() + ' ' + where;
+            return words.every(function (w) { return text.indexOf(w) >= 0; });
+        });
+    }
+
     function render() {
         var q = (search.value || '').trim().toLowerCase();
         var sections = [];
 
         state.themes.forEach(function (theme) {
-            var icons = theme.icons.filter(function (i) {
-                return !q || i.name.toLowerCase().indexOf(q) >= 0 || theme.theme.indexOf(q) >= 0;
-            });
+            var icons = matching(theme, q);
             if (!icons.length) { return; }
 
             var grid = h('div', { 'class': 'icon-grid' }, icons.map(function (i) {
@@ -86,6 +98,118 @@
         holder.replaceChildren.apply(holder, sections);
         manageBtn.classList.toggle('active', state.manage);
         manageBtn.setAttribute('aria-pressed', state.manage ? 'true' : 'false');
+    }
+
+    // ------------------------------------------------------------------
+    // Picking the icon of the selected nodes, in the properties panel
+
+    var SHAPES = [['', t('(none)')], ['box', t('Box')], ['rbox', t('Rounded box')], ['round', t('Circle')]];
+
+    function findIcon(path) {
+        var found = null;
+        state.themes.forEach(function (th) {
+            th.icons.forEach(function (i) { if (i.path === path) { found = { icon: i, theme: th.theme }; } });
+        });
+        return found;
+    }
+
+    /**
+     * The current icon, and a button that opens a search over the library.
+     * `current` is the icon path ('' for none, null when the selection is
+     * mixed); `onPick` gets the chosen path.
+     */
+    function iconPicker(current, onPick) {
+        var LIMIT = 60;
+        var box = h('div', { 'class': 'icon-pick' });
+        var shape = SHAPES.filter(function (sh) { return sh[0] === current; })[0];
+        var known = current ? findIcon(current) : null;
+        var name = current === null ? t('(mixed)') : shape ? shape[1] : known ? known.icon.name : current.split('/').pop();
+        var thumb = known ? h('img', { src: '/' + known.icon.preview, alt: '' }) : h('span', { 'class': 'icon-pick-none', 'aria-hidden': 'true' });
+        var toggle = h('button', { type: 'button', 'class': 'icon-pick-current', 'aria-expanded': 'false', title: t('Choose an icon') }, [
+            thumb, h('span', { text: name })
+        ]);
+        var input = h('input', { type: 'search', placeholder: t('Search icons'), 'aria-label': t('Search icons'), autocomplete: 'off' });
+        var results = h('div', { 'class': 'icon-pick-results' });
+        var pop = h('div', { 'class': 'icon-pick-pop', hidden: true }, [input, results]);
+
+        function choose(path) { onPick(path); }
+
+        function list() {
+            var q = input.value.trim();
+            var out = [];
+            if (!q) {
+                out.push(h('div', { 'class': 'icon-pick-shapes' }, SHAPES.map(function (sh) {
+                    return h('button', { type: 'button', 'class': 'icon-pick-shape' + (sh[0] === current ? ' on' : ''), text: sh[1], onclick: function () { choose(sh[0]); } });
+                })));
+            }
+            var shown = 0, more = 0;
+            state.themes.forEach(function (th) {
+                var icons = matching(th, q);
+                if (!icons.length) { return; }
+                var room = Math.max(0, LIMIT - shown);
+                more += Math.max(0, icons.length - room);
+                icons = icons.slice(0, room);
+                if (!icons.length) { return; }
+                shown += icons.length;
+                out.push(h('h4', { text: label(th.theme) }), h('div', { 'class': 'icon-grid' }, icons.map(function (i) {
+                    return h('button', {
+                        type: 'button', 'class': 'palette-icon' + (i.path === current ? ' on' : ''), title: i.name, 'aria-label': i.name,
+                        onclick: function () { choose(i.path); }
+                    }, [h('img', { src: '/' + i.preview, alt: '', loading: 'lazy' })]);
+                })));
+            });
+            if (!shown && q) { out.push(h('p', { 'class': 'help', text: t('No icon matches') })); }
+            if (more) { out.push(h('p', { 'class': 'help', text: t(':n more, type to narrow the search', { n: more }) })); }
+            results.replaceChildren.apply(results, out);
+        }
+
+        function show(open) {
+            pop.hidden = !open;
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) {
+                list();
+                input.focus();
+            }
+        }
+
+        toggle.addEventListener('click', function () { show(pop.hidden); });
+        input.addEventListener('input', list);
+        input.addEventListener('keydown', function (evt) {
+            if (evt.key === 'Enter') {
+                var first = results.querySelector('.palette-icon, .icon-pick-shape');
+                if (first) { first.focus(); first.click(); }
+            } else if (evt.key === 'Escape') {
+                if (input.value) { input.value = ''; list(); } else { show(false); toggle.focus(); }
+            } else if (evt.key === 'ArrowDown') {
+                var b = results.querySelector('button');
+                if (b) { b.focus(); }
+            } else {
+                return;
+            }
+            evt.preventDefault();
+            evt.stopPropagation();
+        });
+        results.addEventListener('keydown', function (evt) {
+            var all = Array.prototype.slice.call(results.querySelectorAll('button'));
+            var i = all.indexOf(document.activeElement);
+            var step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 5, ArrowUp: -5 }[evt.key];
+            if (step) {
+                var next = all[i + step] || (step < 0 ? input : all[all.length - 1]);
+                next.focus();
+            } else if (evt.key === 'Escape') {
+                input.focus();
+            } else {
+                // keys typed on a result never reach the editor shortcuts
+                evt.stopPropagation();
+                return;
+            }
+            evt.preventDefault();
+            evt.stopPropagation();
+        });
+
+        box.appendChild(toggle);
+        box.appendChild(pop);
+        return box;
     }
 
     function update(d) {
@@ -164,5 +288,6 @@
         if (evt.key === 'Escape' && search.value) { search.value = ''; render(); evt.stopPropagation(); }
     });
 
+    ed.iconPicker = iconPicker;
     render();
 })();

@@ -18,13 +18,102 @@
 
     var SECTIONS = [
         ['general', t('General')], ['title', t('Title')], ['legend', t('Legend')],
-        ['timestamp', t('Timestamp')], ['links', t('Link defaults')]
+        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['fonts', t('Fonts')]
     ];
 
     function fontSelect(name, value) {
-        return h('select', { name: name }, ed.state.model.fonts.map(function (f) {
-            return h('option', { value: f, text: f <= 5 ? t('Built-in :n', { n: f }) : t('Font :n', { n: f }), selected: +f === +value });
+        return h('select', { name: name, 'class': 'font-select' }, ed.state.model.fonts.map(function (f) {
+            return h('option', { value: f, text: ed.fontName(f), selected: +f === +value });
         }));
+    }
+
+    // ------------------------------------------------------------------
+    // Fonts: those of the map, with a sample, and adding one of the fonts
+    // shipped with the application. Saved at once, not with Apply.
+
+    var loadedFaces = {};
+
+    /** A CSS font family drawing font n of this map (the editor serves its file) */
+    function faceFor(n) {
+        var info = ed.state.model.font_info[n];
+        if (!info || !info.size || !window.FontFace) { return null; }
+        var family = 'wm-font-' + n + '-' + info.file.replace(/[^\w]/g, '');
+        if (!loadedFaces[family]) {
+            loadedFaces[family] = new FontFace(family, 'url(/editor/font/' + window.WM_EDITOR.mapId + '/' + n + ')');
+            loadedFaces[family].load().then(function (f) { document.fonts.add(f); }).catch(function () {});
+        }
+        return family;
+    }
+
+    function fontsPane() {
+        var list = h('div', { 'class': 'font-list' });
+        function renderList() {
+            var rows = Object.keys(ed.state.model.font_info || {}).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
+                var info = ed.state.model.font_info[n], family = faceFor(n);
+                var size = info.size ? h('input', { type: 'number', min: 4, max: 96, value: info.size, 'aria-label': t('Size of font :n', { n: n }) }) : null;
+                if (size) {
+                    size.addEventListener('change', function () {
+                        if (+size.value === info.size) { return; }
+                        ed.send([{ op: 'define_font', n: n, file: info.file, size: +size.value }], function () { return undefined; }).then(afterChange);
+                    });
+                }
+                return h('div', { 'class': 'font-row' }, [
+                    h('span', { 'class': 'font-n', text: '#' + n }),
+                    h('span', { 'class': 'font-sample', style: family ? 'font-family: "' + family + '", sans-serif; font-size: ' + Math.min(22, Math.max(10, info.size * 1.2)) + 'px' : null, text: info.label }),
+                    size
+                ]);
+            });
+            if (!rows.length) { rows.push(h('p', { 'class': 'hint', text: t('This map uses only the built-in fonts.') })); }
+            list.replaceChildren.apply(list, rows);
+        }
+
+        var file = h('select', { 'aria-label': t('Font') }, (window.WM_EDITOR.fonts || []).map(function (f) {
+            return h('option', { value: f.file, text: f.label });
+        }));
+        var size = h('input', { type: 'number', min: 4, max: 96, value: 10, 'aria-label': t('Size') });
+        var add = h('button', { type: 'button', text: t('Add the font') });
+        var preview = h('span', { 'class': 'font-sample', text: 'Core-Paris 1G 45%' });
+        function showPreview() {
+            preview.style.fontFamily = '';
+            var url = '/' + file.value, family = 'wm-ship-' + file.value.replace(/[^\w]/g, '');
+            if (!loadedFaces[family] && window.FontFace) {
+                loadedFaces[family] = new FontFace(family, 'url(' + url + ')');
+                loadedFaces[family].load().then(function (f) { document.fonts.add(f); }).catch(function () {});
+            }
+            preview.style.fontFamily = '"' + family + '", sans-serif';
+            preview.style.fontSize = Math.min(22, Math.max(10, +size.value * 1.2)) + 'px';
+        }
+        file.addEventListener('change', showPreview);
+        size.addEventListener('input', showPreview);
+        add.addEventListener('click', function () {
+            ed.send([{ op: 'define_font', file: file.value, size: +size.value || 10 }], function (r) {
+                var n = r.created && r.created.fonts && r.created.fonts[0];
+                // the model is not updated yet: name it from the form
+                if (n) { ed.toast(t('Font :name added: pick it in the Font lists.', { name: file.selectedOptions[0].text + ' ' + (+size.value || 10) })); }
+                return undefined;
+            }).then(afterChange);
+        });
+
+        /** New fonts show in the lists of the other tabs, keeping what is chosen there */
+        function afterChange() {
+            renderList();
+            Array.prototype.forEach.call(body.querySelectorAll('select.font-select'), function (sel) {
+                var v = sel.value;
+                sel.replaceChildren.apply(sel, ed.state.model.fonts.map(function (f) {
+                    return h('option', { value: f, text: ed.fontName(f), selected: String(f) === v });
+                }));
+            });
+        }
+
+        renderList();
+        showPreview();
+        return [
+            h('p', { 'class': 'mapprops-explain', text: t('The fonts the map can use. Changes here are saved at once. Add a font, then choose it for the title, legend, timestamp, labels or links.') }),
+            list,
+            h('h4', { text: t('Add a font') }),
+            h('div', { 'class': 'pair font-add' }, [file, size, add]),
+            preview
+        ];
     }
 
     function choice(name, value, options) {
@@ -68,9 +157,10 @@
                 field(t('Legend text'), h('input', { name: 'key_text', value: p.key_text, autocomplete: 'off' })),
                 field(t('Style'), choice('key_style', p.key_style, [
                     ['classic', t('Classic: a list of colours')], ['horizontal', t('Horizontal bar')], ['vertical', t('Vertical bar')],
-                    ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')]
+                    ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')],
+                    ['modern', t('Modern: a rounded card with a colour bar')]
                 ])),
-                field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal and vertical bars.')),
+                field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal, vertical and modern bars.')),
                 field(t('Font'), fontSelect('key_font', p.key_font)),
                 field(t('Text colour'), colour('key_text_colour', p.key_text_colour, false)),
                 field(t('Box colour'), colour('key_bg_colour', p.key_bg_colour, true)),
@@ -79,6 +169,9 @@
             timestamp: [
                 field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
                     t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
+                field(t('Style'), choice('stamp_style', p.stamp_style, [
+                    ['plain', t('Plain text')], ['pill', t('On a rounded label, in the legend colours')]
+                ])),
                 field(t('Font'), fontSelect('time_font', p.time_font)),
                 field(t('Colour'), colour('time_colour', p.time_colour, false))
             ],
@@ -91,7 +184,8 @@
                     ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
                 ])),
                 field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont))
-            ]
+            ],
+            fonts: fontsPane()
         };
 
         tabs.replaceChildren.apply(tabs, SECTIONS.map(function (s) {

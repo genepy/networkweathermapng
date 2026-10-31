@@ -82,6 +82,49 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
     }
 
+    public function testModernLegendAndPillTimestampAreVectors(): void
+    {
+        $conf = "WIDTH 500\nHEIGHT 300\nKEYPOS DEFAULT 20 40 Traffic load\nKEYSTYLE DEFAULT modern 240\n"
+            . "TIMEPOS 300 280 Created: %H:%M\nSET timestamp_style pill\n"
+            . "SCALE DEFAULT 0 50 0 255 0\nSCALE DEFAULT 50 100 255 0 0\n";
+        $file = TESTS_OUTPUT . '/modern-legend.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $legend = '//s:g[@data-kind="legend"][@data-name="DEFAULT"]';
+        $this->assertSame(1, $xpath->query($legend . '/s:polygon')->length, 'the rounded card');
+        $this->assertSame(2, $xpath->query($legend . '/s:rect')->length, 'one bar piece per colour');
+        $this->assertSame(['Traffic load', '0%', '25%', '50%', '75%', '100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query($legend . '/s:text'))));
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"]/s:polygon')->length, 'the pill');
+        $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
+    }
+
+    /** A wide link between close nodes gets shorter arrowheads instead of vanishing */
+    public function testAWideShortLinkIsStillDrawn(): void
+    {
+        $conf = "WIDTH 400\nHEIGHT 200\n"
+            . "NODE a\n\tPOSITION 60 60\nNODE b\n\tPOSITION 300 60\nNODE c\n\tPOSITION 60 150\nNODE d\n\tPOSITION 120 150\n"
+            . "LINK fast\n\tNODES a b\n\tBANDWIDTH 800G\n\tWIDTH auto\n"
+            . "LINK short\n\tNODES c d\n\tWIDTH 15\n\tVIA 90 140\n"
+            . "NODE e\n\tPOSITION 200 150\nNODE f\n\tPOSITION 270 150\nLINK tiny\n\tNODES e f\n\tBANDWIDTH 800G\n\tWIDTH auto\n";
+        $file = TESTS_OUTPUT . '/wide-links.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        foreach (['fast', 'short', 'tiny'] as $link) {
+            $this->assertSame(2, $xpath->query('//s:g[@data-kind="link"][@data-name="' . $link . '"]/s:polygon[@class="wm-arrow"]')->length, "both arrows of $link");
+        }
+    }
+
     public function testPngIsUnchangedWhileCollecting(): void
     {
         $file = TESTS_ROOT . '/fixtures/maps/basic.conf';
