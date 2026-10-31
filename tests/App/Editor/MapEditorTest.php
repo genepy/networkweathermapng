@@ -346,6 +346,65 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('timestamp_style', file_get_contents($this->file));
     }
 
+    public function testAShippedFontIsAddedToTheMap(): void
+    {
+        $cwd = getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public'); // the editor runs from the web root
+        try {
+            $result = $this->editor->apply([['op' => 'define_font', 'file' => 'fonts/FiraSans-Regular.ttf', 'size' => 11]]);
+            $n = $result['created']['fonts'][0];
+            $this->assertGreaterThanOrEqual(10, $n);
+            $this->assertStringContainsString("FONTDEFINE $n fonts/FiraSans-Regular.ttf 11", file_get_contents($this->file));
+
+            $info = $this->drawnModel()['font_info'][$n];
+            $this->assertSame(['label' => 'Fira Sans', 'size' => 11, 'file' => 'fonts/FiraSans-Regular.ttf'], $info);
+
+            $this->editor->apply([['op' => 'define_font', 'n' => $n, 'file' => 'fonts/FiraSans-Regular.ttf', 'size' => 14]]);
+            $this->assertStringContainsString("FONTDEFINE $n fonts/FiraSans-Regular.ttf 14", file_get_contents($this->file));
+        } finally {
+            chdir($cwd);
+        }
+    }
+
+    public function testOnlyShippedOrUsedFontsCanBeAdded(): void
+    {
+        foreach (['/etc/passwd', 'fonts/../../app.key.ttf', 'fonts/Missing.ttf'] as $file) {
+            try {
+                $this->editor->apply([['op' => 'define_font', 'file' => $file, 'size' => 10]]);
+                $this->fail("$file was accepted");
+            } catch (InvalidArgumentException $e) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'define_font', 'file' => 'fonts/FiraSans-Regular.ttf', 'size' => 500]]);
+    }
+
+    public function testFontLabels(): void
+    {
+        $this->assertSame('IBM Plex Mono Semi Bold', MapEditor::fontLabel('fonts/IBMPlexMono-SemiBold.ttf'));
+        $this->assertSame('DejaVu Sans Mono', MapEditor::fontLabel('/usr/share/fonts/DejaVuSansMono.ttf'));
+        $this->assertContains('fonts/BarlowSemiCondensed-Regular.ttf', array_column(MapEditor::shippedFonts(), 'file'));
+    }
+
+    public function testCustomLayersAreSavedInTheMap(): void
+    {
+        $this->editor->apply([
+            ['op' => 'hint', 'kind' => 'node', 'names' => ['paris', 'lyon'], 'key' => 'editor_layer', 'value' => 'Core routers'],
+            ['op' => 'hint', 'kind' => 'link', 'names' => ['paris-backup'], 'key' => 'editor_layer', 'value' => 'Core routers'],
+        ]);
+        $this->assertStringContainsString('SET editor_layer Core_routers', file_get_contents($this->file));
+
+        $model = $this->drawnModel();
+        $nodes = array_column($model['nodes'], null, 'name');
+        $this->assertSame('Core_routers', $nodes['paris']['layer']);
+        $this->assertSame('', $nodes['core']['layer']);
+        $this->assertSame('Core_routers', array_column($model['links'], null, 'name')['paris-backup']['layer']);
+
+        $this->editor->apply([['op' => 'hint', 'kind' => 'node', 'names' => ['paris'], 'key' => 'editor_layer', 'value' => null]]);
+        $this->assertSame('', array_column($this->drawnModel()['nodes'], null, 'name')['paris']['layer']);
+    }
+
     public function testANodeLabelMovesAwayFromItsIconAndBack(): void
     {
         $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
@@ -364,6 +423,38 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => null]]]);
         $this->assertStringNotContainsString('LABELOFFSET', file_get_contents($this->file));
         $this->assertSame($b, array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
+    }
+
+    public function testAnIconIsResized(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $natural = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame([0, 0], [$natural['iconscalew'], $natural['iconscaleh']]);
+        $this->assertNotNull($natural['icon_box']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 80, 'iconscaleh' => 80]]]);
+        $this->assertStringContainsString('ICON 80 80 src/public/objects/net/router.png', file_get_contents($this->file));
+        $box = array_column($this->drawnModel()['nodes'], null, 'name')['backup']['icon_box'];
+        $this->assertSame(80, max($box[2] - $box[0], $box[3] - $box[1]), 'the picture fits in 80 x 80');
+
+        // one size given: the other follows; 0 is the picture's own size again
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 40, 'iconscaleh' => 0]]]);
+        $this->assertStringContainsString('ICON 40 40 ', file_get_contents($this->file));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 0, 'iconscaleh' => 0]]]);
+        $this->assertStringContainsString("ICON src/public/objects/net/router.png", file_get_contents($this->file));
+        $this->assertSame($natural['icon_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['icon_box']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 99999]]]);
+        $this->assertEquals(1024, $this->editor->load()->nodes['backup']->iconscalew);
+    }
+
+    public function testAShapeIconGetsASize(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'round']]]);
+        $this->assertStringContainsString('ICON 32 32 round', file_get_contents($this->file));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 60, 'iconscaleh' => 20]]]);
+        $box = array_column($this->drawnModel()['nodes'], null, 'name')['backup']['icon_box'];
+        $this->assertSame([60, 20], [$box[2] - $box[0], $box[3] - $box[1]]);
     }
 
     public function testANodeLabelMovesWhenItsTemplateUsesACompassOffset(): void

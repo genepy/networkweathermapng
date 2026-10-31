@@ -50,6 +50,7 @@ class SvgEditorController extends BaseController
             'icons' => $library->paths(),
             'iconThemes' => $library->themes(),
             'backgrounds' => get_imagelist($publicPath, 'backgrounds'),
+            'fonts' => MapEditor::shippedFonts(),
             'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
     }

@@ -1002,10 +1002,6 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 	list($arrowsize[IN], $arrowwidth[IN])   = calc_arrowsize($widths[IN], $map, $linkname);
 	list($arrowsize[OUT], $arrowwidth[OUT]) = calc_arrowsize($widths[OUT], $map, $linkname);
 
-	// the 1.2 here is empirical. It ought to be 1 in theory.
-	// in practice, a link this short is useless anyway, especially with bwlabels.
-	$minimumlength = 1.2 * ($arrowsize[IN] + $arrowsize[OUT]);
-
 	foreach ($dirs as $dir) {
 		# draw_spine($image, $spine[$dir],$map->selected);
 		#draw_spine_chain($image, $spine[$dir],$map->selected,3);
@@ -1021,7 +1017,13 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 		$arrowsettings = array(+1, 0, $widths[$dir], 0, $fillcolours[$dir], $outlinecolour, 5);
 
 		# print "Line is $n points to a distance of $l\n";
-		if ($l < $minimumlength) {
+		// Each half holds its own arrowhead. When it is too short for it (a
+		// wide link between close nodes), the arrowhead gets shorter rather
+		// than the link not being drawn at all.
+		if ($l < 1.2 * $arrowsize[$dir]) {
+			$arrowsize[$dir] = $l / 1.2;
+		}
+		if ($l < 2) {
 			wm_warn("Skipping too-short line.");
 		} else {
 			$arrow_d = $l - $arrowsize[$dir];
@@ -1029,7 +1031,8 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 			list($pre_mid_x,$pre_mid_y,$pre_midindex) = find_distance_coords($spine[$dir], $arrow_d);
 
 			# print "POS $pre_mid_x,$pre_mid_y  $pre_midindex\n";
-			$out   = array_slice($spine[$dir], 0, $pre_midindex);
+			// keep the start point when the arrowhead takes most of the half
+			$out   = array_slice($spine[$dir], 0, max(1, $pre_midindex));
 			$out[] = array($pre_mid_x, $pre_mid_y, $arrow_d);
 
 			# wm_draw_marker_diamond($image, $map->selected, $pre_mid_x, $pre_mid_y, 5);
@@ -1314,10 +1317,16 @@ function draw_curve($image, &$curvepoints, $widths, $outlinecolour, $fillcolours
 	$minimumlength = 1.2 * ($arrowsize[IN]+$arrowsize[OUT]);
 
 	# warn("$linkname: Total: $totaldistance $arrowsize $arrowwidth $minimumlength\n");
-	if ($totaldistance <= $minimumlength) {
+	if ($totaldistance < 2) {
 		wm_warn("Skipping drawing very short link ($linkname). Impossible to draw! Try changing WIDTH or ARROWSTYLE? [WMWARN01]");
 
 		return;
+	}
+	if ($totaldistance <= $minimumlength) {
+		// a wide link between close nodes: shorter arrowheads rather than no link
+		$fit = $totaldistance / $minimumlength * 0.99;
+		$arrowsize[IN] *= $fit;
+		$arrowsize[OUT] *= $fit;
 	}
 
 	list($halfway_x, $halfway_y, $halfwayindex) = find_distance_coords($curvepoints, $halfway);
@@ -1468,7 +1477,7 @@ function simplify_spine(&$input, $epsilon=1e-8) {
 }
 
 define('WM_AUTO_BANDWIDTH_FALLBACK', '1G');
-define('WM_DEFAULT_LINK_WIDTH_TABLE', '1G:2 10G:4 25G:5 40G:6 100G:9 400G:12');
+define('WM_DEFAULT_LINK_WIDTH_TABLE', '1G:2 10G:4 25G:5 40G:6 100G:9 200G:10 400G:12 800G:15');
 
 /**
  * BANDWIDTH value to use before the data is read: "auto" links start at the

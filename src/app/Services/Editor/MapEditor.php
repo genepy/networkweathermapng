@@ -21,10 +21,15 @@ class MapEditor
         'labelfont' => 'labelfont',
         'labeloffset' => 'labeloffset',
         'labelangle' => 'labelangle',
-        'iconscalew' => 'iconscalew',
-        'iconscaleh' => 'iconscaleh',
         'zorder' => 'zorder',
     ];
+
+    /** Icons the engine draws itself, at the ICON size */
+    private const ICON_SHAPES = ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'];
+
+    /** Size of a new shape icon, and the largest icon, in pixels */
+    private const SHAPE_SIZE = 32;
+    private const ICON_MAX = 1024;
 
     private const NODE_COLOURS = [
         'labelbgcolour' => 'labelbgcolour',
@@ -72,7 +77,7 @@ class MapEditor
     private const ANCHORS = ['C', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'];
 
     /** Hints the editor owns: grouping and locking */
-    public const EDITOR_HINTS = ['editor_group', 'editor_lock'];
+    public const EDITOR_HINTS = ['editor_group', 'editor_lock', 'editor_layer'];
 
     /**
      * Map furniture the editor can move, by image map area name:
@@ -137,6 +142,7 @@ class MapEditor
                 'add_zone' => $this->addZone($map, $op),
                 'set_zone' => $this->setZones($map, $op),
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
+                'define_font' => $this->defineFont($map, $op),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
@@ -350,6 +356,9 @@ class MapEditor
                     $node->$field = $this->colour($value);
                 } elseif ($key === 'icon') {
                     $node->iconfile = $this->iconFile((string) $value);
+                } elseif ($key === 'iconscalew' || $key === 'iconscaleh') {
+                    // 0 draws a picture at its own size
+                    $node->$key = max(0, min(self::ICON_MAX, (int) $value));
                 } elseif ($key === 'infourl') {
                     $node->infourl[IN] = $this->text($value);
                     $node->infourl[OUT] = $node->infourl[IN];
@@ -380,6 +389,25 @@ class MapEditor
                     throw new InvalidArgumentException(__('Unknown node property: :key', ['key' => $key]));
                 }
             }
+            $this->fixIconSize($node);
+        }
+    }
+
+    /**
+     * The engine scales an icon only when it has both sizes, and draws a
+     * shape (box, circle...) only with a size: give the missing one.
+     */
+    private function fixIconSize(\WeatherMapNode $node): void
+    {
+        $w = (int) $node->iconscalew;
+        $h = (int) $node->iconscaleh;
+        if ($w > 0 && $h <= 0) {
+            $node->iconscaleh = $w;
+        } elseif ($h > 0 && $w <= 0) {
+            $node->iconscalew = $h;
+        } elseif ($w <= 0 && in_array($node->iconfile, self::ICON_SHAPES, true)) {
+            $node->iconscalew = self::SHAPE_SIZE;
+            $node->iconscaleh = self::SHAPE_SIZE;
         }
     }
 
@@ -671,6 +699,78 @@ class MapEditor
         }
     }
 
+    /**
+     * {op: define_font, file, size, n?} - a TrueType font for the map: one
+     * shipped in public/fonts, or a file the map already uses. Without n,
+     * it takes the next free number. Returns {fonts: [n]}.
+     */
+    private function defineFont(\WeatherMap $map, array $op): array
+    {
+        $file = trim((string) ($op['file'] ?? ''));
+        $used = [];
+        foreach ($map->fonts as $font) {
+            if ($font->type === 'truetype') {
+                $used[] = (string) $font->file;
+            }
+        }
+        if (!in_array($file, $used, true) && !self::isShippedFont($file)) {
+            throw new InvalidArgumentException(__('Unknown font: :file', ['file' => $file]));
+        }
+        $size = (int) ($op['size'] ?? 10);
+        if ($size < 4 || $size > 96) {
+            throw new InvalidArgumentException(__('A font size is between 4 and 96'));
+        }
+        $n = isset($op['n']) ? (int) $op['n'] : max(10, max(array_merge([0], array_keys($map->fonts))) + 1);
+        if ($n < 6 || $n > 999) {
+            throw new InvalidArgumentException(__('Invalid font number: :n', ['n' => $n]));
+        }
+
+        $font = new \WMFont();
+        $font->type = 'truetype';
+        $font->file = $file;
+        $font->size = $size;
+        $map->fonts[$n] = $font;
+
+        return ['fonts' => [$n]];
+    }
+
+    /** The web root, where icons and shipped fonts are, relative to the map files */
+    private static function publicDir(): string
+    {
+        return dirname(__DIR__, 3) . '/public';
+    }
+
+    /** fonts/<name>.ttf shipped with the application */
+    private static function isShippedFont(string $file): bool
+    {
+        return (bool) preg_match('#^fonts/[A-Za-z0-9._-]+\.ttf$#', $file) && is_file(self::publicDir() . '/' . $file);
+    }
+
+    /**
+     * The TrueType fonts shipped in public/fonts, for the editor:
+     * [{file: fonts/<name>.ttf, label}], sorted by label.
+     */
+    public static function shippedFonts(): array
+    {
+        $out = [];
+        foreach (glob(self::publicDir() . '/fonts/*.ttf') ?: [] as $path) {
+            $file = 'fonts/' . basename($path);
+            $out[] = ['file' => $file, 'label' => self::fontLabel($file)];
+        }
+        usort($out, static fn ($a, $b) => strcmp($a['label'], $b['label']));
+        return $out;
+    }
+
+    /** "fonts/FiraSans-SemiBold.ttf" => "Fira Sans SemiBold" */
+    public static function fontLabel(string $file): string
+    {
+        $name = preg_replace('/\.ttf$/i', '', basename($file));
+        $name = str_replace(['-', '_'], ' ', (string) $name);
+        $name = (string) preg_replace('/(?<=[a-z])(?=[A-Z])/', ' ', $name);
+        $name = str_replace(['Deja Vu', 'IBMPlex', ' Regular'], ['DejaVu', 'IBM Plex', ''], $name);
+        return trim($name);
+    }
+
     /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?, background?, props?: {...}} */
     private function setMap(\WeatherMap $map, array $op): void
     {
@@ -919,6 +1019,8 @@ class MapEditor
             }
             $box ??= [$node->x - 5, $node->y - 5, $node->x + 5, $node->y + 5];
 
+            $hasIcon = !in_array((string) $node->iconfile, ['', 'none'], true);
+
             // with an icon, the label is the second box and can move on its own
             $labelBox = count($node->boundingboxes) >= 2 && (string) $node->label !== ''
                 ? array_map(static fn ($v) => (int) round((float) $v), end($node->boundingboxes))
@@ -936,6 +1038,12 @@ class MapEditor
                 'label_box' => $labelBox,
                 'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
                 'icon' => (string) $node->iconfile,
+                'iconscalew' => (int) $node->iconscalew,
+                'iconscaleh' => (int) $node->iconscaleh,
+                // the icon is the first box (an icon that failed to load has none)
+                'icon_box' => $hasIcon && (count($node->boundingboxes) >= 2 || ((string) $node->label === '' && $node->boundingboxes !== []))
+                    ? array_map(static fn ($v) => (int) round((float) $v), reset($node->boundingboxes))
+                    : null,
                 'template' => (string) $node->template,
                 'relative_to' => (string) $node->relative_to,
                 'zorder' => (int) $node->zorder,
@@ -947,6 +1055,7 @@ class MapEditor
                 'infourl' => (string) ($node->infourl[IN] ?? ''),
                 'group' => (string) ($node->hints['editor_group'] ?? ''),
                 'locked' => !empty($node->hints['editor_lock']),
+                'layer' => (string) ($node->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -999,6 +1108,7 @@ class MapEditor
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),
+                'layer' => (string) ($link->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -1021,6 +1131,7 @@ class MapEditor
                 'outlinestyle' => (string) $zone->outlinestyle,
                 'group' => (string) ($zone->hints['editor_group'] ?? ''),
                 'locked' => !empty($zone->hints['editor_lock']),
+                'layer' => (string) ($zone->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -1038,6 +1149,12 @@ class MapEditor
             'furniture' => self::furnitureOut($map),
             'templates' => $templates,
             'fonts' => array_values(array_unique(array_merge([1, 2, 3, 4, 5], array_keys($map->fonts)))),
+            // what each defined font is: family (from the file name) and size
+            // (the built-in GD fonts have no file and are left out)
+            'font_info' => array_map(static fn ($f) => $f->type === 'truetype'
+                ? ['label' => self::fontLabel((string) $f->file), 'size' => (int) $f->size, 'file' => (string) $f->file]
+                : ['label' => basename((string) $f->file), 'size' => 0, 'file' => (string) $f->file],
+                array_filter($map->fonts, static fn ($f) => (string) $f->file !== '')),
         ];
     }
 
@@ -1252,7 +1369,7 @@ class MapEditor
         if ($value === '' || $value === 'none') {
             return '';
         }
-        if (in_array($value, ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'], true)) {
+        if (in_array($value, self::ICON_SHAPES, true)) {
             return $value;
         }
         if (str_contains($value, '..') || !preg_match('/^[\w\/.\-{}:]+\.(png|jpe?g|gif)$/i', $value)) {
