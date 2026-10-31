@@ -329,6 +329,24 @@ final class MapEditorTest extends TestCase
         $this->assertFalse($this->drawnModel()['zones'][0]['locked']);
     }
 
+    public function testCustomLayersAreSavedInTheMap(): void
+    {
+        $this->editor->apply([
+            ['op' => 'hint', 'kind' => 'node', 'names' => ['paris', 'lyon'], 'key' => 'editor_layer', 'value' => 'Core routers'],
+            ['op' => 'hint', 'kind' => 'link', 'names' => ['paris-backup'], 'key' => 'editor_layer', 'value' => 'Core routers'],
+        ]);
+        $this->assertStringContainsString('SET editor_layer Core_routers', file_get_contents($this->file));
+
+        $model = $this->drawnModel();
+        $nodes = array_column($model['nodes'], null, 'name');
+        $this->assertSame('Core_routers', $nodes['paris']['layer']);
+        $this->assertSame('', $nodes['core']['layer']);
+        $this->assertSame('Core_routers', array_column($model['links'], null, 'name')['paris-backup']['layer']);
+
+        $this->editor->apply([['op' => 'hint', 'kind' => 'node', 'names' => ['paris'], 'key' => 'editor_layer', 'value' => null]]);
+        $this->assertSame('', array_column($this->drawnModel()['nodes'], null, 'name')['paris']['layer']);
+    }
+
     public function testANodeLabelMovesAwayFromItsIconAndBack(): void
     {
         $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);

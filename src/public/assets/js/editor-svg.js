@@ -65,7 +65,8 @@
         overlaps: new Set(),      // names of nodes whose boxes overlap another
         textMode: false,
         placing: false,           // a new zone follows the pointer until a click drops it
-        layers: loadLayers()
+        layers: loadLayers(),
+        hiddenLayers: loadHiddenLayers()  // custom layers hidden in this editor
     };
 
     // ------------------------------------------------------------------
@@ -166,13 +167,15 @@
         }
 
         renderTemplates();
+        renderCustomLayers();
+        applyCustomLayers();
         refresh();
     }
 
     function pruneSelection() {
         state.selection.forEach(function (key) {
             var p = parseKey(key);
-            if (!itemOf(p.kind, p.name)) {
+            if (!itemOf(p.kind, p.name) || isHidden(itemOf(p.kind, p.name))) {
                 state.selection.delete(key);
             }
         });
@@ -299,9 +302,9 @@
             return keys;
         }
         var out = new Set(keys);
-        state.nodes.forEach(function (n) { if (groups.has(n.group)) { out.add(key('node', n.name)); } });
-        state.links.forEach(function (l) { if (groups.has(l.group)) { out.add(key('link', l.name)); } });
-        state.zones.forEach(function (z) { if (groups.has(z.group)) { out.add(key('zone', z.name)); } });
+        state.nodes.forEach(function (n) { if (groups.has(n.group) && !isHidden(n)) { out.add(key('node', n.name)); } });
+        state.links.forEach(function (l) { if (groups.has(l.group) && !isHidden(l)) { out.add(key('link', l.name)); } });
+        state.zones.forEach(function (z) { if (groups.has(z.group) && !isHidden(z)) { out.add(key('zone', z.name)); } });
         return Array.from(out);
     }
 
@@ -778,6 +781,7 @@
         var tol = 6 / state.zoom, found = null;
         if (!state.layers.zones) { return null; }
         state.zones.forEach(function (z) {
+            if (isHidden(z)) { return; }
             var inOuter = p.x >= z.x - tol && p.x <= z.x + z.width + tol && p.y >= z.y - tol && p.y <= z.y + z.height + tol;
             var inInner = p.x > z.x + tol && p.x < z.x + z.width - tol && p.y > z.y + tol && p.y < z.y + z.height - tol;
             if (inOuter && !inInner) { found = z; }
@@ -788,7 +792,7 @@
     function nodeAtPoint(p) {
         var found = null;
         state.nodes.forEach(function (n) {
-            if (p.x >= n.box[0] && p.x <= n.box[2] && p.y >= n.box[1] && p.y <= n.box[3]) {
+            if (!isHidden(n) && p.x >= n.box[0] && p.x <= n.box[2] && p.y >= n.box[1] && p.y <= n.box[3]) {
                 found = n;
             }
         });
@@ -798,6 +802,7 @@
     function linkAtPoint(p) {
         var tol = 6 / state.zoom, found = null;
         state.links.forEach(function (l) {
+            if (isHidden(l)) { return; }
             var s = l.spine;
             for (var i = 0; i + 1 < s.length && !found; i++) {
                 if (distToSegment(p, s[i], s[i + 1]) <= tol + (l.drawn_width || 0) / 2) { found = l; }
@@ -958,8 +963,8 @@
         var skip = {};
         moving.forEach(function (o) { skip[o.key] = true; });
         var out = [[0, 0, state.model.map.width, state.model.map.height]];
-        state.nodes.forEach(function (n) { if (!skip[key('node', n.name)]) { out.push(n.box); } });
-        state.zones.forEach(function (z) { if (!skip[key('zone', z.name)] && state.layers.zones) { out.push(boxOf1('zone', z)); } });
+        state.nodes.forEach(function (n) { if (!skip[key('node', n.name)] && !isHidden(n)) { out.push(n.box); } });
+        state.zones.forEach(function (z) { if (!skip[key('zone', z.name)] && state.layers.zones && !isHidden(z)) { out.push(boxOf1('zone', z)); } });
         state.furniture.forEach(function (f, k) { if (!skip[k]) { out.push(f.box); } });
         return out;
     }
@@ -1378,13 +1383,13 @@
                 var keys = d.add ? Array.from(state.selection) : [];
                 var inside = function (b) { return b[0] >= r[0] && b[2] <= r[2] && b[1] >= r[1] && b[3] <= r[3]; };
                 state.nodes.forEach(function (n) {
-                    if (n.x >= r[0] && n.x <= r[2] && n.y >= r[1] && n.y <= r[3]) { keys.push(key('node', n.name)); }
+                    if (!isHidden(n) && n.x >= r[0] && n.x <= r[2] && n.y >= r[1] && n.y <= r[3]) { keys.push(key('node', n.name)); }
                 });
                 state.links.forEach(function (l) {
                     var m = midpoint(l);
-                    if (m && m[0] >= r[0] && m[0] <= r[2] && m[1] >= r[1] && m[1] <= r[3]) { keys.push(key('link', l.name)); }
+                    if (!isHidden(l) && m && m[0] >= r[0] && m[0] <= r[2] && m[1] >= r[1] && m[1] <= r[3]) { keys.push(key('link', l.name)); }
                 });
-                state.zones.forEach(function (z) { if (inside(boxOf1('zone', z))) { keys.push(key('zone', z.name)); } });
+                state.zones.forEach(function (z) { if (!isHidden(z) && inside(boxOf1('zone', z))) { keys.push(key('zone', z.name)); } });
                 state.furniture.forEach(function (f, k) { if (inside(f.box)) { keys.push(k); } });
                 state.selection = new Set(withGroups(keys, evt.altKey));
                 refresh();
@@ -1754,9 +1759,9 @@
 
     function selectAll() {
         var keys = [];
-        state.nodes.forEach(function (n) { keys.push(key('node', n.name)); });
-        state.links.forEach(function (l) { keys.push(key('link', l.name)); });
-        state.zones.forEach(function (z) { keys.push(key('zone', z.name)); });
+        state.nodes.forEach(function (n) { if (!isHidden(n)) { keys.push(key('node', n.name)); } });
+        state.links.forEach(function (l) { if (!isHidden(l)) { keys.push(key('link', l.name)); } });
+        state.zones.forEach(function (z) { if (!isHidden(z)) { keys.push(key('zone', z.name)); } });
         state.furniture.forEach(function (f, k) { keys.push(k); });
         state.selection = new Set(keys);
         refresh();
@@ -3044,7 +3049,7 @@
             if (box) { box.checked = state.layers[k]; }
         });
         var hidden = Object.keys(state.layers).filter(function (k) { return !state.layers[k]; }).length;
-        $('[data-cmd="layers"]').classList.toggle('active', hidden > 0);
+        $('[data-cmd="layers"]').classList.toggle('active', hidden > 0 || state.hiddenLayers.size > 0);
     }
 
     function setLayer(name, on) {
@@ -3067,7 +3072,11 @@
     }
 
     $('#layers-panel').addEventListener('change', function (evt) {
-        if (evt.target.name) { setLayer(evt.target.name, evt.target.checked); }
+        if (evt.target.dataset.layer) {
+            showCustomLayer(evt.target.dataset.layer, evt.target.checked);
+        } else if (evt.target.name) {
+            setLayer(evt.target.name, evt.target.checked);
+        }
     });
     $('#layers-panel').addEventListener('keydown', function (evt) {
         if (evt.key === 'Escape') {
@@ -3082,6 +3091,125 @@
         }
     }, true);
     applyLayers();
+
+    // ------------------------------------------------------------------
+    // Custom layers: named sets of nodes, links and zones, saved in the map
+    // (SET editor_layer). Hiding one is for this editor and browser only.
+
+    function hiddenLayersKey() { return 'wm-editor-custom-layers:' + cfg.mapId; }
+
+    function loadHiddenLayers() {
+        try { return new Set(JSON.parse(localStorage.getItem(hiddenLayersKey()) || '[]')); } catch (e) { return new Set(); }
+    }
+
+    function isHidden(item) {
+        return !!(item && item.layer && state.hiddenLayers.has(item.layer));
+    }
+
+    function layerLabel(name) { return name.replace(/_/g, ' '); }
+
+    /** The layers used in the map: name => its nodes, links and zones */
+    function customLayers() {
+        var out = new Map();
+        [['node', state.nodes], ['link', state.links], ['zone', state.zones]].forEach(function (pair) {
+            pair[1].forEach(function (item) {
+                if (!item.layer) { return; }
+                if (!out.has(item.layer)) { out.set(item.layer, []); }
+                out.get(item.layer).push({ kind: pair[0], item: item });
+            });
+        });
+        return new Map(Array.from(out.entries()).sort(function (a, b) { return a[0].localeCompare(b[0]); }));
+    }
+
+    function membersOps(members, keyName, value) {
+        var ops = [];
+        ['node', 'link', 'zone'].forEach(function (kind) {
+            var names = members.filter(function (m) { return m.kind === kind; }).map(function (m) { return m.item.name; });
+            if (names.length) { ops.push({ op: 'hint', kind: kind, names: names, key: keyName, value: value }); }
+        });
+        return ops;
+    }
+
+    function renderCustomLayers() {
+        var holder = $('#custom-layers');
+        if (!holder) { return; }
+        var layers = customLayers();
+        // forget hidden layers that no longer exist
+        state.hiddenLayers.forEach(function (n) { if (!layers.has(n)) { state.hiddenLayers.delete(n); } });
+        var rows = [h('strong', { text: t('Your layers') })];
+        layers.forEach(function (members, name) {
+            var locked = members.every(function (m) { return m.item.locked; });
+            rows.push(h('div', { 'class': 'custom-layer' }, [
+                h('label', {}, [
+                    h('input', { type: 'checkbox', 'data-layer': name, checked: !state.hiddenLayers.has(name) }),
+                    ' ' + layerLabel(name), h('span', { 'class': 'icon-count', text: String(members.length) })
+                ]),
+                h('button', {
+                    type: 'button', text: t('Select'), title: t('Select everything in this layer'), disabled: state.hiddenLayers.has(name),
+                    onclick: function () {
+                        state.selection = new Set(members.map(function (m) { return key(m.kind, m.item.name); }));
+                        toggleLayersPanel(false);
+                        refresh();
+                    }
+                }),
+                h('button', {
+                    type: 'button', text: locked ? '🔒' : '🔓', 'class': locked ? 'on' : '',
+                    title: locked ? t('Unlock this layer') : t('Lock this layer'), 'aria-label': locked ? t('Unlock this layer') : t('Lock this layer'),
+                    onclick: function () { send(membersOps(members, 'editor_lock', locked ? null : '1')); }
+                }),
+                h('button', {
+                    type: 'button', text: '×', title: t('Remove this layer (its items stay on the map)'), 'aria-label': t('Remove this layer (its items stay on the map)'),
+                    onclick: function () {
+                        state.hiddenLayers.delete(name);
+                        saveHiddenLayers();
+                        send(membersOps(members, 'editor_layer', null));
+                    }
+                })
+            ]));
+        });
+        if (!layers.size) {
+            rows.push(h('small', { text: t('Select nodes, links or zones, then right-click and choose Add to a layer.') }));
+        }
+        holder.replaceChildren.apply(holder, rows);
+    }
+
+    function saveHiddenLayers() {
+        try { localStorage.setItem(hiddenLayersKey(), JSON.stringify(Array.from(state.hiddenLayers))); } catch (e) { /* this page only */ }
+    }
+
+    /** Hide the drawn items of hidden layers, and keep the button lit while some are */
+    function applyCustomLayers() {
+        $$('#map g[data-kind]').forEach(function (g) {
+            g.classList.toggle('layer-hidden', isHidden(itemOf(g.dataset.kind, g.dataset.name)));
+        });
+        var hidden = Object.keys(state.layers).some(function (k) { return !state.layers[k]; }) || state.hiddenLayers.size > 0;
+        $('[data-cmd="layers"]').classList.toggle('active', hidden);
+    }
+
+    function showCustomLayer(name, on) {
+        if (on) { state.hiddenLayers.delete(name); } else { state.hiddenLayers.add(name); }
+        saveHiddenLayers();
+        pruneSelection();
+        renderCustomLayers();
+        applyCustomLayers();
+        refresh();
+    }
+
+    function askLayer() {
+        var dlg = $('#layer-dialog'), f = dlg.querySelector('form');
+        var list = $('#layer-list');
+        list.replaceChildren.apply(list, Array.from(customLayers().keys()).map(function (n) { return h('option', { value: layerLabel(n) }); }));
+        f.reset();
+        dlg.returnValue = '';
+        dlg.showModal();
+        f.layer.focus();
+        dlg.onclose = function () {
+            var name = f.layer.value.trim();
+            if (dlg.returnValue !== 'ok' || !name) { return; }
+            var ops = hintOps('editor_layer', name);
+            if (ops.length) { send(ops); }
+        };
+    }
 
     // ------------------------------------------------------------------
     // Context menu
@@ -3109,7 +3237,9 @@
                 { label: t('Ungroup'), kbd: 'Ctrl+Shift+G', run: ungroup, off: !grouped },
                 { label: locked ? t('Unlock') : t('Lock'), kbd: 'Ctrl+L', run: toggleLock },
                 { label: t('Bring to front'), kbd: 'Ctrl+]', run: function () { zorder('front'); } },
-                { label: t('Send to back'), kbd: 'Ctrl+[', run: function () { zorder('back'); } });
+                { label: t('Send to back'), kbd: 'Ctrl+[', run: function () { zorder('back'); } },
+                { label: t('Add to a layer…'), run: askLayer },
+                { label: t('Take out of its layer'), run: function () { send(hintOps('editor_layer', null)); }, off: !all.some(function (i) { return i.layer; }) });
         }
         if (objects >= 2) {
             entries.push('-', {

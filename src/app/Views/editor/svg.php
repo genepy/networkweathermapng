@@ -111,6 +111,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
                     <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
                     <label><input type="checkbox" name="nodelabels" checked> <?= e__('Node labels') ?></label>
                     <small><?= e__('Hiding a layer only changes your view in this editor. It is not saved in the map, and other people still see everything. This browser remembers your choice.') ?></small>
+                    <div id="custom-layers" role="group" aria-label="<?= e__('Your layers') ?>"></div>
                 </span>
             </span>
             <?= $btn('text-mode', 'text', __('Text mode'), __('Edit the map as text (.conf)')) ?>
@@ -260,6 +261,21 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <menu>
             <button value="cancel" formnovalidate><?= e__('Cancel') ?></button>
             <button value="ok" class="primary"><?= e__('Apply') ?></button>
+        </menu>
+    </form>
+</dialog>
+
+<dialog id="layer-dialog">
+    <form method="dialog">
+        <h3><?= e__('Add to a layer') ?></h3>
+        <label><?= e__('Layer') ?>
+            <input name="layer" list="layer-list" required maxlength="40" autocomplete="off" placeholder="<?= e__('An existing layer or a new one') ?>">
+        </label>
+        <datalist id="layer-list"></datalist>
+        <p class="hint"><?= e__('A layer is a set of nodes, links and zones you name. It is saved in the map; you can then hide, lock or select it as a whole from the Layers panel.') ?></p>
+        <menu>
+            <button value="cancel" formnovalidate><?= e__('Cancel') ?></button>
+            <button value="ok" class="primary"><?= e__('Add') ?></button>
         </menu>
     </form>
 </dialog>
