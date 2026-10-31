@@ -197,7 +197,6 @@ return [
     ':n zones' => ':n zones',
     'Drag to resize the zone (Shift keeps proportions)' => 'Faire glisser pour redimensionner la zone (Maj garde les proportions)',
     'Drag to resize the zone on this side' => 'Faire glisser pour redimensionner la zone de ce côté',
-    'Drag to resize the zone' => 'Faire glisser pour redimensionner la zone',
     'Click on the map to place the zone. Esc to cancel.' => 'Cliquez sur la carte pour poser la zone. Échap pour annuler.',
     'Fill' => 'Remplissage',
     'Opacity (%)' => 'Opacité (%)',
