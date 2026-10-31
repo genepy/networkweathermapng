@@ -1934,6 +1934,17 @@
         inspector.replaceChildren.apply(inspector, parts);
     }
 
+    // Enter in a field applies it and leaves it, so the panel is rebuilt
+    // (after a rename, it would still edit the old name). The searches of
+    // the interface picker handle Enter themselves.
+    inspector.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || tgt.tagName !== 'INPUT' || /^(button|checkbox|radio|color|file)$/.test(tgt.type)) { return; }
+        if (tgt.closest('.ds-search')) { return; }
+        evt.preventDefault();
+        tgt.blur();
+    });
+
     inspector.addEventListener('focusout', function () {
         setTimeout(function () {
             if (inspector.dataset.stale && !inspector.contains(document.activeElement)) {
@@ -1973,6 +1984,7 @@
                 [t('Ctrl+click empty space'), t('new node')],
                 ['Ctrl+A', t('select everything, zones and legends included')],
                 ['Esc', t('cancel the drag, close the menu, or select nothing')],
+                [t('Enter in a field'), t('apply the change')],
                 [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
                 [t('Alt while dragging'), t('no snapping to the other objects')],
                 [t('Ctrl+drag'), t('duplicate the selected nodes')],
@@ -3299,6 +3311,18 @@
 
     document.addEventListener('keyup', function (evt) {
         if (evt.key === ' ') { state.spaceDown = false; }
+    });
+
+    // Enter in a field of a dialog applies it. The first button of the
+    // dialogs is Cancel, and the browser would press that one.
+    document.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || evt.shiftKey || evt.ctrlKey || evt.metaKey || evt.altKey) { return; }
+        if (!tgt.form || !/^(INPUT|SELECT)$/.test(tgt.tagName) || /^(button|submit|reset|file)$/.test(tgt.type)) { return; }
+        var dlg = tgt.closest('dialog'), ok = dlg && dlg.querySelector('button.primary');
+        if (!ok || ok.disabled || !tgt.form.contains(ok)) { return; }
+        evt.preventDefault();
+        tgt.form.requestSubmit(ok);
     });
 
     // Other people (or the classic editor) may change the map: reload when
