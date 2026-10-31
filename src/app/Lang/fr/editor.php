@@ -132,7 +132,7 @@ return [
     'Background image' => 'Image d’arrière-plan',
     'Link labels (bandwidth)' => 'Étiquettes des liens (bande passante)',
     'Node labels' => 'Étiquettes des nœuds',
-    'Only in this editor, in this browser.' => 'Uniquement dans cet éditeur, dans ce navigateur.',
+    'Hiding a layer only changes your view in this editor. It is not saved in the map, and other people still see everything. This browser remembers your choice.' => 'Masquer un calque ne change que votre vue dans cet éditeur. Ce n’est pas enregistré dans la carte, et les autres voient toujours tout. Ce navigateur se souvient de votre choix.',
     'Edit the map as text (.conf)' => 'Modifier la carte en texte (.conf)',
     'Text mode' => 'Mode texte',
     'Back to the drawing' => 'Retour au dessin',

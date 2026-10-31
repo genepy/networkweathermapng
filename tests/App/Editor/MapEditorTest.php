@@ -367,6 +367,38 @@ final class MapEditorTest extends TestCase
         $this->assertSame($b, array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
     }
 
+    public function testAnIconIsResized(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $natural = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame([0, 0], [$natural['iconscalew'], $natural['iconscaleh']]);
+        $this->assertNotNull($natural['icon_box']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 80, 'iconscaleh' => 80]]]);
+        $this->assertStringContainsString('ICON 80 80 src/public/objects/net/router.png', file_get_contents($this->file));
+        $box = array_column($this->drawnModel()['nodes'], null, 'name')['backup']['icon_box'];
+        $this->assertSame(80, max($box[2] - $box[0], $box[3] - $box[1]), 'the picture fits in 80 x 80');
+
+        // one size given: the other follows; 0 is the picture's own size again
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 40, 'iconscaleh' => 0]]]);
+        $this->assertStringContainsString('ICON 40 40 ', file_get_contents($this->file));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 0, 'iconscaleh' => 0]]]);
+        $this->assertStringContainsString("ICON src/public/objects/net/router.png", file_get_contents($this->file));
+        $this->assertSame($natural['icon_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['icon_box']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 99999]]]);
+        $this->assertEquals(1024, $this->editor->load()->nodes['backup']->iconscalew);
+    }
+
+    public function testAShapeIconGetsASize(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'round']]]);
+        $this->assertStringContainsString('ICON 32 32 round', file_get_contents($this->file));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['iconscalew' => 60, 'iconscaleh' => 20]]]);
+        $box = array_column($this->drawnModel()['nodes'], null, 'name')['backup']['icon_box'];
+        $this->assertSame([60, 20], [$box[2] - $box[0], $box[3] - $box[1]]);
+    }
+
     public function testANodeLabelMovesWhenItsTemplateUsesACompassOffset(): void
     {
         file_put_contents($this->file, str_replace("LINK DEFAULT", "NODE DEFAULT\n\tLABELOFFSET S\n\nLINK DEFAULT", file_get_contents($this->file)));

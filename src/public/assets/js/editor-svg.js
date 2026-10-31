@@ -64,6 +64,7 @@
         mouse: null,              // last pointer position on the map, for paste
         overlaps: new Set(),      // names of nodes whose boxes overlap another
         textMode: false,
+        placing: false,           // a new zone follows the pointer until a click drops it
         layers: loadLayers(),
         hiddenLayers: loadHiddenLayers()  // custom layers hidden in this editor
     };
@@ -534,6 +535,7 @@
         if (nodes.length === 1 && state.selection.size === 1 && !moved && state.tool === 'select') {
             var n1 = nodes[0];
             renderNodeLabelHandle(n1, drag);
+            renderIconHandle(n1, drag);
             el('circle', { 'class': 'connector', cx: n1.box[2] + 8 / state.zoom, cy: (n1.box[1] + n1.box[3]) / 2, r: 5 / state.zoom, 'data-handle': 'connector' }, overlay)
                 .appendChild(el('title', {})).textContent = t('Drag to another node to link them');
         }
@@ -543,6 +545,11 @@
             if (s) {
                 el('rect', { 'class': 'link-source', x: s.box[0] - 4, y: s.box[1] - 4, width: s.box[2] - s.box[0] + 8, height: s.box[3] - s.box[1] + 8 }, overlay);
             }
+        }
+
+        if (state.placing && state.mouse) {
+            var zr = zoneRect(state.mouse);
+            el('rect', { 'class': 'ghost zone-ghost', x: zr.x, y: zr.y, width: zr.width, height: zr.height }, overlay);
         }
 
         if (drag && drag.type === 'lasso' && drag.started) {
@@ -587,7 +594,10 @@
         });
     }
 
-    /** A selected zone: its outline and, alone, a handle to resize it */
+    /**
+     * A selected zone: its outline and, alone, handles to resize it: the
+     * sides change one dimension, the corners both.
+     */
     function renderZoneBox(z, drag) {
         if (!z) { return; }
         var x = z.x, y = z.y, w = z.width, hh = z.height;
@@ -596,14 +606,34 @@
             x += drag.moved.dx; y += drag.moved.dy;
         }
         if (drag && drag.type === 'zone-size' && drag.started && drag.zone === z.name) {
-            w = drag.w; hh = drag.h;
+            x = drag.rect[0]; y = drag.rect[1]; w = drag.rect[2] - drag.rect[0]; hh = drag.rect[3] - drag.rect[1];
         }
         el('rect', { 'class': 'sel-box zone' + (z.group ? ' grouped' : ''), x: x - 3, y: y - 3, width: w + 6, height: hh + 6 }, overlay);
         if (state.selection.size === 1 && !moving && !z.locked) {
-            var r = 5 / state.zoom;
-            el('rect', { 'class': 'scale-handle', x: x + w - r, y: y + hh - r, width: 2 * r, height: 2 * r, 'data-handle': 'zone-size' }, overlay)
-                .appendChild(el('title', {})).textContent = t('Drag to resize the zone');
+            var r = 4 / state.zoom, x2 = x + w, y2 = y + hh, mx = x + w / 2, my = y + hh / 2;
+            var at = { nw: [x, y], n: [mx, y], ne: [x2, y], e: [x2, my], se: [x2, y2], s: [mx, y2], sw: [x, y2], w: [x, my] };
+            SCALE_DIRS.forEach(function (dir) {
+                el('rect', {
+                    'class': 'scale-handle h-' + dir, x: at[dir][0] - r, y: at[dir][1] - r, width: 2 * r, height: 2 * r,
+                    'data-handle': 'zone-size', 'data-dir': dir
+                }, overlay).appendChild(el('title', {})).textContent = dir.length === 2
+                    ? t('Drag to resize the zone (Shift keeps proportions)')
+                    : t('Drag to resize the zone on this side');
+            });
         }
+    }
+
+    /** The icon of the selected node, resized from its corner */
+    function renderIconHandle(n, drag) {
+        if (!n.icon_box || n.locked) { return; }
+        var b = n.icon_box, r = 4 / state.zoom;
+        if (drag && drag.type === 'iconsize' && drag.started) {
+            var cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+            b = [cx - drag.w / 2, cy - drag.h / 2, cx + drag.w / 2, cy + drag.h / 2];
+            el('rect', { 'class': 'lasso', x: b[0], y: b[1], width: drag.w, height: drag.h }, overlay);
+        }
+        el('rect', { 'class': 'scale-handle', x: b[2] - r, y: b[3] - r, width: 2 * r, height: 2 * r, 'data-handle': 'iconsize' }, overlay)
+            .appendChild(el('title', {})).textContent = t('Drag to resize the icon');
     }
 
     /** With an icon, the label of the selected node can be dragged on its own */
@@ -704,6 +734,7 @@
         $('[data-cmd="tool-select"]').classList.toggle('active', state.tool === 'select');
         $('[data-cmd="tool-link"]').classList.toggle('active', state.tool === 'link');
         $('[data-cmd="snap"]').classList.toggle('active', state.snap);
+        $('[data-cmd="zone"]').classList.toggle('active', state.placing);
         $('[data-cmd="paste"]').disabled = !hasClip();
         $('[data-cmd="text-mode"]').classList.toggle('active', state.textMode);
         var spread = $('[data-cmd="spread"]');
@@ -786,10 +817,23 @@
         return Math.hypot(p.x - a[0] - u * dx, p.y - a[1] - u * dy);
     }
 
+    /**
+     * Leave the panel field being typed in, which saves it. A press on the
+     * map does not take the focus (the drags prevent it), and the panel is
+     * not rebuilt under a focused field: it would stay on the old object.
+     */
+    function leaveField() {
+        var a = document.activeElement;
+        if (a && a !== document.body && $('#inspector').contains(a)) {
+            a.blur();
+        }
+    }
+
     stage.addEventListener('pointerdown', function (evt) {
         if (!state.model) {
             return;
         }
+        leaveField();
         var p = toMap(evt);
 
         if (evt.button === 1 || (evt.button === 0 && state.spaceDown)) {
@@ -798,6 +842,13 @@
             return;
         }
         if (evt.button !== 0) {
+            return;
+        }
+
+        if (state.placing) {
+            evt.preventDefault();
+            stopPlacing();
+            addZone(p);
             return;
         }
 
@@ -959,6 +1010,40 @@
         return out;
     }
 
+    /** The nearest guide to one edge, within tol, or the edge itself */
+    function snapEdge(v, targets, axis, tol) {
+        var best = v, dist = tol;
+        targets.forEach(function (tb) {
+            lines(tb, axis).forEach(function (w) {
+                if (Math.abs(w - v) <= dist) { dist = Math.abs(w - v); best = w; }
+            });
+        });
+        return Math.round(best);
+    }
+
+    /**
+     * Resize a zone by the dragged side or corner. The moved edges snap to
+     * the grid and to the guides (not with Alt); Shift on a corner keeps
+     * the proportions. A zone is at least 10 px wide and high.
+     */
+    function zoneSizeMove(d, p, keep, noGuides) {
+        var b = d.box, dir = d.dir, r = b.slice(), MIN = 10;
+        var dx = p.x - d.start.x, dy = p.y - d.start.y, tol = GUIDE_SNAP / state.zoom;
+        function edge(i, v, axis) { r[i] = noGuides ? snap(v) : snapEdge(snap(v), d.targets, axis, tol); }
+        if (dir.indexOf('w') >= 0) { edge(0, b[0] + dx, 'x'); r[0] = Math.min(r[0], b[2] - MIN); }
+        if (dir.indexOf('e') >= 0) { edge(2, b[2] + dx, 'x'); r[2] = Math.max(r[2], b[0] + MIN); }
+        if (dir.indexOf('n') >= 0) { edge(1, b[1] + dy, 'y'); r[1] = Math.min(r[1], b[3] - MIN); }
+        if (dir.indexOf('s') >= 0) { edge(3, b[3] + dy, 'y'); r[3] = Math.max(r[3], b[1] + MIN); }
+        if (keep && dir.length === 2) {
+            var k = Math.max((r[2] - r[0]) / (b[2] - b[0]), (r[3] - r[1]) / (b[3] - b[1]));
+            var w = Math.round((b[2] - b[0]) * k), hh = Math.round((b[3] - b[1]) * k);
+            if (dir.indexOf('w') >= 0) { r[0] = r[2] - w; } else { r[2] = r[0] + w; }
+            if (dir.indexOf('n') >= 0) { r[1] = r[3] - hh; } else { r[3] = r[1] + hh; }
+        }
+        d.rect = r;
+        d.guides = noGuides ? [] : guidesFor(r, d.targets);
+    }
+
     /** Snap a move to the guides (Alt held: no guides) and keep the lines to draw */
     function applyGuides(d, off) {
         d.guides = [];
@@ -978,8 +1063,16 @@
             return;
         }
         if (handle === 'zone-size') {
-            var z = selected('zone')[0];
-            startDrag(evt, { type: 'zone-size', zone: z.name, start: p, w: z.width, h: z.height });
+            var z = selected('zone')[0], zb = boxOf1('zone', z);
+            startDrag(evt, {
+                type: 'zone-size', zone: z.name, dir: evt.target.dataset.dir || 'se', start: p, box: zb, rect: zb.slice(),
+                targets: guideTargets([{ key: key('zone', z.name) }])
+            });
+            return;
+        }
+        if (handle === 'iconsize') {
+            var ni = selected('node')[0], ib = ni.icon_box;
+            startDrag(evt, { type: 'iconsize', node: ni.name, box: ib, w: ib[2] - ib[0], h: ib[3] - ib[1] });
             return;
         }
         if (handle === 'nodelabel') {
@@ -1055,9 +1148,11 @@
                 break;
 
             case 'zone-size':
-                var zs = state.zones.get(d.zone);
-                d.w = Math.max(10, snap(zs.x + zs.width + p.x - d.start.x) - zs.x);
-                d.h = Math.max(10, snap(zs.y + zs.height + p.y - d.start.y) - zs.y);
+                zoneSizeMove(d, p, evt.shiftKey, evt.altKey);
+                break;
+
+            case 'iconsize':
+                iconSizeMove(d, p, evt.shiftKey);
                 break;
 
             case 'nodelabel':
@@ -1102,8 +1197,12 @@
 
     stage.addEventListener('pointermove', function (evt) {
         if (state.model) { state.mouse = toMap(evt); }
+        if (state.placing) { renderOverlay(); }
     });
-    stage.addEventListener('pointerleave', function () { state.mouse = null; });
+    stage.addEventListener('pointerleave', function () {
+        state.mouse = null;
+        if (state.placing) { renderOverlay(); }
+    });
 
     /**
      * Show the moved objects at their new place, before the server draws
@@ -1222,12 +1321,25 @@
                 return;
 
             case 'zone-size':
-                var zz = state.zones.get(d.zone);
-                if (!d.started || (d.w === zz.width && d.h === zz.height)) {
+                var zr = d.rect, zp = {};
+                if (zr[0] !== d.box[0]) { zp.x = zr[0]; }
+                if (zr[1] !== d.box[1]) { zp.y = zr[1]; }
+                if (zr[2] - zr[0] !== d.box[2] - d.box[0]) { zp.width = zr[2] - zr[0]; }
+                if (zr[3] - zr[1] !== d.box[3] - d.box[1]) { zp.height = zr[3] - zr[1]; }
+                if (!d.started || !Object.keys(zp).length) {
                     renderOverlay();
                     return;
                 }
-                send([{ op: 'set_zone', names: [d.zone], props: { width: d.w, height: d.h } }]);
+                send([{ op: 'set_zone', names: [d.zone], props: zp }]);
+                return;
+
+            case 'iconsize':
+                var bw = d.box[2] - d.box[0], bh = d.box[3] - d.box[1];
+                if (!d.started || (d.w === bw && d.h === bh)) {
+                    renderOverlay();
+                    return;
+                }
+                send([{ op: 'set_node', names: [d.node], props: { iconscalew: d.w, iconscaleh: d.h } }]);
                 return;
 
             case 'nodelabel':
@@ -1311,6 +1423,27 @@
                 scaleEnd(d);
                 return;
         }
+    }
+
+    /** Icons the engine draws itself: their width and height are free */
+    var SHAPES = ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'];
+
+    /**
+     * The new size of an icon dragged by its corner, the icon staying
+     * centred on the node. A picture keeps its proportions; a shape keeps
+     * them with Shift.
+     */
+    function iconSizeMove(d, p, keep) {
+        var b = d.box, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+        var w0 = Math.max(1, b[2] - b[0]), h0 = Math.max(1, b[3] - b[1]);
+        var w = Math.max(8, 2 * Math.abs(p.x - cx)), hh = Math.max(8, 2 * Math.abs(p.y - cy));
+        if (keep || SHAPES.indexOf(state.nodes.get(d.node).icon) < 0) {
+            var k = Math.max(w / w0, hh / h0);
+            w = Math.max(8, w0 * k);
+            hh = Math.max(8, h0 * k);
+        }
+        d.w = Math.min(1024, Math.round(w));
+        d.h = Math.min(1024, Math.round(hh));
     }
 
     function midpoint(link) {
@@ -1434,6 +1567,11 @@
         send(ops, []);
     }
 
+    /** Where a new zone centred on a map point goes */
+    function zoneRect(c) {
+        return { x: snap(c.x - 100), y: snap(c.y - 60), width: 200, height: 120 };
+    }
+
     /**
      * A new zone around the selected nodes, or at a point of the map.
      */
@@ -1445,10 +1583,36 @@
             op.width = Math.round(b[2] - b[0] + 2 * pad); op.height = Math.round(b[3] - b[1] + 2 * pad + 16);
         } else {
             var c = at || { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
-            op.x = snap(c.x - 100); op.y = snap(c.y - 60); op.width = 200; op.height = 120;
+            Object.assign(op, zoneRect(c));
         }
         op.x = Math.max(0, op.x); op.y = Math.max(0, op.y);
         send([op], function (r) { return (r.created && r.created.zones || []).map(function (n) { return key('zone', n); }); });
+    }
+
+    /**
+     * The Zone button: around the selected nodes at once; otherwise the
+     * zone follows the pointer and a click on the map drops it.
+     */
+    function startPlacing() {
+        if (selected('node').length) {
+            addZone(null);
+            return;
+        }
+        if (state.tool !== 'select') { setTool('select'); }
+        state.placing = true;
+        stage.classList.add('placing');
+        updateToolbar();
+        renderOverlay();
+        toast(t('Click on the map to place the zone. Esc to cancel.'));
+    }
+
+    function stopPlacing() {
+        if (!state.placing) { return false; }
+        state.placing = false;
+        stage.classList.remove('placing');
+        updateToolbar();
+        renderOverlay();
+        return true;
     }
 
     function duplicateSelection() {
@@ -1604,6 +1768,7 @@
     }
 
     function setTool(tool) {
+        stopPlacing();
         state.tool = tool;
         state.linkFrom = null;
         updateToolbar();
@@ -1708,6 +1873,40 @@
             return;
         }
         send(ops).then(function () { toast(t(':n link(s) rerouted. Ctrl+Z to undo.', { n: ops.length })); });
+    }
+
+    /**
+     * Route the given links with right angles, whatever is in their way:
+     * 'hv' goes across then up or down, 'vh' up or down then across, 'z'
+     * turns twice half way along the longer direction. Ends that already
+     * line up give a straight link.
+     */
+    function rightAngles(links, how) {
+        var ops = [];
+        links.filter(function (l) { return !l.locked; }).forEach(function (l) {
+            var ends = linkEnds(l), a = ends[0], b = ends[1], vias;
+            var dx = b[0] - a[0], dy = b[1] - a[1];
+            if (Math.abs(dx) < 1 || Math.abs(dy) < 1) {
+                vias = [];
+            } else if (how === 'hv') {
+                vias = [[b[0], a[1]]];
+            } else if (how === 'vh') {
+                vias = [[a[0], b[1]]];
+            } else if (Math.abs(dx) >= Math.abs(dy)) {
+                var mx = snap((a[0] + b[0]) / 2);
+                vias = [[mx, a[1]], [mx, b[1]]];
+            } else {
+                var my = snap((a[1] + b[1]) / 2);
+                vias = [[a[0], my], [b[0], my]];
+            }
+            vias = vias.map(function (v) { return [Math.round(v[0]), Math.round(v[1])]; });
+            ops.push({ op: 'set_link', names: [l.name], props: { via: vias, viastyle: 'angled' } });
+        });
+        if (!ops.length) {
+            toast(t('These links are locked. Unlock them to route them.'));
+            return;
+        }
+        send(ops);
     }
 
     // ------------------------------------------------------------------
@@ -1926,6 +2125,17 @@
         inspector.replaceChildren.apply(inspector, parts);
     }
 
+    // Enter in a field applies it and leaves it, so the panel is rebuilt
+    // (after a rename, it would still edit the old name). The searches of
+    // the interface picker handle Enter themselves.
+    inspector.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || tgt.tagName !== 'INPUT' || /^(button|checkbox|radio|color|file)$/.test(tgt.type)) { return; }
+        if (tgt.closest('.ds-search')) { return; }
+        evt.preventDefault();
+        tgt.blur();
+    });
+
     inspector.addEventListener('focusout', function () {
         setTimeout(function () {
             if (inspector.dataset.stale && !inspector.contains(document.activeElement)) {
@@ -1965,6 +2175,7 @@
                 [t('Ctrl+click empty space'), t('new node')],
                 ['Ctrl+A', t('select everything, zones and legends included')],
                 ['Esc', t('cancel the drag, close the menu, or select nothing')],
+                [t('Enter in a field'), t('apply the change')],
                 [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
                 [t('Alt while dragging'), t('no snapping to the other objects')],
                 [t('Ctrl+drag'), t('duplicate the selected nodes')],
@@ -1991,6 +2202,17 @@
         return [['', t('(none)')], ['box', t('Box')], ['rbox', t('Rounded box')], ['round', t('Circle')]].concat(cfg.icons.map(function (i) {
             return [i, i.split('/').pop()];
         }));
+    }
+
+    /** The icon picker with a search (editor-icons.js), or a plain list */
+    function iconField(nodes) {
+        if (!window.WMEditor.iconPicker) {
+            return field(nodes, 'icon', 'node', { options: iconOptions() });
+        }
+        var c = common(nodes, 'icon');
+        return window.WMEditor.iconPicker(c.mixed ? null : String(c.value || ''), function (path) {
+            send([{ op: 'set_node', names: nodes.map(function (n) { return n.name; }), props: { icon: path } }]);
+        });
     }
 
     function fontOptions() {
@@ -2020,7 +2242,11 @@
         }
 
         out.push(
-            row(t('Icon'), field(nodes, 'icon', 'node', { options: iconOptions() })),
+            window.WMEditor.iconPicker
+                // not a <label>: a click in the open list would press the first button
+                ? h('div', { 'class': 'row' }, [h('span', { text: t('Icon') }), iconField(nodes)])
+                : row(t('Icon'), iconField(nodes)),
+            iconSizeRow(nodes),
             h('h3', { text: t('Label style') }),
             row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
@@ -2047,7 +2273,35 @@
         if (nodes.some(function (n) { return n.group; })) {
             out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
-        return out;
+        return out.filter(Boolean);
+    }
+
+    /** Width and height of the icons; empty is a picture's own size */
+    function iconSizeRow(nodes) {
+        var withIcon = nodes.filter(function (n) { return n.icon && n.icon !== 'none'; });
+        if (!withIcon.length) { return null; }
+        var names = withIcon.map(function (n) { return n.name; });
+        function input(name, label) {
+            var c = common(withIcon, name);
+            var i = h('input', {
+                type: 'number', name: name, min: 0, max: 1024, value: c.mixed || !+c.value ? '' : c.value,
+                placeholder: c.mixed ? t('(mixed)') : t('auto'), 'class': c.mixed ? 'mixed' : '', 'aria-label': label
+            });
+            i.addEventListener('change', function () {
+                var props = {};
+                props[name] = +i.value || 0;
+                send([{ op: 'set_node', names: names, props: props }]);
+            });
+            return i;
+        }
+        var own = withIcon.every(function (n) { return !n.iconscalew && !n.iconscaleh; });
+        return row(t('Icon size'), h('div', { 'class': 'pair' }, [
+            input('iconscalew', t('Icon width')), h('label', { text: '×' }), input('iconscaleh', t('Icon height')),
+            h('button', {
+                type: 'button', text: t('auto'), title: t('The picture at its own size'), disabled: own,
+                onclick: function () { send([{ op: 'set_node', names: names, props: { iconscalew: 0, iconscaleh: 0 } }]); }
+            })
+        ]));
     }
 
     function furnitureName(f) {
@@ -2154,12 +2408,19 @@
         out.push(
             row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
             row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
-            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12'].map(function (v) { return h('option', { value: v }); })),
-            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '400G'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
             h('h3', { text: t('Shape') }),
             row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
+            row(t('Right angles'), h('div', { 'class': 'pair' }, [
+                ['hv', '┐', t('Across, then up or down')],
+                ['vh', '└', t('Up or down, then across')],
+                ['z', '┘┌', t('Two turns, half way')]
+            ].map(function (r) {
+                return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
+            }))),
             row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
             row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }))
@@ -2990,6 +3251,7 @@
         }
         entries.push('-',
             { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
+            { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
             { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
         return entries;
@@ -3277,7 +3539,7 @@
         'cut': function () { copySelection(true); },
         'paste': function () { paste(null); },
         'spread': function () { spreadApart(10); },
-        'zone': function () { addZone(null); },
+        'zone': function () { if (state.placing) { stopPlacing(); } else { startPlacing(); } },
         'layers': toggleLayersPanel,
         'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },
@@ -3324,8 +3586,9 @@
      */
     function escape(target) {
         if (cancelDrag()) { return true; }
-        // the interface search boxes handle Escape themselves
-        if (target.closest && target.closest('.ds-search')) { return false; }
+        if (stopPlacing()) { return true; }
+        // the interface and icon search boxes handle Escape themselves
+        if (target.closest && target.closest('.ds-search, .icon-pick')) { return false; }
         if (menuOpen()) { closeMenu(); return true; }
         var popover = null;
         try { popover = $(':popover-open'); } catch (e) { /* no popover support */ }
@@ -3416,6 +3679,18 @@
 
     document.addEventListener('keyup', function (evt) {
         if (evt.key === ' ') { state.spaceDown = false; }
+    });
+
+    // Enter in a field of a dialog applies it. The first button of the
+    // dialogs is Cancel, and the browser would press that one.
+    document.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || evt.shiftKey || evt.ctrlKey || evt.metaKey || evt.altKey) { return; }
+        if (!tgt.form || !/^(INPUT|SELECT)$/.test(tgt.tagName) || /^(button|submit|reset|file)$/.test(tgt.type)) { return; }
+        var dlg = tgt.closest('dialog'), ok = dlg && dlg.querySelector('button.primary');
+        if (!ok || ok.disabled || !tgt.form.contains(ok)) { return; }
+        evt.preventDefault();
+        tgt.form.requestSubmit(ok);
     });
 
     // Other people (or the classic editor) may change the map: reload when

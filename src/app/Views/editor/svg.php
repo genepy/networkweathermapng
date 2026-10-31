@@ -110,7 +110,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
                     <label><input type="checkbox" name="links" checked> <?= e__('Links') ?></label>
                     <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
                     <label><input type="checkbox" name="nodelabels" checked> <?= e__('Node labels') ?></label>
-                    <small><?= e__('Only in this editor, in this browser.') ?></small>
+                    <small><?= e__('Hiding a layer only changes your view in this editor. It is not saved in the map, and other people still see everything. This browser remembers your choice.') ?></small>
                     <div id="custom-layers" role="group" aria-label="<?= e__('Your layers') ?>"></div>
                 </span>
             </span>
