@@ -49,7 +49,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
-| Map recording and playback | Record a map's states over a period (for example the last 24 hours) and play them back as an animation. Off by default, switched on per map, and the admin can disable the feature to protect the server (storage and polling load) |
 
 ## Stale branches
 
@@ -61,6 +60,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #48 | Map recording and playback: a background recorder draws opted-in maps every interval (Admin > Map recording, off by default, can be turned off for all), the viewer plays the last hours back |
 | #47 | A modern legend style (rounded card, colour bar, 0-100% marks) and a rounded label for the timestamps, in PNG and SVG, chosen in Map properties |
 | #46 | Fira Sans, Barlow Semi Condensed and IBM Plex Mono shipped (OFL); a Fonts tab in Map properties adds them to a map, and font lists show names instead of numbers |
 | #45 | Editor: custom layers: name a set of nodes, links and zones (saved in the map), then hide it in the editor, lock it or select it from the Layers panel |

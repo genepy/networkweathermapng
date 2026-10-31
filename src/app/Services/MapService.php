@@ -573,6 +573,51 @@ class MapService
     }
 
     /**
+     * Draw a map with live data now, for the recorder, and return what the
+     * viewer shows of it: {svg, items, status}. Null when it cannot be drawn.
+     */
+    public function recordFrame(int $id): ?array
+    {
+        $map = $this->getMap($id);
+        if (!$map) {
+            return null;
+        }
+        $lock = @fopen($this->config->getCachePath() . '/render-' . $id . '.lock', 'c');
+        if ($lock) {
+            flock($lock, LOCK_EX);
+        }
+        try {
+            ob_start();
+            try {
+                $result = $this->renderMap($id, true, true);
+            } finally {
+                ob_end_clean();
+            }
+        } finally {
+            if ($lock) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
+        $paths = $this->viewerPaths($map);
+        if (!$result || isset($result['error']) || !is_file($paths['svg'])) {
+            return null;
+        }
+        $summary = $this->mapStatus($map) ?? [];
+        return [
+            'svg' => (string) file_get_contents($paths['svg']),
+            'items' => $summary['items'] ?? [],
+            'status' => [
+                'max' => $summary['max'] ?? null,
+                'level' => $summary['level'] ?? 'none',
+                'colour' => $summary['colour'] ?? null,
+                'link' => $summary['link'] ?? null,
+                'time' => $summary['time'] ?? time(),
+            ],
+        ];
+    }
+
+    /**
      * What the last data render found: the most loaded link, and per item
      * what the viewer shows on hover or opens on click. With the map id,
      * links read from a data source get the traffic graph of

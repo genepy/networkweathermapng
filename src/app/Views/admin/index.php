@@ -45,6 +45,11 @@
                     <span class="menu-title"><?= e__('Kiosk mode') ?></span>
                     <span class="menu-desc"><?= e__('Display time and zoom of each map in the map cycle') ?></span>
                 </a>
+                <a href="/admin/recording" class="menu-item">
+                    <span class="menu-icon">⏺</span>
+                    <span class="menu-title"><?= e__('Map recording') ?></span>
+                    <span class="menu-desc"><?= e__('Record maps over the last hours to play them back') ?></span>
+                </a>
                 <a href="/admin/timezone" class="menu-item">
                     <span class="menu-icon">🕒</span>
                     <span class="menu-title"><?= e__('Time zone') ?></span>

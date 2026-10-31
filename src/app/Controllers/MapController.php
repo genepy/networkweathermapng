@@ -10,6 +10,7 @@ namespace App\Controllers;
 use App\Services\MapService;
 use App\Services\DataSourceService;
 use App\Services\KioskService;
+use App\Services\RecordingService;
 use App\Services\TimezoneService;
 
 class MapController extends BaseController
@@ -211,6 +212,7 @@ class MapController extends BaseController
             'mode' => $mode,
             'hours' => $hours,
             'autoRefresh' => $autoRefresh,
+            'history' => $this->historyAvailable($mapId),
             'title' => $map['title_cache'] ?: $map['name'],
         ], !$fullscreen);
     }
@@ -242,6 +244,61 @@ class MapController extends BaseController
             'status' => self::publicStatus($summary),
             'version' => $this->configVersion($mapId),
         ]);
+    }
+
+    /** GET: the recorded frames of a map, to play them back: {frames: [unix times], interval} */
+    public function history(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        $recording = $this->recording();
+        if (!$this->canView($mapId) || !$recording->canPlay($mapId)) {
+            $this->json(['error' => __('This map is not recorded')], 404);
+            return;
+        }
+        header('Cache-Control: no-store');
+        $this->json(['frames' => $recording->frames($mapId), 'interval' => $recording->getInterval() * 60]);
+    }
+
+    /** GET: one recorded frame, as /map/{id}/svg gives the live map */
+    public function historyFrame(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        $time = (int) ($params['time'] ?? 0);
+        $recording = $this->recording();
+        $frame = $this->canView($mapId) && $recording->canPlay($mapId) && in_array($time, $recording->frames($mapId), true)
+            ? $recording->frame($mapId, $time)
+            : null;
+        if ($frame === null) {
+            $this->json(['error' => __('This frame is not recorded')], 404);
+            return;
+        }
+        // a frame never changes once written
+        header('Cache-Control: private, max-age=86400');
+        $this->json([
+            'svg' => (string) ($frame['svg'] ?? ''),
+            'items' => (object) ($frame['items'] ?? []),
+            'status' => self::publicStatus((array) ($frame['status'] ?? [])),
+            'time' => $time,
+        ]);
+    }
+
+    /**
+     * Whether the viewer offers the playback. For a recorded map, also make
+     * sure the recorder runs (after a restart or a crash).
+     */
+    private function historyAvailable(int $mapId): bool
+    {
+        $recording = $this->recording();
+        if (!$recording->canPlay($mapId)) {
+            return false;
+        }
+        $recording->ensureRecorder();
+        return true;
+    }
+
+    private function recording(): RecordingService
+    {
+        return new RecordingService($this->database, $this->config);
     }
 
     /** GET: the state of a map (most loaded link) for the map list */
