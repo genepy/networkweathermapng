@@ -590,7 +590,10 @@
         });
     }
 
-    /** A selected zone: its outline and, alone, a handle to resize it */
+    /**
+     * A selected zone: its outline and, alone, handles to resize it: the
+     * sides change one dimension, the corners both.
+     */
     function renderZoneBox(z, drag) {
         if (!z) { return; }
         var x = z.x, y = z.y, w = z.width, hh = z.height;
@@ -599,13 +602,20 @@
             x += drag.moved.dx; y += drag.moved.dy;
         }
         if (drag && drag.type === 'zone-size' && drag.started && drag.zone === z.name) {
-            w = drag.w; hh = drag.h;
+            x = drag.rect[0]; y = drag.rect[1]; w = drag.rect[2] - drag.rect[0]; hh = drag.rect[3] - drag.rect[1];
         }
         el('rect', { 'class': 'sel-box zone' + (z.group ? ' grouped' : ''), x: x - 3, y: y - 3, width: w + 6, height: hh + 6 }, overlay);
         if (state.selection.size === 1 && !moving && !z.locked) {
-            var r = 5 / state.zoom;
-            el('rect', { 'class': 'scale-handle', x: x + w - r, y: y + hh - r, width: 2 * r, height: 2 * r, 'data-handle': 'zone-size' }, overlay)
-                .appendChild(el('title', {})).textContent = t('Drag to resize the zone');
+            var r = 4 / state.zoom, x2 = x + w, y2 = y + hh, mx = x + w / 2, my = y + hh / 2;
+            var at = { nw: [x, y], n: [mx, y], ne: [x2, y], e: [x2, my], se: [x2, y2], s: [mx, y2], sw: [x, y2], w: [x, my] };
+            SCALE_DIRS.forEach(function (dir) {
+                el('rect', {
+                    'class': 'scale-handle h-' + dir, x: at[dir][0] - r, y: at[dir][1] - r, width: 2 * r, height: 2 * r,
+                    'data-handle': 'zone-size', 'data-dir': dir
+                }, overlay).appendChild(el('title', {})).textContent = dir.length === 2
+                    ? t('Drag to resize the zone (Shift keeps proportions)')
+                    : t('Drag to resize the zone on this side');
+            });
         }
     }
 
@@ -981,6 +991,40 @@
         return out;
     }
 
+    /** The nearest guide to one edge, within tol, or the edge itself */
+    function snapEdge(v, targets, axis, tol) {
+        var best = v, dist = tol;
+        targets.forEach(function (tb) {
+            lines(tb, axis).forEach(function (w) {
+                if (Math.abs(w - v) <= dist) { dist = Math.abs(w - v); best = w; }
+            });
+        });
+        return Math.round(best);
+    }
+
+    /**
+     * Resize a zone by the dragged side or corner. The moved edges snap to
+     * the grid and to the guides (not with Alt); Shift on a corner keeps
+     * the proportions. A zone is at least 10 px wide and high.
+     */
+    function zoneSizeMove(d, p, keep, noGuides) {
+        var b = d.box, dir = d.dir, r = b.slice(), MIN = 10;
+        var dx = p.x - d.start.x, dy = p.y - d.start.y, tol = GUIDE_SNAP / state.zoom;
+        function edge(i, v, axis) { r[i] = noGuides ? snap(v) : snapEdge(snap(v), d.targets, axis, tol); }
+        if (dir.indexOf('w') >= 0) { edge(0, b[0] + dx, 'x'); r[0] = Math.min(r[0], b[2] - MIN); }
+        if (dir.indexOf('e') >= 0) { edge(2, b[2] + dx, 'x'); r[2] = Math.max(r[2], b[0] + MIN); }
+        if (dir.indexOf('n') >= 0) { edge(1, b[1] + dy, 'y'); r[1] = Math.min(r[1], b[3] - MIN); }
+        if (dir.indexOf('s') >= 0) { edge(3, b[3] + dy, 'y'); r[3] = Math.max(r[3], b[1] + MIN); }
+        if (keep && dir.length === 2) {
+            var k = Math.max((r[2] - r[0]) / (b[2] - b[0]), (r[3] - r[1]) / (b[3] - b[1]));
+            var w = Math.round((b[2] - b[0]) * k), hh = Math.round((b[3] - b[1]) * k);
+            if (dir.indexOf('w') >= 0) { r[0] = r[2] - w; } else { r[2] = r[0] + w; }
+            if (dir.indexOf('n') >= 0) { r[1] = r[3] - hh; } else { r[3] = r[1] + hh; }
+        }
+        d.rect = r;
+        d.guides = noGuides ? [] : guidesFor(r, d.targets);
+    }
+
     /** Snap a move to the guides (Alt held: no guides) and keep the lines to draw */
     function applyGuides(d, off) {
         d.guides = [];
@@ -1000,8 +1044,11 @@
             return;
         }
         if (handle === 'zone-size') {
-            var z = selected('zone')[0];
-            startDrag(evt, { type: 'zone-size', zone: z.name, start: p, w: z.width, h: z.height });
+            var z = selected('zone')[0], zb = boxOf1('zone', z);
+            startDrag(evt, {
+                type: 'zone-size', zone: z.name, dir: evt.target.dataset.dir || 'se', start: p, box: zb, rect: zb.slice(),
+                targets: guideTargets([{ key: key('zone', z.name) }])
+            });
             return;
         }
         if (handle === 'nodelabel') {
@@ -1077,9 +1124,7 @@
                 break;
 
             case 'zone-size':
-                var zs = state.zones.get(d.zone);
-                d.w = Math.max(10, snap(zs.x + zs.width + p.x - d.start.x) - zs.x);
-                d.h = Math.max(10, snap(zs.y + zs.height + p.y - d.start.y) - zs.y);
+                zoneSizeMove(d, p, evt.shiftKey, evt.altKey);
                 break;
 
             case 'nodelabel':
@@ -1248,12 +1293,16 @@
                 return;
 
             case 'zone-size':
-                var zz = state.zones.get(d.zone);
-                if (!d.started || (d.w === zz.width && d.h === zz.height)) {
+                var zr = d.rect, zp = {};
+                if (zr[0] !== d.box[0]) { zp.x = zr[0]; }
+                if (zr[1] !== d.box[1]) { zp.y = zr[1]; }
+                if (zr[2] - zr[0] !== d.box[2] - d.box[0]) { zp.width = zr[2] - zr[0]; }
+                if (zr[3] - zr[1] !== d.box[3] - d.box[1]) { zp.height = zr[3] - zr[1]; }
+                if (!d.started || !Object.keys(zp).length) {
                     renderOverlay();
                     return;
                 }
-                send([{ op: 'set_zone', names: [d.zone], props: { width: d.w, height: d.h } }]);
+                send([{ op: 'set_zone', names: [d.zone], props: zp }]);
                 return;
 
             case 'nodelabel':
