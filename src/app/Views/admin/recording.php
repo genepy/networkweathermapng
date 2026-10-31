@@ -76,7 +76,7 @@ $size = $diskUsage >= 1048576
             </table>
         </div>
         <p class="text-muted recording-help">
-            <?= e__('Unchecking a map deletes its frames. The recorder runs in the background of the Docker image; elsewhere, run php bin/record.php (or php bin/record.php --once from cron every minute).') ?>
+            <?= e__('Unchecking a map deletes its frames. The recorder runs in the background only while at least one map is recorded, and starts by itself when a map is checked. If PHP may not start it (exec disabled), run php bin/record.php --once from cron every minute.') ?>
         </p>
         <?php endif; ?>
 

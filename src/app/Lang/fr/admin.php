@@ -379,5 +379,5 @@ return [
     '24 hours at 5 minutes is 288 frames per map. Frames now use :size in all.' => '24 heures à 5 minutes font 288 images par carte. Les images occupent actuellement :size au total.',
     'Record' => 'Enregistrer',
     'Frames kept' => 'Images gardées',
-    'Unchecking a map deletes its frames. The recorder runs in the background of the Docker image; elsewhere, run php bin/record.php (or php bin/record.php --once from cron every minute).' => 'Décocher une carte supprime ses images. L’enregistreur tourne en arrière-plan dans l’image Docker ; ailleurs, lancez php bin/record.php (ou php bin/record.php --once depuis cron chaque minute).',
+    'Unchecking a map deletes its frames. The recorder runs in the background only while at least one map is recorded, and starts by itself when a map is checked. If PHP may not start it (exec disabled), run php bin/record.php --once from cron every minute.' => 'Décocher une carte supprime ses images. L’enregistreur ne tourne en arrière-plan que si au moins une carte est enregistrée, et démarre tout seul quand une carte est cochée. Si PHP ne peut pas le lancer (exec désactivé), lancez php bin/record.php --once depuis cron chaque minute.',
 ];
