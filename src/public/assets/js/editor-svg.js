@@ -64,6 +64,7 @@
         mouse: null,              // last pointer position on the map, for paste
         overlaps: new Set(),      // names of nodes whose boxes overlap another
         textMode: false,
+        placing: false,           // a new zone follows the pointer until a click drops it
         layers: loadLayers()
     };
 
@@ -542,6 +543,11 @@
             }
         }
 
+        if (state.placing && state.mouse) {
+            var zr = zoneRect(state.mouse);
+            el('rect', { 'class': 'ghost zone-ghost', x: zr.x, y: zr.y, width: zr.width, height: zr.height }, overlay);
+        }
+
         if (drag && drag.type === 'lasso' && drag.started) {
             var r = rectOf(drag.start, drag.now);
             el('rect', { 'class': 'lasso', x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1] }, overlay);
@@ -701,6 +707,7 @@
         $('[data-cmd="tool-select"]').classList.toggle('active', state.tool === 'select');
         $('[data-cmd="tool-link"]').classList.toggle('active', state.tool === 'link');
         $('[data-cmd="snap"]').classList.toggle('active', state.snap);
+        $('[data-cmd="zone"]').classList.toggle('active', state.placing);
         $('[data-cmd="paste"]').disabled = !hasClip();
         $('[data-cmd="text-mode"]').classList.toggle('active', state.textMode);
         var spread = $('[data-cmd="spread"]');
@@ -806,6 +813,13 @@
             return;
         }
         if (evt.button !== 0) {
+            return;
+        }
+
+        if (state.placing) {
+            evt.preventDefault();
+            stopPlacing();
+            addZone(p);
             return;
         }
 
@@ -1110,8 +1124,12 @@
 
     stage.addEventListener('pointermove', function (evt) {
         if (state.model) { state.mouse = toMap(evt); }
+        if (state.placing) { renderOverlay(); }
     });
-    stage.addEventListener('pointerleave', function () { state.mouse = null; });
+    stage.addEventListener('pointerleave', function () {
+        state.mouse = null;
+        if (state.placing) { renderOverlay(); }
+    });
 
     /**
      * Show the moved objects at their new place, before the server draws
@@ -1442,6 +1460,11 @@
         send(ops, []);
     }
 
+    /** Where a new zone centred on a map point goes */
+    function zoneRect(c) {
+        return { x: snap(c.x - 100), y: snap(c.y - 60), width: 200, height: 120 };
+    }
+
     /**
      * A new zone around the selected nodes, or at a point of the map.
      */
@@ -1453,10 +1476,36 @@
             op.width = Math.round(b[2] - b[0] + 2 * pad); op.height = Math.round(b[3] - b[1] + 2 * pad + 16);
         } else {
             var c = at || { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
-            op.x = snap(c.x - 100); op.y = snap(c.y - 60); op.width = 200; op.height = 120;
+            Object.assign(op, zoneRect(c));
         }
         op.x = Math.max(0, op.x); op.y = Math.max(0, op.y);
         send([op], function (r) { return (r.created && r.created.zones || []).map(function (n) { return key('zone', n); }); });
+    }
+
+    /**
+     * The Zone button: around the selected nodes at once; otherwise the
+     * zone follows the pointer and a click on the map drops it.
+     */
+    function startPlacing() {
+        if (selected('node').length) {
+            addZone(null);
+            return;
+        }
+        if (state.tool !== 'select') { setTool('select'); }
+        state.placing = true;
+        stage.classList.add('placing');
+        updateToolbar();
+        renderOverlay();
+        toast(t('Click on the map to place the zone. Esc to cancel.'));
+    }
+
+    function stopPlacing() {
+        if (!state.placing) { return false; }
+        state.placing = false;
+        stage.classList.remove('placing');
+        updateToolbar();
+        renderOverlay();
+        return true;
     }
 
     function duplicateSelection() {
@@ -1612,6 +1661,7 @@
     }
 
     function setTool(tool) {
+        stopPlacing();
         state.tool = tool;
         state.linkFrom = null;
         updateToolbar();
@@ -3172,7 +3222,7 @@
         'cut': function () { copySelection(true); },
         'paste': function () { paste(null); },
         'spread': function () { spreadApart(10); },
-        'zone': function () { addZone(null); },
+        'zone': function () { if (state.placing) { stopPlacing(); } else { startPlacing(); } },
         'layers': toggleLayersPanel,
         'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },
@@ -3219,6 +3269,7 @@
      */
     function escape(target) {
         if (cancelDrag()) { return true; }
+        if (stopPlacing()) { return true; }
         // the interface search boxes handle Escape themselves
         if (target.closest && target.closest('.ds-search')) { return false; }
         if (menuOpen()) { closeMenu(); return true; }
