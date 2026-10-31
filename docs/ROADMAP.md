@@ -49,7 +49,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
-| Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
 | Editor: custom layers | User-defined layers: name a group of nodes, or a set of nodes and links, then show, hide or lock it as a whole |
 | Modern legend styles | Several styles for the legends and labels (traffic load scale, "Created:" timestamp…) with a more modern look, chosen per map |
 | More open-source fonts | Bundle a few modern open-source fonts (licences in THIRD-PARTY-NOTICES.md) usable in SVG and PNG output |
@@ -65,6 +64,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #39 | Editor: pick a node's icon from a searchable library in the properties panel; the palette search matches several words and theme names |
 | #38 | Editor: resize node icons with a corner handle or width/height fields (ICON w h file), shapes get a size |
 | #43 | Editor: route the selected links with right angles (across first, down first, or two turns half way), from the link panel or the menu |
 | #42 | Editor: zones resize by any side (one dimension) or corner (Shift keeps proportions), with the alignment guides |

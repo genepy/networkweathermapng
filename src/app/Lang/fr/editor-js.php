@@ -247,6 +247,8 @@ return [
     'Icons shipped with NetworkWeathermapNG cannot be removed.' => 'Les icônes livrées avec NetworkWeathermapNG ne peuvent pas être retirées.',
     'Remove :name' => 'Retirer :name',
     'No icon matches' => 'Aucune icône ne correspond',
+    'Choose an icon' => 'Choisir une icône',
+    'Search icons' => 'Chercher une icône',
     'No icons in public/objects' => 'Aucune icône dans public/objects',
     'Remove the icon :name from the library?' => 'Retirer l’icône :name de la bibliothèque ?',
     'Icon :name removed' => 'Icône :name retirée',

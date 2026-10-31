@@ -2199,6 +2199,17 @@
         }));
     }
 
+    /** The icon picker with a search (editor-icons.js), or a plain list */
+    function iconField(nodes) {
+        if (!window.WMEditor.iconPicker) {
+            return field(nodes, 'icon', 'node', { options: iconOptions() });
+        }
+        var c = common(nodes, 'icon');
+        return window.WMEditor.iconPicker(c.mixed ? null : String(c.value || ''), function (path) {
+            send([{ op: 'set_node', names: nodes.map(function (n) { return n.name; }), props: { icon: path } }]);
+        });
+    }
+
     function fontOptions() {
         return state.model.fonts.map(function (f) { return [f, f <= 5 ? t('Built-in :n', { n: f }) : t('Font :n', { n: f })]; });
     }
@@ -2226,7 +2237,10 @@
         }
 
         out.push(
-            row(t('Icon'), field(nodes, 'icon', 'node', { options: iconOptions() })),
+            window.WMEditor.iconPicker
+                // not a <label>: a click in the open list would press the first button
+                ? h('div', { 'class': 'row' }, [h('span', { text: t('Icon') }), iconField(nodes)])
+                : row(t('Icon'), iconField(nodes)),
             iconSizeRow(nodes),
             h('h3', { text: t('Label style') }),
             row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
@@ -3443,8 +3457,8 @@
     function escape(target) {
         if (cancelDrag()) { return true; }
         if (stopPlacing()) { return true; }
-        // the interface search boxes handle Escape themselves
-        if (target.closest && target.closest('.ds-search')) { return false; }
+        // the interface and icon search boxes handle Escape themselves
+        if (target.closest && target.closest('.ds-search, .icon-pick')) { return false; }
         if (menuOpen()) { closeMenu(); return true; }
         var popover = null;
         try { popover = $(':popover-open'); } catch (e) { /* no popover support */ }
