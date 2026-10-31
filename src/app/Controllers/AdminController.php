@@ -461,6 +461,10 @@ class AdminController extends BaseController
             foreach ($maps as $map) {
                 $recording->setRecorded((int) $map['id'], !empty($posted[$map['id']]));
             }
+            // the recorder runs only while a map is recorded: start it now
+            // if needed (it stops by itself when nothing is left to record)
+            $recording->pruneAll();
+            $recording->ensureRecorder();
             $this->flash('success', __('Recording settings saved'));
             $this->redirect('/admin/recording');
             return;

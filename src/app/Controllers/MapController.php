@@ -212,7 +212,7 @@ class MapController extends BaseController
             'mode' => $mode,
             'hours' => $hours,
             'autoRefresh' => $autoRefresh,
-            'history' => $this->recording()->canPlay($mapId),
+            'history' => $this->historyAvailable($mapId),
             'title' => $map['title_cache'] ?: $map['name'],
         ], !$fullscreen);
     }
@@ -280,6 +280,20 @@ class MapController extends BaseController
             'status' => self::publicStatus((array) ($frame['status'] ?? [])),
             'time' => $time,
         ]);
+    }
+
+    /**
+     * Whether the viewer offers the playback. For a recorded map, also make
+     * sure the recorder runs (after a restart or a crash).
+     */
+    private function historyAvailable(int $mapId): bool
+    {
+        $recording = $this->recording();
+        if (!$recording->canPlay($mapId)) {
+            return false;
+        }
+        $recording->ensureRecorder();
+        return true;
     }
 
     private function recording(): RecordingService

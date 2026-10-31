@@ -95,6 +95,39 @@ final class RecordingServiceTest extends TestCase
         $this->assertSame([3], $this->recording->recordedMaps(), 'the choice of maps is kept for later');
     }
 
+    public function testTheRecorderOnlyHasWorkWhileAMapIsRecorded(): void
+    {
+        $this->assertFalse($this->recording->isActive(), 'no map switched on');
+        $this->assertFalse($this->recording->startRecorder(__FILE__), 'nothing is started');
+
+        $this->recording->setRecorded(3, true);
+        $this->assertTrue($this->recording->isActive());
+
+        $this->recording->setAllowed(false);
+        $this->assertFalse($this->recording->isActive(), 'recording turned off for all');
+        $this->recording->setAllowed(true);
+
+        $this->recording->setRecorded(3, false);
+        $this->assertFalse($this->recording->isActive());
+    }
+
+    public function testOnlyOneRecorderRuns(): void
+    {
+        $this->assertFalse($this->recording->isRecorderRunning());
+        $lock = $this->recording->lockRecorder();
+        $this->assertNotNull($lock);
+        $this->assertNull($this->recording->lockRecorder(), 'a second recorder does not get the lock');
+        $this->assertTrue($this->recording->isRecorderRunning());
+
+        // while one runs, none is started even with a map recorded
+        $this->recording->setRecorded(3, true);
+        $this->assertFalse($this->recording->startRecorder(__FILE__));
+
+        flock($lock, LOCK_UN);
+        fclose($lock);
+        $this->assertFalse($this->recording->isRecorderRunning());
+    }
+
     public function testSettingsStayInTheirLimits(): void
     {
         $this->recording->setInterval(0);

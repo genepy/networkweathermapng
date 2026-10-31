@@ -35,7 +35,7 @@ class RecordingService
     private SettingsStore $store;
     private string $dir;
 
-    public function __construct(private Database $db, Config $config)
+    public function __construct(private Database $db, private Config $config)
     {
         $this->store = new SettingsStore($db);
         $this->dir = rtrim($config->getDataRoot(), '/') . '/recordings';
@@ -100,6 +100,15 @@ class RecordingService
         }
         $this->store->remove($mapId, self::RECORDED);
         $this->deleteFrames($mapId);
+    }
+
+    /**
+     * Whether the recorder has work to do: recording is allowed and at
+     * least one map is switched on. Otherwise it does not run at all.
+     */
+    public function isActive(): bool
+    {
+        return $this->isAllowed() && $this->recordedMaps() !== [];
     }
 
     /** Whether the viewer offers to play this map back */
@@ -208,6 +217,83 @@ class RecordingService
             }
         }
         return $written;
+    }
+
+    /** Delete the frames past the retention, for every map */
+    public function pruneAll(?int $now = null): void
+    {
+        foreach ($this->storedMaps() as $id) {
+            $this->prune($id, $now);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // The recorder process: one at most, and only while there is work
+
+    /**
+     * Take the recorder lock, held as long as the process lives. Null when
+     * another recorder already holds it.
+     *
+     * @return resource|null
+     */
+    public function lockRecorder()
+    {
+        if (!is_dir($this->dir)) {
+            @mkdir($this->dir, 0775, true);
+        }
+        $lock = @fopen($this->dir . '/recorder.lock', 'c');
+        if ($lock === false) {
+            return null;
+        }
+        if (!flock($lock, LOCK_EX | LOCK_NB)) {
+            fclose($lock);
+            return null;
+        }
+        return $lock;
+    }
+
+    /** Whether a recorder process is running now */
+    public function isRecorderRunning(): bool
+    {
+        $lock = $this->lockRecorder();
+        if ($lock === null) {
+            return true;
+        }
+        flock($lock, LOCK_UN);
+        fclose($lock);
+        return false;
+    }
+
+    /**
+     * Start the recorder in the background when there is something to
+     * record and it is not running yet. It stops by itself once nothing is
+     * recorded any more. Returns whether a process was started.
+     */
+    public function startRecorder(string $script, string $log = '/dev/null'): bool
+    {
+        if (!$this->isActive() || $this->isRecorderRunning() || !is_file($script) || !function_exists('exec')) {
+            return false;
+        }
+        // PHP_BINARY is php-fpm under the web server: use the CLI next to it
+        $php = is_executable(PHP_BINDIR . '/php') ? PHP_BINDIR . '/php' : 'php';
+        if ($log !== '/dev/null' && !is_writable(is_file($log) ? $log : dirname($log))) {
+            $log = '/dev/null';
+        }
+        $command = sprintf(
+            'nohup %s %s < /dev/null >> %s 2>&1 &',
+            escapeshellarg($php),
+            escapeshellarg($script),
+            escapeshellarg($log)
+        );
+        @exec($command);
+        return true;
+    }
+
+    /** Start bin/record.php if there is something to record and it is not running */
+    public function ensureRecorder(): bool
+    {
+        $root = rtrim((string) $this->config->getAppRoot(), '/');
+        return $this->startRecorder($root . '/bin/record.php', $this->config->getLogsPath() . '/recorder.log');
     }
 
     /** Space used by the frames of all maps, in bytes */

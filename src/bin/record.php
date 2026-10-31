@@ -5,10 +5,15 @@
  *   php bin/record.php          run until stopped (the Docker image runs it)
  *   php bin/record.php --once   one pass, for cron or a test
  *
- * Draws the maps whose recording is switched on (Admin > Recording) every
- * recording interval and keeps the frames for the retention time, so the
- * viewer can play them back. It does nothing while recording is turned off
- * in Admin > Recording, and maps not recorded cost nothing.
+ * Draws the maps whose recording is switched on (Admin > Map recording)
+ * every recording interval and keeps the frames for the retention time, so
+ * the viewer can play them back.
+ *
+ * It only runs while there is something to record: when recording is
+ * turned off or no map is switched on, it exits at once (or at its next
+ * pass). The web application starts it again when a map is switched on
+ * (Admin > Map recording) or when a recorded map is viewed. Only one
+ * recorder runs at a time (a lock in DATA_ROOT/recordings).
  */
 
 declare(strict_types=1);
@@ -44,6 +49,12 @@ $database = new Database($config);
 $maps = new MapService($database, $config);
 $recording = new RecordingService($database, $config);
 
+$lock = $once ? null : $recording->lockRecorder();
+if (!$once && $lock === null) {
+    // another recorder is running
+    exit(0);
+}
+
 $draw = static function (int $id) use ($maps): ?array {
     try {
         return $maps->recordFrame($id);
@@ -53,12 +64,22 @@ $draw = static function (int $id) use ($maps): ?array {
     }
 };
 
+if (!$once && $recording->isActive()) {
+    fwrite(STDOUT, date('c') . " recorder started\n");
+}
+
 do {
+    // a last pass even when stopping, to delete the frames past the retention
     $written = $recording->recordDue($draw);
     if ($written > 0) {
         fwrite(STDOUT, date('c') . " $written frame(s) recorded\n");
     }
-    if (!$once) {
-        sleep(20);
+    if ($once) {
+        break;
     }
-} while (!$once);
+    if (!$recording->isActive()) {
+        fwrite(STDOUT, date('c') . " nothing to record, recorder stopped\n");
+        break;
+    }
+    sleep(20);
+} while (true);
