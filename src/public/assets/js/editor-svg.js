@@ -64,6 +64,7 @@
         mouse: null,              // last pointer position on the map, for paste
         overlaps: new Set(),      // names of nodes whose boxes overlap another
         textMode: false,
+        placing: false,           // a new zone follows the pointer until a click drops it
         layers: loadLayers()
     };
 
@@ -542,6 +543,11 @@
             }
         }
 
+        if (state.placing && state.mouse) {
+            var zr = zoneRect(state.mouse);
+            el('rect', { 'class': 'ghost zone-ghost', x: zr.x, y: zr.y, width: zr.width, height: zr.height }, overlay);
+        }
+
         if (drag && drag.type === 'lasso' && drag.started) {
             var r = rectOf(drag.start, drag.now);
             el('rect', { 'class': 'lasso', x: r[0], y: r[1], width: r[2] - r[0], height: r[3] - r[1] }, overlay);
@@ -711,6 +717,7 @@
         $('[data-cmd="tool-select"]').classList.toggle('active', state.tool === 'select');
         $('[data-cmd="tool-link"]').classList.toggle('active', state.tool === 'link');
         $('[data-cmd="snap"]').classList.toggle('active', state.snap);
+        $('[data-cmd="zone"]').classList.toggle('active', state.placing);
         $('[data-cmd="paste"]').disabled = !hasClip();
         $('[data-cmd="text-mode"]').classList.toggle('active', state.textMode);
         var spread = $('[data-cmd="spread"]');
@@ -791,10 +798,23 @@
         return Math.hypot(p.x - a[0] - u * dx, p.y - a[1] - u * dy);
     }
 
+    /**
+     * Leave the panel field being typed in, which saves it. A press on the
+     * map does not take the focus (the drags prevent it), and the panel is
+     * not rebuilt under a focused field: it would stay on the old object.
+     */
+    function leaveField() {
+        var a = document.activeElement;
+        if (a && a !== document.body && $('#inspector').contains(a)) {
+            a.blur();
+        }
+    }
+
     stage.addEventListener('pointerdown', function (evt) {
         if (!state.model) {
             return;
         }
+        leaveField();
         var p = toMap(evt);
 
         if (evt.button === 1 || (evt.button === 0 && state.spaceDown)) {
@@ -803,6 +823,13 @@
             return;
         }
         if (evt.button !== 0) {
+            return;
+        }
+
+        if (state.placing) {
+            evt.preventDefault();
+            stopPlacing();
+            addZone(p);
             return;
         }
 
@@ -1142,8 +1169,12 @@
 
     stage.addEventListener('pointermove', function (evt) {
         if (state.model) { state.mouse = toMap(evt); }
+        if (state.placing) { renderOverlay(); }
     });
-    stage.addEventListener('pointerleave', function () { state.mouse = null; });
+    stage.addEventListener('pointerleave', function () {
+        state.mouse = null;
+        if (state.placing) { renderOverlay(); }
+    });
 
     /**
      * Show the moved objects at their new place, before the server draws
@@ -1478,6 +1509,11 @@
         send(ops, []);
     }
 
+    /** Where a new zone centred on a map point goes */
+    function zoneRect(c) {
+        return { x: snap(c.x - 100), y: snap(c.y - 60), width: 200, height: 120 };
+    }
+
     /**
      * A new zone around the selected nodes, or at a point of the map.
      */
@@ -1489,10 +1525,36 @@
             op.width = Math.round(b[2] - b[0] + 2 * pad); op.height = Math.round(b[3] - b[1] + 2 * pad + 16);
         } else {
             var c = at || { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
-            op.x = snap(c.x - 100); op.y = snap(c.y - 60); op.width = 200; op.height = 120;
+            Object.assign(op, zoneRect(c));
         }
         op.x = Math.max(0, op.x); op.y = Math.max(0, op.y);
         send([op], function (r) { return (r.created && r.created.zones || []).map(function (n) { return key('zone', n); }); });
+    }
+
+    /**
+     * The Zone button: around the selected nodes at once; otherwise the
+     * zone follows the pointer and a click on the map drops it.
+     */
+    function startPlacing() {
+        if (selected('node').length) {
+            addZone(null);
+            return;
+        }
+        if (state.tool !== 'select') { setTool('select'); }
+        state.placing = true;
+        stage.classList.add('placing');
+        updateToolbar();
+        renderOverlay();
+        toast(t('Click on the map to place the zone. Esc to cancel.'));
+    }
+
+    function stopPlacing() {
+        if (!state.placing) { return false; }
+        state.placing = false;
+        stage.classList.remove('placing');
+        updateToolbar();
+        renderOverlay();
+        return true;
     }
 
     function duplicateSelection() {
@@ -1648,6 +1710,7 @@
     }
 
     function setTool(tool) {
+        stopPlacing();
         state.tool = tool;
         state.linkFrom = null;
         updateToolbar();
@@ -1970,6 +2033,17 @@
         inspector.replaceChildren.apply(inspector, parts);
     }
 
+    // Enter in a field applies it and leaves it, so the panel is rebuilt
+    // (after a rename, it would still edit the old name). The searches of
+    // the interface picker handle Enter themselves.
+    inspector.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || tgt.tagName !== 'INPUT' || /^(button|checkbox|radio|color|file)$/.test(tgt.type)) { return; }
+        if (tgt.closest('.ds-search')) { return; }
+        evt.preventDefault();
+        tgt.blur();
+    });
+
     inspector.addEventListener('focusout', function () {
         setTimeout(function () {
             if (inspector.dataset.stale && !inspector.contains(document.activeElement)) {
@@ -2009,6 +2083,7 @@
                 [t('Ctrl+click empty space'), t('new node')],
                 ['Ctrl+A', t('select everything, zones and legends included')],
                 ['Esc', t('cancel the drag, close the menu, or select nothing')],
+                [t('Enter in a field'), t('apply the change')],
                 [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
                 [t('Alt while dragging'), t('no snapping to the other objects')],
                 [t('Ctrl+drag'), t('duplicate the selected nodes')],
@@ -2198,8 +2273,8 @@
         out.push(
             row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
             row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
-            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12'].map(function (v) { return h('option', { value: v }); })),
-            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '400G'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
             h('h3', { text: t('Shape') }),
@@ -3196,7 +3271,7 @@
         'cut': function () { copySelection(true); },
         'paste': function () { paste(null); },
         'spread': function () { spreadApart(10); },
-        'zone': function () { addZone(null); },
+        'zone': function () { if (state.placing) { stopPlacing(); } else { startPlacing(); } },
         'layers': toggleLayersPanel,
         'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },
@@ -3243,6 +3318,7 @@
      */
     function escape(target) {
         if (cancelDrag()) { return true; }
+        if (stopPlacing()) { return true; }
         // the interface search boxes handle Escape themselves
         if (target.closest && target.closest('.ds-search')) { return false; }
         if (menuOpen()) { closeMenu(); return true; }
@@ -3335,6 +3411,18 @@
 
     document.addEventListener('keyup', function (evt) {
         if (evt.key === ' ') { state.spaceDown = false; }
+    });
+
+    // Enter in a field of a dialog applies it. The first button of the
+    // dialogs is Cancel, and the browser would press that one.
+    document.addEventListener('keydown', function (evt) {
+        var tgt = evt.target;
+        if (evt.key !== 'Enter' || evt.isComposing || evt.shiftKey || evt.ctrlKey || evt.metaKey || evt.altKey) { return; }
+        if (!tgt.form || !/^(INPUT|SELECT)$/.test(tgt.tagName) || /^(button|submit|reset|file)$/.test(tgt.type)) { return; }
+        var dlg = tgt.closest('dialog'), ok = dlg && dlg.querySelector('button.primary');
+        if (!ok || ok.disabled || !tgt.form.contains(ok)) { return; }
+        evt.preventDefault();
+        tgt.form.requestSubmit(ok);
     });
 
     // Other people (or the classic editor) may change the map: reload when
