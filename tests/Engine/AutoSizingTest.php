@@ -19,7 +19,27 @@ final class AutoSizingTest extends TestCase
         $this->assertSame(5.0, wm_auto_link_width(25e9));
         $this->assertSame(6.0, wm_auto_link_width(40e9));
         $this->assertSame(9.0, wm_auto_link_width(100e9));
-        $this->assertSame(12.0, wm_auto_link_width(800e9));
+        $this->assertSame(10.0, wm_auto_link_width(200e9));
+        $this->assertSame(12.0, wm_auto_link_width(400e9));
+        $this->assertSame(15.0, wm_auto_link_width(800e9));
+        $this->assertSame(15.0, wm_auto_link_width(1.6e12));
+    }
+
+    public function test800GLinks(): void
+    {
+        $map = $this->loadString(<<<'CONF'
+NODE a
+	POSITION 10 10
+NODE b
+	POSITION 100 10
+LINK fast
+	NODES a b
+	BANDWIDTH 800G
+	WIDTH auto
+CONF);
+        $link = $map->links['fast'];
+        $this->assertEquals(800e9, $link->max_bandwidth_in);
+        $this->assertSame(15.0, (float) $link->EffectiveWidth($map));
     }
 
     public function testMapCanSetItsOwnTable(): void
