@@ -195,7 +195,6 @@ return [
     // Zones
     'Zone' => 'Zone',
     ':n zones' => ':n zones',
-    'Drag to resize the zone' => 'Faire glisser pour redimensionner la zone',
     'Right angles' => 'Angles droits',
     'Across, then up or down' => 'D’abord à l’horizontale, puis à la verticale',
     'Up or down, then across' => 'D’abord à la verticale, puis à l’horizontale',
