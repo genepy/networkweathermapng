@@ -55,7 +55,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Editor: place a new zone with the mouse | Adding a zone shows it under the pointer; a click drops it on the map (Esc cancels) |
 | Editor: zone resize per side and guides | Resize a zone from one side only (horizontal or vertical) as well as both at once, and show the alignment guides while resizing |
 | Editor: right-angle routing per link | Route one link with right angles (orthogonal via points) without applying it to the whole map |
-| Editor: clearer layers note | The Layers panel note "Only in this editor, in this browser." is unclear: say that hiding a layer only changes this editor view, is remembered in this browser and is not saved in the map |
 | Editor: custom layers | User-defined layers: name a group of nodes, or a set of nodes and links, then show, hide or lock it as a whole |
 | Modern legend styles | Several styles for the legends and labels (traffic load scale, "Created:" timestamp…) with a more modern look, chosen per map |
 | More open-source fonts | Bundle a few modern open-source fonts (licences in THIRD-PARTY-NOTICES.md) usable in SVG and PNG output |
@@ -71,6 +70,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #44 | Editor: the Layers panel explains that hiding a layer only changes your view, is not saved in the map and is remembered by this browser |
 | #37 | Editor: Enter applies a field and leaves it (the panel follows a rename), Enter in the dialogs applies instead of cancelling |
 | #36 | Editor: the properties panel follows the selection again after editing a field (a click on the map now leaves the field and saves it) |
 | #32 | Search devices and interfaces (name or number) when picking a link's data source |
