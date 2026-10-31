@@ -809,7 +809,7 @@ class MapEditor
         'key_text_colour' => 'KEYTEXT', 'key_bg_colour' => 'KEYBG', 'key_outline_colour' => 'KEYOUTLINE',
     ];
 
-    private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags'];
+    private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags', 'modern'];
 
     /**
      * The Map properties dialog: texts, fonts and colours of the title,
@@ -858,6 +858,15 @@ class MapEditor
                 $map->keytext['DEFAULT'] ??= 'Traffic Load';
             } elseif ($key === 'stamp_text') {
                 $map->stamptext = $this->text($value);
+            } elseif ($key === 'stamp_style') {
+                if (!in_array($value, ['plain', 'pill'], true)) {
+                    throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
+                }
+                if ($value === 'pill') {
+                    $map->add_hint('timestamp_style', 'pill');
+                } else {
+                    unset($map->hints['timestamp_style']);
+                }
             } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont'], true)) {
                 $this->setLinkDefault($map, $key, $value, $fonts);
             } else {
@@ -973,6 +982,7 @@ class MapEditor
             'key_bg_colour' => $colour('KEYBG'),
             'key_outline_colour' => $colour('KEYOUTLINE'),
             'stamp_text' => (string) $map->stamptext,
+            'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'time_font' => (int) $map->timefont,
             'time_colour' => $colour('TIME'),
             'link_bandwidth' => $default ? (string) $default->max_bandwidth_in_cfg : '',

@@ -329,6 +329,23 @@ final class MapEditorTest extends TestCase
         $this->assertFalse($this->drawnModel()['zones'][0]['locked']);
     }
 
+    public function testModernLegendAndPillTimestamp(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true, 'key_style' => 'modern', 'key_size' => 260, 'stamp_style' => 'pill']]]);
+        $conf = file_get_contents($this->file);
+        $this->assertStringContainsString('KEYSTYLE  DEFAULT modern 260', $conf);
+        $this->assertStringContainsString('SET timestamp_style pill', $conf);
+
+        $model = $this->drawnModel();
+        $this->assertSame('modern', $model['map']['props']['key_style']);
+        $this->assertSame('pill', $model['map']['props']['stamp_style']);
+        $legend = array_column($model['furniture'], null, 'kind')['legend'];
+        $this->assertGreaterThanOrEqual(260, $legend['box'][2] - $legend['box'][0], 'the card holds the bar');
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_style' => 'plain']]]);
+        $this->assertStringNotContainsString('timestamp_style', file_get_contents($this->file));
+    }
+
     public function testAShippedFontIsAddedToTheMap(): void
     {
         $cwd = getcwd();
