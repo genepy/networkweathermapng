@@ -1817,6 +1817,40 @@
         send(ops).then(function () { toast(t(':n link(s) rerouted. Ctrl+Z to undo.', { n: ops.length })); });
     }
 
+    /**
+     * Route the given links with right angles, whatever is in their way:
+     * 'hv' goes across then up or down, 'vh' up or down then across, 'z'
+     * turns twice half way along the longer direction. Ends that already
+     * line up give a straight link.
+     */
+    function rightAngles(links, how) {
+        var ops = [];
+        links.filter(function (l) { return !l.locked; }).forEach(function (l) {
+            var ends = linkEnds(l), a = ends[0], b = ends[1], vias;
+            var dx = b[0] - a[0], dy = b[1] - a[1];
+            if (Math.abs(dx) < 1 || Math.abs(dy) < 1) {
+                vias = [];
+            } else if (how === 'hv') {
+                vias = [[b[0], a[1]]];
+            } else if (how === 'vh') {
+                vias = [[a[0], b[1]]];
+            } else if (Math.abs(dx) >= Math.abs(dy)) {
+                var mx = snap((a[0] + b[0]) / 2);
+                vias = [[mx, a[1]], [mx, b[1]]];
+            } else {
+                var my = snap((a[1] + b[1]) / 2);
+                vias = [[a[0], my], [b[0], my]];
+            }
+            vias = vias.map(function (v) { return [Math.round(v[0]), Math.round(v[1])]; });
+            ops.push({ op: 'set_link', names: [l.name], props: { via: vias, viastyle: 'angled' } });
+        });
+        if (!ops.length) {
+            toast(t('These links are locked. Unlock them to route them.'));
+            return;
+        }
+        send(ops);
+    }
+
     // ------------------------------------------------------------------
     // Untangle bandwidth labels
 
@@ -2279,6 +2313,13 @@
             interfacePicker(links),
             h('h3', { text: t('Shape') }),
             row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
+            row(t('Right angles'), h('div', { 'class': 'pair' }, [
+                ['hv', '┐', t('Across, then up or down')],
+                ['vh', '└', t('Up or down, then across')],
+                ['z', '┘┌', t('Two turns, half way')]
+            ].map(function (r) {
+                return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
+            }))),
             row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
             row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }))
@@ -2984,6 +3025,7 @@
         }
         entries.push('-',
             { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
+            { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
             { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
         return entries;

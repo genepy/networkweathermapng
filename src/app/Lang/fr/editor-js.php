@@ -195,6 +195,12 @@ return [
     // Zones
     'Zone' => 'Zone',
     ':n zones' => ':n zones',
+    'Right angles' => 'Angles droits',
+    'Across, then up or down' => 'D’abord à l’horizontale, puis à la verticale',
+    'Up or down, then across' => 'D’abord à la verticale, puis à l’horizontale',
+    'Two turns, half way' => 'Deux coudes, à mi-chemin',
+    'Route with right angles' => 'Tracer avec des angles droits',
+    'These links are locked. Unlock them to route them.' => 'Ces liens sont verrouillés. Déverrouillez-les pour les tracer.',
     'Drag to resize the zone (Shift keeps proportions)' => 'Faire glisser pour redimensionner la zone (Maj garde les proportions)',
     'Drag to resize the zone on this side' => 'Faire glisser pour redimensionner la zone de ce côté',
     'Click on the map to place the zone. Esc to cancel.' => 'Cliquez sur la carte pour poser la zone. Échap pour annuler.',

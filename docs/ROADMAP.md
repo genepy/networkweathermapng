@@ -51,7 +51,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 | Editor: resize icons | Resize a node's icon from the editor (handles and a size field) |
 | Editor: search in the icon library | A search field in the icon picker (name, set, theme) |
-| Editor: right-angle routing per link | Route one link with right angles (orthogonal via points) without applying it to the whole map |
 | Editor: custom layers | User-defined layers: name a group of nodes, or a set of nodes and links, then show, hide or lock it as a whole |
 | Modern legend styles | Several styles for the legends and labels (traffic load scale, "Created:" timestamp…) with a more modern look, chosen per map |
 | More open-source fonts | Bundle a few modern open-source fonts (licences in THIRD-PARTY-NOTICES.md) usable in SVG and PNG output |
@@ -67,6 +66,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #43 | Editor: route the selected links with right angles (across first, down first, or two turns half way), from the link panel or the menu |
 | #42 | Editor: zones resize by any side (one dimension) or corner (Shift keeps proportions), with the alignment guides |
 | #41 | Editor: the Zone button shows the new zone under the pointer, a click drops it, Esc cancels |
 | #40 | Links up to 800G: auto width table goes to 800G (15 px), 200G/800G in the editor suggestions, wide links on short spans get shorter arrowheads instead of vanishing |
