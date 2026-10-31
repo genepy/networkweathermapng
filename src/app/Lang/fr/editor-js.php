@@ -57,6 +57,8 @@ return [
     'new node' => 'nouveau nœud',
     'select everything, zones and legends included' => 'tout sélectionner, zones et légendes comprises',
     'cancel the drag, close the menu, or select nothing' => 'annuler le glisser, fermer le menu, ou ne rien sélectionner',
+    'Enter in a field' => 'Entrée dans un champ',
+    'apply the change' => 'appliquer la modification',
     'Arrows, Shift+arrows' => 'Flèches, Maj+flèches',
     'move by 1 or 10 px' => 'déplacer de 1 ou 10 px',
     'Alt while dragging' => 'Alt en faisant glisser',
