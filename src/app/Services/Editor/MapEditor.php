@@ -21,10 +21,15 @@ class MapEditor
         'labelfont' => 'labelfont',
         'labeloffset' => 'labeloffset',
         'labelangle' => 'labelangle',
-        'iconscalew' => 'iconscalew',
-        'iconscaleh' => 'iconscaleh',
         'zorder' => 'zorder',
     ];
+
+    /** Icons the engine draws itself, at the ICON size */
+    private const ICON_SHAPES = ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'];
+
+    /** Size of a new shape icon, and the largest icon, in pixels */
+    private const SHAPE_SIZE = 32;
+    private const ICON_MAX = 1024;
 
     private const NODE_COLOURS = [
         'labelbgcolour' => 'labelbgcolour',
@@ -72,7 +77,7 @@ class MapEditor
     private const ANCHORS = ['C', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'];
 
     /** Hints the editor owns: grouping and locking */
-    public const EDITOR_HINTS = ['editor_group', 'editor_lock'];
+    public const EDITOR_HINTS = ['editor_group', 'editor_lock', 'editor_layer'];
 
     /**
      * Map furniture the editor can move, by image map area name:
@@ -351,6 +356,9 @@ class MapEditor
                     $node->$field = $this->colour($value);
                 } elseif ($key === 'icon') {
                     $node->iconfile = $this->iconFile((string) $value);
+                } elseif ($key === 'iconscalew' || $key === 'iconscaleh') {
+                    // 0 draws a picture at its own size
+                    $node->$key = max(0, min(self::ICON_MAX, (int) $value));
                 } elseif ($key === 'infourl') {
                     $node->infourl[IN] = $this->text($value);
                     $node->infourl[OUT] = $node->infourl[IN];
@@ -381,6 +389,25 @@ class MapEditor
                     throw new InvalidArgumentException(__('Unknown node property: :key', ['key' => $key]));
                 }
             }
+            $this->fixIconSize($node);
+        }
+    }
+
+    /**
+     * The engine scales an icon only when it has both sizes, and draws a
+     * shape (box, circle...) only with a size: give the missing one.
+     */
+    private function fixIconSize(\WeatherMapNode $node): void
+    {
+        $w = (int) $node->iconscalew;
+        $h = (int) $node->iconscaleh;
+        if ($w > 0 && $h <= 0) {
+            $node->iconscaleh = $w;
+        } elseif ($h > 0 && $w <= 0) {
+            $node->iconscalew = $h;
+        } elseif ($w <= 0 && in_array($node->iconfile, self::ICON_SHAPES, true)) {
+            $node->iconscalew = self::SHAPE_SIZE;
+            $node->iconscaleh = self::SHAPE_SIZE;
         }
     }
 
@@ -982,6 +1009,8 @@ class MapEditor
             }
             $box ??= [$node->x - 5, $node->y - 5, $node->x + 5, $node->y + 5];
 
+            $hasIcon = !in_array((string) $node->iconfile, ['', 'none'], true);
+
             // with an icon, the label is the second box and can move on its own
             $labelBox = count($node->boundingboxes) >= 2 && (string) $node->label !== ''
                 ? array_map(static fn ($v) => (int) round((float) $v), end($node->boundingboxes))
@@ -999,6 +1028,12 @@ class MapEditor
                 'label_box' => $labelBox,
                 'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
                 'icon' => (string) $node->iconfile,
+                'iconscalew' => (int) $node->iconscalew,
+                'iconscaleh' => (int) $node->iconscaleh,
+                // the icon is the first box (an icon that failed to load has none)
+                'icon_box' => $hasIcon && (count($node->boundingboxes) >= 2 || ((string) $node->label === '' && $node->boundingboxes !== []))
+                    ? array_map(static fn ($v) => (int) round((float) $v), reset($node->boundingboxes))
+                    : null,
                 'template' => (string) $node->template,
                 'relative_to' => (string) $node->relative_to,
                 'zorder' => (int) $node->zorder,
@@ -1010,6 +1045,7 @@ class MapEditor
                 'infourl' => (string) ($node->infourl[IN] ?? ''),
                 'group' => (string) ($node->hints['editor_group'] ?? ''),
                 'locked' => !empty($node->hints['editor_lock']),
+                'layer' => (string) ($node->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -1062,6 +1098,7 @@ class MapEditor
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),
+                'layer' => (string) ($link->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -1084,6 +1121,7 @@ class MapEditor
                 'outlinestyle' => (string) $zone->outlinestyle,
                 'group' => (string) ($zone->hints['editor_group'] ?? ''),
                 'locked' => !empty($zone->hints['editor_lock']),
+                'layer' => (string) ($zone->hints['editor_layer'] ?? ''),
             ];
         }
 
@@ -1321,7 +1359,7 @@ class MapEditor
         if ($value === '' || $value === 'none') {
             return '';
         }
-        if (in_array($value, ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'], true)) {
+        if (in_array($value, self::ICON_SHAPES, true)) {
             return $value;
         }
         if (str_contains($value, '..') || !preg_match('/^[\w\/.\-{}:]+\.(png|jpe?g|gif)$/i', $value)) {
