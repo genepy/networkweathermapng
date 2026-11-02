@@ -13,7 +13,7 @@ Last updated: 2026-11-02.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Time zone in the remaining previews | `claude/project-thread-6artgb` | Old PNG editor preview and import compare view draw the timestamp in the map's zone; awaiting review |
+| (none) | | |
 
 ## Paused
 
@@ -59,6 +59,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #49 | Time zone in the remaining previews: the old PNG editor preview and the import compare view draw the timestamp in the map's zone (the default zone for an import not yet turned into a map) |
 | #48 | Map recording and playback: a background recorder draws opted-in maps every interval (Admin > Map recording, off by default, can be turned off for all), the viewer plays the last hours back |
 | #47 | A modern legend style (rounded card, colour bar, 0-100% marks) and a rounded label for the timestamps, in PNG and SVG, chosen in Map properties |
 | #46 | Fira Sans, Barlow Semi Condensed and IBM Plex Mono shipped (OFL); a Fonts tab in Map properties adds them to a map, and font lists show names instead of numbers |
