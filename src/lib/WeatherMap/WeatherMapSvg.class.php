@@ -418,10 +418,15 @@ class WeatherMapSvg {
 			if ($l['outline']) {
 				$s .= '<rect ' . $box . ' fill="none"' . self::paint('stroke', $l['outline']) . '/>';
 			}
-			if ($l['shadow']) {
-				$s .= $this->textElement($l['font'], $l['tx'] + 1, $l['ty'] + 1, $l['text'], $l['shadow'], $l['angle']);
+			// a map note: one element per line, each placed by the engine
+			$lines = isset($l['lines']) ? $l['lines'] : array(array($l['tx'], $l['ty'], $l['text']));
+			$extra = isset($l['lines']) ? ' class="wm-note"' : '';
+			foreach ($lines as $line) {
+				if ($l['shadow']) {
+					$s .= $this->textElement($l['font'], $line[0] + 1, $line[1] + 1, $line[2], $l['shadow'], $l['angle'], $extra);
+				}
+				$s .= $this->textElement($l['font'], $line[0], $line[1], $line[2], $l['colour'], $l['angle'], $extra);
 			}
-			$s .= $this->textElement($l['font'], $l['tx'], $l['ty'], $l['text'], $l['colour'], $l['angle']);
 		}
 
 		return $s;

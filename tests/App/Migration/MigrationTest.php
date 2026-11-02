@@ -124,9 +124,6 @@ final class MigrationTest extends TestCase
             'COMMENTCURVE 1',
             'SET background_sizing fit',
             'SET editor_label_position N60',
-            'SET editor_note 1',
-            'SET editor_note_align left',
-            'SET editor_note_escaped Line one\\nLine two',
             'SET traffic_pulse 1',
         ], $report['later']);
 
@@ -135,14 +132,17 @@ final class MigrationTest extends TestCase
         $this->assertMatchesRegularExpression('/^LINK DEFAULT\s*$(?:\n(?!LINK|NODE).*)*\n\s*COMMENTCURVE 1$/m', $out);
         $this->assertMatchesRegularExpression('/^LINK b-a\s*$(?:\n(?!LINK|NODE).*)*\n\s*COMMENTCURVE 0$/m', $out);
         $this->assertDoesNotMatchRegularExpression('/^LINK a-b\s*$(?:\n(?!LINK|NODE).*)*COMMENTCURVE/m', $out);
-        foreach (['SET background_sizing fit', 'SET traffic_pulse 1', 'SET editor_note 1', 'SET editor_note_align left', 'SET editor_note_escaped Line one\\nLine two', 'SET editor_label_position N60'] as $line) {
+        foreach (['SET background_sizing fit', 'SET traffic_pulse 1', 'SET editor_note 1', 'SET editor_note_align centre', 'SET editor_note_escaped 1', 'LABEL Maintenance: Sunday 02:00\\nCall the NOC', 'SET editor_label_position N60'] as $line) {
             $this->assertStringContainsString($line, $out);
         }
 
         $again = $migrator->analyze($out);
         $this->assertSame([], $again['warnings']);
         $this->assertSame($report['later'], $again['later']);
-        $this->assertStringContainsString('<svg', $migrator->renderSvg($out));
+        // the note is drawn on two lines
+        $svg = $migrator->renderSvg($out);
+        $this->assertStringContainsString('class="wm-note"', $svg);
+        $this->assertStringContainsString('>Call the NOC</text>', $svg);
     }
 
     public function testRendersTheTimestampInTheGivenZone(): void

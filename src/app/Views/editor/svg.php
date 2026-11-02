@@ -77,6 +77,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <?= $btn('tool-select', 'select', __('Select'), __('Select and move (V)'), 'class="active"') ?>
             <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes (L)')) ?>
             <?= $btn('zone', 'zone', __('Zone'), __('Add a zone: a labelled rectangle for a site, around the selected nodes if any')) ?>
+            <?= $btn('note', 'note', __('Note'), __('Add a note: free text on several lines, for a legend, a contact or a maintenance window')) ?>
         </div>
         <div class="toolbar" data-toolbar="align" aria-label="<?= e__('Align') ?>" role="toolbar" data-needs="objects2">
             <?= $btn('align-left', 'align-left', __('Left'), __('Align left edges')) ?>

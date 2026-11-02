@@ -178,6 +178,28 @@ by its edge or its label, so its inside stays free for selecting nodes. Dragging
 a zone moves the nodes inside it too; hold Alt to move the zone alone. The
 corner handle resizes it, and the inspector edits its label and style.
 
+### Map notes
+
+A note is free text on the map, on several lines: a legend, a contact, a
+maintenance window. It is a node without an icon, marked with a hint, in the
+format PHP Weathermap 2.0 uses, so its maps import with their notes:
+
+```
+NODE note1
+	POSITION 120 60         # centre of the note
+	LABEL Maintenance: Sunday 02:00\nCall the NOC on 1234
+	LABELFONT 100
+	SET editor_note 1
+	SET editor_note_escaped 1   # \n starts a new line, \\ is a backslash
+	SET editor_note_align left  # left (default), centre or right
+```
+
+The note uses the node label style (`LABELFONT`, `LABELBGCOLOR` none for no
+box, `LABELOUTLINECOLOR`, `LABELFONTCOLOR`) and is drawn sharp in the PNG and
+the SVG. In the SVG editor, the **Note** button (or **Add a note here** in the
+right-click menu) adds one; the inspector edits its text, where Enter starts a
+new line, its alignment and its style.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |
@@ -419,10 +441,10 @@ For each map the review page shows:
 
 - **Checks**: `INCLUDE` lines are removed (they read files on the old server),
   the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
-  Maps saved by PHP Weathermap 2.0 read without warnings: `COMMENTCURVE` and
-  the hints `SET editor_note`, `editor_note_align`, `editor_note_escaped`,
-  `traffic_pulse`, `background_sizing` and `editor_label_position` are kept in
-  the converted map and listed, but not drawn yet.
+  Maps saved by PHP Weathermap 2.0 read without warnings: their notes are
+  drawn (see Map notes); `COMMENTCURVE` and the hints `SET traffic_pulse`,
+  `background_sizing` and `editor_label_position` are kept in the converted
+  map and listed, but not drawn yet.
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or
   missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
   uses them as `BACKGROUND`); an existing file with the same name is never

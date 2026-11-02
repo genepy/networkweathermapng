@@ -74,6 +74,8 @@ class MapEditor
         'outlinestyle' => ['solid', 'dashed'],
     ];
 
+    private const NOTE_ALIGNS = ['left', 'centre', 'right'];
+
     private const ANCHORS = ['C', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'];
 
     /** Hints the editor owns: grouping and locking */
@@ -362,6 +364,17 @@ class MapEditor
                 } elseif ($key === 'infourl') {
                     $node->infourl[IN] = $this->text($value);
                     $node->infourl[OUT] = $node->infourl[IN];
+                } elseif ($key === 'note_text') {
+                    $this->setNoteText($node, (string) $value);
+                } elseif ($key === 'note_align') {
+                    if (!in_array($value, self::NOTE_ALIGNS, true)) {
+                        throw new InvalidArgumentException(__('Unknown alignment: :value', ['value' => (string) $value]));
+                    }
+                    if ($value === 'left') {
+                        unset($node->hints['editor_note_align']);
+                    } else {
+                        $node->hints['editor_note_align'] = $value;
+                    }
                 } elseif ($key === 'target') {
                     $node->targets = $this->targets((string) $value);
                 } elseif ($key === 'position') {
@@ -391,6 +404,22 @@ class MapEditor
             }
             $this->fixIconSize($node);
         }
+    }
+
+    /** Several lines of text, kept on the one LABEL line of the .conf with \n */
+    private function setNoteText(\WeatherMapNode $node, string $text): void
+    {
+        $lines = preg_split('/\R/u', $text) ?: [''];
+        $lines = array_map(static fn (string $l) => rtrim((string) preg_replace('/[\x00-\x1f\x7f]/u', ' ', $l)), $lines);
+        // no empty lines at the ends: the box would grow for nothing
+        while (count($lines) > 1 && end($lines) === '') {
+            array_pop($lines);
+        }
+        while (count($lines) > 1 && $lines[0] === '') {
+            array_shift($lines);
+        }
+        $node->label = \WeatherMapNode::note_encode(implode("\n", $lines));
+        $node->hints['editor_note_escaped'] = '1';
     }
 
     /**
@@ -543,7 +572,8 @@ class MapEditor
             throw new InvalidArgumentException(__('Unknown template: :template', ['template' => $template]));
         }
 
-        $name = $this->freeName($map->nodes, $this->name((string) ($op['name'] ?? 'node')));
+        $note = !empty($op['note']);
+        $name = $this->freeName($map->nodes, $this->name((string) ($op['name'] ?? ($note ? 'note' : 'node'))));
 
         $node = new \WeatherMapNode();
         $node->name = $name;
@@ -566,6 +596,13 @@ class MapEditor
 
         if (isset($op['icon'])) {
             $node->iconfile = $this->iconFile((string) $op['icon']);
+        }
+
+        if ($note) {
+            // a map note: free text, no icon (SET editor_note 1, as PHP Weathermap 2.0 writes it)
+            $node->iconfile = '';
+            $node->hints['editor_note'] = '1';
+            $this->setNoteText($node, isset($op['text']) ? (string) $op['text'] : __('Note'));
         }
 
         $map->nodes[$name] = $node;
@@ -1020,6 +1057,10 @@ class MapEditor
             $box ??= [$node->x - 5, $node->y - 5, $node->x + 5, $node->y + 5];
 
             $hasIcon = !in_array((string) $node->iconfile, ['', 'none'], true);
+            $isNote = (string) ($node->hints['editor_note'] ?? '') === '1';
+            $noteText = (string) ($node->hints['editor_note_escaped'] ?? '') === '1'
+                ? \WeatherMapNode::note_decode((string) $node->label)
+                : (string) $node->label;
 
             // with an icon, the label is the second box and can move on its own
             $labelBox = count($node->boundingboxes) >= 2 && (string) $node->label !== ''
@@ -1056,6 +1097,9 @@ class MapEditor
                 'group' => (string) ($node->hints['editor_group'] ?? ''),
                 'locked' => !empty($node->hints['editor_lock']),
                 'layer' => (string) ($node->hints['editor_layer'] ?? ''),
+                'note' => $isNote,
+                'note_text' => $isNote ? $noteText : '',
+                'note_align' => $isNote ? $node->note_align() : '',
             ];
         }
 

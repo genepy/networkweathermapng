@@ -1567,6 +1567,12 @@
         send(ops, []);
     }
 
+    /** A map note at a point of the map, or in the middle of the view */
+    function addNote(at) {
+        var c = at || { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
+        addNode({ note: true, text: t('Note'), x: Math.max(0, snap(c.x)), y: Math.max(0, snap(c.y)) });
+    }
+
     /** Where a new zone centred on a map point goes */
     function zoneRect(c) {
         return { x: snap(c.x - 100), y: snap(c.y - 60), width: 200, height: 120 };
@@ -2227,8 +2233,45 @@
         return n <= 5 ? t('Built-in :n', { n: n }) : t('Font :n', { n: n });
     }
 
+    /** Map notes: free text on several lines, aligned left, centred or right */
+    function notePanel(notes) {
+        var single = notes.length === 1 ? notes[0] : null;
+        var names = notes.map(function (n) { return n.name; });
+        var out = [h('h2', { text: single ? t('Note') : t(':n notes', { n: notes.length }) })];
+
+        if (single) {
+            var text = h('textarea', { name: 'note_text', rows: 5, 'class': 'note-text' });
+            text.value = single.note_text;
+            // Enter makes a new line here; the text is saved when the field is left
+            text.addEventListener('keydown', function (e) { e.stopPropagation(); });
+            text.addEventListener('change', function () {
+                send([{ op: 'set_node', names: names, props: { note_text: text.value } }]);
+            });
+            out.push(row(t('Text'), text, true));
+
+            var x = h('input', { type: 'number', value: single.x }), y = h('input', { type: 'number', value: single.y });
+            var pos = function () { send([{ op: 'move', nodes: (function () { var o = {}; o[single.name] = [+x.value, +y.value]; return o; })() }]); };
+            x.addEventListener('change', pos);
+            y.addEventListener('change', pos);
+            out.push(row(t('Position'), h('div', { 'class': 'pair' }, [x, y])));
+        }
+
+        out.push(
+            row(t('Alignment'), field(notes, 'note_align', 'node', { options: [['left', t('Left')], ['centre', t('Centre')], ['right', t('Right')]] })),
+            h('h3', { text: t('Text style') }),
+            row(t('Font'), field(notes, 'labelfont', 'node', { options: fontOptions(), number: true })),
+            row(t('Background'), colourField(notes, 'labelbgcolour', 'node')),
+            row(t('Text'), colourField(notes, 'labelfontcolour', 'node', true)),
+            row(t('Outline'), colourField(notes, 'labeloutlinecolour', 'node')),
+            row(t('Layer'), field(notes, 'zorder', 'node', { type: 'number', number: true })),
+            h('p', { 'class': 'help', text: t('A note is free text on the map, for a legend, a contact or a maintenance window. Enter starts a new line; the text is saved when you leave the field.') })
+        );
+        return out;
+    }
+
     function nodePanel(nodes) {
         var single = nodes.length === 1 ? nodes[0] : null;
+        if (nodes.every(function (n) { return n.note; })) { return notePanel(nodes); }
         var out = [h('h2', { text: single ? t('Node') : t(':n nodes', { n: nodes.length }) })];
 
         if (single) {
@@ -3259,6 +3302,7 @@
         }
         entries.push('-',
             { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
+            { label: t('Add a note here'), run: function () { addNote(at); } },
             { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
             { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
@@ -3548,6 +3592,7 @@
         'paste': function () { paste(null); },
         'spread': function () { spreadApart(10); },
         'zone': function () { if (state.placing) { stopPlacing(); } else { startPlacing(); } },
+        'note': function () { addNote(null); },
         'layers': toggleLayersPanel,
         'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },

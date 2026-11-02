@@ -242,6 +242,37 @@ final class MapEditorTest extends TestCase
         $this->assertSame([], $this->editor->load()->zones);
     }
 
+    public function testMapNotesAreAddedAndEdited(): void
+    {
+        $r = $this->editor->apply([['op' => 'add_node', 'note' => true, 'x' => 100, 'y' => 80, 'text' => 'Hello']]);
+        $this->assertSame(['nodes' => ['note']], $r['created']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['note'], 'props' => [
+            'note_text' => "\r\nMaintenance: Sunday\r\nNOC: +33 1 23 45 67 89\nC:\\path\n\n",
+            'note_align' => 'centre',
+        ]]]);
+
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringContainsString('LABEL Maintenance: Sunday\nNOC: +33 1 23 45 67 89\nC:\\\\path', $conf);
+        $this->assertStringContainsString('SET editor_note 1', $conf);
+        $this->assertStringContainsString('SET editor_note_escaped 1', $conf);
+        $this->assertStringContainsString('SET editor_note_align centre', $conf);
+
+        $model = array_column($this->drawnModel()['nodes'], null, 'name');
+        $this->assertTrue($model['note']['note']);
+        $this->assertSame("Maintenance: Sunday\nNOC: +33 1 23 45 67 89\nC:\\path", $model['note']['note_text']);
+        $this->assertSame('centre', $model['note']['note_align']);
+        $this->assertSame('', $model['note']['icon']);
+        $this->assertFalse($model['core']['note']);
+
+        // left is the default: the hint goes away
+        $this->editor->apply([['op' => 'set_node', 'names' => ['note'], 'props' => ['note_align' => 'left']]]);
+        $this->assertStringNotContainsString('editor_note_align', (string) file_get_contents($this->file));
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_node', 'names' => ['note'], 'props' => ['note_align' => 'justify']]]);
+    }
+
     public function testBadZoneValuesAreRefused(): void
     {
         $this->editor->apply([['op' => 'add_zone', 'x' => 0, 'y' => 0]]);

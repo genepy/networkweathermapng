@@ -125,6 +125,67 @@ final class SvgRenderTest extends TestCase
         }
     }
 
+    /** Map notes: one text element per line, lined up as asked, in the SVG and the PNG */
+    public function testMapNotesAreAlignedLines(): void
+    {
+        $font = dirname(TESTS_ROOT) . '/src/public/fonts/FiraSans-Regular.ttf';
+        $conf = "WIDTH 400\nHEIGHT 300\nFONTDEFINE 100 $font 10\n"
+            . "NODE left\n\tLABEL Maintenance window\\nSunday 02:00\\nA \\\\ backslash\n\tLABELFONT 100\n\tSET editor_note 1\n\tSET editor_note_escaped 1\n\tPOSITION 120 60\n"
+            . "NODE right\n\tLABEL Short\\nA much longer line\n\tLABELFONT 100\n\tSET editor_note 1\n\tSET editor_note_escaped 1\n\tSET editor_note_align right\n\tPOSITION 250 160\n"
+            . "NODE centre\n\tLABEL ab\\nabcdef\n\tSET editor_note 1\n\tSET editor_note_escaped 1\n\tSET editor_note_align center\n\tPOSITION 120 240\n"
+            . "NODE plain\n\tLABEL not a note\\nkept as is\n\tPOSITION 300 250\n";
+        $file = TESTS_OUTPUT . '/notes.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        $lines = function (string $node) use ($xpath): array {
+            $out = [];
+            foreach ($xpath->query('//s:g[@data-kind="node"][@data-name="' . $node . '"]/s:text[@class="wm-note"]') as $t) {
+                $out[] = ['text' => $t->textContent, 'x' => (float) $t->getAttribute('x'), 'y' => (float) $t->getAttribute('y'), 'w' => (float) $t->getAttribute('textLength')];
+            }
+            return $out;
+        };
+
+        $left = $lines('left');
+        $this->assertSame(['Maintenance window', 'Sunday 02:00', 'A \\ backslash'], array_column($left, 'text'));
+        $this->assertSame(1, count(array_unique(array_column($left, 'x'))), 'left aligned');
+        $this->assertGreaterThan($left[0]['y'], $left[1]['y']);
+        $this->assertEqualsWithDelta($left[1]['y'] - $left[0]['y'], $left[2]['y'] - $left[1]['y'], 0.01, 'even line spacing');
+
+        $right = $lines('right');
+        $this->assertSame(['Short', 'A much longer line'], array_column($right, 'text'));
+        $this->assertEqualsWithDelta($right[0]['x'] + $right[0]['w'], $right[1]['x'] + $right[1]['w'], 1.5, 'right aligned');
+
+        $centre = $lines('centre');
+        $this->assertEqualsWithDelta($centre[0]['x'] + $centre[0]['w'] / 2, $centre[1]['x'] + $centre[1]['w'] / 2, 1.5, 'centred');
+
+        $this->assertSame([], $lines('plain'), 'a node label is not a note');
+
+        // the label box holds every line
+        $box = $map->nodes['left']->boundingboxes[0];
+        $this->assertGreaterThan(3 * 12, $box[3] - $box[1]);
+
+        $png = TESTS_OUTPUT . '/notes.png';
+        ob_start();
+        $this->load($file)->DrawMap($png);
+        ob_end_clean();
+        $this->assertFileExists($png);
+    }
+
+    public function testNoteTextEscapes(): void
+    {
+        $text = "C:\\temp\\new\nsecond line";
+        $encoded = \WeatherMapNode::note_encode($text);
+        $this->assertSame('C:\\\\temp\\\\new\\nsecond line', $encoded);
+        $this->assertStringNotContainsString("\n", $encoded);
+        $this->assertSame($text, \WeatherMapNode::note_decode($encoded));
+        $this->assertSame("a\nb \\x", \WeatherMapNode::note_decode('a\\nb \\x'), 'an unknown escape is kept');
+    }
+
     public function testPngIsUnchangedWhileCollecting(): void
     {
         $file = TESTS_ROOT . '/fixtures/maps/basic.conf';
