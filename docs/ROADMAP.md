@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |
 | Highlight saturated links | Pulse or glow on links at 80 % or more in the viewer, per-map switch, off under `prefers-reduced-motion`. Study item 4 |
 | Comments along curved links | IN/OUT comments on a text path following the curve, straight fallback. Study item 5 |
 | Background library | Upload, delete and search backgrounds from the editor, as #25 does for icons. Study item 6 |
@@ -57,6 +56,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #53 | Colour scale editor with presets: a Link colours tab in Map properties edits the DEFAULT scale step by step, with a preview bar and five presets (classic, traffic light, colour-blind safe, heat, blue) |
 | #51 | Map notes: free text on several lines, left, centred or right, drawn sharp in PNG and SVG; added and edited in the SVG editor (Note button, inspector); same format as PHP Weathermap 2.0 (`SET editor_note`), so imported notes are drawn |
 | #50 | Import PHP Weathermap 2.0 maps: `COMMENTCURVE` and the 2.0 hints (notes, pulse, background sizing, label position) read without warnings, are kept in the converted map and listed on the review page as not drawn yet |
 | #49 | Time zone in the remaining previews: the old PNG editor preview and the import compare view draw the timestamp in the map's zone (the default zone for an import not yet turned into a map) |

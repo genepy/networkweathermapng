@@ -145,6 +145,7 @@ class MapEditor
                 'set_zone' => $this->setZones($map, $op),
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
                 'define_font' => $this->defineFont($map, $op),
+                'set_scale' => $this->setScale($map, (array) ($op['steps'] ?? [])),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
@@ -846,6 +847,90 @@ class MapEditor
         'key_text_colour' => 'KEYTEXT', 'key_bg_colour' => 'KEYBG', 'key_outline_colour' => 'KEYOUTLINE',
     ];
 
+    private const SCALE_MAX_STEPS = 32;
+
+    /**
+     * {op: set_scale, steps: [{bottom, top, colour, colour2?, tag?}]} - the
+     * DEFAULT colour scale of the links, in % of the bandwidth. Replaces every
+     * step; the map colours kept in the same scale (BG, TITLE...) stay.
+     */
+    private function setScale(\WeatherMap $map, array $steps): void
+    {
+        if ($steps === [] || count($steps) > self::SCALE_MAX_STEPS) {
+            throw new InvalidArgumentException(__('A colour scale has 1 to :n steps', ['n' => self::SCALE_MAX_STEPS]));
+        }
+
+        $out = [];
+        foreach ($steps as $step) {
+            $step = (array) $step;
+            $bottom = $step['bottom'] ?? null;
+            $top = $step['top'] ?? null;
+            if (!is_numeric($bottom) || !is_numeric($top) || $bottom < 0 || $top > 100 || $bottom > $top) {
+                throw new InvalidArgumentException(__('Invalid scale step: :from to :to', ['from' => (string) $bottom, 'to' => (string) $top]));
+            }
+            $bottom = self::plainNumber(round((float) $bottom, 2));
+            $top = self::plainNumber(round((float) $top, 2));
+            $key = $bottom . '_' . $top;
+            if (isset($out[$key])) {
+                throw new InvalidArgumentException(__('Two scale steps go from :from to :to', ['from' => (string) $bottom, 'to' => (string) $top]));
+            }
+
+            $c = $this->colour($step['colour'] ?? '');
+            if ($c[0] === -3) {
+                throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => (string) $step['colour']]));
+            }
+            $entry = [
+                'key' => $key, 'bottom' => $bottom, 'top' => $top, 'special' => 0,
+                'red1' => $c[0], 'green1' => $c[1], 'blue1' => $c[2],
+                'tag' => $this->text($step['tag'] ?? ''),
+            ];
+            if (($step['colour2'] ?? '') !== '' && $c[0] >= 0) {
+                $c2 = $this->colour($step['colour2']);
+                if ($c2[0] < 0) {
+                    throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => (string) $step['colour2']]));
+                }
+                [$entry['red2'], $entry['green2'], $entry['blue2']] = $c2;
+            }
+            $out[$key] = $entry;
+        }
+        uasort($out, static fn (array $a, array $b) => [$a['bottom'], $a['top']] <=> [$b['bottom'], $b['top']]);
+
+        $special = array_filter((array) ($map->colours['DEFAULT'] ?? []), static fn ($c) => !empty($c['special']));
+        $map->colours['DEFAULT'] = $out + $special;
+        $map->numscales['DEFAULT'] = count($out);
+        // an idle (0 to 0) step colours links without traffic; the legend does not list it
+        if (isset($out['0_0'])) {
+            $map->add_hint('key_hidezero_DEFAULT', 1);
+        }
+    }
+
+    /** 10.0 as 10, 2.5 as it is */
+    private static function plainNumber(mixed $v): int|float
+    {
+        $f = (float) $v;
+        return $f == floor($f) && abs($f) < PHP_INT_MAX ? (int) $f : $f;
+    }
+
+    /** @return list<array{bottom: float|int, top: float|int, colour: string, colour2: string, tag: string}> */
+    private static function scaleOut(\WeatherMap $map): array
+    {
+        $out = [];
+        foreach ((array) ($map->colours['DEFAULT'] ?? []) as $c) {
+            if (!empty($c['special'])) {
+                continue;
+            }
+            $out[] = [
+                'bottom' => self::plainNumber($c['bottom']),
+                'top' => self::plainNumber($c['top']),
+                'colour' => self::colourOut([$c['red1'], $c['green1'], $c['blue1']]),
+                'colour2' => isset($c['red2']) ? self::colourOut([$c['red2'], $c['green2'], $c['blue2']]) : '',
+                'tag' => (string) ($c['tag'] ?? ''),
+            ];
+        }
+        usort($out, static fn (array $a, array $b) => [$a['bottom'], $a['top']] <=> [$b['bottom'], $b['top']]);
+        return $out;
+    }
+
     private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags', 'modern'];
 
     /**
@@ -1186,6 +1271,7 @@ class MapEditor
                 'title' => (string) $map->title,
                 'background' => (string) $map->background,
                 'props' => self::mapProps($map),
+                'scale' => self::scaleOut($map),
             ],
             'nodes' => $nodes,
             'links' => $links,

@@ -276,6 +276,13 @@ and saves each change straight into the map's `.conf` file.
 - **Edit**: the right panel changes every selected item at once. The
   width of all the links of a map is set in *Map properties* (a number of
   pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).
+- **Link colours**: the *Link colours* tab of *Map properties* edits the
+  colour scale of the links (`SCALE` lines of the DEFAULT scale, in % of the
+  bandwidth): one row per step, with a preview bar. Presets start from the
+  classic Weathermap colours, a traffic light, a colour-blind safe scale
+  (Okabe and Ito colours), a heat scale or a single blue that darkens with
+  the load. The presets but the classic one read on light and dark
+  backgrounds. A step that fades between two colours keeps them.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
   the links between them, also into another map open in another tab (the
   copy is kept in the browser). Pasted items take free names (`name_2`…),
