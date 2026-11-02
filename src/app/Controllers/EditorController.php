@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\MapService;
+use App\Services\TimezoneService;
 
 class EditorController extends BaseController
 {
@@ -172,7 +173,11 @@ class EditorController extends BaseController
         ob_start();
         $wmap->ReadData();
         $wmap->sizedebug = false;
-        $wmap->DrawMap($tmpPng, '', 250, true, false, false);
+        // the timestamp drawn on the preview is in the map's time zone
+        TimezoneService::using(
+            TimezoneService::fromConfig($this->database, $this->config)->forMap($id),
+            static fn () => $wmap->DrawMap($tmpPng, '', 250, true, false, false)
+        );
         ob_end_clean();
 
         if (!is_file($tmpPng)) {

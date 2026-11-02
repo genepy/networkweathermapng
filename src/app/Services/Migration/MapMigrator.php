@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace App\Services\Migration;
 
+use App\Services\TimezoneService;
+
 class MapMigrator
 {
     /** GD built-in font n becomes FONTDEFINE 100+n with this TrueType font and size */
@@ -37,6 +39,7 @@ class MapMigrator
     private string $publicPath;
     private string $fontDir;
     private ?TargetMatcher $matcher;
+    private ?string $timezone = null;
 
     /**
      * @param string $publicPath the web root: icons and fonts are relative to it
@@ -46,6 +49,16 @@ class MapMigrator
         $this->publicPath = rtrim($publicPath, '/');
         $this->matcher = $matcher;
         $this->fontDir = trim($fontDir, '/');
+    }
+
+    /**
+     * Time zone of the timestamp drawn by renderPng() and renderSvg(), null
+     * for PHP's default zone.
+     */
+    public function inTimezone(?string $zone): self
+    {
+        $this->timezone = $zone !== null && TimezoneService::isValid($zone) ? $zone : null;
+        return $this;
     }
 
     // ------------------------------------------------------------------
@@ -254,7 +267,7 @@ class MapMigrator
     public function renderPng(string $conf): string
     {
         [$clean] = $this->sanitize($conf);
-        return $this->quietly(fn () => $this->inPublicDir(function () use ($clean) {
+        return $this->quietly(fn () => $this->inPublicDir(fn () => $this->inZone(function () use ($clean) {
             [$map] = $this->read($clean);
             $out = tempnam(sys_get_temp_dir(), 'wm_mig_') . '.png';
             ob_start();
@@ -263,7 +276,7 @@ class MapMigrator
             $png = is_file($out) ? (string) file_get_contents($out) : '';
             @unlink($out);
             return $png;
-        }));
+        })));
     }
 
     /**
@@ -272,10 +285,10 @@ class MapMigrator
     public function renderSvg(string $conf, ?callable $fontUrl = null): string
     {
         [$clean] = $this->sanitize($conf);
-        return $this->quietly(fn () => $this->inPublicDir(function () use ($clean, $fontUrl) {
+        return $this->quietly(fn () => $this->inPublicDir(fn () => $this->inZone(function () use ($clean, $fontUrl) {
             [$map] = $this->read($clean);
             return \WeatherMapSvg::render($map, $fontUrl ? ['font_url' => $fontUrl] : []);
-        }));
+        })));
     }
 
     // ------------------------------------------------------------------
@@ -346,6 +359,12 @@ class MapMigrator
         } finally {
             $GLOBALS['weathermap_warnings'] = $previous;
         }
+    }
+
+    /** The engine draws its timestamp with date(): in the map's zone when one is set */
+    private function inZone(callable $fn): mixed
+    {
+        return $this->timezone === null ? $fn() : TimezoneService::using($this->timezone, $fn);
     }
 
     private function inPublicDir(callable $fn): mixed

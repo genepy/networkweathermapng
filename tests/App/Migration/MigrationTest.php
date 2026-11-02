@@ -112,6 +112,28 @@ final class MigrationTest extends TestCase
         $this->assertStringContainsString('<svg', $migrator->renderSvg($out));
     }
 
+    public function testRendersTheTimestampInTheGivenZone(): void
+    {
+        $conf = "WIDTH 200\nHEIGHT 100\nTIMEPOS 10 20 2 Zone %Z\n";
+        $previous = date_default_timezone_get();
+        date_default_timezone_set('UTC');
+        try {
+            $migrator = $this->migrator();
+            $this->assertStringContainsString('Zone UTC', $migrator->renderSvg($conf));
+
+            $tokyo = $migrator->inTimezone('Asia/Tokyo')->renderSvg($conf);
+            $this->assertStringContainsString('Zone JST', $tokyo);
+            // the zone only applies while drawing
+            $this->assertSame('UTC', date_default_timezone_get());
+            $this->assertStringStartsWith("\x89PNG", $migrator->renderPng($conf));
+
+            // an unknown zone is ignored
+            $this->assertStringContainsString('Zone UTC', $migrator->inTimezone('Mars/Olympus')->renderSvg($conf));
+        } finally {
+            date_default_timezone_set($previous);
+        }
+    }
+
     public function testManualChoiceAndKeep(): void
     {
         $migrator = $this->migrator();

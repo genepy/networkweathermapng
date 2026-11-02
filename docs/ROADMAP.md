@@ -7,13 +7,13 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-10-30.
+Last updated: 2026-11-02.
 
 ## In progress
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| Time zone in the remaining previews | `claude/project-thread-6artgb` | Old PNG editor preview and import compare view draw the timestamp in the map's zone; awaiting review |
 
 ## Paused
 
@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Time zone in the remaining previews | The old PNG editor previews (`EditorController`) and the import compare view (`MapMigrator`) still draw the timestamp in the server's zone. Wrap their draws in `TimezoneService::using()` as #31 does elsewhere |
 | Import PHP Weathermap 2.0 maps | Read `COMMENTCURVE` and the hints `editor_note`, `editor_note_align`, `editor_note_escaped`, `traffic_pulse`, `background_sizing` and `editor_label_position` without warnings. See [the study](studies/php-weathermap-2.0.md) item 1 |
 | Map notes | Free-text blocks on the map, several lines, aligned, drawn sharp in SVG and PNG. Idea from PHP Weathermap 2.0, see [the study](studies/php-weathermap-2.0.md) item 2 |
 | Colour scale editor with presets | Edit the DEFAULT scale in the SVG editor, with our own palettes readable in light and dark themes and safe for colour-blind people. Study item 3 |

@@ -17,6 +17,7 @@ use App\Services\MapService;
 use App\Services\Migration\MigrationImporter;
 use App\Services\Migration\MigrationService;
 use App\Services\Migration\MigrationStore;
+use App\Services\TimezoneService;
 
 class MigrationController extends BaseController
 {
@@ -170,7 +171,7 @@ class MigrationController extends BaseController
         }
 
         $this->loadEngine();
-        $migrator = $this->migration->migrator($meta, false);
+        $migrator = $this->migration->migrator($meta, false)->inTimezone($this->timezone($meta));
 
         header('Cache-Control: no-store');
         if (($params['kind'] ?? '') === 'old.png') {
@@ -181,6 +182,14 @@ class MigrationController extends BaseController
 
         header('Content-Type: image/svg+xml');
         echo $migrator->renderSvg($this->migration->converted($meta, $migrator), [self::class, 'fontUrl']);
+    }
+
+    /** Zone of the map created from this import, else the default zone of all maps */
+    private function timezone(array $meta): string
+    {
+        $timezones = TimezoneService::fromConfig($this->database, $this->config);
+        $mapId = (int) ($meta['mapId'] ?? 0);
+        return $mapId > 0 ? $timezones->forMap($mapId) : $timezones->getDefault();
     }
 
     /** POST: put the uploaded file back in place of the converted map */
