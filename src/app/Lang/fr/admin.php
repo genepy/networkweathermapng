@@ -287,6 +287,7 @@ return [
     'Removed, it reads files on the old server:' => 'Supprimé, car il lit des fichiers sur l’ancien serveur :',
     'Ignored, this application writes its own files:' => 'Ignoré, cette application écrit ses propres fichiers :',
     'Kept as is in the converted map, this application does not use it:' => 'Conservé tel quel dans la carte convertie, cette application ne l’utilise pas :',
+    'PHP Weathermap 2.0 setting, kept in the converted map but not drawn yet:' => 'Réglage de PHP Weathermap 2.0, conservé dans la carte convertie mais pas encore dessiné :',
     'Replace the bitmap fonts (:list) by TrueType fonts of the same size' => 'Remplacer les polices bitmap (:list) par des polices TrueType de même taille',
     'Images' => 'Images',
     'Used by' => 'Utilisée par',

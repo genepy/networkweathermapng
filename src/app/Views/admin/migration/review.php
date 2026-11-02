@@ -38,7 +38,8 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
         <div class="<?= $missing ? 'warn' : 'ok' ?>"><?= e__(':n missing image(s)', ['n' => $missing]) ?></div>
     </section>
 
-    <?php if ($report['removed'] || $report['outputs'] || $report['warnings']): ?>
+    <?php $later = (array) ($report['later'] ?? []); ?>
+    <?php if ($report['removed'] || $report['outputs'] || $report['warnings'] || $later): ?>
     <section class="panel">
         <h2><?= e__('Checks') ?></h2>
         <ul class="checks">
@@ -54,6 +55,9 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
             <?php else: ?>
             <li class="warn"><code><?= $h($line) ?></code></li>
             <?php endif; ?>
+            <?php endforeach; ?>
+            <?php foreach ($later as $line): ?>
+            <li><?= e__('PHP Weathermap 2.0 setting, kept in the converted map but not drawn yet:') ?> <code><?= $h($line) ?></code></li>
             <?php endforeach; ?>
         </ul>
     </section>

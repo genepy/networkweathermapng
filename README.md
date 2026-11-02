@@ -419,6 +419,10 @@ For each map the review page shows:
 
 - **Checks**: `INCLUDE` lines are removed (they read files on the old server),
   the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
+  Maps saved by PHP Weathermap 2.0 read without warnings: `COMMENTCURVE` and
+  the hints `SET editor_note`, `editor_note_align`, `editor_note_escaped`,
+  `traffic_pulse`, `background_sizing` and `editor_label_position` are kept in
+  the converted map and listed, but not drawn yet.
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or
   missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
   uses them as `BACKGROUND`); an existing file with the same name is never

@@ -2862,6 +2862,7 @@ class WeatherMap extends WeatherMapBase {
 					array('LINK', '/^\s*BWFONT\s+(\d+)\s*$/i', array('bwfont'=>1)),
 					array('LINK', '/^\s*COMMENTFONT\s+(\d+)\s*$/i', array('commentfont'=>1)),
 					array('LINK', '/^\s*COMMENTSTYLE\s+(edge|center)\s*$/i', array('commentstyle'=>1)),
+					array('LINK', '/^\s*COMMENTCURVE\s+([01])\s*$/i', array('commentcurve'=>1)),
 					array('LINK', '/^\s*DUPLEX\s+(full|half)\s*$/i', array('duplex'=>1)),
 					array('LINK', '/^\s*BWSTYLE\s+(classic|angled)\s*$/i', array('labelboxstyle'=>1)),
 					array('LINK', '/^\s*LINKSTYLE\s+(twoway|oneway)\s*$/i', array('linkstyle'=>1)),
