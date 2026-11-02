@@ -283,6 +283,11 @@ and saves each change straight into the map's `.conf` file.
   (Okabe and Ito colours), a heat scale or a single blue that darkens with
   the load. The presets but the classic one read on light and dark
   backgrounds. A step that fades between two colours keeps them.
+- **Saturated links**: the same tab has a switch that makes the links at
+  80 % or more (in either direction) pulse and glow on the live map
+  (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
+  *reduce motion* setting the glow stays and the pulse stops. The PNG is not
+  changed.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
   the links between them, also into another map open in another tab (the
   copy is kept in the browser). Pasted items take free names (`name_2`…),
@@ -449,9 +454,10 @@ For each map the review page shows:
 - **Checks**: `INCLUDE` lines are removed (they read files on the old server),
   the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
   Maps saved by PHP Weathermap 2.0 read without warnings: their notes are
-  drawn (see Map notes); `COMMENTCURVE` and the hints `SET traffic_pulse`,
-  `background_sizing` and `editor_label_position` are kept in the converted
-  map and listed, but not drawn yet.
+  drawn (see Map notes) and `SET traffic_pulse` works (see Saturated links);
+  `COMMENTCURVE` and the hints `SET background_sizing` and
+  `editor_label_position` are kept in the converted map and listed, but not
+  drawn yet.
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or
   missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
   uses them as `BACKGROUND`); an existing file with the same name is never

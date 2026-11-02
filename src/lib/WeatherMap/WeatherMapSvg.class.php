@@ -22,6 +22,8 @@ class WeatherMapSvg {
 	var $owner = null;
 	/** What the shapes being drawn are for, such as "bwlabel-in" */
 	var $role = null;
+	/** Whether a saturated link was drawn: the pulse style is then added */
+	var $hasHot = false;
 	var $options = array();
 	/** Other GD images whose drawing is part of the map: id => [dx, dy] */
 	var $adopted = array();
@@ -131,12 +133,38 @@ class WeatherMapSvg {
 	}
 
 	/** Everything recorded until the next call belongs to this map item. */
-	function begin($kind, $name = null, $id = null) {
+	function begin($kind, $name = null, $id = null, $hot = false) {
 		if ($kind === null) {
 			$this->owner = null;
 		} else {
-			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id);
+			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot);
 		}
+		if ($hot) {
+			$this->hasHot = true;
+		}
+	}
+
+	/**
+	 * Links at SATURATED % or more pulse and glow, on maps with
+	 * SET traffic_pulse 1 (the PHP Weathermap 2.0 hint). Still under
+	 * prefers-reduced-motion: the glow stays, the pulse stops.
+	 */
+	const SATURATED = 80;
+
+	static function isSaturated($map, $link) {
+		return (string) $map->get_hint('traffic_pulse') === '1'
+			&& max((float) $link->inpercent, (float) $link->outpercent) >= self::SATURATED;
+	}
+
+	function hotStyle() {
+		if (!$this->hasHot) {
+			return '';
+		}
+		return "<style>\n"
+			. ".wm-map .wm-hot .wm-arrow{filter:drop-shadow(0 0 3px rgba(255,64,0,.9));animation:wm-pulse 1.6s ease-in-out infinite}\n"
+			. "@keyframes wm-pulse{50%{opacity:.6;filter:drop-shadow(0 0 6px rgba(255,64,0,.9))}}\n"
+			. "@media (prefers-reduced-motion:reduce){.wm-map .wm-hot .wm-arrow{animation:none}}\n"
+			. "</style>";
 	}
 
 	function background($colour, $file) {
@@ -304,6 +332,7 @@ class WeatherMapSvg {
 		$out = array();
 		$out[] = sprintf('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="%d" height="%d" viewBox="0 0 %d %d" class="wm-map">', $w, $h, $w, $h);
 		$out[] = $this->fontFaces();
+		$out[] = $this->hotStyle();
 
 		$group = null;
 		foreach ($this->items as $item) {
@@ -315,8 +344,8 @@ class WeatherMapSvg {
 				}
 				if ($key !== null) {
 					$o = $item['owner'];
-					$out[] = sprintf('<g class="wm-%s" data-kind="%s" data-name="%s" data-id="%s">',
-						$o['kind'], $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
+					$out[] = sprintf('<g class="wm-%s%s" data-kind="%s" data-name="%s" data-id="%s">',
+						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
 				}
 				$group = $key;
 			}

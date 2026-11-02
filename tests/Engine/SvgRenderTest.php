@@ -186,6 +186,38 @@ final class SvgRenderTest extends TestCase
         $this->assertSame("a\nb \\x", \WeatherMapNode::note_decode('a\\nb \\x'), 'an unknown escape is kept');
     }
 
+    /** SET traffic_pulse 1: links at 80 % or more pulse; off for the others and without the hint */
+    public function testSaturatedLinksPulse(): void
+    {
+        $links = "NODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 50\nNODE c\n\tPOSITION 50 150\nNODE d\n\tPOSITION 350 150\n"
+            . "LINK busy\n\tNODES a b\n\tBANDWIDTH 1G\n\tTARGET static:900M:100M\n"
+            . "LINK quiet\n\tNODES c d\n\tBANDWIDTH 1G\n\tTARGET static:500M:790M\n";
+        $query = function (string $conf): array {
+            $file = TESTS_OUTPUT . '/pulse.conf';
+            file_put_contents($file, $conf);
+            $map = $this->load($file);
+            $svg = \WeatherMapSvg::render($map);
+            $doc = new \DOMDocument();
+            $this->assertTrue($doc->loadXML($svg));
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+            $hot = [];
+            foreach ($xpath->query('//s:g[contains(concat(" ", @class, " "), " wm-hot ")]') as $g) {
+                $hot[] = $g->getAttribute('data-name');
+            }
+            return [$hot, $xpath->query('//s:style[contains(., "wm-pulse")]')->length, $svg];
+        };
+
+        [$hot, $styles, $svg] = $query("WIDTH 400\nHEIGHT 200\nSET traffic_pulse 1\n" . $links);
+        $this->assertSame(['busy'], $hot);
+        $this->assertSame(1, $styles);
+        $this->assertStringContainsString('prefers-reduced-motion', $svg);
+
+        [$hot, $styles] = $query("WIDTH 400\nHEIGHT 200\n" . $links);
+        $this->assertSame([], $hot);
+        $this->assertSame(0, $styles, 'no style without a saturated link');
+    }
+
     public function testPngIsUnchangedWhileCollecting(): void
     {
         $file = TESTS_ROOT . '/fixtures/maps/basic.conf';
