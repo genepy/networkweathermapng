@@ -4254,7 +4254,7 @@ class WeatherMap extends WeatherMapBase {
 								wm_debug("Drawing LINK ".$it->name);
 
 								if ($svg) {
-									$svg->begin('link', $it->name, 'L' . $it->id);
+									$svg->begin('link', $it->name, 'L' . $it->id, WeatherMapSvg::isSaturated($this, $this->links[$it->name]));
 								}
 
 								$this->links[$it->name]->Draw($image, $this);

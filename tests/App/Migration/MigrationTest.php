@@ -124,7 +124,6 @@ final class MigrationTest extends TestCase
             'COMMENTCURVE 1',
             'SET background_sizing fit',
             'SET editor_label_position N60',
-            'SET traffic_pulse 1',
         ], $report['later']);
 
         // the 2.0 settings are kept for the features that will use them

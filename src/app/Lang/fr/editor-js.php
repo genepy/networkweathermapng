@@ -342,4 +342,7 @@ return [
     'The colour of a link follows its load, in % of its bandwidth: each step gives the colour from one value to the next. A 0 to 0 step colours the links without traffic. The legend shows these steps.' => 'La couleur d’un lien suit sa charge, en % de sa bande passante : chaque palier donne la couleur d’une valeur à la suivante. Un palier de 0 à 0 colore les liens sans trafic. La légende montre ces paliers.',
     'Start from a preset' => 'Partir d’un modèle',
     'Replaces the steps below. Nothing is saved before Apply.' => 'Remplace les paliers ci-dessous. Rien n’est enregistré avant Appliquer.',
+    'Saturated links' => 'Liens saturés',
+    'Make links at 80 % or more pulse and glow in the viewer' => 'Faire pulser et briller les liens à 80 % ou plus dans la visionneuse',
+    'Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.' => 'Seulement sur la carte en direct. Un visiteur qui a demandé moins d’animations à son système voit la lueur sans la pulsation.',
 ];

@@ -307,6 +307,17 @@ final class MapEditorTest extends TestCase
         $this->assertSame(['50_100', 'busy'], [$key, $tag]);
     }
 
+    public function testSaturatedLinksPulseIsAMapSwitch(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['traffic_pulse' => true]]]);
+        $this->assertStringContainsString('SET traffic_pulse 1', (string) file_get_contents($this->file));
+        $this->assertTrue(MapEditor::model($this->editor->load())['map']['props']['traffic_pulse']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['traffic_pulse' => false]]]);
+        $this->assertStringNotContainsString('traffic_pulse', (string) file_get_contents($this->file));
+        $this->assertFalse(MapEditor::model($this->editor->load())['map']['props']['traffic_pulse']);
+    }
+
     public function testBadColourScalesAreRefused(): void
     {
         $before = (string) file_get_contents($this->file);

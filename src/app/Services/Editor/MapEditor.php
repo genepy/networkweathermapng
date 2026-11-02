@@ -989,6 +989,13 @@ class MapEditor
                 } else {
                     unset($map->hints['timestamp_style']);
                 }
+            } elseif ($key === 'traffic_pulse') {
+                // the PHP Weathermap 2.0 hint: links at 80 % or more pulse in the viewer
+                if ($value) {
+                    $map->add_hint('traffic_pulse', '1');
+                } else {
+                    unset($map->hints['traffic_pulse']);
+                }
             } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont'], true)) {
                 $this->setLinkDefault($map, $key, $value, $fonts);
             } else {
@@ -1105,6 +1112,7 @@ class MapEditor
             'key_outline_colour' => $colour('KEYOUTLINE'),
             'stamp_text' => (string) $map->stamptext,
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
+            'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
             'time_font' => (int) $map->timefont,
             'time_colour' => $colour('TIME'),
             'link_bandwidth' => $default ? (string) $default->max_bandwidth_in_cfg : '',

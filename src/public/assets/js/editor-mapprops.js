@@ -297,7 +297,11 @@
                 ])),
                 field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont))
             ],
-            scale: scalePane(m.scale),
+            scale: scalePane(m.scale).concat([
+                h('h4', { text: t('Saturated links') }),
+                check('traffic_pulse', p.traffic_pulse, t('Make links at 80 % or more pulse and glow in the viewer')),
+                h('span', { 'class': 'hint', text: t('Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.') })
+            ]),
             fonts: fontsPane()
         };
 
