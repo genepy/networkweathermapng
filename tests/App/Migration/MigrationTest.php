@@ -112,6 +112,39 @@ final class MigrationTest extends TestCase
         $this->assertStringContainsString('<svg', $migrator->renderSvg($out));
     }
 
+    public function testReadsWeathermap2MapsWithoutWarnings(): void
+    {
+        $migrator = $this->migrator();
+        $conf = (string) file_get_contents(TESTS_ROOT . '/fixtures/migration/weathermap-2.0.conf');
+        $report = $migrator->analyze($conf);
+
+        $this->assertSame([], $report['warnings']);
+        $this->assertSame(['nodes' => 3, 'links' => 2], $report['counts']);
+        $this->assertSame([
+            'COMMENTCURVE 1',
+            'SET background_sizing fit',
+            'SET editor_label_position N60',
+            'SET editor_note 1',
+            'SET editor_note_align left',
+            'SET editor_note_escaped Line one\\nLine two',
+            'SET traffic_pulse 1',
+        ], $report['later']);
+
+        // the 2.0 settings are kept for the features that will use them
+        $out = $migrator->convert($conf, $report);
+        $this->assertMatchesRegularExpression('/^LINK DEFAULT\s*$(?:\n(?!LINK|NODE).*)*\n\s*COMMENTCURVE 1$/m', $out);
+        $this->assertMatchesRegularExpression('/^LINK b-a\s*$(?:\n(?!LINK|NODE).*)*\n\s*COMMENTCURVE 0$/m', $out);
+        $this->assertDoesNotMatchRegularExpression('/^LINK a-b\s*$(?:\n(?!LINK|NODE).*)*COMMENTCURVE/m', $out);
+        foreach (['SET background_sizing fit', 'SET traffic_pulse 1', 'SET editor_note 1', 'SET editor_note_align left', 'SET editor_note_escaped Line one\\nLine two', 'SET editor_label_position N60'] as $line) {
+            $this->assertStringContainsString($line, $out);
+        }
+
+        $again = $migrator->analyze($out);
+        $this->assertSame([], $again['warnings']);
+        $this->assertSame($report['later'], $again['later']);
+        $this->assertStringContainsString('<svg', $migrator->renderSvg($out));
+    }
+
     public function testRendersTheTimestampInTheGivenZone(): void
     {
         $conf = "WIDTH 200\nHEIGHT 100\nTIMEPOS 10 20 2 Zone %Z\n";

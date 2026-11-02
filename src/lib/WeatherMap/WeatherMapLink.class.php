@@ -113,6 +113,8 @@ class WeatherMapLink extends WeatherMapItem {
 
 	var $commentfontcolour;
 	var $commentstyle;
+	/** COMMENTCURVE 0/1 (PHP Weathermap 2.0): comments follow a curved link. Read and kept, not drawn yet */
+	var $commentcurve;
 	var $bwfontcolour;
 
 	# var $incomment, $outcomment;
@@ -142,6 +144,7 @@ class WeatherMapLink extends WeatherMapItem {
 			'commentoffset_out'     => 5,
 			'commentoffset_in'      => 95,
 			'commentstyle'          => 'edge',
+			'commentcurve'          => '0',
 			'arrowstyle'            => 'classic',
 			'viastyle'              => 'curved',
 			'usescale'              => 'DEFAULT',
@@ -668,6 +671,7 @@ class WeatherMapLink extends WeatherMapItem {
 				array('splitpos',          'SPLITPOS',         CONFIG_TYPE_LITERAL),
 				array('duplex',            'DUPLEX',           CONFIG_TYPE_LITERAL),
 				array('commentstyle',      'COMMENTSTYLE',     CONFIG_TYPE_LITERAL),
+				array('commentcurve',      'COMMENTCURVE',     CONFIG_TYPE_LITERAL),
 				array('labelboxstyle',     'BWSTYLE',          CONFIG_TYPE_LITERAL),
 			//	array('usescale',        'USESCALE',       CONFIG_TYPE_LITERAL),
 

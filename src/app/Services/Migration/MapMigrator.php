@@ -34,6 +34,15 @@ class MapMigrator
     private const OUTPUT_FIELDS = ['htmloutputfile', 'imageoutputfile', 'dataoutputfile', 'imageuri'];
 
     /** The lines that open a block of the .conf */
+    /**
+     * SET hints of PHP Weathermap 2.0 that this application reads and keeps
+     * in the map but does not draw yet (see docs/studies/php-weathermap-2.0.md).
+     */
+    public const LATER_HINTS = [
+        'editor_note', 'editor_note_align', 'editor_note_escaped',
+        'traffic_pulse', 'background_sizing', 'editor_label_position',
+    ];
+
     private const SECTION = '/^\s*(NODE|LINK|ZONE)\s+(\S+)\s*$/i';
 
     private string $publicPath;
@@ -78,6 +87,7 @@ class MapMigrator
             'images' => [],
             'targets' => [],
             'fonts' => [],
+            'later' => [],
         ];
 
         foreach (self::OUTPUT_FIELDS as $field) {
@@ -118,6 +128,21 @@ class MapMigrator
         foreach (['keyfont', 'timefont', 'titlefont'] as $f) {
             $this->collectFont($report, (int) $map->$f);
         }
+
+        foreach ([$map, ...array_values($map->nodes), ...array_values($map->links)] as $item) {
+            foreach (self::LATER_HINTS as $hint) {
+                if (isset($item->hints[$hint])) {
+                    $report['later'][] = trim('SET ' . $hint . ' ' . $item->hints[$hint]);
+                }
+            }
+        }
+        foreach ($map->links as $link) {
+            if ((string) $link->commentcurve === '1') {
+                $report['later'][] = 'COMMENTCURVE 1';
+            }
+        }
+        $report['later'] = array_values(array_unique($report['later']));
+        sort($report['later']);
         $report['fonts'] = array_values(array_unique($report['fonts']));
         sort($report['fonts']);
 
