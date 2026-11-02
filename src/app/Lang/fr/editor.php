@@ -235,4 +235,7 @@ return [
     'PNG, GIF or JPEG up to 1024 px, or SVG (cleaned, and drawn as a 64 px PNG for the PNG map). 2 MB at most per file.' => 'PNG, GIF ou JPEG jusqu’à 1024 px, ou SVG (nettoyé, et dessiné en PNG de 64 px pour la carte PNG). 2 Mo au plus par fichier.',
     'Open this map in the new SVG editor' => 'Ouvrir cette carte dans le nouvel éditeur SVG',
     'New editor' => 'Nouvel éditeur',
+    'Unknown alignment: :value' => 'Alignement inconnu : :value',
+    'Note' => 'Note',
+    'Add a note: free text on several lines, for a legend, a contact or a maintenance window' => 'Ajouter une note : du texte libre sur plusieurs lignes, pour une légende, un contact ou une fenêtre de maintenance',
 ];

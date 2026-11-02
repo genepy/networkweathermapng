@@ -49,6 +49,8 @@ class WeatherMapNode extends WeatherMapItem {
 	var $original_x, $original_y,$relative_resolved;
 	var $width, $height;
 	var $label, $proclabel, $labelfont;
+	/** Lines of a map note, set by pre_render(): [x offset, y offset, text] from the first baseline */
+	var $notelines = null;
 	var $labelangle;
 	var $name;
 	var $infourl = array();
@@ -166,6 +168,50 @@ class WeatherMapNode extends WeatherMapItem {
 		return 'NODE';
 	}
 
+	/**
+	 * A map note: a node with SET editor_note 1 (the PHP Weathermap 2.0
+	 * format), drawn as several lines of text, aligned. Only straight text.
+	 */
+	function is_note() {
+		return (string) $this->get_hint('editor_note') === '1' && $this->labelangle == 0;
+	}
+
+	/** left, centre or right (SET editor_note_align); centre is also spelled center */
+	function note_align() {
+		$align = strtolower((string) $this->get_hint('editor_note_align'));
+		return $align === 'center' ? 'centre' : (in_array($align, array('centre', 'right'), true) ? $align : 'left');
+	}
+
+	/** SET editor_note_escaped 1: the label holds \n for a new line and \\ for a backslash */
+	static function note_decode($text) {
+		return preg_replace_callback('/\\\\([\\\\n])/', function ($m) {
+			return $m[1] === 'n' ? "\n" : '\\';
+		}, (string) $text);
+	}
+
+	static function note_encode($text) {
+		return str_replace(array('\\', "\r\n", "\r", "\n"), array('\\\\', '\\n', '\\n', '\\n'), (string) $text);
+	}
+
+	/**
+	 * Height of a note line, and the distance from the top of a line to its
+	 * baseline, as myimagestring() places text.
+	 */
+	private function note_metrics($map) {
+		list(, $lineheight) = $map->myimagestringsize($this->labelfont, 'Ág');
+		$lineheight = (int) ceil($lineheight);
+		$font = isset($map->fonts[$this->labelfont]) ? $map->fonts[$this->labelfont] : null;
+		if ($font !== null && $font->type == 'truetype') {
+			$bounds = imagettfbbox($font->size, 0, $font->file, 'Ág');
+			$ascent = -$bounds[5];
+			$descent = $bounds[1];
+			// myimagestringsize() gives 1.2 times the glyph height: share the gap
+			return array($lineheight, $ascent + ($lineheight - $ascent - $descent) / 2);
+		}
+		// GD fonts: myimagestring() takes the bottom of the line
+		return array($lineheight, $lineheight);
+	}
+
 	// make a mini-image, containing this node and nothing else
 	// figure out where the real NODE centre is, relative to the top-left corner.
 	function pre_render($image, &$map) {
@@ -263,6 +309,11 @@ class WeatherMapNode extends WeatherMapItem {
 				$this->proclabel = screenshotify($this->proclabel);
 			}
 
+			$this->notelines = null;
+			if ($this->is_note() && $this->get_hint('editor_note_escaped') == '1') {
+				$this->proclabel = self::note_decode($this->proclabel);
+			}
+
 			list($strwidth, $strheight) = $map->myimagestringsize($this->labelfont, $this->proclabel);
 
 			if ($this->labelangle == 90 || $this->labelangle == 270) {
@@ -306,6 +357,35 @@ class WeatherMapNode extends WeatherMapItem {
 				if ($this->labelangle == 180) {
 					$txt_x = $this->x + ($strwidth / 2);
 					$txt_y = $this->y - ($strheight / 2);
+				}
+
+				if ($this->is_note()) {
+					// one line at a time, so that they line up left, centred or right
+					$lines = explode("\n", str_replace("\r", '', $this->proclabel));
+					list($lineheight, $baseline) = $this->note_metrics($map);
+					$widths = array();
+					foreach ($lines as $line) {
+						list($widths[]) = $map->myimagestringsize($this->labelfont, $line);
+					}
+					$strwidth = (int) ceil(max($widths));
+					$strheight = $lineheight * count($lines);
+					// a little more room around a block of text
+					$boxwidth  = $strwidth + 2 * $padding;
+					$boxheight = $strheight + 2 * $padding;
+
+					$label_x1 = $this->x - ($boxwidth / 2);
+					$label_y1 = $this->y - ($boxheight / 2);
+					$label_x2 = $this->x + ($boxwidth / 2);
+					$label_y2 = $this->y + ($boxheight / 2);
+
+					$txt_x = $this->x - ($strwidth / 2);
+					$txt_y = $this->y - ($strheight / 2) + $baseline;
+
+					$factor = array('left' => 0, 'centre' => 0.5, 'right' => 1)[$this->note_align()];
+					$this->notelines = array();
+					foreach ($lines as $i => $line) {
+						$this->notelines[] = array(($strwidth - $widths[$i]) * $factor, $i * $lineheight, $line);
+					}
 				}
 
 				# $this->width = $boxwidth;
@@ -679,8 +759,13 @@ class WeatherMapNode extends WeatherMapItem {
 
 			$shcol = new Colour($this->labelfontshadowcolour);
 
+			// a note is drawn line by line
+			$lines = $this->notelines !== null ? $this->notelines : array(array(0, 0, $this->proclabel));
+
 			if ($shcol->is_real()) {
-				$map->myimagestring($node_im, $this->labelfont, $txt_x + 1, $txt_y + 1, $this->proclabel, $shcol->gdallocate($node_im),$this->labelangle);
+				foreach ($lines as $line) {
+					$map->myimagestring($node_im, $this->labelfont, $txt_x + $line[0] + 1, $txt_y + $line[1] + 1, $line[2], $shcol->gdallocate($node_im),$this->labelangle);
+				}
 			}
 
 			$txcol = new Colour($this->labelfontcolour[0],$this->labelfontcolour[1],$this->labelfontcolour[2]);
@@ -697,7 +782,9 @@ class WeatherMapNode extends WeatherMapItem {
 				}
 			}
 
-			$map->myimagestring($node_im, $this->labelfont, $txt_x, $txt_y, $this->proclabel, $txcol->gdallocate($node_im),$this->labelangle);
+			foreach ($lines as $line) {
+				$map->myimagestring($node_im, $this->labelfont, $txt_x + $line[0], $txt_y + $line[1], $line[2], $txcol->gdallocate($node_im),$this->labelangle);
+			}
 
 			if ($svg) {
 				$this->svgparts['label'] = array(
@@ -708,6 +795,11 @@ class WeatherMapNode extends WeatherMapItem {
 					'bg' => $svg->rgba($col), 'outline' => $svg->rgba($olcol ?? null),
 					'shadow' => $svg->rgba($shcol), 'colour' => $svg->rgba($txcol),
 				);
+				if ($this->notelines !== null) {
+					$this->svgparts['label']['lines'] = array_map(function ($line) use ($txt_x, $txt_y, $bbox_x1, $bbox_y1) {
+						return array(intval(round($txt_x + $line[0])) + $bbox_x1, intval(round($txt_y + $line[1])) + $bbox_y1, $line[2]);
+					}, $this->notelines);
+				}
 			}
 			//$map->myimagestring($node_im, $this->labelfont, $txt_x, $txt_y, $this->proclabel, $txcol->gdallocate($node_im),90);
 		}
