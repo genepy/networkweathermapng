@@ -320,4 +320,7 @@ return [
     'Text style' => 'Style du texte',
     'A note is free text on the map, for a legend, a contact or a maintenance window. Enter starts a new line; the text is saved when you leave the field.' => 'Une note est du texte libre sur la carte, pour une légende, un contact ou une fenêtre de maintenance. Entrée commence une nouvelle ligne ; le texte est enregistré quand vous quittez le champ.',
     'Add a note here' => 'Ajouter une note ici',
+    'Left' => 'Gauche',
+    'Centre' => 'Centre',
+    'Right' => 'Droite',
 ];
