@@ -200,6 +200,25 @@ the SVG. In the SVG editor, the **Note** button (or **Add a note here** in the
 right-click menu) adds one; the inspector edits its text, where Enter starts a
 new line, its alignment and its style.
 
+### Comments along curved links
+
+`INCOMMENT` and `OUTCOMMENT` are drawn straight, along the link where they
+start. With `COMMENTCURVE 1` (the PHP Weathermap 2.0 keyword; `0`, straight,
+is the default) a comment follows a curved link, letter by letter, in the
+PNG and the SVG:
+
+```
+LINK DEFAULT
+	COMMENTCURVE 1          # every link; or in one LINK only
+	COMMENTFONT 100         # a TrueType font: GD's bitmap fonts cannot turn
+```
+
+The text is never upside down and keeps `COMMENTPOS` and `COMMENTSTYLE`. It
+stays straight where the link is straight, where the link bends too much
+under it (a right angle, a tight curve), on several lines, or in a bitmap
+font. In the SVG editor, *Along the link* in the Comments part of a link's
+panel switches it.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |
@@ -454,10 +473,13 @@ For each map the review page shows:
 - **Checks**: `INCLUDE` lines are removed (they read files on the old server),
   the old `*OUTPUTFILE` / `IMAGEURI` settings are ignored, engine warnings.
   Maps saved by PHP Weathermap 2.0 read without warnings: their notes are
-  drawn (see Map notes) and `SET traffic_pulse` works (see Saturated links);
-  `COMMENTCURVE` and the hints `SET background_sizing` and
+  drawn (see Map notes), `SET traffic_pulse` works (see Saturated links)
+  and `COMMENTCURVE 1` makes comments follow the curve (see Comments along
+  curved links); the hints `SET background_sizing` and
   `editor_label_position` are kept in the converted map and listed, but not
-  drawn yet.
+  drawn yet. A 2.0 map that does not set `COMMENTCURVE` keeps straight
+  comments here (2.0 curves them by default): add `COMMENTCURVE 1` to
+  `LINK DEFAULT` to curve them all.
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or
   missing. Images from the zip go to `objects/` (or `backgrounds/` when a map
   uses them as `BACKGROUND`); an existing file with the same name is never

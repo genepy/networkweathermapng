@@ -2333,3 +2333,110 @@ function TestOutput_RunTest($conffile, $imagefile, $htmlfile, $newconffile, $cov
 	return intval($nwarns);
 }
 
+
+/**
+ * Point and unit tangent of a curve (array of x, y, distance triples) at a
+ * distance along it: array(x, y, tx, ty). The distance is clamped to the
+ * curve.
+ */
+function curve_point_tangent(&$pointarray, $distance) {
+	$last = count($pointarray) - 1;
+	$distance = max(0, min($distance, $pointarray[$last][2]));
+
+	$index = find_distance($pointarray, $distance);
+	if ($index >= $last) {
+		$index = $last - 1;
+	}
+
+	$a = $pointarray[$index];
+	$b = $pointarray[$index + 1];
+	$len = $b[2] - $a[2];
+	$ratio = $len > 0 ? ($distance - $a[2]) / $len : 0;
+
+	$dx = $b[0] - $a[0];
+	$dy = $b[1] - $a[1];
+	$l = sqrt($dx * $dx + $dy * $dy);
+	if ($l == 0) {
+		$dx = 1;
+		$dy = 0;
+		$l = 1;
+	}
+
+	return array($a[0] + $ratio * $dx, $a[1] + $ratio * $dy, $dx / $l, $dy / $l);
+}
+
+/**
+ * A point at a distance along a curve, moved sideways by $offset to the
+ * left of the direction given by $sign (1 with the curve, -1 against it),
+ * and that direction in radians: array(x, y, angle). The y axis grows
+ * downwards, as on screen.
+ */
+function curve_offset_point(&$pointarray, $distance, $sign, $offset) {
+	list($x, $y, $tx, $ty) = curve_point_tangent($pointarray, $distance);
+	$tx *= $sign;
+	$ty *= $sign;
+
+	return array($x + $ty * $offset, $y - $tx * $offset, atan2($ty, $tx));
+}
+
+/**
+ * The baseline of a text that runs along a curve, as a list of x, y points
+ * every $step pixels, or null when the curve bends too much under the text
+ * (it would then be hard to read, or fold on itself).
+ *
+ * $start is the distance where the text begins, $length its width; $sign is
+ * 1 when the text runs with the curve and -1 against it. $offset moves the
+ * baseline sideways: positive values move it to the left of the text, which
+ * is "above" it for upright text, like the straight comments.
+ *
+ * Returns array('points' => ..., 'turn' => total turn in degrees).
+ */
+function curve_text_baseline(&$pointarray, $start, $length, $sign, $offset, $height, $step = 2) {
+	$max_turn = 75;
+
+	$n = max(2, (int) ceil($length / $step));
+	$points = array();
+	$angles = array();
+
+	for ($i = 0; $i <= $n; $i++) {
+		list($x, $y, $angle) = curve_offset_point($pointarray, $start + $sign * $length * $i / $n, $sign, $offset);
+		$points[] = array($x, $y);
+		$angles[] = $angle;
+	}
+
+	// how far the direction turns under the text
+	$turns = array(0);
+	$lo = 0;
+	$hi = 0;
+	$seglen = $length / $n;
+
+	for ($i = 1; $i <= $n; $i++) {
+		$d = $angles[$i] - $angles[$i - 1];
+		while ($d > M_PI) {
+			$d -= 2 * M_PI;
+		}
+		while ($d < -M_PI) {
+			$d += 2 * M_PI;
+		}
+		$turns[$i] = $turns[$i - 1] + $d;
+		$lo = min($lo, $turns[$i]);
+		$hi = max($hi, $turns[$i]);
+	}
+
+	// the tightest bend, measured over about 8 px: the curve is a polyline,
+	// so the direction only changes at its points
+	$w = min($n, max(1, (int) round(8 / max($seglen, 0.01))));
+	$min_radius = INF;
+	for ($i = $w; $i <= $n; $i++) {
+		$d = abs($turns[$i] - $turns[$i - $w]);
+		if ($d > 1e-9) {
+			$min_radius = min($min_radius, $w * $seglen / $d);
+		}
+	}
+
+	if (rad2deg($hi - $lo) > $max_turn || $min_radius < $height + abs($offset)) {
+		return null;
+	}
+
+	return array('points' => $points, 'turn' => rad2deg($hi - $lo));
+}

@@ -134,11 +134,6 @@ class MapMigrator
                 }
             }
         }
-        foreach ($map->links as $link) {
-            if ((string) $link->commentcurve === '1') {
-                $report['later'][] = 'COMMENTCURVE 1';
-            }
-        }
         $report['later'] = array_values(array_unique($report['later']));
         sort($report['later']);
         $report['fonts'] = array_values(array_unique($report['fonts']));

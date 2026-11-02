@@ -209,6 +209,27 @@ class WeatherMapSvg {
 		);
 	}
 
+	/**
+	 * A text on a path (a comment that follows a curved link): $points is
+	 * its baseline, $length the width the engine measured.
+	 */
+	function textOnPath($fontnumber, $points, $string, $colour, $length) {
+		$shifted = array();
+		foreach ($points as $p) {
+			$shifted[] = array($p[0] + $this->offset[0], $p[1] + $this->offset[1]);
+		}
+		$this->items[] = array(
+			'type'   => 'textpath',
+			'owner'  => $this->owner,
+			'role'   => $this->role,
+			'font'   => $fontnumber,
+			'points' => $shifted,
+			'text'   => $string,
+			'fill'   => $this->rgba($colour),
+			'length' => $length,
+		);
+	}
+
 	function zone($zone) {
 		$this->items[] = array(
 			'type'    => 'zone',
@@ -383,6 +404,9 @@ class WeatherMapSvg {
 			case 'text':
 				return $this->textElement($item['font'], $item['x'], $item['y'], $item['text'], $item['fill'], $item['angle'], self::roleClass($item));
 
+			case 'textpath':
+				return $this->textPathElement($item);
+
 			case 'node':
 				return $this->nodeElements($item);
 
@@ -488,6 +512,24 @@ class WeatherMapSvg {
 		}
 
 		return $s;
+	}
+
+	/**
+	 * The path and its text. The id comes from the path itself, so the same
+	 * map drawn twice in a page gives the same id to the same path.
+	 */
+	function textPathElement($item) {
+		$font = $this->fontInfo($item['font']);
+		$d = '';
+		foreach ($item['points'] as $i => $p) {
+			$d .= ($i ? ' L' : 'M') . self::num($p[0]) . ' ' . self::num($p[1]);
+		}
+		$id = 'wm-cp-' . substr(md5($d), 0, 12);
+
+		return sprintf('<path id="%s" d="%s" fill="none" stroke="none" pointer-events="none"/>', $id, $d)
+			. sprintf('<text%s font-family="%s" font-size="%s"%s xml:space="preserve"><textPath href="#%s" xlink:href="#%s" textLength="%s" lengthAdjust="spacingAndGlyphs">%s</textPath></text>',
+				self::roleClass($item), $font['family'], self::num($font['size']), self::paint('fill', $item['fill']),
+				$id, $id, self::num($item['length']), self::esc($item['text']));
 	}
 
 	function fontInfo($n) {

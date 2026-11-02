@@ -52,6 +52,7 @@ class MapEditor
         'viastyle' => ['curved', 'angled'],
         'linkstyle' => ['twoway', 'oneway'],
         'labelstyle' => ['percent', 'bits', 'unformatted', 'none'],
+        'commentcurve' => ['0', '1'],
     ];
 
     /** Zone fields the inspector may change: request key => [property, type] */
@@ -1242,6 +1243,7 @@ class MapEditor
                 'datasource' => (string) ($link->hints['datasource'] ?? ''),
                 'comment_in' => (string) ($link->comments[IN] ?? ''),
                 'comment_out' => (string) ($link->comments[OUT] ?? ''),
+                'commentcurve' => (string) $link->commentcurve === '1' ? '1' : '0',
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),
