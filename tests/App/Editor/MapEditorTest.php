@@ -273,6 +273,63 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_node', 'names' => ['note'], 'props' => ['note_align' => 'justify']]]);
     }
 
+    public function testTheColourScaleIsReplacedAndKeepsTheMapColours(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['bg_colour' => '#102030']]]);
+        $this->editor->apply([['op' => 'set_scale', 'steps' => [
+            ['bottom' => 50, 'top' => 100, 'colour' => '#d55e00', 'tag' => 'busy'],
+            ['bottom' => 0, 'top' => 0, 'colour' => '#9aa0a6'],
+            ['bottom' => 0, 'top' => 50, 'colour' => '#0072b2', 'colour2' => '#56b4e9'],
+            ['bottom' => 2.5, 'top' => 3, 'colour' => 'none'],
+        ]]]);
+
+        $conf = (string) file_get_contents($this->file);
+        $this->assertMatchesRegularExpression('/^SCALE DEFAULT 0\s+0\s+154 160 166/m', $conf);
+        $this->assertMatchesRegularExpression('/^SCALE DEFAULT 0\s+50\s+0 114 178\s+86 180 233/m', $conf);
+        $this->assertMatchesRegularExpression('/^SCALE DEFAULT 50\s+100\s+213  94   0\s+busy$/m', $conf);
+        $this->assertMatchesRegularExpression('/^SCALE DEFAULT 2.5\s+3\s+none/m', $conf);
+        $this->assertSame(4, preg_match_all('/^SCALE DEFAULT /m', $conf));
+        $this->assertStringContainsString('SET key_hidezero_DEFAULT 1', $conf);
+
+        $map = $this->editor->load();
+        $model = MapEditor::model($map);
+        $this->assertSame([
+            ['bottom' => 0, 'top' => 0, 'colour' => '#9aa0a6', 'colour2' => '', 'tag' => ''],
+            ['bottom' => 0, 'top' => 50, 'colour' => '#0072b2', 'colour2' => '#56b4e9', 'tag' => ''],
+            ['bottom' => 2.5, 'top' => 3, 'colour' => 'none', 'colour2' => '', 'tag' => ''],
+            ['bottom' => 50, 'top' => 100, 'colour' => '#d55e00', 'colour2' => '', 'tag' => 'busy'],
+        ], $model['map']['scale']);
+        $this->assertSame('#102030', $model['map']['props']['bg_colour'], 'the map colours stay');
+
+        // a link at 75 % takes the colour of its step
+        [$colour, $key, $tag] = $map->NewColourFromPercent(75, 'DEFAULT');
+        $this->assertSame([213, 94, 0], [$colour->r, $colour->g, $colour->b]);
+        $this->assertSame(['50_100', 'busy'], [$key, $tag]);
+    }
+
+    public function testBadColourScalesAreRefused(): void
+    {
+        $before = (string) file_get_contents($this->file);
+        foreach ([
+            [],
+            [['bottom' => 50, 'top' => 10, 'colour' => '#ffffff']],
+            [['bottom' => 0, 'top' => 150, 'colour' => '#ffffff']],
+            [['bottom' => 'a', 'top' => 10, 'colour' => '#ffffff']],
+            [['bottom' => 0, 'top' => 10, 'colour' => 'contrast']],
+            [['bottom' => 0, 'top' => 10, 'colour' => 'red']],
+            [['bottom' => 0, 'top' => 10, 'colour' => '#ffffff'], ['bottom' => 0, 'top' => 10, 'colour' => '#000000']],
+            array_fill(0, 33, ['bottom' => 0, 'top' => 1, 'colour' => '#ffffff']),
+        ] as $steps) {
+            try {
+                $this->editor->apply([['op' => 'set_scale', 'steps' => $steps]]);
+                $this->fail('accepted ' . json_encode(array_slice($steps, 0, 2)));
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->assertSame($before, (string) file_get_contents($this->file));
+    }
+
     public function testBadZoneValuesAreRefused(): void
     {
         $this->editor->apply([['op' => 'add_zone', 'x' => 0, 'y' => 0]]);

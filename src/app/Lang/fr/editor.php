@@ -238,4 +238,7 @@ return [
     'Unknown alignment: :value' => 'Alignement inconnu : :value',
     'Note' => 'Note',
     'Add a note: free text on several lines, for a legend, a contact or a maintenance window' => 'Ajouter une note : du texte libre sur plusieurs lignes, pour une légende, un contact ou une fenêtre de maintenance',
+    'A colour scale has 1 to :n steps' => 'Une échelle de couleurs a de 1 à :n paliers',
+    'Invalid scale step: :from to :to' => 'Palier d’échelle invalide : :from à :to',
+    'Two scale steps go from :from to :to' => 'Deux paliers vont de :from à :to',
 ];

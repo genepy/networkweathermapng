@@ -1,7 +1,7 @@
 /**
  * Map properties of the SVG editor: the title, legend and timestamp texts,
- * fonts and colours, the background colour, and the link defaults (the
- * DEFAULT link). Opened from the top bar, from the Map panel, or from a
+ * fonts and colours, the background colour, the colour scale of the links
+ * (with presets) and the link defaults (the DEFAULT link). Opened from the top bar, from the Map panel, or from a
  * selected legend, timestamp or title.
  */
 (function () {
@@ -15,9 +15,121 @@
     var body = dialog.querySelector('.mapprops-body');
     var current = 'general';
     var start = null; // values when the dialog opened
+    var scaleRows = []; // the steps of the colour scale while the dialog is open
+    var scaleStart = '';
+
+    /**
+     * Colour scales to start from, in % of the link bandwidth. Our own
+     * choices: every step but the classic ones reads on a light and a dark
+     * background, and the colour-blind safe one keeps its steps apart by
+     * lightness as well as hue (colours after Okabe and Ito).
+     */
+    var PRESETS = [
+        ['classic', t('Classic Weathermap'), [
+            [0, 0, '#c0c0c0'], [0, 1, '#ffffff'], [1, 10, '#8c00ff'], [10, 25, '#2020ff'], [25, 40, '#00c0ff'],
+            [40, 55, '#00f000'], [55, 70, '#f0f000'], [70, 85, '#ffc000'], [85, 100, '#ff0000']
+        ]],
+        ['traffic', t('Traffic light: green, amber, red'), [
+            [0, 0, '#9aa0a6'], [0, 30, '#2e9e4f'], [30, 50, '#8cbf3f'], [50, 70, '#e6b800'],
+            [70, 85, '#f08c1a'], [85, 100, '#d93025']
+        ]],
+        ['colourblind', t('Colour-blind safe'), [
+            [0, 0, '#9aa0a6'], [0, 10, '#56b4e9'], [10, 25, '#0072b2'], [25, 40, '#009e73'],
+            [40, 55, '#f0e442'], [55, 70, '#e69f00'], [70, 85, '#d55e00'], [85, 100, '#8e1b3f']
+        ]],
+        ['heat', t('Heat: light to dark as the load grows'), [
+            [0, 0, '#9aa0a6'], [0, 15, '#f2d15c'], [15, 30, '#f0a840'], [30, 45, '#e8803a'], [45, 60, '#d9573a'],
+            [60, 75, '#c0303a'], [75, 90, '#92203c'], [90, 100, '#5e1a3a']
+        ]],
+        ['blue', t('One colour: blue, darker when loaded'), [
+            [0, 0, '#9aa0a6'], [0, 20, '#9ecae1'], [20, 40, '#6baed6'], [40, 60, '#3182bd'],
+            [60, 80, '#1c5fa0'], [80, 100, '#0b3a75']
+        ]]
+    ];
+
+    function presetRows(id) {
+        var p = PRESETS.filter(function (x) { return x[0] === id; })[0];
+        return p ? p[2].map(function (r) { return { bottom: r[0], top: r[1], colour: r[2], colour2: '', tag: '' }; }) : [];
+    }
+
+    function scaleJson(rows) {
+        return JSON.stringify(rows.map(function (r) { return [+r.bottom, +r.top, r.colour, r.colour2 || '', r.tag || '']; }));
+    }
+
+    /** The Link colours tab: one row per step, presets, and a preview bar */
+    function scalePane(steps) {
+        scaleRows = (steps || []).map(function (s) { return Object.assign({}, s); });
+        scaleStart = scaleJson(scaleRows);
+        var list = h('div', { 'class': 'scale-list' });
+        var bar = h('div', { 'class': 'scale-bar', 'aria-hidden': 'true' });
+        var msg = h('span', { 'class': 'hint scale-msg', role: 'status' });
+
+        function check() {
+            var bad = scaleRows.filter(function (r) { return !(+r.bottom >= 0 && +r.top <= 100 && +r.bottom <= +r.top); }).length;
+            msg.textContent = bad ? t('Each step goes from a value to a higher one, between 0 and 100 %.') : '';
+        }
+
+        function render() {
+            list.replaceChildren.apply(list, scaleRows.map(function (r, i) {
+                function num(k, label) {
+                    var inp = h('input', { type: 'number', min: 0, max: 100, step: 'any', value: r[k], 'aria-label': label, 'data-k': k });
+                    inp.addEventListener('input', function () { r[k] = inp.value; preview(); check(); });
+                    return inp;
+                }
+                var none = r.colour === 'none';
+                var pick = h('input', { type: 'color', value: none ? '#ffffff' : r.colour, disabled: none, 'aria-label': t('Colour') });
+                pick.addEventListener('input', function () { r.colour = pick.value; r.colour2 = ''; preview(); });
+                var off = h('input', { type: 'checkbox', checked: none, title: t('No colour: links in this step are not drawn') });
+                off.addEventListener('change', function () { r.colour = off.checked ? 'none' : pick.value; pick.disabled = off.checked; preview(); });
+                return h('div', { 'class': 'scale-row' }, [
+                    num('bottom', t('From (%)')), h('span', { text: '–' }), num('top', t('To (%)')), h('span', { text: '%' }),
+                    pick, h('label', { 'class': 'inline' }, [off, ' ' + t('None')]),
+                    r.colour2 ? h('span', { 'class': 'hint', text: t('gradient'), title: t('This step fades to :colour', { colour: r.colour2 }) }) : null,
+                    h('button', { type: 'button', text: '×', title: t('Remove this step'), 'aria-label': t('Remove this step'), disabled: scaleRows.length < 2,
+                        onclick: function () { scaleRows.splice(i, 1); render(); } })
+                ]);
+            }));
+            preview();
+            check();
+        }
+
+        function preview() {
+            var parts = scaleRows.filter(function (r) { return +r.top > +r.bottom; }).slice().sort(function (a, b) { return a.bottom - b.bottom; });
+            bar.replaceChildren.apply(bar, parts.map(function (r) {
+                var w = Math.max(0, Math.min(100, +r.top) - Math.max(0, +r.bottom));
+                var c = r.colour === 'none' ? 'transparent' : r.colour;
+                return h('span', { style: 'flex:' + w + ' 0 0;background:' + (r.colour2 ? 'linear-gradient(90deg,' + c + ',' + r.colour2 + ')' : c), title: r.bottom + '–' + r.top + ' %' });
+            }));
+        }
+
+        var preset = h('select', { 'aria-label': t('Preset') }, [h('option', { value: '', text: t('Choose a preset…') })].concat(PRESETS.map(function (p) {
+            return h('option', { value: p[0], text: p[1] });
+        })));
+        preset.addEventListener('change', function () {
+            if (!preset.value) { return; }
+            scaleRows = presetRows(preset.value);
+            preset.value = '';
+            render();
+        });
+        var add = h('button', { type: 'button', text: t('Add a step'), onclick: function () {
+            var last = scaleRows[scaleRows.length - 1];
+            var from = last ? Math.min(100, +last.top) : 0;
+            scaleRows.push({ bottom: from, top: 100, colour: last && last.colour !== 'none' ? last.colour : '#808080', colour2: '', tag: '' });
+            render();
+        } });
+
+        render();
+        return [
+            h('p', { 'class': 'mapprops-explain', text: t('The colour of a link follows its load, in % of its bandwidth: each step gives the colour from one value to the next. A 0 to 0 step colours the links without traffic. The legend shows these steps.') }),
+            field(t('Start from a preset'), preset, t('Replaces the steps below. Nothing is saved before Apply.')),
+            bar,
+            list,
+            h('div', { 'class': 'pair' }, [add, msg])
+        ];
+    }
 
     var SECTIONS = [
-        ['general', t('General')], ['title', t('Title')], ['legend', t('Legend')],
+        ['general', t('General')], ['title', t('Title')], ['legend', t('Legend')], ['scale', t('Link colours')],
         ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['fonts', t('Fonts')]
     ];
 
@@ -185,6 +297,7 @@
                 ])),
                 field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont))
             ],
+            scale: scalePane(m.scale),
             fonts: fontsPane()
         };
 
@@ -238,19 +351,25 @@
     form.addEventListener('submit', function (evt) {
         if (evt.submitter && evt.submitter.value === 'cancel') { return; }
         evt.preventDefault();
-        var now = values(), props = {}, op = { op: 'set_map' }, changed = false;
+        var now = values(), props = {}, op = { op: 'set_map' }, changed = false, ops = [];
         Object.keys(now).forEach(function (k) {
             if (String(now[k]) === String(start[k])) { return; }
             changed = true;
             if (k === 'title') { op.title = now[k]; } else { props[k] = now[k]; }
         });
-        if (!changed) { dialog.close(); return; }
         if (Object.keys(props).length) { op.props = props; }
+        if (changed) { ops.push(op); }
+        if (scaleJson(scaleRows) !== scaleStart) {
+            ops.push({ op: 'set_scale', steps: scaleRows.map(function (r) {
+                return { bottom: +r.bottom, top: +r.top, colour: r.colour, colour2: r.colour2 || '', tag: r.tag || '' };
+            }) });
+        }
+        if (!ops.length) { dialog.close(); return; }
 
         var apply = dialog.querySelector('button.primary'), saved = false;
         apply.disabled = true;
         // send() shows its own error and reloads the map; the select callback runs only on success
-        ed.send([op], function () { saved = true; return undefined; }).then(function () {
+        ed.send(ops, function () { saved = true; return undefined; }).then(function () {
             if (saved) {
                 dialog.close();
                 ed.toast(t('Map properties saved'));
