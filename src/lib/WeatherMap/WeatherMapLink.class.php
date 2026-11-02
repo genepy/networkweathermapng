@@ -113,7 +113,7 @@ class WeatherMapLink extends WeatherMapItem {
 
 	var $commentfontcolour;
 	var $commentstyle;
-	/** COMMENTCURVE 0/1 (PHP Weathermap 2.0): comments follow a curved link. Read and kept, not drawn yet */
+	/** COMMENTCURVE 0/1 (PHP Weathermap 2.0): comments follow a curved link (DrawCurvedComment) */
 	var $commentcurve;
 	var $bwfontcolour;
 
@@ -236,6 +236,71 @@ class WeatherMapLink extends WeatherMapItem {
 	}
 
 	/**
+	 * Draw a comment glyph by glyph along the link's curve (COMMENTCURVE 1).
+	 * The text starts at $start along the curve and runs with it, or
+	 * against it when $flipped (so it is never upside down); $offset moves
+	 * its baseline off the link, as for the straight comment.
+	 *
+	 * Returns false, having drawn nothing, when the comment should be drawn
+	 * straight: a bitmap font (it cannot be rotated), several lines, a text
+	 * longer than the link, a straight part of the link, or a bend too tight
+	 * to read along.
+	 */
+	function DrawCurvedComment($image, $comment, $colour, $start, $flipped, $offset, $textlength, $textheight, $totaldistance) {
+		$map = $this->owner;
+		$font = $this->commentfont;
+
+		if (strpos($comment, "\n") !== false || !isset($map->fonts[$font]) || $map->fonts[$font]->type != 'truetype') {
+			return false;
+		}
+
+		$sign = $flipped ? -1 : 1;
+		if ($flipped && ($start - $textlength) < 0) {
+			$start += $textlength;
+		}
+		if (!$flipped && ($start + $textlength) > $totaldistance) {
+			$start -= $textlength;
+		}
+		$end = $start + $sign * $textlength;
+		if (min($start, $end) < 0 || max($start, $end) > $totaldistance || $textlength <= 0) {
+			return false;
+		}
+
+		$baseline = curve_text_baseline($this->curvepoints, $start, $textlength, $sign, $offset, $textheight);
+		// less than 2 degrees: as good as straight, keep the crisper text
+		if ($baseline === null || $baseline['turn'] < 2) {
+			return false;
+		}
+
+		// the SVG gets the whole text on a path, the PNG one glyph at a time
+		$svg = WeatherMapSvg::$active;
+		if ($svg && $svg->accepts($image)) {
+			$svg->textOnPath($font, $baseline['points'], $comment, $colour, $textlength);
+		}
+		WeatherMapSvg::$active = null;
+
+		try {
+			$prefix = '';
+			$before = 0;
+			foreach (mb_str_split($comment) as $glyph) {
+				$prefix .= $glyph;
+				list($after) = $map->myimagestringsize($font, $prefix);
+				if (trim($glyph) !== '') {
+					list($x0, $y0) = curve_offset_point($this->curvepoints, $start + $sign * $before, $sign, $offset);
+					list($x1, $y1) = curve_offset_point($this->curvepoints, $start + $sign * $after, $sign, $offset);
+					$angle = rad2deg(atan2($y0 - $y1, $x1 - $x0));
+					$map->myimagestring($image, $font, $x0, $y0, $glyph, $colour, $angle);
+				}
+				$before = $after;
+			}
+		} finally {
+			WeatherMapSvg::$active = $svg;
+		}
+
+		return true;
+	}
+
+	/**
 	 * image = GD image references
 	 * col = array of Colour objects
 	 * widths = array of link widths
@@ -354,6 +419,13 @@ class WeatherMapLink extends WeatherMapItem {
 					$edge_x += $dx * $textlength;
 					$edge_y += $dy * $textlength;
 					# $comment .= "%";
+				}
+
+				// COMMENTCURVE 1: follow the curve, unless it is straight or
+				// bends too much there (then the straight text below)
+				if ((string) $this->commentcurve === '1'
+					&& $this->DrawCurvedComment($image, $comment, $col[$dir], $extra + $nudgealong, $flipped, $centre_distance, $textlength, $textheight, $totaldistance)) {
+					continue;
 				}
 
 				// FINALLY, draw the text!

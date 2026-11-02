@@ -176,6 +176,49 @@ final class SvgRenderTest extends TestCase
         $this->assertFileExists($png);
     }
 
+    public function testCommentsFollowCurvedLinks(): void
+    {
+        $file = TESTS_ROOT . '/fixtures/maps/curved-comments.conf';
+        $conf = (string) file_get_contents($file);
+        $paths = function (string $conf): array {
+            $tmp = TESTS_OUTPUT . '/curved-comments.conf';
+            file_put_contents($tmp, str_replace('src/public/fonts/', dirname(TESTS_ROOT) . '/src/public/fonts/', $conf));
+            $doc = new \DOMDocument();
+            $map = $this->load($tmp);
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)), 'SVG is not well-formed XML');
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+            $out = [];
+            foreach (['arch', 'straight', 'corner'] as $link) {
+                $g = '//s:g[@data-kind="link"][@data-name="' . $link . '"]';
+                $out[$link] = [
+                    'curved' => array_map(fn ($t) => $t->textContent, iterator_to_array($xpath->query($g . '/s:text[@class="wm-comment"]/s:textPath'))),
+                    'straight' => array_map(fn ($t) => $t->textContent, iterator_to_array($xpath->query($g . '/s:text[@class="wm-comment"][not(s:textPath)]'))),
+                ];
+                foreach ($xpath->query($g . '/s:text/s:textPath') as $tp) {
+                    $id = substr($tp->getAttribute('href'), 1);
+                    $this->assertSame(1, $xpath->query($g . '/s:path[@id="' . $id . '"]')->length, 'the text path exists');
+                }
+            }
+            return $out;
+        };
+
+        $drawn = $paths($conf);
+        $this->assertSame(['along the curve, near a', 'never upside down, near b'], $drawn['arch']['curved']);
+        $this->assertSame([], $drawn['arch']['straight']);
+        $this->assertSame([], $drawn['straight']['curved'], 'a straight link keeps straight text');
+        $this->assertSame(['straight link, straight text', 'back the other way'], $drawn['straight']['straight']);
+        $this->assertSame([], $drawn['corner']['curved'], 'a right angle is too tight');
+        $this->assertSame(['too tight at the corner: straight'], $drawn['corner']['straight']);
+
+        // COMMENTCURVE 0 (the default) and the bitmap fonts draw straight text
+        foreach ([str_replace('COMMENTCURVE 1', 'COMMENTCURVE 0', $conf), str_replace('COMMENTFONT 100', 'COMMENTFONT 2', $conf)] as $variant) {
+            $drawn = $paths($variant);
+            $this->assertSame([], $drawn['arch']['curved']);
+            $this->assertCount(2, $drawn['arch']['straight']);
+        }
+    }
+
     public function testNoteTextEscapes(): void
     {
         $text = "C:\\temp\\new\nsecond line";

@@ -61,6 +61,26 @@ final class MapEditorTest extends TestCase
         $this->assertEquals(700, $map->nodes['lyon']->zorder);
     }
 
+    public function testCommentsCanFollowTheCurve(): void
+    {
+        $this->editor->apply([['op' => 'set_link', 'names' => ['paris-backup'], 'props' => ['commentcurve' => '1']]]);
+
+        $map = $this->editor->load();
+        $this->assertSame('1', (string) $map->links['paris-backup']->commentcurve);
+        $this->assertSame('0', (string) $map->links['core-paris']->commentcurve);
+        $this->assertMatchesRegularExpression('/^LINK paris-backup\s*$(?:\n(?!LINK|NODE).*)*\n\s*COMMENTCURVE 1$/m', str_replace("\r", '', (string) file_get_contents($this->file)));
+
+        $links = array_column($this->drawnModel()['links'], 'commentcurve', 'name');
+        $this->assertSame('1', $links['paris-backup']);
+        $this->assertSame('0', $links['core-paris']);
+
+        try {
+            $this->editor->apply([['op' => 'set_link', 'names' => ['paris-backup'], 'props' => ['commentcurve' => 'yes']]]);
+            $this->fail('accepted commentcurve yes');
+        } catch (InvalidArgumentException) {
+        }
+    }
+
     public function testTheMapLinkWidthCanFollowTheBandwidth(): void
     {
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['width' => 3]]]);

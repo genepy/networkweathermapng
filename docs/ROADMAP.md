@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Comments along curved links | IN/OUT comments on a text path following the curve, straight fallback. Study item 5 |
 | Background library | Upload, delete and search backgrounds from the editor, as #25 does for icons. Study item 6 |
 | Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
@@ -55,6 +54,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #55 | Comments along curved links: `COMMENTCURVE 1` draws IN/OUT comments along the curve in PNG (glyph by glyph) and SVG (text path), straight where the link is straight, bends too much, or the font is a bitmap one; *Along the link* in the editor's link panel; imported 2.0 maps keep their explicit setting |
 | #54 | Highlight saturated links: links at 80 % or more pulse and glow in the viewer, per-map switch in Map properties > Link colours (`SET traffic_pulse 1`), no pulse under `prefers-reduced-motion` |
 | #53 | Colour scale editor with presets: a Link colours tab in Map properties edits the DEFAULT scale step by step, with a preview bar and five presets (classic, traffic light, colour-blind safe, heat, blue) |
 | #51 | Map notes: free text on several lines, left, centred or right, drawn sharp in PNG and SVG; added and edited in the SVG editor (Note button, inspector); same format as PHP Weathermap 2.0 (`SET editor_note`), so imported notes are drawn |

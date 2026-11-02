@@ -121,7 +121,6 @@ final class MigrationTest extends TestCase
         $this->assertSame([], $report['warnings']);
         $this->assertSame(['nodes' => 3, 'links' => 2], $report['counts']);
         $this->assertSame([
-            'COMMENTCURVE 1',
             'SET background_sizing fit',
             'SET editor_label_position N60',
         ], $report['later']);

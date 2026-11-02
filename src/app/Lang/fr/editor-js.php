@@ -119,6 +119,10 @@ return [
     'Auto-route' => 'Tracé automatique',
     'Comments' => 'Commentaires',
     'Near :node' => 'Près de :node',
+    'Along the link' => 'Le long du lien',
+    'Straight' => 'Droit',
+    'Follow the curve' => 'Suivre la courbe',
+    'Comments follow the curve where it bends gently, in a TrueType font.' => 'Les commentaires suivent la courbe là où elle tourne doucement, avec une police TrueType.',
 
     // Inspector: interface picker
     'Monitored interface' => 'Interface surveillée',

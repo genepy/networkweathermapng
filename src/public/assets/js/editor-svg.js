@@ -2484,12 +2484,21 @@
                 h('div', { 'class': 'actions' }, [
                     h('button', { type: 'button', text: t('Straighten'), disabled: !single.via.length, onclick: function () { send([{ op: 'set_link', names: [single.name], props: { via: [] } }]); } }),
                     h('button', { type: 'button', text: t('Auto-route'), onclick: autoRoute })
-                ]),
-                h('h3', { text: t('Comments') }),
+                ])
+            );
+        }
+
+        out.push(h('h3', { text: t('Comments') }));
+        if (single) {
+            out.push(
                 row(t('Near :node', { node: single.a }), field(links, 'comment_out', 'link')),
                 row(t('Near :node', { node: single.b }), field(links, 'comment_in', 'link'))
             );
         }
+        out.push(
+            row(t('Along the link'), field(links, 'commentcurve', 'link', { options: [['0', t('Straight')], ['1', t('Follow the curve')]] })),
+            h('p', { 'class': 'help', text: t('Comments follow the curve where it bends gently, in a TrueType font.') })
+        );
         return out;
     }
 
