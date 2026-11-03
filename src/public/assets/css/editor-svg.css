@@ -363,6 +363,35 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .props-open { display: block; margin: 8px 0; }
 
 /* Map properties: one tab per part of the map */
+/* Background library: search, add, pick or remove a background */
+#bg-dialog { width: min(640px, 94vw); }
+#bg-dialog .bg-tools { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+#bg-dialog .bg-tools .bg-search { flex: 1; margin: 0; }
+#bg-dialog .bg-add {
+    flex: 0 0 auto; margin: 0; padding: 4px 12px; border-radius: 4px; cursor: pointer; white-space: nowrap;
+    background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent);
+}
+#bg-dialog .bg-add:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#bg-dialog .bg-add.busy { opacity: .6; pointer-events: none; }
+#bg-dialog .bg-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px;
+    max-height: min(420px, 60vh); overflow-y: auto; padding: 4px 6px 4px 2px;
+}
+#bg-dialog .bg-item { position: relative; }
+#bg-dialog .bg-item .icon-delete { top: 2px; right: 2px; }
+#bg-dialog .bg-tile {
+    display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 100%; height: 100%;
+    padding: 4px; text-align: left; border: 1px solid var(--border); background: var(--panel-2);
+}
+#bg-dialog .bg-tile:hover { border-color: var(--accent); }
+#bg-dialog .bg-tile.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+#bg-dialog .bg-tile img, #bg-dialog .bg-empty {
+    display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 3px; background: #f4f6f9;
+}
+#bg-dialog .bg-empty { background: repeating-conic-gradient(#e6e9ef 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+#bg-dialog .bg-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#bg-dialog .bg-meta { color: var(--muted); font-size: 11px; }
+#bg-dialog .hint { grid-column: 1 / -1; }
 #mapprops-dialog { width: min(480px, 92vw); }
 #mapprops-dialog .mapprops-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
 #mapprops-dialog .mapprops-tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 6px 10px; color: var(--muted); }

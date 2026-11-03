@@ -14,6 +14,7 @@ use App\Services\Editor\ConfigHistory;
 use App\Services\Editor\ConfigSource;
 use App\Services\Editor\MapClipboard;
 use App\Services\Editor\MapEditor;
+use App\Services\Images\BackgroundLibrary;
 use App\Services\Images\IconLibrary;
 use App\Services\MapService;
 use App\Services\TimezoneService;
@@ -41,7 +42,6 @@ class SvgEditorController extends BaseController
         }
 
         $this->loadEngine();
-        $publicPath = $this->config->getPublicPath();
         $library = $this->icons();
 
         $this->render('editor/svg', [
@@ -49,7 +49,7 @@ class SvgEditorController extends BaseController
             'mapId' => (int) $map['id'],
             'icons' => $library->paths(),
             'iconThemes' => $library->themes(),
-            'backgrounds' => get_imagelist($publicPath, 'backgrounds'),
+            'backgrounds' => $this->backgrounds()->all(),
             'fonts' => MapEditor::shippedFonts(),
             'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
@@ -105,6 +105,57 @@ class SvgEditorController extends BaseController
         }
 
         $this->json($this->iconLibrary());
+    }
+
+    /** GET: the background library */
+    public function backgroundList(): void
+    {
+        $this->requireEditor();
+        $this->json(['backgrounds' => $this->backgrounds()->all()]);
+    }
+
+    /** POST multipart: backgrounds[] (PNG, JPEG or GIF files) */
+    public function addBackgrounds(): void
+    {
+        $this->requireEditor();
+
+        $files = $_FILES['backgrounds'] ?? null;
+        if (!is_array($files) || !is_array($files['name'] ?? null) || $files['name'] === []) {
+            $this->json(['error' => __('No file')], 422);
+            return;
+        }
+
+        $added = [];
+        $errors = [];
+        foreach ($files['name'] as $i => $name) {
+            $name = (string) $name;
+            if (($files['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string) $files['tmp_name'][$i])) {
+                $errors[] = $name . ': ' . __('the upload failed');
+                continue;
+            }
+            try {
+                $added[] = $this->backgrounds()->add($name, (string) file_get_contents((string) $files['tmp_name'][$i]));
+            } catch (\RuntimeException $e) {
+                $errors[] = $name . ': ' . $e->getMessage();
+            }
+        }
+
+        $this->json(['backgrounds' => $this->backgrounds()->all(), 'added' => $added, 'errors' => $errors], $added ? 200 : 422);
+    }
+
+    /** POST {path}: remove a background no map uses */
+    public function deleteBackground(): void
+    {
+        $this->requireEditor();
+
+        try {
+            $this->backgrounds()->delete((string) ($this->body()['path'] ?? ''));
+        } catch (\RuntimeException $e) {
+            $this->json(['error' => $e->getMessage()], 409);
+            return;
+        }
+
+        $this->json(['backgrounds' => $this->backgrounds()->all()]);
     }
 
     /** GET: the map as SVG plus the editable model */
@@ -384,6 +435,11 @@ class SvgEditorController extends BaseController
     private function icons(): IconLibrary
     {
         return new IconLibrary($this->config->getPublicPath(), $this->config->getConfigsPath());
+    }
+
+    private function backgrounds(): BackgroundLibrary
+    {
+        return new BackgroundLibrary($this->config->getPublicPath(), $this->config->getConfigsPath());
     }
 
     private function iconLibrary(): array

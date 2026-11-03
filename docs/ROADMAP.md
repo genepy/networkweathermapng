@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-11-02.
+Last updated: 2026-11-03.
 
 ## In progress
 
@@ -38,11 +38,11 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Background library | Upload, delete and search backgrounds from the editor, as #25 does for icons. Study item 6 |
 | Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
+| Fresh map style inspired by Nine IX | Dark geographic basemap, glowing links, pill rate labels, badge nodes, richer hover card, floating panels, link flow animation, site focus, clusters, light theme. Eight small tasks, to be split when started |
 
 ## Stale branches
 
@@ -54,6 +54,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #56 | Background library: the map panel's *Background* field opens a dialog to search the backgrounds (preview, size, maps that use it), pick one, upload PNG, JPEG or GIF images and remove the ones no map uses (shipped backgrounds are kept) |
 | #55 | Comments along curved links: `COMMENTCURVE 1` draws IN/OUT comments along the curve in PNG (glyph by glyph) and SVG (text path), straight where the link is straight, bends too much, or the font is a bitmap one; *Along the link* in the editor's link panel; imported 2.0 maps keep their explicit setting |
 | #54 | Highlight saturated links: links at 80 % or more pulse and glow in the viewer, per-map switch in Map properties > Link colours (`SET traffic_pulse 1`), no pulse under `prefers-reduced-motion` |
 | #53 | Colour scale editor with presets: a Link colours tab in Map properties edits the DEFAULT scale step by step, with a preview bar and five presets (classic, traffic light, colour-blind safe, heat, blue) |

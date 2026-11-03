@@ -1,5 +1,5 @@
 <?php
-/** @var array $map @var int $mapId @var array $icons @var array $backgrounds @var array $iconThemes */
+/** @var array $map @var int $mapId @var array $icons @var array $backgrounds (BackgroundLibrary::all()) @var array $iconThemes */
 $e = static fn ($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : '';
 ?>
@@ -254,6 +254,24 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     </form>
 </dialog>
 
+<dialog id="bg-dialog" aria-labelledby="bg-title">
+    <form method="dialog">
+        <h3 id="bg-title"><?= e__('Background') ?></h3>
+        <div class="bg-tools">
+            <input type="search" class="bg-search" placeholder="<?= e__('Search backgrounds') ?>" aria-label="<?= e__('Search backgrounds') ?>" autocomplete="off">
+            <label class="bg-add" role="button" tabindex="0"><?= e__('Add backgrounds…') ?>
+                <input type="file" name="backgrounds" multiple accept=".png,.jpg,.jpeg,.gif,image/png,image/jpeg,image/gif" hidden>
+            </label>
+        </div>
+        <p class="hint"><?= e__('PNG, JPEG or GIF up to 4096 px, 10 MB at most per file. A background used by a map, or shipped with NetworkWeathermapNG, cannot be removed.') ?></p>
+        <ul class="icon-errors"></ul>
+        <div class="bg-grid" role="listbox" aria-labelledby="bg-title"></div>
+        <menu>
+            <button value="cancel" formnovalidate><?= e__('Close') ?></button>
+        </menu>
+    </form>
+</dialog>
+
 <dialog id="mapprops-dialog" aria-labelledby="mapprops-title">
     <form method="dialog">
         <h3 id="mapprops-title"><?= e__('Map properties') ?></h3>
@@ -308,6 +326,7 @@ window.WM_EDITOR = {
 </script>
 <script src="/assets/js/editor-svg.js"></script>
 <script src="/assets/js/editor-icons.js"></script>
+<script src="/assets/js/editor-backgrounds.js"></script>
 <script src="/assets/js/editor-toolbars.js"></script>
 <script src="/assets/js/editor-mapprops.js"></script>
 </body>

@@ -2161,10 +2161,9 @@
         }
         w.addEventListener('change', size);
         hh.addEventListener('change', size);
-        var bg = h('select', { name: 'background' }, [h('option', { value: '', text: t('(none)') })].concat(cfg.backgrounds.map(function (b) {
-            return h('option', { value: b, text: b.split('/').pop(), selected: b === m.background });
-        })));
-        bg.addEventListener('change', function () { send([{ op: 'set_map', background: bg.value }]); });
+        var bg = window.WMEditor.backgroundPicker(m.background || '', function (path) {
+            send([{ op: 'set_map', background: path }]);
+        });
 
         return [
             h('h2', { text: t('Map') }),
