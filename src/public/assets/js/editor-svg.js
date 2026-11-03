@@ -2164,12 +2164,22 @@
         var bg = window.WMEditor.backgroundPicker(m.background || '', function (path) {
             send([{ op: 'set_map', background: path }]);
         });
+        // how the picture fills the canvas (SET background_sizing); only useful with a picture
+        var sizing = h('select', { name: 'background_sizing' }, [
+            ['image', t('Natural size')], ['fit', t('Fit, keep the ratio')], ['stretch', t('Stretch to the map')]
+        ].map(function (o) {
+            return h('option', { value: o[0], text: o[1], selected: (m.props && m.props.background_sizing || 'image') === o[0] });
+        }));
+        sizing.addEventListener('change', function () {
+            send([{ op: 'set_map', props: { background_sizing: sizing.value } }]);
+        });
 
         return [
             h('h2', { text: t('Map') }),
             row(t('Title'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
+            m.background ? row(t('Background size'), sizing) : null,
             propsButton('general', t('Map properties…')),
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) }),
             h('h3', { text: t('Shortcuts') }),
@@ -2194,7 +2204,7 @@
                 [t('Wheel, Space+drag'), t('zoom, move the view')],
                 ['F / 0', t('fit / actual size')]
             ])
-        ];
+        ].filter(Boolean);
     }
 
     function help(lines) {

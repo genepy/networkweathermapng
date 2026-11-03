@@ -4023,6 +4023,31 @@ class WeatherMap extends WeatherMapBase {
 		}
 	}
 
+	/** How the background picture fills the canvas: SET background_sizing, the PHP Weathermap 2.0 hint */
+	const BACKGROUND_SIZINGS = array('image', 'fit', 'stretch');
+
+	/**
+	 * Where the background picture goes on the canvas, for SET background_sizing:
+	 * image (the default) keeps its natural size in the top left corner, fit
+	 * scales it to the canvas keeping its ratio and centres it, stretch fills
+	 * the whole canvas.
+	 *
+	 * @return array{0: int, 1: int, 2: int, 3: int} x, y, width, height
+	 */
+	function background_box($bg_w, $bg_h) {
+		$sizing = strtolower(trim((string) $this->get_hint('background_sizing')));
+		if ($sizing == 'stretch') {
+			return array(0, 0, (int) $this->width, (int) $this->height);
+		}
+		if ($sizing == 'fit' && $bg_w > 0 && $bg_h > 0) {
+			$s = min($this->width / $bg_w, $this->height / $bg_h);
+			$w = (int) round($bg_w * $s);
+			$h = (int) round($bg_h * $s);
+			return array((int) floor(($this->width - $w) / 2), (int) floor(($this->height - $h) / 2), $w, $h);
+		}
+		return array(0, 0, (int) $bg_w, (int) $bg_h);
+	}
+
 	function DrawMap($filename = '', $thumbnailfile = '', $thumbnailmax = 250, $withnodes = true, $use_via_overlay = false, $use_rel_overlay=false) {
 		wm_debug('Trace: DrawMap()');
 
@@ -4128,15 +4153,19 @@ class WeatherMap extends WeatherMapBase {
 			wimagefilledrectangle($image, 0, 0, $this->width, $this->height, $this->colours['DEFAULT']['BG']['gdref1']);
 
 			if ($svg) {
-				$svg->background($svg->rgba($this->colours['DEFAULT']['BG']['gdref1']), $bgimage ? $this->background : '');
+				$svg->background($svg->rgba($this->colours['DEFAULT']['BG']['gdref1']), $bgimage ? $this->background : '',
+					$bgimage ? $this->background_box(imagesx($bgimage), imagesy($bgimage)) : null);
 			}
 
 			if ($bgimage) {
 				$bg_w = imagesx($bgimage);
 				$bg_h = imagesy($bgimage);
-				$copy_w = min($this->width, $bg_w);
-				$copy_h = min($this->height, $bg_h);
-				imagecopy($image, $bgimage, 0, 0, 0, 0, $copy_w, $copy_h);
+				list($bx, $by, $bw, $bh) = $this->background_box($bg_w, $bg_h);
+				if ($bw == $bg_w && $bh == $bg_h) {
+					imagecopy($image, $bgimage, $bx, $by, 0, 0, min($this->width, $bg_w), min($this->height, $bg_h));
+				} else {
+					imagecopyresampled($image, $bgimage, $bx, $by, 0, 0, $bw, $bh, $bg_w, $bg_h);
+				}
 				imagedestroy($bgimage);
 			}
 

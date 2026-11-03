@@ -167,8 +167,12 @@ class WeatherMapSvg {
 			. "</style>";
 	}
 
-	function background($colour, $file) {
-		$this->items[] = array('type' => 'background', 'fill' => $colour, 'href' => $file != '' ? self::dataUri($file) : null);
+	/**
+	 * @param array|null $box x, y, width, height of the picture on the canvas
+	 *                        (WeatherMap::background_box), null for its natural place
+	 */
+	function background($colour, $file, $box = null) {
+		$this->items[] = array('type' => 'background', 'fill' => $colour, 'href' => $file != '' ? self::dataUri($file) : null, 'box' => $box);
 	}
 
 	function polygon($points, $colour, $filled) {
@@ -388,7 +392,14 @@ class WeatherMapSvg {
 			case 'background':
 				$s = sprintf('<rect class="wm-bg" pointer-events="none" x="0" y="0" width="%d" height="%d"%s/>', $this->map->width, $this->map->height, self::paint('fill', $item['fill']));
 				if ($item['href']) {
-					$s .= sprintf('<image class="wm-bgimage" pointer-events="none" x="0" y="0" href="%s"/>', self::esc($item['href']));
+					$box = isset($item['box']) ? $item['box'] : null;
+					$size = '';
+					if ($box) {
+						// the box was measured on the picture: its own ratio is already kept or dropped on purpose
+						$size = sprintf(' width="%d" height="%d" preserveAspectRatio="none"', $box[2], $box[3]);
+					}
+					$s .= sprintf('<image class="wm-bgimage" pointer-events="none" x="%d" y="%d"%s href="%s"/>',
+						$box ? $box[0] : 0, $box ? $box[1] : 0, $size, self::esc($item['href']));
 				}
 				return $s;
 

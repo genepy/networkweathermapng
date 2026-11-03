@@ -261,6 +261,66 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $styles, 'no style without a saturated link');
     }
 
+    /** SET background_sizing: natural size (image), fit keeping the ratio, or stretch, in the PNG and the SVG */
+    public function testBackgroundSizing(): void
+    {
+        $bg = TESTS_OUTPUT . '/sizing-bg.png';
+        $im = imagecreatetruecolor(100, 50);
+        imagefill($im, 0, 0, imagecolorallocate($im, 255, 0, 0));
+        imagepng($im, $bg);
+        imagedestroy($im);
+
+        $draw = function (string $sizing) use ($bg): array {
+            $file = TESTS_OUTPUT . '/sizing.conf';
+            file_put_contents($file, "WIDTH 400\nHEIGHT 400\nBACKGROUND $bg\nBGCOLOR 255 255 255\n"
+                . ($sizing !== '' ? "SET background_sizing $sizing\n" : ''));
+            $map = $this->load($file);
+            $png = TESTS_OUTPUT . '/sizing.png';
+            ob_start();
+            $map->DrawMap($png);
+            ob_end_clean();
+            $out = imagecreatefrompng($png);
+            $red = function (int $x, int $y) use ($out): bool {
+                $c = imagecolorsforindex($out, imagecolorat($out, $x, $y));
+                return $c['red'] > 200 && $c['green'] < 50;
+            };
+
+            $doc = new \DOMDocument();
+            $svgMap = $this->load($file);
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($svgMap)));
+            $image = $doc->getElementsByTagName('image')->item(0);
+            $box = [];
+            foreach (['x', 'y', 'width', 'height'] as $a) {
+                $box[] = (int) $image->getAttribute($a);
+            }
+
+            return [$red, $box];
+        };
+
+        // natural size: top left corner only (the default, and the 2.0 "image")
+        foreach (['', 'image', 'unknown'] as $sizing) {
+            [$red, $box] = $draw($sizing);
+            $this->assertTrue($red(50, 25));
+            $this->assertFalse($red(150, 25));
+            $this->assertFalse($red(50, 100));
+            $this->assertSame([0, 0, 100, 50], $box);
+        }
+
+        // fit: 4 times larger, centred, the map colour above and below
+        [$red, $box] = $draw('fit');
+        $this->assertSame([0, 100, 400, 200], $box);
+        $this->assertTrue($red(390, 110));
+        $this->assertTrue($red(10, 290));
+        $this->assertFalse($red(200, 90));
+        $this->assertFalse($red(200, 310));
+
+        // stretch: the whole map
+        [$red, $box] = $draw('stretch');
+        $this->assertSame([0, 0, 400, 400], $box);
+        $this->assertTrue($red(5, 5));
+        $this->assertTrue($red(395, 395));
+    }
+
     public function testPngIsUnchangedWhileCollecting(): void
     {
         $file = TESTS_ROOT . '/fixtures/maps/basic.conf';
