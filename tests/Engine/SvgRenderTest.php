@@ -286,7 +286,8 @@ final class SvgRenderTest extends TestCase
             };
 
             $doc = new \DOMDocument();
-            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($this->load($file))));
+            $svgMap = $this->load($file);
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($svgMap)));
             $image = $doc->getElementsByTagName('image')->item(0);
             $box = [];
             foreach (['x', 'y', 'width', 'height'] as $a) {
