@@ -997,6 +997,16 @@ class MapEditor
                 } else {
                     unset($map->hints['traffic_pulse']);
                 }
+            } elseif ($key === 'background_sizing') {
+                // the PHP Weathermap 2.0 hint: natural size (image), fit or stretch
+                if (!in_array($value, \WeatherMap::BACKGROUND_SIZINGS, true)) {
+                    throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
+                }
+                if ($value === 'image') {
+                    unset($map->hints['background_sizing']);
+                } else {
+                    $map->add_hint('background_sizing', $value);
+                }
             } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont'], true)) {
                 $this->setLinkDefault($map, $key, $value, $fonts);
             } else {
@@ -1087,6 +1097,13 @@ class MapEditor
         return $value === (string) $map->links['DEFAULT']->$field;
     }
 
+    /** SET background_sizing as the editor shows it: image when unset or unknown */
+    private static function backgroundSizing(\WeatherMap $map): string
+    {
+        $v = strtolower(trim((string) $map->get_hint('background_sizing')));
+        return in_array($v, \WeatherMap::BACKGROUND_SIZINGS, true) ? $v : 'image';
+    }
+
     /** What the Map properties dialog shows */
     private static function mapProps(\WeatherMap $map): array
     {
@@ -1114,6 +1131,7 @@ class MapEditor
             'stamp_text' => (string) $map->stamptext,
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
+            'background_sizing' => self::backgroundSizing($map),
             'time_font' => (int) $map->timefont,
             'time_colour' => $colour('TIME'),
             'link_bandwidth' => $default ? (string) $default->max_bandwidth_in_cfg : '',

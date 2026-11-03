@@ -338,6 +338,29 @@ final class MapEditorTest extends TestCase
         $this->assertFalse(MapEditor::model($this->editor->load())['map']['props']['traffic_pulse']);
     }
 
+    public function testBackgroundSizingIsAMapSetting(): void
+    {
+        $this->assertSame('image', MapEditor::model($this->editor->load())['map']['props']['background_sizing']);
+
+        foreach (['fit', 'stretch'] as $sizing) {
+            $this->editor->apply([['op' => 'set_map', 'props' => ['background_sizing' => $sizing]]]);
+            $this->assertStringContainsString('SET background_sizing ' . $sizing, (string) file_get_contents($this->file));
+            $this->assertSame($sizing, MapEditor::model($this->editor->load())['map']['props']['background_sizing']);
+        }
+
+        // natural size is the default: the hint goes away
+        $this->editor->apply([['op' => 'set_map', 'props' => ['background_sizing' => 'image']]]);
+        $this->assertStringNotContainsString('background_sizing', (string) file_get_contents($this->file));
+
+        $before = (string) file_get_contents($this->file);
+        try {
+            $this->editor->apply([['op' => 'set_map', 'props' => ['background_sizing' => 'cover']]]);
+            $this->fail('an unknown sizing is refused');
+        } catch (InvalidArgumentException) {
+            $this->assertSame($before, (string) file_get_contents($this->file));
+        }
+    }
+
     public function testBadColourScalesAreRefused(): void
     {
         $before = (string) file_get_contents($this->file);

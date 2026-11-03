@@ -38,7 +38,7 @@ copied.
 | Traffic colour presets for the DEFAULT scale (7 palettes) | Missing. The SVG editor has no colour scale editor at all |
 | Optional pulse/glow on links at 80 % load or more (`SET traffic_pulse`) | Missing |
 | Separate icon and background libraries: upload, delete, searchable picker | Icons done in #25 (themes, add and remove from the editor). Backgrounds still have no upload outside a migration zip |
-| Background fit or stretch to the canvas (`SET background_sizing fit/stretch/image`) | Missing |
+| Background fit or stretch to the canvas (`SET background_sizing fit/stretch/image`) | Done: *Background size* in the map panel |
 | Node label position presets inside the icon: top, centre, bottom (`SET editor_label_position N60/C/S60`) | Partly: the label can be dragged (#23); no one-click presets |
 | Readable defaults for a new blank map (1400 x 750, compact arrows, TrueType font) | To check: new maps start from our own template |
 | Default link capacity 1000M when none is set | Ours comes from the data source (interface speed) |

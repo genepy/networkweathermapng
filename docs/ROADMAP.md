@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Background fit or stretch | Map setting: natural size, fit or stretch. Study item 7 |
 | Node label position presets | Top, centre or bottom of the icon in one click. Study item 8 |
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
@@ -54,6 +53,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #57 | Background fit or stretch: *Background size* in the map panel draws the background at its natural size, fitted to the map (ratio kept, centred) or stretched, in PNG, SVG and the editor (`SET background_sizing image\|fit\|stretch`, the 2.0 hint, so imported maps use it) |
 | #56 | Background library: the map panel's *Background* field opens a dialog to search the backgrounds (preview, size, maps that use it), pick one, upload PNG, JPEG or GIF images and remove the ones no map uses (shipped backgrounds are kept) |
 | #55 | Comments along curved links: `COMMENTCURVE 1` draws IN/OUT comments along the curve in PNG (glyph by glyph) and SVG (text path), straight where the link is straight, bends too much, or the font is a bitmap one; *Along the link* in the editor's link panel; imported 2.0 maps keep their explicit setting |
 | #54 | Highlight saturated links: links at 80 % or more pulse and glow in the viewer, per-map switch in Map properties > Link colours (`SET traffic_pulse 1`), no pulse under `prefers-reduced-motion` |

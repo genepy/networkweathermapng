@@ -350,6 +350,18 @@ that did not come with NetworkWeathermapNG (the next deployment would bring
 those back). In the Docker image the folder is in the data volume, so added
 backgrounds survive a new container.
 
+When the map has a background, *Background size* sets how it fills the
+map (`SET background_sizing`, the PHP Weathermap 2.0 hint):
+
+- **Natural size** (the default, `image`): the picture keeps its size in
+  the top left corner, cut at the edges of the map;
+- **Fit, keep the ratio** (`fit`): scaled to the map without distortion and
+  centred; the map's background colour fills the rest;
+- **Stretch to the map** (`stretch`): scaled to the whole map, its ratio may
+  change.
+
+The PNG, the SVG and the editor draw it the same way.
+
 ## Managing maps
 
 Admin > Maps lists every map:
@@ -488,9 +500,9 @@ For each map the review page shows:
   Maps saved by PHP Weathermap 2.0 read without warnings: their notes are
   drawn (see Map notes), `SET traffic_pulse` works (see Saturated links)
   and `COMMENTCURVE 1` makes comments follow the curve (see Comments along
-  curved links); the hints `SET background_sizing` and
-  `editor_label_position` are kept in the converted map and listed, but not
-  drawn yet. A 2.0 map that does not set `COMMENTCURVE` keeps straight
+  curved links) and `SET background_sizing` sizes the background (see
+  Backgrounds); the hint `SET editor_label_position` is kept in the
+  converted map and listed, but not drawn yet. A 2.0 map that does not set `COMMENTCURVE` keeps straight
   comments here (2.0 curves them by default): add `COMMENTCURVE 1` to
   `LINK DEFAULT` to curve them all.
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or
