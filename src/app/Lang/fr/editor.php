@@ -241,4 +241,18 @@ return [
     'A colour scale has 1 to :n steps' => 'Une échelle de couleurs a de 1 à :n paliers',
     'Invalid scale step: :from to :to' => 'Palier d’échelle invalide : :from à :to',
     'Two scale steps go from :from to :to' => 'Deux paliers vont de :from à :to',
+    // Background library
+    'The file is too big (10 MB at most)' => 'Le fichier est trop gros (10 Mo au plus)',
+    'Only PNG, JPEG and GIF backgrounds are accepted' => 'Seuls les arrière-plans PNG, JPEG et GIF sont acceptés',
+    'The image is too big (4096 px at most)' => 'L’image est trop grande (4096 px au plus)',
+    'A background named :name already exists' => 'Un arrière-plan nommé :name existe déjà',
+    'The background could not be saved' => 'L’arrière-plan n’a pas pu être enregistré',
+    'This background is used by: :maps. Change those maps first.' => 'Cet arrière-plan est utilisé par : :maps. Modifiez d’abord ces cartes.',
+    'This background comes with NetworkWeathermapNG and cannot be removed' => 'Cet arrière-plan est fourni avec NetworkWeathermapNG et ne peut pas être retiré',
+    'The background could not be removed' => 'L’arrière-plan n’a pas pu être retiré',
+    'Background not found' => 'Arrière-plan introuvable',
+    'Background' => 'Arrière-plan',
+    'Search backgrounds' => 'Rechercher un arrière-plan',
+    'Add backgrounds…' => 'Ajouter des arrière-plans…',
+    'PNG, JPEG or GIF up to 4096 px, 10 MB at most per file. A background used by a map, or shipped with NetworkWeathermapNG, cannot be removed.' => 'PNG, JPEG ou GIF jusqu’à 4096 px, 10 Mo au plus par fichier. Un arrière-plan utilisé par une carte, ou fourni avec NetworkWeathermapNG, ne peut pas être retiré.',
 ];

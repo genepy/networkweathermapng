@@ -349,4 +349,14 @@ return [
     'Saturated links' => 'Liens saturés',
     'Make links at 80 % or more pulse and glow in the viewer' => 'Faire pulser et briller les liens à 80 % ou plus dans la visionneuse',
     'Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.' => 'Seulement sur la carte en direct. Un visiteur qui a demandé moins d’animations à son système voit la lueur sans la pulsation.',
+    // Background library
+    'Used by :n map(s)' => 'Utilisé par :n carte(s)',
+    'No background image' => 'Pas d’image d’arrière-plan',
+    'Remove this background' => 'Retirer cet arrière-plan',
+    'No background matches' => 'Aucun arrière-plan ne correspond',
+    'No backgrounds in public/backgrounds' => 'Aucun arrière-plan dans public/backgrounds',
+    'Remove the background :name from the library?' => 'Retirer l’arrière-plan :name de la bibliothèque ?',
+    'Background :name removed' => 'Arrière-plan :name retiré',
+    ':n background(s) added' => ':n arrière-plan(s) ajouté(s)',
+    'Choose a background' => 'Choisir un arrière-plan',
 ];

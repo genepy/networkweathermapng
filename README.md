@@ -337,6 +337,19 @@ output and the editor use the vector file, so icons stay sharp when zoomed.
 Any icon with an `.svg` next to it gets the same treatment, unless it is
 coloured by `USEICONSCALE`.
 
+### Backgrounds
+
+The *Background* field of the map panel (shown when nothing is selected)
+opens the background library: the images of `public/backgrounds` with a
+preview, their size and how many maps use them. Type to search by name,
+click one to put it under the map (`BACKGROUND backgrounds/<file>`), or
+*(none)* to take it away. *Add backgrounds…* uploads PNG, JPEG or GIF
+images (4096 px and 10 MB at most each) to `public/backgrounds`. The ×
+on a background removes it; it only shows on backgrounds no map uses and
+that did not come with NetworkWeathermapNG (the next deployment would bring
+those back). In the Docker image the folder is in the data volume, so added
+backgrounds survive a new container.
+
 ## Managing maps
 
 Admin > Maps lists every map:
