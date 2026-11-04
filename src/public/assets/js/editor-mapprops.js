@@ -283,11 +283,11 @@
     function build(p, m) {
         var panes = {
             general: [
-                field(t('Map title'), h('input', { name: 'title', value: m.title, autocomplete: 'off' })),
+                field(t('Map name'), h('input', { name: 'title', value: m.title, autocomplete: 'off' }), t('Drawn as the title of the map and shown in the map list.')),
                 field(t('Background colour'), colour('bg_colour', p.bg_colour, false), t('Seen where the background image does not cover the map.'))
             ].concat(themePane()),
             title: [
-                field(t('Map title'), h('input', { name: 'title_again', value: m.title, autocomplete: 'off' })),
+                field(t('Map name'), h('input', { name: 'title_again', value: m.title, autocomplete: 'off' }), t('Drawn as the title of the map and shown in the map list.')),
                 field(t('Font'), fontSelect('title_font', p.title_font)),
                 field(t('Colour'), colour('title_colour', p.title_colour, false))
             ],

@@ -37,7 +37,7 @@ class SvgEditorController extends BaseController
         $map = $this->findMap($params);
         if (!$map) {
             $this->flash('error', __('Map not found'));
-            $this->redirect('/editor');
+            $this->redirect('/');
             return;
         }
 
@@ -209,6 +209,7 @@ class SvgEditorController extends BaseController
         if ($before !== null) {
             $history->record($before);
         }
+        $this->followTitle($map, $before);
 
         $this->respond($map, true, $result);
     }
@@ -328,6 +329,7 @@ class SvgEditorController extends BaseController
             if ($before !== null) {
                 $this->history($map)->record($before);
             }
+            $this->followTitle($map, $before);
         }
 
         $this->respond($map, true);
@@ -389,6 +391,8 @@ class SvgEditorController extends BaseController
         }
 
         $history = $this->history($map);
+        clearstatcache(true, $file);
+        $before = is_file($file) ? (string) file_get_contents($file) : null;
         if ($history->changedOutside()[$direction]) {
             $this->json(['error' => $direction === 'undo'
                 ? __('The map was saved outside this editor since this step. Undo is refused so that change is not lost.')
@@ -402,6 +406,7 @@ class SvgEditorController extends BaseController
             $this->json(['error' => $direction === 'undo' ? __('Nothing to undo') : __('Nothing to redo')], 409);
             return;
         }
+        $this->followTitle($map, $before);
 
         $this->loadEngine();
         $this->respond($map, true);
@@ -442,8 +447,19 @@ class SvgEditorController extends BaseController
             'model' => MapEditor::model($wmap),
             'history' => $this->history($map)->counts() + ['outside' => $this->history($map)->changedOutside()],
             'version' => $this->version($file),
+            'name' => (string) ($this->mapService->getMap($mapId)['name'] ?? $map['name']),
             'result' => $result,
         ]);
+    }
+
+    /** The map's name follows its TITLE when this save changed it (name and title are one) */
+    private function followTitle(array $map, ?string $before): void
+    {
+        $file = $this->configFile($map);
+        clearstatcache(true, $file);
+        if (is_file($file)) {
+            $this->mapService->followTitle((int) $map['id'], $before, (string) file_get_contents($file));
+        }
     }
 
     private function icons(): IconLibrary

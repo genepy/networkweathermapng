@@ -95,7 +95,7 @@ class Application
         $this->router->get('/cycle', 'MapController@cycle');
         $this->router->get('/cycle/{group}', 'MapController@cycle');
         
-        // Editor tab: the map list and the map properties (admins and editors)
+        // Map management (admins and editors); /editor, the old Editor tab, redirects to the Maps page
         $this->router->get('/editor', 'MapManagementController@index');
         foreach (['/editor/maps', '/admin/maps'] as $prefix) {
             // /admin/maps/... are the addresses of older versions, kept for bookmarks

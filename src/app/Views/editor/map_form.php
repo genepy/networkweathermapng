@@ -11,7 +11,7 @@ $name = match ($action) {
 ?>
 <div class="admin-container map-form-page">
     <div class="page-header">
-        <?= breadcrumb([[__('Maps'), '/editor'], [$title]]) ?>
+        <?= breadcrumb([[__('Maps'), '/'], [$title]]) ?>
     </div>
 
     <form method="post" action="<?= $url ?>" class="form-card">

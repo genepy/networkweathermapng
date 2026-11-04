@@ -418,8 +418,7 @@ button.btn {
     margin-right: 0;
 }
 
-/* Map list of the Editor tab */
-.maps-admin-page .data-table-container { overflow: visible; } /* room for the "more actions" menu */
+/* Map list (Maps page, list view) */
 .maps-table .map-file { display: block; width: fit-content; margin-top: 3px; color: var(--text-muted); }
 .maps-table .col-actions { width: 1%; white-space: nowrap; }
 .row-actions { display: flex; align-items: center; gap: 6px; }

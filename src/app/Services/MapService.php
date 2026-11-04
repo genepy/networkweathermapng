@@ -240,6 +240,34 @@ class MapService
         return $this->db->update('maps', $update, 'id = ?', [$id]) >= 0;
     }
 
+    /**
+     * The map's name and its drawn title are one thing: when a save changes
+     * the TITLE of the configuration (editor, text mode, undo), the name in
+     * the list follows. A save that leaves the TITLE alone changes nothing,
+     * so a map whose name and title already differ keeps both until its
+     * title is edited. Returns the new name, null when it did not change.
+     */
+    public function followTitle(int $id, ?string $before, string $after): ?string
+    {
+        $old = $before === null ? null : self::titleOf($before);
+        $new = self::titleOf($after);
+        if ($new === null || $new === '' || $new === $old) {
+            return null;
+        }
+        $map = $this->getMap($id);
+        if (!$map || $map['name'] === $new) {
+            return null;
+        }
+        $this->db->update('maps', ['name' => $new, 'title_cache' => $new, 'updated_at' => date('Y-m-d H:i:s')], 'id = ?', [$id]);
+        return $new;
+    }
+
+    /** The TITLE of a configuration text (the first one), null when it has none */
+    public static function titleOf(string $content): ?string
+    {
+        return preg_match('/^[ \t]*TITLE[ \t]+(.*)$/mi', $content, $m) ? self::cleanName($m[1]) : null;
+    }
+
     /** One line, no control characters: it goes into the TITLE line of the file */
     public static function cleanName(string $name): string
     {

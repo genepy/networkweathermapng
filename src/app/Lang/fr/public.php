@@ -22,18 +22,12 @@ return [
     'Password changed successfully' => 'Mot de passe modifié',
 
     // Map list
-    'Network Weathermaps' => 'Cartes météo du réseau',
-    'Cycle Maps' => 'Défilement des cartes',
     'All' => 'Toutes',
     'No maps available.' => 'Aucune carte disponible.',
     'Create your first map' => 'Créer la première carte',
     'Move to another group' => 'Déplacer vers un autre groupe',
-    'Move Map' => 'Déplacer la carte',
     'Close' => 'Fermer',
-    'Select destination group:' => 'Groupe de destination :',
-    'Error: :msg' => 'Erreur : :msg',
     'Failed to move map' => 'Impossible de déplacer la carte',
-    'An error occurred while moving the map' => 'Une erreur est survenue lors du déplacement de la carte',
 
     // Map view
     'Fullscreen (Fit)' => 'Plein écran (ajusté)',
@@ -89,4 +83,26 @@ return [
     'Selection required' => 'Sélection requise',
     'Invalid selection JSON' => 'JSON de sélection invalide',
     'Kiosk settings' => 'Réglages du mode kiosque',
+
+    // Maps page (one page for the map list and the map management)
+    'Favourites' => 'Favoris',
+    'More actions for :name' => 'Autres actions pour :name',
+    'Move to…' => 'Déplacer vers…',
+    'Hide from users' => 'Masquer aux utilisateurs',
+    'Show to users' => 'Montrer aux utilisateurs',
+    'Download .conf' => 'Télécharger le .conf',
+    'Delete…' => 'Supprimer…',
+    'Delete the map ":name" and all its data (configuration, images, history, permissions)? This cannot be undone.' => 'Supprimer la carte « :name » et toutes ses données (configuration, images, historique, droits) ? Impossible à annuler.',
+    'Over :pct %' => 'Plus de :pct %',
+    ':n maps' => ':n cartes',
+    'Show the maps as' => 'Afficher les cartes en',
+    'Thumbnails' => 'Vignettes',
+    'List' => 'Liste',
+    'Filter the maps' => 'Filtrer les cartes',
+    'No map matches the search or the filter.' => 'Aucune carte ne correspond à la recherche ou au filtre.',
+    'Inactive: only editors see this map' => 'Inactive : seuls les éditeurs voient cette carte',
+    'Hidden' => 'Masquée',
+    'Edit :name' => 'Modifier :name',
+    'Load' => 'Charge',
+    'Move' => 'Déplacer',
 ];

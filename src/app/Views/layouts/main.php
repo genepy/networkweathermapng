@@ -10,18 +10,21 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $auth = $auth ?? null;
 $user = $user ?? null;
-$canEdit = $auth !== null && $auth->canEdit();
 $isAdmin = $auth !== null && $auth->isAdmin();
 // with AUTH_ENABLED=false everybody is in, without a user name
 $showNav = $auth !== null && $auth->check();
 $signedIn = $user !== null && (string) ($user['username'] ?? '') !== '';
 
-// Sections of the application: [label, address, icon, active, shown]
+// Sections of the application: [key, label, address, icon, active, shown].
+// "phone" sections are only in the bottom navigation. The map list and the
+// map management are one page (Maps); /editor redirects there.
+$onMaps = $uri === '/' || $uri === '/maps' || str_starts_with($uri, '/map/') || str_starts_with($uri, '/editor');
+$favFilter = ($uri === '/' || $uri === '/maps') && ($_GET['filter'] ?? '') === 'favourites';
 $sections = [
-    [__('Maps'), '/', 'map', $uri === '/' || str_starts_with($uri, '/maps') || str_starts_with($uri, '/map/'), true],
-    [__('Kiosk'), '/cycle', 'tv', str_starts_with($uri, '/cycle'), 'phone'],
-    [__('Editor'), '/editor', 'pencil', str_starts_with($uri, '/editor'), $canEdit],
-    [__('Settings'), '/admin', 'settings', str_starts_with($uri, '/admin'), $isAdmin],
+    ['maps', __('Maps'), '/', 'map', $onMaps && !$favFilter, true],
+    ['favourites', __('Favourites'), '/?filter=favourites', 'star', $favFilter, 'phone'],
+    ['kiosk', __('Kiosk'), '/cycle', 'tv', str_starts_with($uri, '/cycle'), 'phone'],
+    ['settings', __('Settings'), '/admin', 'settings', str_starts_with($uri, '/admin'), $isAdmin],
 ];
 $roles = ['admin' => __('Administrator'), 'editor' => __('Editor'), 'viewer' => __('Viewer')];
 $themes = ['' => [__('Auto'), 'sun-moon'], 'light' => [__('Light'), 'sun'], 'dark' => [__('Dark'), 'moon']];
@@ -54,7 +57,7 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
         </a>
         <?php if ($showNav): ?>
         <nav class="app-nav" aria-label="<?= e__('Sections') ?>">
-            <?php foreach ($sections as [$label, $href, $ic, $active, $shown]): ?>
+            <?php foreach ($sections as [$key, $label, $href, $ic, $active, $shown]): ?>
             <?php if ($shown === true): ?>
             <a href="<?= $href ?>"<?= $active ? ' class="active" aria-current="page"' : '' ?>><?= htmlspecialchars($label) ?></a>
             <?php endif; ?>
@@ -131,9 +134,9 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
 
     <?php if ($showNav): ?>
     <nav class="bottom-nav" aria-label="<?= e__('Sections') ?>">
-        <?php foreach ($sections as [$label, $href, $ic, $active, $shown]): ?>
+        <?php foreach ($sections as [$key, $label, $href, $ic, $active, $shown]): ?>
         <?php if ($shown): ?>
-        <a href="<?= $href ?>"<?= $active ? ' class="active" aria-current="page"' : '' ?>><?= icon($ic) ?><span><?= htmlspecialchars($label) ?></span></a>
+        <a data-section="<?= $key ?>" href="<?= $href ?>"<?= $active ? ' class="active" aria-current="page"' : '' ?>><?= icon($ic) ?><span><?= htmlspecialchars($label) ?></span></a>
         <?php endif; ?>
         <?php endforeach; ?>
     </nav>

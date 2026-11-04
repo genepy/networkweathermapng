@@ -2,7 +2,7 @@
     <!-- Top Toolbar -->
     <div class="editor-toolbar">
         <div class="toolbar-left">
-            <a href="/editor" class="btn btn-sm btn-secondary">← Back</a>
+            <a href="/" class="btn btn-sm btn-secondary">← Back</a>
             <span class="toolbar-title"><?= htmlspecialchars($map['name'] ?? $mapFile) ?></span>
             <span class="toolbar-file">(<?= htmlspecialchars($mapFile) ?>)</span>
         </div>

@@ -61,6 +61,33 @@ final class MapServiceTest extends TestCase
         $this->assertSame('new_name.conf', $this->maps->getMap($id)['config_file']);
     }
 
+    public function testNameFollowsAnEditedTitle(): void
+    {
+        $id = $this->maps->createMap(['name' => 'Core']);
+        $before = (string) $this->maps->getMapConfig($id);
+
+        // a save that leaves the TITLE alone keeps the name, even where they differ
+        $this->db->update('maps', ['name' => 'Listed name', 'title_cache' => 'Listed name'], 'id = ?', [$id]);
+        $this->assertNull($this->maps->followTitle($id, $before, $before . "\nNODE a\n"));
+        $this->assertSame('Listed name', $this->maps->getMap($id)['name']);
+
+        // a new title renames the map, the file name stays
+        $after = MapService::withTitle($before, "Core\tParis");
+        $this->assertSame('Core Paris', $this->maps->followTitle($id, $before, $after));
+        $map = $this->maps->getMap($id);
+        $this->assertSame('Core Paris', $map['name']);
+        $this->assertSame('Core Paris', $map['title_cache']);
+        $this->assertSame('core.conf', $map['config_file']);
+
+        // an empty or removed title never empties the name
+        $this->assertNull($this->maps->followTitle($id, $after, "WIDTH 100\n"));
+        $this->assertNull($this->maps->followTitle($id, $after, "TITLE \nWIDTH 100\n"));
+        $this->assertSame('Core Paris', $this->maps->getMap($id)['name']);
+
+        $this->assertSame('A', MapService::titleOf("# x\n  title A\nTITLE B\n"));
+        $this->assertNull(MapService::titleOf("WIDTH 10\n"));
+    }
+
     public function testDuplicate(): void
     {
         $id = $this->maps->createMap(['name' => 'Source', 'group_id' => 1]);

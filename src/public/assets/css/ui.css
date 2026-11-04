@@ -34,6 +34,15 @@
 .wm-btn-danger:hover { background: var(--wm-danger-fill-hover); border-color: var(--wm-danger-fill-hover); }
 
 /* Skip link: first stop of the keyboard */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
 .skip-link {
     position: absolute;
     left: var(--wm-space-2);

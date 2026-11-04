@@ -8,7 +8,7 @@
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['maps'] ?></div>
                 <div class="stat-label"><?= e__('Maps') ?></div>
-                <a href="/editor" class="stat-link"><?= e__('Manage Maps') ?></a>
+                <a href="/" class="stat-link"><?= e__('Manage Maps') ?></a>
             </div>
             <div class="stat-card">
                 <div class="stat-value"><?= $stats['groups'] ?></div>
@@ -25,7 +25,7 @@
         <div class="admin-menu">
             <h2><?= e__('Quick Actions') ?></h2>
             <div class="menu-grid">
-                <a href="/editor" class="menu-item">
+                <a href="/" class="menu-item">
                     <span class="menu-icon"><?= icon('map') ?></span>
                     <span class="menu-title"><?= e__('Maps') ?></span>
                     <span class="menu-desc"><?= e__('Add, edit, and manage weathermaps') ?></span>
