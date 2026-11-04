@@ -69,7 +69,6 @@
             const btn = card.querySelector('.map-fav');
             card.dataset.fav = on ? '1' : '0';
             btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-            btn.textContent = on ? '★' : '☆';
             btn.title = on ? t('Remove from favourites') : t('Add to favourites');
         }
 

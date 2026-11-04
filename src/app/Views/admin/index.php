@@ -26,52 +26,52 @@
             <h2><?= e__('Quick Actions') ?></h2>
             <div class="menu-grid">
                 <a href="/editor" class="menu-item">
-                    <span class="menu-icon">🗺️</span>
+                    <span class="menu-icon"><?= icon('map') ?></span>
                     <span class="menu-title"><?= e__('Maps') ?></span>
                     <span class="menu-desc"><?= e__('Add, edit, and manage weathermaps') ?></span>
                 </a>
                 <a href="/admin/groups" class="menu-item">
-                    <span class="menu-icon">📁</span>
+                    <span class="menu-icon"><?= icon('folder') ?></span>
                     <span class="menu-title"><?= e__('Groups') ?></span>
                     <span class="menu-desc"><?= e__('Organize maps into groups') ?></span>
                 </a>
                 <a href="/admin/users" class="menu-item">
-                    <span class="menu-icon">👥</span>
+                    <span class="menu-icon"><?= icon('users') ?></span>
                     <span class="menu-title"><?= e__('Users') ?></span>
                     <span class="menu-desc"><?= e__('Manage user accounts and permissions') ?></span>
                 </a>
                 <a href="/admin/kiosk" class="menu-item">
-                    <span class="menu-icon">📺</span>
+                    <span class="menu-icon"><?= icon('tv') ?></span>
                     <span class="menu-title"><?= e__('Kiosk mode') ?></span>
                     <span class="menu-desc"><?= e__('Display time and zoom of each map in the map cycle') ?></span>
                 </a>
                 <a href="/admin/recording" class="menu-item">
-                    <span class="menu-icon">⏺</span>
+                    <span class="menu-icon"><?= icon('circle-dot') ?></span>
                     <span class="menu-title"><?= e__('Map recording') ?></span>
                     <span class="menu-desc"><?= e__('Record maps over the last hours to play them back') ?></span>
                 </a>
                 <a href="/admin/timezone" class="menu-item">
-                    <span class="menu-icon">🕒</span>
+                    <span class="menu-icon"><?= icon('clock') ?></span>
                     <span class="menu-title"><?= e__('Time zone') ?></span>
                     <span class="menu-desc"><?= e__('Time zone of the dates shown on maps') ?></span>
                 </a>
                 <a href="/admin/data-sources" class="menu-item">
-                    <span class="menu-icon">🔌</span>
+                    <span class="menu-icon"><?= icon('plug') ?></span>
                     <span class="menu-title"><?= e__('Data Sources') ?></span>
                     <span class="menu-desc"><?= e__('Configure Zabbix and other data sources') ?></span>
                 </a>
                 <a href="/admin/migration" class="menu-item">
-                    <span class="menu-icon">📦</span>
+                    <span class="menu-icon"><?= icon('package') ?></span>
                     <span class="menu-title"><?= e__('Migration') ?></span>
                     <span class="menu-desc"><?= e__('Import maps from an existing Weathermap') ?></span>
                 </a>
                 <a href="/admin/settings" class="menu-item">
-                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-icon"><?= icon('settings') ?></span>
                     <span class="menu-title"><?= e__('Settings') ?></span>
                     <span class="menu-desc"><?= e__('Configure application settings') ?></span>
                 </a>
                 <a href="/admin/check-db" class="menu-item">
-                    <span class="menu-icon">🛡️</span>
+                    <span class="menu-icon"><?= icon('shield-check') ?></span>
                     <span class="menu-title"><?= e__('Check DB') ?></span>
                     <span class="menu-desc"><?= e__('Verify database integrity') ?></span>
                 </a>
@@ -92,7 +92,7 @@
     padding: 25px;
     border-radius: 8px;
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: var(--wm-shadow-1);
 }
 .stat-value {
     font-size: 48px;
@@ -127,13 +127,18 @@
 }
 .menu-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: var(--wm-shadow-2);
     text-decoration: none;
 }
 .menu-icon {
-    font-size: 32px;
     display: block;
     margin-bottom: 10px;
+    color: var(--wm-accent);
+}
+.menu-icon .icon {
+    width: 32px;
+    height: 32px;
+    stroke-width: 1.75;
 }
 .menu-title {
     font-size: 16px;

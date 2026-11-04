@@ -1,69 +1,32 @@
 /* SVG map editor */
 :root {
-    --bg: #eef1f5;
-    --panel: #ffffff;
-    --panel-2: #f6f7f9;
-    --text: #1d2330;
-    --muted: #677085;
-    --border: #d5dae3;
-    --accent: #1f6feb;
-    --accent-soft: #1f6feb22;
-    --danger: #c62828;
-    --warn: #e67e00;
-    --ok: #2e7d32;
-    --select: #1f6feb;
+    /* Names used by the editor, mapped to the design tokens of tokens.css
+       (loaded first). Both themes come from the tokens. */
+    --bg: var(--wm-canvas);
+    --panel: var(--wm-surface);
+    --panel-2: var(--wm-surface-2);
+    --text: var(--wm-text);
+    --muted: var(--wm-text-muted);
+    --border: var(--wm-border);
+    --accent: var(--wm-accent);
+    --accent-soft: color-mix(in srgb, var(--wm-accent) 16%, transparent);
+    --danger: var(--wm-danger);
+    --warn: var(--wm-warning);
+    --ok: var(--wm-success);
+    --select: var(--wm-accent);
     --group: #8e44ad;
     --paper-shadow: #0003;
-    --on-accent: #ffffff;
-    --disabled: #9aa3b2;
+    --on-accent: var(--wm-on-accent);
+    --disabled: var(--wm-disabled);
     /* edges of fields and buttons: 3:1 against the panels */
-    --field-border: #7f889a;
+    --field-border: var(--wm-field-border);
     /* red behind white text (the danger text colour may be lighter) */
-    --danger-fill: #c62828;
-    color-scheme: light;
+    --danger-fill: var(--wm-danger-fill);
 }
-
-/* Dark: follows the system unless the theme toggle (cookie, data-theme) chose */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-        --bg: #11151c;
-        --panel: #1a2029;
-        --panel-2: #222a35;
-        --text: #e4e8ef;
-        --muted: #8f99ab;
-        --border: #313b4a;
-        --accent: #4d94ff;
-        --accent-soft: #4d94ff33;
-        --paper-shadow: #0008;
-        --on-accent: #08111f;
-        --disabled: #5c6678;
-        --field-border: #6b788c;
-        --danger: #ff7b72;
-        --danger-fill: #c62828;
-        --warn: #ffa733;
-        --ok: #66bb6a;
-        color-scheme: dark;
-    }
+    :root:not([data-theme="light"]) { --paper-shadow: #0008; }
 }
-:root[data-theme="dark"] {
-    --warn: #ffa733;
-    --ok: #66bb6a;
-    --bg: #11151c;
-    --panel: #1a2029;
-    --panel-2: #222a35;
-    --text: #e4e8ef;
-    --muted: #8f99ab;
-    --border: #313b4a;
-    --accent: #4d94ff;
-    --accent-soft: #4d94ff33;
-    --paper-shadow: #0008;
-    --on-accent: #08111f;
-    --disabled: #5c6678;
-    --field-border: #6b788c;
-    --danger: #ff7b72;
-    --danger-fill: #c62828;
-    color-scheme: dark;
-}
+:root[data-theme="dark"] { --paper-shadow: #0008; }
 
 * { box-sizing: border-box; }
 
@@ -72,7 +35,7 @@ html, body {
     height: 100%;
     background: var(--bg);
     color: var(--text);
-    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font: 13px/1.4 var(--wm-font);
     overflow: hidden;
 }
 
@@ -279,7 +242,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #overlay .sel-box.zone { stroke-dasharray: 8 4; }
 #map g.wm-zone .wm-zone-label { cursor: move; }
 #overlay .sel-link { fill: none; stroke: var(--select); stroke-opacity: .5; stroke-width: 3; vector-effect: non-scaling-stroke; pointer-events: none; }
-#overlay .lock-mark { font-size: 11px; pointer-events: none; }
+#overlay .lock-mark { fill: #fff; stroke: #0f172a; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 #overlay .lasso { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; vector-effect: non-scaling-stroke; }
 #overlay .ghost { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .zone-ghost { fill: var(--accent-soft); }
@@ -493,6 +456,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
     background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px;
 }
 .custom-layer button.on { border-color: var(--accent); }
+.custom-layer button svg.i, #ctx-menu .ctx-row button svg.i { width: 16px; height: 16px; vertical-align: middle; }
 #map g.layer-hidden { display: none; }
 
 /* Context menu */

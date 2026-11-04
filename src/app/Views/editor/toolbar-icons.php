@@ -26,6 +26,7 @@
         <symbol id="i-distribute-v" viewBox="0 0 24 24"><path d="M4 3h16M4 21h16"/><rect x="8" y="7" width="8" height="3"/><rect x="8" y="14" width="8" height="3"/></symbol>
         <symbol id="i-group" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2"/><rect x="7" y="7" width="5" height="5"/><rect x="12" y="12" width="5" height="5"/></symbol>
         <symbol id="i-ungroup" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M15 5h4v4M9 19H5v-4"/></symbol>
+        <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/></symbol>
         <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
         <symbol id="i-front" viewBox="0 0 24 24"><rect x="3" y="3" width="11" height="11" rx="1" stroke-dasharray="2 2"/><rect x="10" y="10" width="11" height="11" rx="1" fill="currentColor" fill-opacity=".35"/></symbol>
         <symbol id="i-send-back" viewBox="0 0 24 24"><rect x="10" y="10" width="11" height="11" rx="1" stroke-dasharray="2 2"/><rect x="3" y="3" width="11" height="11" rx="1" fill="currentColor" fill-opacity=".35"/></symbol>

@@ -10,6 +10,7 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
     <?= \App\Core\Csrf::metaTag() ?>
     <script src="/assets/js/csrf.js"></script>
     <title><?= e__('Login') ?> - NetworkWeathermapNG</title>
+    <link rel="stylesheet" href="/assets/css/tokens.css">
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <style>
         body {
@@ -55,7 +56,7 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
         .form-group input {
             width: 100%;
             padding: 12px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--field-border);
             border-radius: 4px;
             font-size: 16px;
             box-sizing: border-box;
@@ -63,7 +64,8 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
             color: var(--text-color);
         }
         .form-group input:focus {
-            outline: none;
+            outline: 2px solid var(--wm-focus);
+    outline-offset: 0;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-soft);
         }

@@ -76,6 +76,8 @@ code.
 | `src/public/backgrounds/`: `Gradient_BK_800.png`, `background1_950x625_197.jpg`, `blueboard1024.png`, `bw_gradient_1024.png`, `uk1024.png` | Howard Jones and contributors | MIT | https://github.com/howardjones/network-weathermap |
 | `src/public/backgrounds/uk1280_720.png` | The Cacti Group, Inc. (Cacti plugin) | MIT | https://github.com/Cacti/plugin_weathermap |
 | `src/public/assets/icons/favicon.svg` | Drawn for NetworkWeathermapNG | MIT | |
+| `src/public/assets/icons/ui.svg` (interface icons) | Lucide 0.460.0, Lucide Contributors; portions from Feather, Cole Bemis (MIT). A subset of the icons, copied unchanged into one sprite | ISC, text in `src/public/assets/icons/LUCIDE-LICENSE.txt` | https://lucide.dev |
+| `src/app/Views/editor/toolbar-icons.php` (editor toolbar icons) | Drawn for NetworkWeathermapNG | MIT | |
 
 ## Fonts
 

@@ -40,3 +40,15 @@ if (!function_exists('breadcrumb')) {
             . implode(' <span class="breadcrumb-sep" aria-hidden="true">&raquo;</span> ', $parts) . '</nav>';
     }
 }
+
+if (!function_exists('icon')) {
+    /**
+     * An icon of the interface sprite (src/public/assets/icons/ui.svg, Lucide).
+     * Decorative: the button or link around it carries the text or aria-label.
+     */
+    function icon(string $name, string $class = 'icon'): string
+    {
+        return '<svg class="' . htmlspecialchars($class, ENT_QUOTES) . '" aria-hidden="true" focusable="false">'
+            . '<use href="/assets/icons/ui.svg#' . htmlspecialchars($name, ENT_QUOTES) . '"/></svg>';
+    }
+}

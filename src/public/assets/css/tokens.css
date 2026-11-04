@@ -1,0 +1,193 @@
+/*
+ * Design tokens of NetworkWeathermapNG: colours, spacing, radii, shadows,
+ * type and motion. Every page loads this file first; the other style sheets
+ * (weathermap.css, viewer.css, editor-svg.css) only use these values.
+ *
+ * Contrast (WCAG 2.2) is checked by tests/App/DesignTokensTest.php:
+ * text 4.5:1 against the background and the surfaces, field and control
+ * edges 3:1 (1.4.11). Change a colour here, then run the test.
+ *
+ * Dark values are written twice, on purpose: once for the system setting
+ * (unless the theme toggle chose light) and once for the toggle's dark.
+ * Keep both blocks identical (the test checks it).
+ */
+
+:root {
+    /* Surfaces */
+    --wm-bg: #f8fafc;              /* page background */
+    --wm-surface: #ffffff;         /* cards, panels, dialogs */
+    --wm-surface-2: #f1f5f9;       /* table heads, quiet buttons, code */
+    --wm-hover: #e8edf4;           /* hovered rows and buttons */
+    --wm-canvas: #e9eef4;          /* around the map paper in the editor */
+    --wm-input-bg: #ffffff;
+    --wm-map-bg: #ffffff;          /* behind map images (maps are drawn light) */
+    --wm-header: #1e3a5f;          /* application bar */
+    --wm-on-header: #ffffff;
+
+    /* Text */
+    --wm-text: #0f172a;
+    --wm-text-muted: #475569;
+    --wm-disabled: #94a3b8;
+
+    /* Edges */
+    --wm-field-border: #848e9f;    /* fields, buttons, checkboxes: 3:1 */
+    --wm-border: #e2e8f0;          /* separators, card outlines: decorative */
+
+    /* Accent: primary button, links, focus, selection */
+    --wm-accent: #2563eb;
+    --wm-accent-hover: #1d4ed8;
+    --wm-on-accent: #ffffff;
+    --wm-accent-soft: #dbeafe;
+    --wm-focus: #2563eb;
+
+    /* States: text colour, filled background (white text), soft background */
+    --wm-success: #15803d;
+    --wm-success-fill: #15803d;
+    --wm-success-fill-hover: #166534;
+    --wm-success-soft: #dcfce7;
+    --wm-danger: #dc2626;
+    --wm-danger-text: #b91c1c;     /* on the soft background */
+    --wm-danger-fill: #dc2626;
+    --wm-danger-fill-hover: #b91c1c;
+    --wm-danger-soft: #fee2e2;
+    --wm-warning: #a16207;
+    --wm-warning-text: #854d0e;    /* on the soft background */
+    --wm-warning-soft: #fef9c3;
+    --wm-warning-mark: #eab308;    /* favourite star, small marks with a label */
+    --wm-info: #0e7490;
+    --wm-info-soft: #cffafe;
+    --wm-on-fill: #ffffff;         /* text on the success and danger fills */
+
+    /* Spacing: 4 px grid */
+    --wm-space-1: 4px;
+    --wm-space-2: 8px;
+    --wm-space-3: 12px;
+    --wm-space-4: 16px;
+    --wm-space-5: 24px;
+    --wm-space-6: 32px;
+
+    /* Radii */
+    --wm-radius-control: 6px;
+    --wm-radius-bar: 10px;
+    --wm-radius-card: 14px;
+
+    /* Shadows: resting and floating */
+    --wm-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.08);
+    --wm-shadow-2: 0 8px 24px rgba(15, 23, 42, 0.16);
+
+    /* Type */
+    --wm-font: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Roboto, Ubuntu, sans-serif;
+    --wm-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --wm-text-sm: 12.5px;
+    --wm-text-md: 14px;
+    --wm-text-lg: 16px;
+    --wm-text-xl: 22px;
+
+    /* Motion */
+    --wm-duration: 160ms;
+    --wm-ease: ease-out;
+
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --wm-bg: #0b1120;
+        --wm-surface: #111827;
+        --wm-surface-2: #1a2333;
+        --wm-hover: #1e293b;
+        --wm-canvas: #0b1120;
+        --wm-input-bg: #0f172a;
+        --wm-map-bg: #e9edf2;
+        --wm-header: #14263d;
+        --wm-on-header: #ffffff;
+        --wm-text: #e2e8f0;
+        --wm-text-muted: #94a3b8;
+        --wm-disabled: #475569;
+        --wm-field-border: #64748b;
+        --wm-border: #1f2a3c;
+        --wm-accent: #60a5fa;
+        --wm-accent-hover: #93c5fd;
+        --wm-on-accent: #0b1120;
+        --wm-accent-soft: #172554;
+        --wm-focus: #60a5fa;
+        --wm-success: #4ade80;
+        --wm-success-fill: #15803d;
+        --wm-success-fill-hover: #166534;
+        --wm-success-soft: #052e16;
+        --wm-danger: #f87171;
+        --wm-danger-text: #fca5a5;
+        --wm-danger-fill: #dc2626;
+        --wm-danger-fill-hover: #b91c1c;
+        --wm-danger-soft: #450a0a;
+        --wm-warning: #facc15;
+        --wm-warning-text: #fde047;
+        --wm-warning-soft: #422006;
+        --wm-warning-mark: #facc15;
+        --wm-info: #67e8f9;
+        --wm-info-soft: #083344;
+        --wm-on-fill: #ffffff;
+        --wm-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+        --wm-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+        color-scheme: dark;
+    }
+}
+
+:root[data-theme="dark"] {
+    --wm-bg: #0b1120;
+    --wm-surface: #111827;
+    --wm-surface-2: #1a2333;
+    --wm-hover: #1e293b;
+    --wm-canvas: #0b1120;
+    --wm-input-bg: #0f172a;
+    --wm-map-bg: #e9edf2;
+    --wm-header: #14263d;
+    --wm-on-header: #ffffff;
+    --wm-text: #e2e8f0;
+    --wm-text-muted: #94a3b8;
+    --wm-disabled: #475569;
+    --wm-field-border: #64748b;
+    --wm-border: #1f2a3c;
+    --wm-accent: #60a5fa;
+    --wm-accent-hover: #93c5fd;
+    --wm-on-accent: #0b1120;
+    --wm-accent-soft: #172554;
+    --wm-focus: #60a5fa;
+    --wm-success: #4ade80;
+    --wm-success-fill: #15803d;
+    --wm-success-fill-hover: #166534;
+    --wm-success-soft: #052e16;
+    --wm-danger: #f87171;
+    --wm-danger-text: #fca5a5;
+    --wm-danger-fill: #dc2626;
+    --wm-danger-fill-hover: #b91c1c;
+    --wm-danger-soft: #450a0a;
+    --wm-warning: #facc15;
+    --wm-warning-text: #fde047;
+    --wm-warning-soft: #422006;
+    --wm-warning-mark: #facc15;
+    --wm-info: #67e8f9;
+    --wm-info-soft: #083344;
+    --wm-on-fill: #ffffff;
+    --wm-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --wm-shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root { --wm-duration: 0ms; }
+}
+
+/* Icons of the shared sprite (/assets/icons/ui.svg): stroke icons that take
+   the text colour. Use icon('name') in PHP. */
+.icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    vertical-align: -0.15em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}

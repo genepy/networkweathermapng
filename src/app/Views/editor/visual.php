@@ -6,6 +6,7 @@
     <?= \App\Core\Csrf::metaTag() ?>
     <script src="/assets/js/csrf.js"></script>
     <title><?= htmlspecialchars($title ?? 'Map Editor') ?></title>
+    <link rel="stylesheet" href="/assets/css/tokens.css">
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <link rel="stylesheet" href="/assets/css/editor.css">
     <style>

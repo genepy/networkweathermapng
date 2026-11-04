@@ -12,6 +12,7 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
     <script src="/assets/js/csrf.js"></script>
     <script src="/assets/js/preferences.js"></script>
     <title><?= $e($title ?? __('Map Editor')) ?></title>
+    <link rel="stylesheet" href="/assets/css/tokens.css">
     <link rel="stylesheet" href="/assets/css/editor-svg.css">
 </head>
 <body>
@@ -33,7 +34,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <a class="tb-link" href="/editor/classic/<?= $mapId ?>" title="<?= e__('The previous editor') ?>"><svg class="i" aria-hidden="true"><use href="#i-classic"/></svg><span class="lbl"><?= e__('Classic editor') ?></span></a>
             <button type="button" id="toolbars-button" popovertarget="toolbars-menu" title="<?= e__('Show, hide and arrange the toolbars and panels') ?>" aria-label="<?= e__('Toolbars and panels') ?>"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span class="lbl"><?= e__('Toolbars') ?></span></button>
             <button type="button" data-pref="theme" aria-label="<?= e__('Theme') ?>"
-                    data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"></button>
+                    data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><svg class="i" aria-hidden="true" focusable="false"><use href="/assets/icons/ui.svg#sun-moon"/></svg></button>
         </span>
     </header>
 

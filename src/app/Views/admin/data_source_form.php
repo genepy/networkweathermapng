@@ -189,7 +189,7 @@
 .form-group textarea {
     width: 100%;
     padding: 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     border-radius: 4px;
     font-size: 14px;
     background: var(--input-bg);
@@ -197,7 +197,8 @@
 }
 .form-group input:focus,
 .form-group select:focus {
-    outline: none;
+    outline: 2px solid var(--wm-focus);
+    outline-offset: 0;
     border-color: var(--accent);
 }
 .form-group small {

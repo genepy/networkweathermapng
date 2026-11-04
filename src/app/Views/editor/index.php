@@ -1,20 +1,11 @@
 <?php
 /** @var array $maps @var array $groups @var bool $canImport */
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
-// Small inline icons (no external font): the label beside them hides on narrow screens
-$icon = static function (string $name): string {
-    $paths = [
-        'edit' => '<path d="M4 20h4l10.5-10.5-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/>',
-        'view' => '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-        'preview' => '<rect x="3" y="4" width="18" height="13" rx="1"/><path d="M8 21h8M12 17v4"/>',
-        'more' => '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
-        'properties' => '<path d="M4 6h16M4 12h16M4 18h10"/>',
-        'duplicate' => '<rect x="8" y="8" width="12" height="12" rx="1"/><path d="M16 8V4H4v12h4"/>',
-        'download' => '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
-        'delete' => '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
-    ];
-    return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">' . $paths[$name] . '</svg>';
-};
+// Icons of the interface sprite: the label beside them hides on narrow screens
+$icon = static fn (string $name): string => icon([
+    'edit' => 'pencil', 'view' => 'eye', 'preview' => 'monitor', 'more' => 'ellipsis',
+    'properties' => 'sliders-horizontal', 'duplicate' => 'copy', 'download' => 'download', 'delete' => 'trash-2',
+][$name]);
 ?>
 <div class="editor-page maps-admin-page">
     <div class="page-header">
