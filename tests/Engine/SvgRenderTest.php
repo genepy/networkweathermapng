@@ -261,6 +261,41 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $styles, 'no style without a saturated link');
     }
 
+    /** SET node_style badge: a disc with the initials (or the icon), the label as its title; other nodes keep their box */
+    public function testBadgeNodes(): void
+    {
+        $file = TESTS_OUTPUT . '/badge.conf';
+        file_put_contents($file, "WIDTH 400\nHEIGHT 200\nNODE DEFAULT\n\tSET node_style badge\n"
+            . "NODE a\n\tLABEL core-rtr1\n\tPOSITION 50 100\nNODE b\n\tLABEL plain\n\tPOSITION 350 100\n\tSET node_style box\n"
+            . "LINK ab\n\tNODES a b\n\tBANDWIDTH 1G\n\tTARGET static:300M:100M\n");
+        $map = $this->load($file);
+        $svg = \WeatherMapSvg::render($map);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $a = '//s:g[@data-kind="node"][@data-name="a"]';
+        $this->assertSame('core-rtr1', $xpath->query($a . '/s:title')->item(0)->textContent);
+        $circle = $xpath->query($a . '/s:circle[@class="wm-badge"]')->item(0);
+        $this->assertNotNull($circle);
+        $this->assertSame(['50', '100'], [$circle->getAttribute('cx'), $circle->getAttribute('cy')]);
+        $this->assertSame('CR', $xpath->query($a . '/s:text')->item(0)->textContent);
+        $this->assertSame(0, $xpath->query($a . '/s:rect')->length, 'no label box');
+
+        $b = '//s:g[@data-kind="node"][@data-name="b"]';
+        $this->assertSame(0, $xpath->query($b . '/s:circle')->length);
+        $this->assertSame('plain', $xpath->query($b . '/s:text')->item(0)->textContent);
+
+        // the badge is the node's size, centred on its position
+        $this->assertEqualsWithDelta($map->nodes['a']->width, 2 * (float) $circle->getAttribute('r') + 6, 3);
+
+        $this->assertSame('CR', \WeatherMapNode::initials('core-rtr1'));
+        $this->assertSame('PA', \WeatherMapNode::initials('Paris'));
+        $this->assertSame('LS', \WeatherMapNode::initials('lyon sw1 {node:this:bandwidth_in}'));
+        $this->assertSame('', \WeatherMapNode::initials(''));
+    }
+
     /** BWSTYLE pill: a rounded box along the link and an arrow toward where the traffic goes */
     public function testPillLinkLabels(): void
     {

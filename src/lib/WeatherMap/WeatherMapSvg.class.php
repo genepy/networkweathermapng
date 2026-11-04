@@ -487,6 +487,10 @@ class WeatherMapSvg {
 	function nodeElements($n) {
 		$s = '';
 
+		if (!empty($n['badge'])) {
+			return $this->badgeElements($n['badge']);
+		}
+
 		if (!empty($n['icon'])) {
 			$i = $n['icon'];
 			$s .= sprintf('<image class="wm-icon" x="%s" y="%s" width="%s" height="%s" href="%s"/>',
@@ -515,6 +519,27 @@ class WeatherMapSvg {
 			}
 		}
 
+		return $s;
+	}
+
+	/** A badge node: shadow, ring and disc, then the icon or the initials; the label is the tooltip */
+	function badgeElements($b) {
+		$s = '';
+		if ($b['title'] !== '') {
+			$s .= '<title>' . self::esc($b['title']) . '</title>';
+		}
+		$s .= sprintf('<circle class="wm-badge" cx="%s" cy="%s" r="%s"%s%s style="filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.45))"/>',
+			self::num($b['cx']), self::num($b['cy']), self::num($b['ring'] ? $b['r'] - $b['ring_width'] / 2 : $b['r']),
+			self::paint('fill', $b['fill']),
+			$b['ring'] ? self::paint('stroke', $b['ring']) . sprintf(' stroke-width="%s"', self::num($b['ring_width'])) : '');
+		if (!empty($b['inner'])) {
+			$i = $b['inner'];
+			$s .= sprintf('<image class="wm-icon" x="%s" y="%s" width="%s" height="%s" href="%s"/>',
+				self::num($i['x']), self::num($i['y']), self::num($i['w']), self::num($i['h']), $i['href']);
+		} elseif (!empty($b['text'])) {
+			$t = $b['text'];
+			$s .= $this->textElement($t['font'], $t['x'], $t['y'], $t['text'], $t['colour'], 0, ' class="wm-badge-text"');
+		}
 		return $s;
 	}
 

@@ -38,8 +38,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Nine IX style, task 3: badge nodes | Study: [docs/studies/nine-ix-style.md](studies/nine-ix-style.md). A node style "badge" (disc with icon or initials, ring, shadow), label shown in the popup and panel |
-| Nine IX style, task 4: richer hover card | Speed badge, "A ↔ B" title, IN above / OUT below graph, 1 day / 1 week / 1 month |
+| Nine IX style, task 4: richer hover card | Study: [docs/studies/nine-ix-style.md](studies/nine-ix-style.md). Speed badge, "A ↔ B" title, IN above / OUT below graph, 1 day / 1 week / 1 month |
 | Nine IX style, task 5: viewer side panels | Site list (optional site field), total traffic, legend in a floating card |
 | Nine IX style, task 6: geographic basemap | Tiles under the map, nodes by latitude/longitude. A design note first: it changes the map format |
 | Nine IX style, task 7: link flow animation | A glowing dot along each link in the traffic direction, per-map switch, none under reduced motion |
@@ -64,6 +63,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | PR | Item |
 |----|------|
 | #66 | UI redesign, step 3: one Maps page: thumbnails and list (remembered), filter chips (*All*, *Favourites*, each group, *Over 80 %*), *Edit* and a ⋯ menu on hover (settings, duplicate, move, hide, preview, .conf, delete), bulk actions in the list, inactive maps greyed for editors; `/editor` redirects to `/`; *Favourites* in the phone bottom bar; a title edit in the editor renames the map (`MapService::followTitle`) |
+| #65 | Nine IX style, task 3: badge nodes: `SET node_style badge` draws a node as a round badge (its icon, or the initials of its label, on a disc with a ring and a soft shadow) in PNG and SVG; the label becomes the tooltip; *Look* in the node panel |
 | #60 | UI redesign, step 2: app shell: thin top bar, user menu (language, theme, password, log out), no footer, bottom navigation on phones, toasts (`WMUI.toast`), a styled confirmation dialog (`WMUI.confirm`), error pages in the shell (`ErrorPage`), versioned asset addresses (`asset()`) |
 | #64 | Nine IX style, task 2: pill link labels: `BWSTYLE pill` draws the bandwidth label on a rounded box along the link with a small arrow toward where the traffic goes, in PNG and SVG; per link in the inspector, for every link in *Link defaults*, and in the *Night* theme |
 | #63 | Refuse undo after an outside change: each undo step keeps a fingerprint of the file it left (`ConfigHistory`), so an undo or redo is refused when the map was saved outside the history since; an undo from a tab that missed another save is refused too (study item 9) |

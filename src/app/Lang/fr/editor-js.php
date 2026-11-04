@@ -390,4 +390,8 @@ return [
     // The map's name is its drawn title
     'Map name' => 'Nom de la carte',
     'Drawn as the title of the map and shown in the map list.' => 'Dessiné comme titre de la carte et affiché dans la liste des cartes.',
+    // Badge nodes
+    'Look' => 'Apparence',
+    'Box with the label' => 'Cadre avec l’étiquette',
+    'Round badge: icon or initials, name on hover' => 'Pastille ronde : icône ou initiales, nom au survol',
 ];

@@ -366,6 +366,30 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bwstyle' => 'round']]]);
     }
 
+    public function testBadgeNodeStyleFollowsItsTemplate(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'badge']]]);
+        $this->assertStringContainsString('SET node_style badge', (string) file_get_contents($this->file));
+        $this->assertTrue($this->editor->load()->nodes['paris']->is_badge());
+
+        // a DEFAULT badge (written by hand) passes on to every node
+        file_put_contents($this->file, str_replace("NODE core\n", "NODE DEFAULT\n\tSET node_style badge\n\nNODE core\n", (string) file_get_contents($this->file)));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'badge']]]);
+        $map = $this->editor->load();
+        $this->assertTrue($map->nodes['lyon']->is_badge(), 'nodes follow DEFAULT');
+        $this->assertSame(1, substr_count((string) file_get_contents($this->file), 'SET node_style badge'), 'written once, on DEFAULT');
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['lyon'], 'props' => ['style' => 'box']]]);
+        $model = MapEditor::model($this->editor->load());
+        $nodes = array_column($model['nodes'], null, 'name');
+        $this->assertSame('box', $nodes['lyon']['style']);
+        $this->assertSame('badge', $nodes['core']['style']);
+        $this->assertStringContainsString('SET node_style box', (string) file_get_contents($this->file));
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_node', 'names' => ['lyon'], 'props' => ['style' => 'hexagon']]]);
+    }
+
     /** The Night theme: map colours, scale and the DEFAULT labels, in one batch; own values stay */
     public function testNightThemeInOneStep(): void
     {

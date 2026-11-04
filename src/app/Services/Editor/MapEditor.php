@@ -379,6 +379,24 @@ class MapEditor
         }
     }
 
+    /**
+     * A box with its label, or a round badge (SET node_style badge). The
+     * hint is written only where the node differs from its template.
+     */
+    private function setNodeStyle(\WeatherMap $map, \WeatherMapNode $node, string $style): void
+    {
+        if (!in_array($style, ['box', 'badge'], true)) {
+            throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => 'style', 'value' => $style]));
+        }
+        $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
+        $inherited = $template !== null && $template->is_badge() ? 'badge' : 'box';
+        if ($style === $inherited) {
+            unset($node->hints['node_style']);
+        } else {
+            $node->hints['node_style'] = $style;
+        }
+    }
+
     private function setNodes(\WeatherMap $map, array $op): void
     {
         $props = (array) ($op['props'] ?? []);
@@ -420,6 +438,8 @@ class MapEditor
                     [$node->x, $node->y] = $this->point($value);
                 } elseif ($key === 'label_position') {
                     $this->setLabelPreset($map, $node, $value);
+                } elseif ($key === 'style') {
+                    $this->setNodeStyle($map, $node, (string) $value);
                 } elseif ($key === 'labelshift') {
                     // where the label sits from its default place, in pixels; null puts it back
                     $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
@@ -1313,6 +1333,7 @@ class MapEditor
                 'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
                 // the preset the label sits at, '' when none or moved by hand
                 'label_position' => self::labelPresetOf($node),
+                'style' => $node->is_badge() ? 'badge' : 'box',
                 'icon' => (string) $node->iconfile,
                 'iconscalew' => (int) $node->iconscalew,
                 'iconscaleh' => (int) $node->iconscaleh,

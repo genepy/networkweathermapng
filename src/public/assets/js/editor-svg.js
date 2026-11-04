@@ -2344,6 +2344,7 @@
             iconSizeRow(nodes),
             labelPositionRow(nodes),
             h('h3', { text: t('Label style') }),
+            row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')]] })),
             row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
             row(t('Text'), colourField(nodes, 'labelfontcolour', 'node', true)),

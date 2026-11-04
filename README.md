@@ -319,6 +319,13 @@ and saves each change straight into the map's `.conf` file.
   link with a small arrow toward where the traffic goes (`pill`), in the
   PNG and the SVG. The built-in fonts cannot turn in the PNG: pick a
   TrueType font for labels on links that are not level.
+- **Badge nodes**: *Look* in the node panel draws the selected nodes as
+  round badges (`SET node_style badge`): their icon, or the initials of
+  their label, on a disc in the label background colour with a ring in the
+  outline colour and a soft shadow, in the PNG and the SVG. The label is
+  not drawn on the map: it shows on hover and in *Find a node*. Put the
+  hint in `NODE DEFAULT` to make every node a badge (`SET node_style box`
+  on a node keeps its box).
 - **Themes**: *Apply the theme* in the *General* tab of *Map properties*
   restyles the whole map in one click, saved at once and undone with
   Ctrl+Z. *Night* (an idea from the Nine IX traffic map): a dark canvas,
