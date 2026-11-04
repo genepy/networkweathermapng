@@ -154,6 +154,7 @@ class MapEditor
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
                 'define_font' => $this->defineFont($map, $op),
                 'set_scale' => $this->setScale($map, (array) ($op['steps'] ?? [])),
+                'apply_theme' => $this->applyTheme($map, (string) ($op['theme'] ?? '')),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
             };
 
@@ -1036,6 +1037,13 @@ class MapEditor
                 } else {
                     unset($map->hints['traffic_pulse']);
                 }
+            } elseif ($key === 'link_glow') {
+                // a soft glow in the colour of each link, in the SVG only
+                if ($value) {
+                    $map->add_hint('link_glow', '1');
+                } else {
+                    unset($map->hints['link_glow']);
+                }
             } elseif ($key === 'background_sizing') {
                 // the PHP Weathermap 2.0 hint: natural size (image), fit or stretch
                 if (!in_array($value, \WeatherMap::BACKGROUND_SIZINGS, true)) {
@@ -1052,6 +1060,67 @@ class MapEditor
                 throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
             }
         }
+    }
+
+    /**
+     * {op: apply_theme, theme} - a ready-made look (MapThemes): the map and
+     * legend colours, the colour scale, and the label colours of the
+     * DEFAULT node and link, which the nodes and links that had the old
+     * default value follow. One batch, so one undo step.
+     */
+    private function applyTheme(\WeatherMap $map, string $name): void
+    {
+        $theme = MapThemes::get($name);
+        if ($theme === null) {
+            throw new InvalidArgumentException(__('Unknown theme: :name', ['name' => $name]));
+        }
+
+        $this->setMapProps($map, $theme['map']);
+        $this->setScale($map, $theme['scale']);
+        foreach (['links' => $theme['link'], 'nodes' => $theme['node']] as $kind => $fields) {
+            if (!isset($map->{$kind}['DEFAULT'])) {
+                continue;
+            }
+            foreach ($fields as $field => $value) {
+                $this->setTemplateDefault($map, $kind, $field, $this->colour($value));
+            }
+        }
+    }
+
+    /**
+     * Give DEFAULT a new value for $field, and to every node or link
+     * ($kind) that had the old one from it.
+     */
+    private function setTemplateDefault(\WeatherMap $map, string $kind, string $field, mixed $new): void
+    {
+        $items = $map->$kind;
+        $old = $items['DEFAULT']->$field;
+        $followers = [];
+        foreach ($items as $name => $item) {
+            if ($name === 'DEFAULT' || str_starts_with((string) $name, ':: DEFAULT')) {
+                continue;
+            }
+            // the template chain up to DEFAULT has the old value all along
+            $ok = $item->$field == $old;
+            $seen = [];
+            $cur = $item;
+            while ($ok && ($template = (string) $cur->template) !== 'DEFAULT') {
+                $parent = $items[$template] ?? null;
+                if ($parent === null || isset($seen[$template]) || $parent->$field != $old) {
+                    $ok = false;
+                    break;
+                }
+                $seen[$template] = true;
+                $cur = $parent;
+            }
+            if ($ok) {
+                $followers[] = $item;
+            }
+        }
+        foreach ($followers as $item) {
+            $item->$field = $new;
+        }
+        $items['DEFAULT']->$field = $new;
     }
 
     /**
@@ -1170,6 +1239,7 @@ class MapEditor
             'stamp_text' => (string) $map->stamptext,
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
+            'link_glow' => (string) $map->get_hint('link_glow') === '1',
             'background_sizing' => self::backgroundSizing($map),
             'time_font' => (int) $map->timefont,
             'time_colour' => $colour('TIME'),

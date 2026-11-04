@@ -174,6 +174,7 @@ return [
     'the upload failed' => 'l’envoi a échoué',
     'Invalid font: :value' => 'Police invalide : :value',
     'Unknown map property: :key' => 'Propriété de carte inconnue : :key',
+    'Unknown theme: :name' => 'Thème inconnu : :name',
     'This map has no DEFAULT link' => 'Cette carte n’a pas de lien DEFAULT',
     'The file is too big (2 MB at most)' => 'Le fichier est trop gros (2 Mo au plus)',
     'Only PNG, GIF, JPEG and SVG icons are accepted' => 'Seules les icônes PNG, GIF, JPEG et SVG sont acceptées',

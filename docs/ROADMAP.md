@@ -39,7 +39,13 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Item | Notes |
 |------|-------|
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
-| Fresh map style inspired by Nine IX | Dark geographic basemap, glowing links, pill rate labels, badge nodes, richer hover card, floating panels, link flow animation, site focus, clusters, light theme. Eight small tasks, to be split when started |
+| Nine IX style, task 2: pill link labels | A `bwlabel` "pill" style (dark rounded box, light text, rotated along the link, small direction arrow), PNG and SVG. Study: [docs/studies/nine-ix-style.md](studies/nine-ix-style.md) |
+| Nine IX style, task 3: badge nodes | A node style "badge" (disc with icon or initials, ring, shadow), label shown in the popup and panel |
+| Nine IX style, task 4: richer hover card | Speed badge, "A ↔ B" title, IN above / OUT below graph, 1 day / 1 week / 1 month |
+| Nine IX style, task 5: viewer side panels | Site list (optional site field), total traffic, legend in a floating card |
+| Nine IX style, task 6: geographic basemap | Tiles under the map, nodes by latitude/longitude. A design note first: it changes the map format |
+| Nine IX style, task 7: link flow animation | A glowing dot along each link in the traffic direction, per-map switch, none under reduced motion |
+| Nine IX style, task 8: site focus and zoom | Click a node to zoom onto it and pin its card; hover frames it in the minimap or the site list |
 | UI redesign, step 2: app shell | Thin top bar, user menu (language, theme, password, logout), no footer, bottom navigation on phones, toasts, a styled confirmation dialog instead of `confirm()`, error pages. Plan and decisions: [docs/studies/ui-redesign.md](studies/ui-redesign.md) |
 | UI redesign, step 3: one Maps page | Thumbnails and list on the same page, filter chips, actions on hover, bulk actions; the Editor tab redirects to Maps (decision: merge Maps and Editor) |
 | UI redesign, step 4: map viewer | Floating bar, Live / Last 24 h, a single fullscreen, status and legend at the bottom, kiosk controls that fade out |
@@ -61,6 +67,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #62 | Nine IX style, task 1: *Night* map theme, applied in one click from *Map properties* (dark canvas, cream to amber link scale, dark labels, gold-edged modern legend), and a per-map link glow in the SVG (`SET link_glow 1`) |
 | #61 | Cacti plugin study ([docs/studies/cacti-plugin.md](studies/cacti-plugin.md)): stay standalone and read Cacti as a data source (database and RRD backends), convert Cacti targets and the plugin's map list on import, a thin bridge plugin only if asked; a native plugin is not recommended (name collisions with the Weathermap plugin, Cacti's `__()`, rewrite of the app shell). Next items are left to the maintainer |
 | #59 | UI redesign, step 1: design tokens in `tokens.css` for both themes, contrast-checked colours (WCAG 2.2 AA, `DesignTokensTest`), field and control edges at 3:1, a Lucide icon sprite (`icon('name')`) instead of emojis; no layout change |
 | #58 | Node label position presets: *Label position* in the node panel puts the label above, at the top, centre, bottom or below the icon in one click (`SET editor_label_position`, the 2.0 hint, now drawn on import too) |

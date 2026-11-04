@@ -310,6 +310,17 @@ and saves each change straight into the map's `.conf` file.
   (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
   *reduce motion* setting the glow stays and the pulse stops. The PNG is not
   changed.
+- **Glow**: another switch of that tab draws a soft glow around every link,
+  in its own colour (`SET link_glow 1`), in the live map and the editor.
+  The PNG keeps plain links.
+- **Themes**: *Apply the theme* in the *General* tab of *Map properties*
+  restyles the whole map in one click, saved at once and undone with
+  Ctrl+Z. *Night* (an idea from the Nine IX traffic map): a dark canvas,
+  links from cream to amber as the load grows, with the glow, dark node and
+  link labels with light text, and the modern legend card with a gold edge.
+  A theme only writes ordinary settings (colours, `KEYSTYLE`, the `SCALE`
+  steps, the label colours of `NODE DEFAULT` and `LINK DEFAULT`); nodes and
+  links with their own colours keep them.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
   the links between them, also into another map open in another tab (the
   copy is kept in the browser). Pasted items take free names (`name_2`…),
