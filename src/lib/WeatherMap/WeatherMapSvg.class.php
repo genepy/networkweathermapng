@@ -522,10 +522,6 @@ class WeatherMapSvg {
 		return $s;
 	}
 
-	/**
-	 * Text placed like myimagestring(): (x, y) is the left end of the baseline
-	 * for TrueType fonts and the bottom-left corner for GD's built-in fonts.
-	 */
 	/** A badge node: shadow, ring and disc, then the icon or the initials; the label is the tooltip */
 	function badgeElements($b) {
 		$s = '';
@@ -547,6 +543,10 @@ class WeatherMapSvg {
 		return $s;
 	}
 
+	/**
+	 * Text placed like myimagestring(): (x, y) is the left end of the baseline
+	 * for TrueType fonts and the bottom-left corner for GD's built-in fonts.
+	 */
 	function textElement($fontnumber, $x, $y, $string, $fill, $angle, $extra = '') {
 		$font = $this->fontInfo($fontnumber);
 		$lines = explode("\n", $string);
