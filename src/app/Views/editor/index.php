@@ -119,7 +119,13 @@ $icon = static fn (string $name): string => icon([
         boxes.forEach(function (b) { b.addEventListener('change', refresh); });
         form.addEventListener('submit', function (e) {
             var btn = e.submitter;
-            if (btn && btn.dataset.confirmBulk && !confirm(btn.dataset.confirmBulk)) { e.preventDefault(); }
+            if (!btn || !btn.dataset.confirmBulk || form.dataset.confirmed) { delete form.dataset.confirmed; return; }
+            e.preventDefault();
+            WMUI.confirm({ message: btn.dataset.confirmBulk, confirm: btn.textContent.trim(), danger: true }).then(function (ok) {
+                if (!ok) { return; }
+                form.dataset.confirmed = '1';
+                form.requestSubmit(btn);
+            });
         });
         // One "more actions" menu open at a time; a click elsewhere or Escape closes it
         var menus = form.querySelectorAll('.row-menu');

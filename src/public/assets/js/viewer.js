@@ -786,7 +786,9 @@
         H.playing = on && H.frames.length > 1;
         clearInterval(H.timer);
         const b = H.bar.querySelector('[data-hist="play"]');
-        b.querySelector('use').setAttribute('href', '/assets/icons/ui.svg#' + (H.playing ? 'pause' : 'play'));
+        const use = b.querySelector('use');
+        // keep the versioned sprite address the page gave
+        use.setAttribute('href', use.getAttribute('href').split('#')[0] + '#' + (H.playing ? 'pause' : 'play'));
         b.setAttribute('aria-label', H.playing ? t('Pause') : t('Play'));
         if (!H.playing) return;
         if (H.i >= H.frames.length - 1) showFrame(0);

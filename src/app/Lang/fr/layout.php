@@ -1,5 +1,5 @@
 <?php
-// Header, footer and strings shared by every page
+// Application shell (top bar, user menu, bottom navigation, error pages) and strings shared by every page
 return [
     'Maps' => 'Cartes',
     'Editor' => 'Éditeur',
@@ -10,7 +10,28 @@ return [
     'Theme: light' => 'Thème : clair',
     'Theme: dark' => 'Thème : sombre',
     'Change password' => 'Changer le mot de passe',
-    'Logout' => 'Déconnexion',
+    'Log out' => 'Se déconnecter',
     'Login' => 'Connexion',
     'Breadcrumb' => 'Fil d’Ariane',
+    'Kiosk' => 'Kiosque',
+    'Auto' => 'Auto',
+    'Light' => 'Clair',
+    'Dark' => 'Sombre',
+    'Skip to content' => 'Aller au contenu',
+    'Sections' => 'Rubriques',
+    'User menu for :name' => 'Menu de l’utilisateur :name',
+    'Preferences' => 'Préférences',
+    'Dismiss' => 'Fermer',
+    // Error pages
+    'Error :code' => 'Erreur :code',
+    'Try again' => 'Réessayer',
+    'Back to the maps' => 'Retour aux cartes',
+    'Your account cannot open this page. Ask an administrator if you need it.' => 'Votre compte ne peut pas ouvrir cette page. Demandez-la à un administrateur si vous en avez besoin.',
+    'Page not found' => 'Page introuvable',
+    'This page does not exist or has moved.' => 'Cette page n’existe pas ou a été déplacée.',
+    'Session expired' => 'Session expirée',
+    'The form was sent without a valid security token. Go back, reload the page and try again.' => 'Le formulaire a été envoyé sans jeton de sécurité valide. Revenez en arrière, rechargez la page et réessayez.',
+    'Something went wrong' => 'Une erreur est survenue',
+    'An unexpected error occurred. Please try again later.' => 'Une erreur inattendue s’est produite. Réessayez plus tard.',
+    'This map does not exist any more, or its address is wrong.' => 'Cette carte n’existe plus, ou son adresse est erronée.',
 ];

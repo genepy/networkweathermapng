@@ -39,9 +39,7 @@ try {
         echo '<pre>' . htmlspecialchars($e->getMessage()) . '</pre>';
         echo '<pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>';
     } else {
-        http_response_code(500);
-        echo '<h1>Internal Server Error</h1>';
-        echo '<p>An unexpected error occurred. Please try again later.</p>';
+        App\Core\ErrorPage::send(500);
     }
     
     // Log the error

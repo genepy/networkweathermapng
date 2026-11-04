@@ -24,15 +24,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <title><?= htmlspecialchars($mapTitle) ?> - NetworkWeathermapNG</title>
-    <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/assets/css/tokens.css">
-    <link rel="stylesheet" href="/assets/css/weathermap.css">
-    <link rel="stylesheet" href="/assets/css/viewer.css">
-    <script src="/assets/js/weathermap.js" defer></script>
+    <link rel="icon" href="<?= asset('/assets/icons/favicon.svg') ?>" type="image/svg+xml">
+    <link rel="stylesheet" href="<?= asset('/assets/css/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/weathermap.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/viewer.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
+    <script>window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode((object) \App\Core\I18n::section('ui-js'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>);</script>
+    <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
+    <script src="<?= asset('/assets/js/weathermap.js') ?>" defer></script>
 </head>
 <body class="wmv-noc">
 <?php else: ?>
-<link rel="stylesheet" href="/assets/css/viewer.css">
+<link rel="stylesheet" href="<?= asset('/assets/css/viewer.css') ?>">
 <?php endif; ?>
 
 <div class="<?= $rootClasses ?>">
@@ -211,7 +214,7 @@ window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::f
 </script>
 
 <?php if ($isSvg): ?>
-<script src="/assets/js/viewer.js" defer></script>
+<script src="<?= asset('/assets/js/viewer.js') ?>" defer></script>
 <?php else: ?>
 
 <?php if (empty($autoRefresh)): ?>

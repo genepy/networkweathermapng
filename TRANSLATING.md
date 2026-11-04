@@ -2,7 +2,7 @@
 
 The interface is written in English. Each other language is a folder of
 `src/app/Lang/`, picked up automatically: once the folder exists, the
-language shows in the header menu. No code change is needed.
+language shows in the user menu (top right). No code change is needed.
 
 ## Add a language
 
@@ -48,7 +48,7 @@ language shows in the header menu. No code change is needed.
    `--strict` to get a failing exit status when something is missing.
 
 5. Try it: run the application (`composer start`) and choose the language in
-   the header menu.
+   the user menu.
 
 6. Open a pull request.
 

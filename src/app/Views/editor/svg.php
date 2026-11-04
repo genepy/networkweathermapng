@@ -9,11 +9,12 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?= \App\Core\Csrf::metaTag() ?>
-    <script src="/assets/js/csrf.js"></script>
-    <script src="/assets/js/preferences.js"></script>
+    <script src="<?= asset('/assets/js/csrf.js') ?>"></script>
+    <script src="<?= asset('/assets/js/preferences.js') ?>"></script>
     <title><?= $e($title ?? __('Map Editor')) ?></title>
-    <link rel="stylesheet" href="/assets/css/tokens.css">
-    <link rel="stylesheet" href="/assets/css/editor-svg.css">
+    <link rel="stylesheet" href="<?= asset('/assets/css/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/editor-svg.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
 </head>
 <body>
 <?php require __DIR__ . '/toolbar-icons.php'; ?>
@@ -34,7 +35,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <a class="tb-link" href="/editor/classic/<?= $mapId ?>" title="<?= e__('The previous editor') ?>"><svg class="i" aria-hidden="true"><use href="#i-classic"/></svg><span class="lbl"><?= e__('Classic editor') ?></span></a>
             <button type="button" id="toolbars-button" popovertarget="toolbars-menu" title="<?= e__('Show, hide and arrange the toolbars and panels') ?>" aria-label="<?= e__('Toolbars and panels') ?>"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span class="lbl"><?= e__('Toolbars') ?></span></button>
             <button type="button" data-pref="theme" aria-label="<?= e__('Theme') ?>"
-                    data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><svg class="i" aria-hidden="true" focusable="false"><use href="/assets/icons/ui.svg#sun-moon"/></svg></button>
+                    data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><?= icon('sun-moon', 'i') ?></button>
         </span>
     </header>
 
@@ -316,7 +317,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
 </dialog>
 
 <script>
-window.WM_T = <?= json_encode((object) \App\Core\I18n::section('editor-js'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+window.WM_T = <?= json_encode((object) (\App\Core\I18n::section('editor-js') + \App\Core\I18n::section('ui-js')), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 window.WM_EDITOR = {
     mapId: <?= $mapId ?>,
     icons: <?= json_encode(array_values($icons), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
@@ -325,10 +326,11 @@ window.WM_EDITOR = {
     fonts: <?= json_encode($fonts, JSON_HEX_TAG | JSON_HEX_AMP) ?>
 };
 </script>
-<script src="/assets/js/editor-svg.js"></script>
-<script src="/assets/js/editor-icons.js"></script>
-<script src="/assets/js/editor-backgrounds.js"></script>
-<script src="/assets/js/editor-toolbars.js"></script>
-<script src="/assets/js/editor-mapprops.js"></script>
+<script src="<?= asset('/assets/js/ui.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-svg.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-icons.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-backgrounds.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-toolbars.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-mapprops.js') ?>"></script>
 </body>
 </html>
