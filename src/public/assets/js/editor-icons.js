@@ -220,7 +220,13 @@
     }
 
     function remove(icon) {
-        if (!window.confirm(t('Remove the icon :name from the library?', { name: icon.name }))) { return; }
+        var question = t('Remove the icon :name from the library?', { name: icon.name });
+        var ask = window.WMUI ? window.WMUI.confirm({ message: question, confirm: t('Remove'), danger: true })
+            : Promise.resolve(window.confirm(question));
+        ask.then(function (ok) { if (ok) { removeNow(icon); } });
+    }
+
+    function removeNow(icon) {
         ed.run(function () {
             return ed.api('POST', '/editor/icons/delete', { path: icon.path }).then(function (d) {
                 update(d);

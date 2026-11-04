@@ -26,9 +26,9 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
-- **Translations** - English and French built in, chosen in the header or with `APP_LOCALE`; [add your language](TRANSLATING.md)
-- **Light and dark themes** - Automatic (system setting) or chosen in the header; colours meet WCAG 2.2 AA contrast in both
-- **Responsive UI** - Modern, mobile-friendly interface
+- **Translations** - English and French built in, chosen in the user menu or with `APP_LOCALE`; [add your language](TRANSLATING.md)
+- **Light and dark themes** - Automatic (system setting) or chosen in the user menu; colours meet WCAG 2.2 AA contrast in both
+- **Responsive UI** - A thin top bar with a user menu, a bottom navigation bar on phones, toasts for messages and a styled confirmation dialog
 
 ## Quick Start
 
@@ -92,7 +92,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
 | `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`) | `png` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds | `300` |
-| `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the header | browser language |
+| `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the user menu | browser language |
 
 ### Data sources (Zabbix and more)
 
@@ -421,8 +421,9 @@ Admin > Maps lists every map:
 
 ## Language and theme
 
-The header has a language menu and a theme button (automatic, light,
-dark); both are remembered in cookies. Without a choice, the language comes
+The user menu (the round button at the right of the top bar) has the
+language, the theme (automatic, light, dark), *Change password* and *Log out*;
+language and theme are remembered in cookies. Without a choice, the language comes
 from `APP_LOCALE`, then the browser, else English. Translations live in
 `src/app/Lang/<locale>/*.php`, one file per part of the application, as
 `'English text' => 'translation'`; `*-js.php` files hold the texts of a
@@ -437,7 +438,13 @@ Colours, spacing and type come from one file of design tokens,
 `src/public/assets/css/tokens.css`, for both themes; `tests/App/DesignTokensTest.php`
 checks their contrast (text 4.5:1, field edges and focus 3:1). Interface icons
 are a Lucide subset in `src/public/assets/icons/ui.svg`, printed with
-`icon('name')`. The redesign plan is in
+`icon('name')`. Pages load styles and scripts with `asset('/assets/…')`,
+which adds a version taken from the file: `/assets` is cached for 30 days, so
+a changed file gets a new address. The shell's toasts and confirmation dialog
+are `WMUI.toast(message, type)` and `WMUI.confirm({message, confirm, danger})`
+(`src/public/assets/js/ui.js`, styles in `ui.css`); a link with
+`data-method="post" data-confirm="…"` asks through that dialog. Error pages
+(403, 404, 419, 500) are drawn in the shell by `App\Core\ErrorPage`. The redesign plan is in
 [docs/studies/ui-redesign.md](docs/studies/ui-redesign.md).
 
 ## Directory Structure

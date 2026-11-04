@@ -43,7 +43,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Nine IX style, task 6: geographic basemap | Tiles under the map, nodes by latitude/longitude. A design note first: it changes the map format |
 | Nine IX style, task 7: link flow animation | A glowing dot along each link in the traffic direction, per-map switch, none under reduced motion |
 | Nine IX style, task 8: site focus and zoom | Click a node to zoom onto it and pin its card; hover frames it in the minimap or the site list |
-| UI redesign, step 2: app shell | Thin top bar, user menu (language, theme, password, logout), no footer, bottom navigation on phones, toasts, a styled confirmation dialog instead of `confirm()`, error pages. Plan and decisions: [docs/studies/ui-redesign.md](studies/ui-redesign.md) |
 | UI redesign, step 3: one Maps page | Thumbnails and list on the same page, filter chips, actions on hover, bulk actions; the Editor tab redirects to Maps (decision: merge Maps and Editor) |
 | UI redesign, step 4: map viewer | Floating bar, Live / Last 24 h, a single fullscreen, status and legend at the bottom, kiosk controls that fade out |
 | UI redesign, step 5: Map settings panel | Every setting of a map in one panel; map name and title merged (decision), asking which one to keep where they differ |
@@ -65,6 +64,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | PR | Item |
 |----|------|
 | #65 | Nine IX style, task 3: badge nodes: `SET node_style badge` draws a node as a round badge (its icon, or the initials of its label, on a disc with a ring and a soft shadow) in PNG and SVG; the label becomes the tooltip; *Look* in the node panel |
+| #60 | UI redesign, step 2: app shell: thin top bar, user menu (language, theme, password, log out), no footer, bottom navigation on phones, toasts (`WMUI.toast`), a styled confirmation dialog (`WMUI.confirm`), error pages in the shell (`ErrorPage`), versioned asset addresses (`asset()`) |
 | #64 | Nine IX style, task 2: pill link labels: `BWSTYLE pill` draws the bandwidth label on a rounded box along the link with a small arrow toward where the traffic goes, in PNG and SVG; per link in the inspector, for every link in *Link defaults*, and in the *Night* theme |
 | #63 | Refuse undo after an outside change: each undo step keeps a fingerprint of the file it left (`ConfigHistory`), so an undo or redo is refused when the map was saved outside the history since; an undo from a tab that missed another save is refused too (study item 9) |
 | #62 | Nine IX style, task 1: *Night* map theme, applied in one click from *Map properties* (dark canvas, cream to amber link scale, dark labels, gold-edged modern legend), and a per-map link glow in the SVG (`SET link_glow 1`) |

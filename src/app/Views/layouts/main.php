@@ -1,82 +1,142 @@
 <?php
+/**
+ * Application shell: a thin top bar (sections and the user menu), toasts
+ * for the flash messages, and a bottom navigation bar on phones.
+ * $auth may be null on an error page shown before the application started.
+ */
 use App\Core\I18n;
 
 $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : '';
-$uri = $_SERVER['REQUEST_URI'] ?? '/';
+$uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$auth = $auth ?? null;
+$user = $user ?? null;
+$canEdit = $auth !== null && $auth->canEdit();
+$isAdmin = $auth !== null && $auth->isAdmin();
+// with AUTH_ENABLED=false everybody is in, without a user name
+$showNav = $auth !== null && $auth->check();
+$signedIn = $user !== null && (string) ($user['username'] ?? '') !== '';
+
+// Sections of the application: [label, address, icon, active, shown]
+$sections = [
+    [__('Maps'), '/', 'map', $uri === '/' || str_starts_with($uri, '/maps') || str_starts_with($uri, '/map/'), true],
+    [__('Kiosk'), '/cycle', 'tv', str_starts_with($uri, '/cycle'), 'phone'],
+    [__('Editor'), '/editor', 'pencil', str_starts_with($uri, '/editor'), $canEdit],
+    [__('Settings'), '/admin', 'settings', str_starts_with($uri, '/admin'), $isAdmin],
+];
+$roles = ['admin' => __('Administrator'), 'editor' => __('Editor'), 'viewer' => __('Viewer')];
+$themes = ['' => [__('Auto'), 'sun-moon'], 'light' => [__('Light'), 'sun'], 'dark' => [__('Dark'), 'moon']];
+$initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)) : '';
 ?>
 <!DOCTYPE html>
 <html lang="<?= I18n::locale() ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light dark">
     <?= \App\Core\Csrf::metaTag() ?>
-    <script src="/assets/js/csrf.js"></script>
-    <script src="/assets/js/preferences.js"></script>
+    <script>window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode((object) I18n::section('ui-js'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>);</script>
+    <script src="<?= asset('/assets/js/csrf.js') ?>"></script>
+    <script src="<?= asset('/assets/js/preferences.js') ?>"></script>
     <title><?= htmlspecialchars($title ?? 'NetworkWeathermapNG') ?></title>
-    <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="/assets/css/tokens.css">
-    <link rel="stylesheet" href="/assets/css/weathermap.css">
-    <script src="/assets/js/weathermap.js" defer></script>
+    <link rel="icon" href="<?= asset('/assets/icons/favicon.svg') ?>" type="image/svg+xml">
+    <link rel="stylesheet" href="<?= asset('/assets/css/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/weathermap.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
+    <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
+    <script src="<?= asset('/assets/js/weathermap.js') ?>" defer></script>
 </head>
-<body>
-    <header class="main-header">
-        <div class="header-container">
-            <div class="logo">
-                <a href="/">NetworkWeathermapNG</a>
+<body class="app-shell">
+    <a class="skip-link" href="#main"><?= e__('Skip to content') ?></a>
+    <header class="app-bar">
+        <a class="app-logo" href="/" aria-label="NetworkWeathermapNG">
+            <span class="app-logo-mark"><?= icon('map') ?></span>
+            <span class="app-logo-text">NetworkWeathermapNG</span>
+        </a>
+        <?php if ($showNav): ?>
+        <nav class="app-nav" aria-label="<?= e__('Sections') ?>">
+            <?php foreach ($sections as [$label, $href, $ic, $active, $shown]): ?>
+            <?php if ($shown === true): ?>
+            <a href="<?= $href ?>"<?= $active ? ' class="active" aria-current="page"' : '' ?>><?= htmlspecialchars($label) ?></a>
+            <?php endif; ?>
+            <?php endforeach; ?>
+        </nav>
+        <?php endif; ?>
+        <div class="app-bar-end">
+            <?php if (!$showNav): ?>
+            <a href="/login" class="wm-btn wm-btn-primary"><?= e__('Login') ?></a>
+            <?php endif; ?>
+            <button type="button" class="user-button" popovertarget="user-menu"
+                    aria-label="<?= $signedIn ? e__('User menu for :name', ['name' => $user['username']]) : e__('Preferences') ?>">
+                <?php if ($signedIn): ?>
+                <span class="avatar" aria-hidden="true"><?= htmlspecialchars($initial) ?></span>
+                <?php else: ?>
+                <?= icon('sliders-horizontal') ?>
+                <?php endif; ?>
+            </button>
+        </div>
+        <div id="user-menu" class="user-menu-panel" popover>
+            <?php if ($signedIn): ?>
+            <div class="um-who">
+                <span class="avatar" aria-hidden="true"><?= htmlspecialchars($initial) ?></span>
+                <span>
+                    <strong><?= htmlspecialchars((string) $user['username']) ?></strong>
+                    <span class="um-role"><?= htmlspecialchars($roles[$user['role'] ?? ''] ?? (string) ($user['role'] ?? '')) ?></span>
+                </span>
             </div>
-            <nav class="main-nav">
-                <ul>
-                    <li><a href="/" class="<?= ($uri === '/' || str_starts_with($uri, '/maps')) ? 'active' : '' ?>"><?= e__('Maps') ?></a></li>
-                    <?php if ($auth->canEdit()): ?>
-                    <li><a href="/editor" class="<?= str_starts_with($uri, '/editor') ? 'active' : '' ?>"><?= e__('Editor') ?></a></li>
-                    <?php endif; ?>
-                    <?php if ($auth->isAdmin()): ?>
-                    <li><a href="/admin" class="<?= str_starts_with($uri, '/admin') ? 'active' : '' ?>"><?= e__('Admin') ?></a></li>
-                    <?php endif; ?>
-                </ul>
-            </nav>
-            <div class="user-menu">
-                <select class="lang-select" aria-label="<?= e__('Language') ?>" data-pref="lang">
+            <?php endif; ?>
+            <label class="um-row">
+                <span><?= e__('Language') ?></span>
+                <select data-pref="lang">
                     <?php foreach (I18n::locales() as $code => $label): ?>
                     <option value="<?= $code ?>" <?= I18n::locale() === $code ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <button type="button" class="theme-toggle" data-pref="theme"
-                        data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"
-                        aria-label="<?= e__('Theme') ?>"><?= icon('sun-moon') ?></button>
-                <?php if ($user): ?>
-                    <span class="username"><?= htmlspecialchars($user['username']) ?></span>
-                    <a href="/account/password" class="login-btn"><?= e__('Change password') ?></a>
-                    <form method="post" action="/logout" class="logout-form"><?= \App\Core\Csrf::field() ?><button type="submit" class="logout-btn"><?= e__('Logout') ?></button></form>
-                <?php else: ?>
-                    <a href="/login" class="login-btn"><?= e__('Login') ?></a>
-                <?php endif; ?>
+            </label>
+            <div class="um-row">
+                <span id="um-theme"><?= e__('Theme') ?></span>
+                <div class="segmented" role="group" aria-labelledby="um-theme">
+                    <?php foreach ($themes as $value => [$label, $ic]): ?>
+                    <button type="button" data-pref="theme" data-theme-value="<?= $value ?>" aria-pressed="<?= $theme === $value ? 'true' : 'false' ?>"><?= icon($ic) ?><span><?= htmlspecialchars($label) ?></span></button>
+                    <?php endforeach; ?>
+                </div>
             </div>
+            <?php if ($signedIn): ?>
+            <div class="um-sep" role="separator"></div>
+            <a class="um-item" href="/account/password"><?= icon('lock') ?><?= e__('Change password') ?></a>
+            <form method="post" action="/logout" class="um-logout"><?= \App\Core\Csrf::field() ?>
+                <button type="submit" class="um-item"><?= icon('arrow-left') ?><?= e__('Log out') ?></button>
+            </form>
+            <?php endif; ?>
         </div>
     </header>
 
-    <main class="main-content">
-        <?php
-        $flash = $_SESSION['flash'] ?? [];
-        unset($_SESSION['flash']);
-        if (!empty($flash)):
-        ?>
-        <div class="flash-messages">
-            <?php foreach (['success', 'error', 'info'] as $type): ?>
-            <?php if (isset($flash[$type])): ?>
-            <div class="alert alert-<?= $type ?>"><?= htmlspecialchars($flash[$type]) ?></div>
-            <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
+    <main class="main-content" id="main">
         <?= $content ?>
     </main>
 
-    <footer class="main-footer">
-        <div class="footer-container">
-            <p>&copy; <?= date('Y') ?> NetworkWeathermapNG</p>
+    <?php
+    $flash = $_SESSION['flash'] ?? [];
+    unset($_SESSION['flash']);
+    ?>
+    <div id="wm-toasts" class="wm-toasts">
+        <?php foreach (['success', 'error', 'info'] as $type): ?>
+        <?php if (isset($flash[$type])): ?>
+        <div class="wm-toast wm-toast-<?= $type ?>" data-type="<?= $type ?>" role="<?= $type === 'error' ? 'alert' : 'status' ?>">
+            <span class="wm-toast-text"><?= htmlspecialchars((string) $flash[$type]) ?></span>
+            <button type="button" class="wm-toast-close" aria-label="<?= e__('Dismiss') ?>">&times;</button>
         </div>
-    </footer>
+        <?php endif; ?>
+        <?php endforeach; ?>
+    </div>
+
+    <?php if ($showNav): ?>
+    <nav class="bottom-nav" aria-label="<?= e__('Sections') ?>">
+        <?php foreach ($sections as [$label, $href, $ic, $active, $shown]): ?>
+        <?php if ($shown): ?>
+        <a href="<?= $href ?>"<?= $active ? ' class="active" aria-current="page"' : '' ?>><?= icon($ic) ?><span><?= htmlspecialchars($label) ?></span></a>
+        <?php endif; ?>
+        <?php endforeach; ?>
+    </nav>
+    <?php endif; ?>
 </body>
 </html>

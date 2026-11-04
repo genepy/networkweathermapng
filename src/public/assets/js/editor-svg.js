@@ -3529,7 +3529,12 @@
 
     function closeText(force) {
         if (!state.textMode) { return; }
-        if (!force && text.area.value !== text.original && !window.confirm(t('Discard the changes made to the text?'))) {
+        if (!force && text.area.value !== text.original) {
+            // the styled dialog of the shell (ui.js)
+            var ask = window.WMUI
+                ? window.WMUI.confirm({ message: t('Discard the changes made to the text?'), confirm: t('Discard'), danger: true })
+                : Promise.resolve(window.confirm(t('Discard the changes made to the text?')));
+            ask.then(function (ok) { if (ok) { closeText(true); } });
             return;
         }
         clearTimeout(text.timer);

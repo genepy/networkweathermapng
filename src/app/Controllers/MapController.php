@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\ErrorPage;
 use App\Services\MapService;
 use App\Services\DataSourceService;
 use App\Services\KioskService;
@@ -112,16 +113,14 @@ class MapController extends BaseController
         $mode = (string) $this->getInput('mode', '');
         
         if (!$this->auth->canViewMap($mapId)) {
-            http_response_code(403);
-            echo '<h1>' . e__('Access denied') . '</h1>';
+            ErrorPage::send(403, $this->auth);
             return;
         }
         
         $map = $this->getMap($mapId);
         
         if (!$map) {
-            http_response_code(404);
-            echo '<h1>' . e__('Map not found') . '</h1>';
+            ErrorPage::send(404, $this->auth, __('Map not found'), __('This map does not exist any more, or its address is wrong.'));
             return;
         }
         

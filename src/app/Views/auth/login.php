@@ -8,10 +8,10 @@ $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <?= \App\Core\Csrf::metaTag() ?>
-    <script src="/assets/js/csrf.js"></script>
+    <script src="<?= asset('/assets/js/csrf.js') ?>"></script>
     <title><?= e__('Login') ?> - NetworkWeathermapNG</title>
-    <link rel="stylesheet" href="/assets/css/tokens.css">
-    <link rel="stylesheet" href="/assets/css/weathermap.css">
+    <link rel="stylesheet" href="<?= asset('/assets/css/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/weathermap.css') ?>">
     <style>
         body {
             display: flex;

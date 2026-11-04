@@ -10,6 +10,7 @@ namespace App\Controllers;
 use App\Core\Config;
 use App\Core\Database;
 use App\Core\Auth;
+use App\Core\ErrorPage;
 
 abstract class BaseController
 {
@@ -117,8 +118,7 @@ abstract class BaseController
             $this->json(['error' => 'Forbidden'], 403);
             exit;
         }
-        http_response_code(403);
-        echo '<h1>403 Forbidden</h1>';
+        ErrorPage::send(403, $this->auth);
         exit;
     }
     
