@@ -369,4 +369,7 @@ return [
     'Background :name removed' => 'Arrière-plan :name retiré',
     ':n background(s) added' => ':n arrière-plan(s) ajouté(s)',
     'Choose a background' => 'Choisir un arrière-plan',
+    // Undo refused after an outside change
+    'The map was saved outside this editor since this step. Undo is refused so that change is not lost.' => 'La carte a été enregistrée hors de cet éditeur depuis cette étape. L’annulation est refusée pour ne pas perdre ce changement.',
+    'The map was saved outside this editor since this step. Redo is refused so that change is not lost.' => 'La carte a été enregistrée hors de cet éditeur depuis cette étape. Le rétablissement est refusé pour ne pas perdre ce changement.',
 ];

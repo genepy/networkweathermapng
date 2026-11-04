@@ -88,8 +88,11 @@ class MigrationService
         }
 
         $file = $this->config->getConfigsPath() . '/' . $map['config_file'];
-        $this->history($map)->record(is_file($file) ? (string) file_get_contents($file) : null);
+        $before = is_file($file) ? (string) file_get_contents($file) : null;
         $this->maps->saveMapConfig((int) $map['id'], $this->original($meta));
+        if ($before !== null) {
+            $this->history($map)->record($before);
+        }
         return $map;
     }
 

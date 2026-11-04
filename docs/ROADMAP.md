@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 | Fresh map style inspired by Nine IX | Dark geographic basemap, glowing links, pill rate labels, badge nodes, richer hover card, floating panels, link flow animation, site focus, clusters, light theme. Eight small tasks, to be split when started |
 | UI redesign, step 2: app shell | Thin top bar, user menu (language, theme, password, logout), no footer, bottom navigation on phones, toasts, a styled confirmation dialog instead of `confirm()`, error pages. Plan and decisions: [docs/studies/ui-redesign.md](studies/ui-redesign.md) |
@@ -62,6 +61,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #PRNUM | Refuse undo after an outside change: each undo step keeps a fingerprint of the file it left (`ConfigHistory`), so an undo or redo is refused when the map was saved outside the history since; an undo from a tab that missed another save is refused too (study item 9) |
 | #59 | UI redesign, step 1: design tokens in `tokens.css` for both themes, contrast-checked colours (WCAG 2.2 AA, `DesignTokensTest`), field and control edges at 3:1, a Lucide icon sprite (`icon('name')`) instead of emojis; no layout change |
 | #58 | Node label position presets: *Label position* in the node panel puts the label above, at the top, centre, bottom or below the icon in one click (`SET editor_label_position`, the 2.0 hint, now drawn on import too) |
 | #57 | Background fit or stretch: *Background size* in the map panel draws the background at its natural size, fitted to the map (ratio kept, centred) or stretched, in PNG, SVG and the editor (`SET background_sizing image\|fit\|stretch`, the 2.0 hint, so imported maps use it) |
