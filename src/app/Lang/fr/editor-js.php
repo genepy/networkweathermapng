@@ -248,6 +248,12 @@ return [
     // Labels and map items (legends, timestamps, title)
     'Drag the label of the selected node to move it away from the icon.' => 'Faites glisser l’étiquette du nœud sélectionné pour l’écarter de l’icône.',
     'Reset label position' => 'Replacer l’étiquette',
+    'Label position' => 'Position de l’étiquette',
+    'Above the icon' => 'Au-dessus de l’icône',
+    'Top of the icon' => 'En haut de l’icône',
+    'Centre of the icon' => 'Au centre de l’icône',
+    'Bottom of the icon' => 'En bas de l’icône',
+    'Below the icon' => 'Sous l’icône',
     'Legend :name' => 'Légende :name',
     'Oldest data time' => 'Heure des données les plus anciennes',
     'Newest data time' => 'Heure des données les plus récentes',

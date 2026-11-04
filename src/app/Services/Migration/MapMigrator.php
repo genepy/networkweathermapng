@@ -36,9 +36,12 @@ class MapMigrator
     /**
      * SET hints of PHP Weathermap 2.0 that this application reads and keeps
      * in the map but does not draw yet (see docs/studies/php-weathermap-2.0.md).
-     * Notes (editor_note...), traffic_pulse and background_sizing are drawn.
+     * Notes (editor_note...), traffic_pulse, background_sizing and
+     * editor_label_position are drawn, so none is left for now.
+     *
+     * @var list<string>
      */
-    public const LATER_HINTS = ['editor_label_position'];
+    public const LATER_HINTS = [];
 
     /** The lines that open a block of the .conf */
     private const SECTION = '/^\s*(NODE|LINK|ZONE)\s+(\S+)\s*$/i';

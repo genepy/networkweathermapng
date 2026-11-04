@@ -2307,6 +2307,7 @@
                 ? h('div', { 'class': 'row' }, [h('span', { text: t('Icon') }), iconField(nodes)])
                 : row(t('Icon'), iconField(nodes)),
             iconSizeRow(nodes),
+            labelPositionRow(nodes),
             h('h3', { text: t('Label style') }),
             row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
@@ -2323,7 +2324,7 @@
                 h('p', { 'class': 'help', text: t('Drag the label of the selected node to move it away from the icon.') }),
                 h('div', { 'class': 'actions' }, [
                     h('button', {
-                        type: 'button', text: t('Reset label position'), disabled: !single.label_shift[0] && !single.label_shift[1],
+                        type: 'button', text: t('Reset label position'), disabled: !single.label_shift[0] && !single.label_shift[1] && !single.label_position,
                         onclick: function () { send([{ op: 'set_node', names: [single.name], props: { labelshift: null } }]); }
                     })
                 ])
@@ -2334,6 +2335,50 @@
             out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
         return out.filter(Boolean);
+    }
+
+    /** Label position presets: above, top, centre, bottom or below the icon, in one click */
+    function labelPositionRow(nodes) {
+        // value, title, where the label bar sits in the 20x20 picture
+        var presets = [
+            ['N', t('Above the icon'), 1],
+            ['N60', t('Top of the icon'), 4],
+            ['C', t('Centre of the icon'), 8],
+            ['S60', t('Bottom of the icon'), 12],
+            ['S', t('Below the icon'), 15]
+        ];
+        // the engine places a preset label only around an icon
+        var withIcon = nodes.filter(function (n) { return n.icon && n.icon !== 'none' && n.label !== ''; });
+        if (!withIcon.length) { return null; }
+        var names = withIcon.map(function (n) { return n.name; });
+        var current = function (n) {
+            return n.label_position || (!n.label_shift[0] && !n.label_shift[1] ? 'C' : '');
+        };
+        var first = current(withIcon[0]);
+        var same = withIcon.every(function (n) { return current(n) === first; });
+        var ns = 'http://www.w3.org/2000/svg';
+        return h('div', { 'class': 'row' }, [
+            h('span', { text: t('Label position') }),
+            h('div', { 'class': 'label-presets', role: 'group', 'aria-label': t('Label position') }, presets.map(function (p) {
+                var on = same && first === p[0];
+                // a small picture: the icon as a square, the label as a bar
+                var pic = document.createElementNS(ns, 'svg');
+                pic.setAttribute('viewBox', '0 0 20 20');
+                pic.setAttribute('aria-hidden', 'true');
+                var icon = document.createElementNS(ns, 'rect');
+                [['x', 5], ['y', 4], ['width', 10], ['height', 12], ['rx', 1.5], ['class', 'lp-icon']].forEach(function (a) { icon.setAttribute(a[0], a[1]); });
+                var bar = document.createElementNS(ns, 'rect');
+                [['x', 3], ['y', p[2] - 1], ['width', 14], ['height', 3], ['rx', 1], ['class', 'lp-label']].forEach(function (a) { bar.setAttribute(a[0], a[1]); });
+                pic.appendChild(icon);
+                pic.appendChild(bar);
+                var b = h('button', {
+                    type: 'button', title: p[1], 'aria-label': p[1], 'aria-pressed': on ? 'true' : 'false', 'class': on ? 'on' : '',
+                    onclick: function () { send([{ op: 'set_node', names: names, props: { label_position: p[0] } }]); }
+                });
+                b.appendChild(pic);
+                return b;
+            }))
+        ]);
     }
 
     /** Width and height of the icons; empty is a picture's own size */

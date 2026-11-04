@@ -345,6 +345,12 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
     border: 1px solid var(--field-border); background: var(--panel-2); color: var(--text);
 }
 #inspector button.danger { color: var(--danger); }
+#inspector .label-presets { display: flex; gap: 2px; }
+#inspector .label-presets button { flex: 1; padding: 2px; height: 28px; line-height: 0; }
+#inspector .label-presets svg { width: 20px; height: 20px; }
+#inspector .label-presets .lp-icon { fill: none; stroke: currentColor; stroke-width: 1.2; opacity: .6; }
+#inspector .label-presets .lp-label { fill: currentColor; }
+#inspector .label-presets button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 #inspector .anchors { display: grid; grid-template-columns: repeat(3, 24px); gap: 2px; }
 #inspector .anchors button { padding: 0; height: 22px; font-size: 10px; }
 #inspector .anchors button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }

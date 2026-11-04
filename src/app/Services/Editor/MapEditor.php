@@ -77,6 +77,13 @@ class MapEditor
 
     private const NOTE_ALIGNS = ['left', 'centre', 'right'];
 
+    /**
+     * Label position presets of the inspector, as compass offsets of the
+     * icon: above, top, centre, bottom, below (SET editor_label_position,
+     * the PHP Weathermap 2.0 hint)
+     */
+    public const LABEL_PRESETS = ['N', 'N60', 'C', 'S60', 'S'];
+
     private const ANCHORS = ['C', 'N', 'S', 'E', 'W', 'NE', 'NW', 'SE', 'SW'];
 
     /** Hints the editor owns: grouping and locking */
@@ -342,6 +349,34 @@ class MapEditor
         }
     }
 
+    /**
+     * Put a node's label at a preset place (null: back to the template's).
+     * The preset is kept as SET editor_label_position, so PHP Weathermap 2.0
+     * reads it too; a pixel offset from a drag is dropped.
+     */
+    private function setLabelPreset(\WeatherMap $map, \WeatherMapNode $node, mixed $value): void
+    {
+        $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
+        $inherited = $template === null ? '' : (string) $template->labeloffset;
+        $node->labeloffsetx = $template === null ? 0 : $template->labeloffsetx;
+        $node->labeloffsety = $template === null ? 0 : $template->labeloffsety;
+        $node->labeloffset = $inherited;
+
+        if ($value === null || $value === '') {
+            unset($node->hints['editor_label_position']);
+            return;
+        }
+        $preset = strtoupper((string) $value);
+        if (!in_array($preset, self::LABEL_PRESETS, true)) {
+            throw new InvalidArgumentException(__('Unknown label position: :value', ['value' => (string) $value]));
+        }
+        $node->hints['editor_label_position'] = $preset;
+        if ($inherited !== '') {
+            // a compass LABELOFFSET from the template wins over the hint
+            $node->labeloffset = $preset;
+        }
+    }
+
     private function setNodes(\WeatherMap $map, array $op): void
     {
         $props = (array) ($op['props'] ?? []);
@@ -381,10 +416,14 @@ class MapEditor
                     $node->targets = $this->targets((string) $value);
                 } elseif ($key === 'position') {
                     [$node->x, $node->y] = $this->point($value);
+                } elseif ($key === 'label_position') {
+                    $this->setLabelPreset($map, $node, $value);
                 } elseif ($key === 'labelshift') {
                     // where the label sits from its default place, in pixels; null puts it back
                     $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
                     $inherited = $template === null ? '' : (string) $template->labeloffset;
+                    // the shift sent already counts the preset: it replaces it
+                    unset($node->hints['editor_label_position']);
                     if ($value === null) {
                         $node->labeloffsetx = $template === null ? 0 : $template->labeloffsetx;
                         $node->labeloffsety = $template === null ? 0 : $template->labeloffsety;
@@ -1190,6 +1229,8 @@ class MapEditor
                 'label' => (string) $node->label,
                 'label_box' => $labelBox,
                 'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
+                // the preset the label sits at, '' when none or moved by hand
+                'label_position' => self::labelPresetOf($node),
                 'icon' => (string) $node->iconfile,
                 'iconscalew' => (int) $node->iconscalew,
                 'iconscaleh' => (int) $node->iconscaleh,
@@ -1482,6 +1523,20 @@ class MapEditor
             return [hexdec($m[1]), hexdec($m[2]), hexdec($m[3])];
         }
         throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => $value]));
+    }
+
+    /** The label preset a node uses, '' when none or when the label was moved by hand */
+    private static function labelPresetOf(\WeatherMapNode $node): string
+    {
+        $preset = \WeatherMapNode::label_preset((string) ($node->hints['editor_label_position'] ?? ''));
+        if ((string) $node->labeloffset !== '') {
+            $preset = \WeatherMapNode::label_preset((string) $node->labeloffset);
+        }
+        if ((float) $node->labeloffsetx != 0 || (float) $node->labeloffsety != 0) {
+            return '';
+        }
+
+        return in_array($preset, self::LABEL_PRESETS, true) ? $preset : '';
     }
 
     private static function colourOut(mixed $c): string
