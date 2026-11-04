@@ -2,8 +2,8 @@
 
 Reference: https://stats.nine-ix.net/ (screenshots shared by the user on
 2026-11-03, dark and light theme, zoomed Paris view; site visited the same
-day, version 1.8.11). Status: task 1 (Night theme) done, tasks 2 to 8 to
-do, listed in [ROADMAP.md](../ROADMAP.md). Ideas only: copy no code, logo
+day, version 1.8.11). Status: tasks 1 (Night theme) and 2 (pill labels)
+done, tasks 3 to 8 to do, listed in [ROADMAP.md](../ROADMAP.md). Ideas only: copy no code, logo
 or artwork; credit the idea in THIRD-PARTY-NOTICES.md ("Ideas from other
 projects") when a piece ships.
 
@@ -66,9 +66,13 @@ comments (#55); colour scale presets (#53); shipped fonts (#46).
    `SET link_glow 1`. Not done: round caps (our links are filled arrows,
    not strokes) and translucent cards (map colours are opaque); the legend
    is the opaque modern card with a gold edge.
-2. **Pill link labels**: a `bwlabel` style "pill" (dark rounded box, light
+2. (done) **Pill link labels**: a `bwlabel` style "pill" (dark rounded box, light
    text, rotated along the link, small direction arrow). Same idea as
    `COMMENTCURVE`, in PNG and SVG; a 2.0-style `SET` hint name if one exists.
+   Built as `BWSTYLE pill` (2.0 has no such hint; `BWSTYLE` already takes
+   `classic|angled`), drawn by `WeatherMap::DrawLabelPill`. Built-in GD
+   fonts cannot turn in the PNG, so use a TrueType font for links that are
+   not level.
 3. **Badge nodes**: a node style "badge" (disc with icon or initials, ring,
    shadow), label hidden on the map and shown in the popup / panel. Can reuse
    the icon library (#39).

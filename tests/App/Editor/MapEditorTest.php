@@ -348,6 +348,24 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('link_glow', (string) file_get_contents($this->file));
     }
 
+    public function testPillLinkLabelsPerLinkAndByDefault(): void
+    {
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bwstyle' => 'pill']]]);
+        $model = MapEditor::model($this->editor->load());
+        $links = array_column($model['links'], null, 'name');
+        $this->assertSame('pill', $links['core-paris']['bwstyle']);
+        $this->assertSame('classic', $links['core-lyon']['bwstyle']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_bwstyle' => 'angled']]]);
+        $map = $this->editor->load();
+        $this->assertSame('angled', $map->links['core-lyon']->labelboxstyle, 'a link with the default follows');
+        $this->assertSame('pill', $map->links['core-paris']->labelboxstyle, 'its own style stays');
+        $this->assertSame('angled', MapEditor::model($map)['map']['props']['link_bwstyle']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bwstyle' => 'round']]]);
+    }
+
     /** The Night theme: map colours, scale and the DEFAULT labels, in one batch; own values stay */
     public function testNightThemeInOneStep(): void
     {
@@ -360,6 +378,7 @@ final class MapEditorTest extends TestCase
         $this->assertSame('modern', $props['key_style']);
         $this->assertSame('pill', $props['stamp_style']);
         $this->assertTrue($props['link_glow']);
+        $this->assertSame('pill', $props['link_bwstyle']);
         [$colour] = $map->NewColourFromPercent(90, 'DEFAULT');
         $this->assertSame([229, 83, 28], [$colour->r, $colour->g, $colour->b]);
 

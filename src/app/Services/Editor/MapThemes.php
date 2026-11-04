@@ -16,7 +16,8 @@ final class MapThemes
 {
     /**
      * Night: a dark canvas, links from cream to amber as the load grows,
-     * dark labels with light text and a gold-edged legend card. The idea
+     * dark labels with light text, link labels on pills along the link,
+     * and a gold-edged legend card. The idea
      * comes from the Nine IX traffic map (stats.nine-ix.net); the colours
      * are our own. Every step of the scale reads on the dark background.
      */
@@ -32,6 +33,7 @@ final class MapThemes
                 'key_style' => 'modern',
                 'stamp_style' => 'pill',
                 'link_glow' => true,
+                'link_bwstyle' => 'pill',
             ],
             'scale' => [
                 ['bottom' => 0, 'top' => 0, 'colour' => '#5d6472'],

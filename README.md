@@ -313,11 +313,17 @@ and saves each change straight into the map's `.conf` file.
 - **Glow**: another switch of that tab draws a soft glow around every link,
   in its own colour (`SET link_glow 1`), in the live map and the editor.
   The PNG keeps plain links.
+- **Pill link labels**: *Bandwidth labels* in the link panel (or *Label
+  box* in *Link defaults* for every link) draws the label on a level box
+  (`BWSTYLE classic`), a box along the link (`angled`) or a pill along the
+  link with a small arrow toward where the traffic goes (`pill`), in the
+  PNG and the SVG. The built-in fonts cannot turn in the PNG: pick a
+  TrueType font for labels on links that are not level.
 - **Themes**: *Apply the theme* in the *General* tab of *Map properties*
   restyles the whole map in one click, saved at once and undone with
   Ctrl+Z. *Night* (an idea from the Nine IX traffic map): a dark canvas,
-  links from cream to amber as the load grows, with the glow, dark node and
-  link labels with light text, and the modern legend card with a gold edge.
+  links from cream to amber as the load grows, with the glow, pill link
+  labels, dark node and link labels with light text, and the modern legend card with a gold edge.
   A theme only writes ordinary settings (colours, `KEYSTYLE`, the `SCALE`
   steps, the label colours of `NODE DEFAULT` and `LINK DEFAULT`); nodes and
   links with their own colours keep them.

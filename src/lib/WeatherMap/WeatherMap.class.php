@@ -1368,7 +1368,11 @@ class WeatherMap extends WeatherMapBase {
 	}
 
 	// nodename is a vestigal parameter, from the days when nodes were just big labels
-	function DrawLabelRotated($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, &$map, $direction) {
+	function DrawLabelRotated($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, &$map, $direction, $pill = false) {
+		if ($pill) {
+			$this->DrawLabelPill($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, $map, $direction);
+			return;
+		}
 		list($strwidth, $strheight) = $this->myimagestringsize($font, $text);
 
 		if (WeatherMapSvg::$active) {
@@ -1436,6 +1440,98 @@ class WeatherMap extends WeatherMapBase {
 			$map->imap->addArea('Polygon', $areaname, '', $ppoints);
 			wm_debug("Adding Poly imagemap for $areaname");
 		}
+	}
+
+	/**
+	 * BWSTYLE pill: the label on a rounded box along the link, with a small
+	 * arrow at the end the traffic goes to. $angle is the direction of the
+	 * link from A to B at that point: OUT traffic goes that way, IN the
+	 * other way. The text stays readable (never upside down).
+	 */
+	function DrawLabelPill($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, &$map, $direction) {
+		list($strwidth, $strheight) = $this->myimagestringsize($font, $text);
+
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
+		}
+
+		$flow = $angle + ($direction == IN ? 180 : 0);
+		if (abs($angle) > 90) {
+			$angle -= 180;
+		}
+		if ($angle < -180) {
+			$angle += 360;
+		}
+		// the arrow goes at the right end when the traffic follows the text
+		$diff = fmod($flow - $angle + 720, 360);
+		$sign = ($diff < 90 || $diff > 270) ? 1 : -1;
+		$rangle = -deg2rad($angle);
+
+		$padding = max(0, intval($padding));
+		$half_h = $strheight / 2 + $padding + 2;
+		$arrow = max(4, round($strheight * 0.45));
+		$gap = 3;
+		// straight part of the box: text, then the arrow and a gap on one side
+		$half_w = $strwidth / 2 + ($arrow + $gap) / 2 + $padding + 1;
+		$r = $half_h;
+		$cx = $x;
+
+		// a stadium: two half circles joined by straight sides
+		$steps = 12;
+		$points = array();
+		for ($i = 0; $i <= $steps; $i++) {
+			$a = -M_PI / 2 + M_PI * $i / $steps;
+			$points[] = $cx + $half_w + $r * cos($a);
+			$points[] = $y + $r * sin($a);
+		}
+		for ($i = 0; $i <= $steps; $i++) {
+			$a = M_PI / 2 + M_PI * $i / $steps;
+			$points[] = $cx - $half_w + $r * cos($a);
+			$points[] = $y + $r * sin($a);
+		}
+
+		// the text sits away from the arrow; the arrow tip near the round end
+		$text_x = $cx - $sign * ($arrow + $gap) / 2 - $strwidth / 2;
+		$tip = $cx + $sign * ($half_w + $r * 0.35);
+		$base = $tip - $sign * $arrow;
+		$ah = $arrow * 0.7;
+		$arrowpoints = array($tip, $y, $base, $y - $ah, $base, $y + $ah);
+		$textpoint = array($text_x, $y + $strheight / 2);
+		$box = array($cx - $half_w - $r, $y - $half_h, $cx - $half_w - $r, $y + $half_h, $cx + $half_w + $r, $y + $half_h, $cx + $half_w + $r, $y - $half_h);
+
+		rotateAboutPoint($points, $x, $y, $rangle);
+		rotateAboutPoint($arrowpoints, $x, $y, $rangle);
+		rotateAboutPoint($textpoint, $x, $y, $rangle);
+		rotateAboutPoint($box, $x, $y, $rangle);
+		// GD takes whole pixels; the SVG keeps the round ends smooth with tenths
+		foreach (array('points', 'arrowpoints') as $var) {
+			foreach ($$var as $i => $v) {
+				${$var}[$i] = round($v, 1);
+			}
+		}
+		foreach ($box as $i => $v) {
+			$box[$i] = intval(round($v));
+		}
+
+		if ($bgcolour != array(-1, -1, -1)) {
+			$bgcol = myimagecolorallocate($image, $bgcolour[0], $bgcolour[1], $bgcolour[2]);
+			wimagefilledpolygon($image, $points, count($points) / 2, $bgcol);
+		}
+		if ($outlinecolour != array(-1, -1, -1)) {
+			$outlinecol = myimagecolorallocate($image, $outlinecolour[0], $outlinecolour[1], $outlinecolour[2]);
+			wimagepolygon($image, $points, count($points) / 2, $outlinecol);
+		}
+
+		$textcol = myimagecolorallocate($image, $textcolour[0], $textcolour[1], $textcolour[2]);
+		wimagefilledpolygon($image, $arrowpoints, 3, $textcol);
+		$this->myimagestring($image, $font, intval(round($textpoint[0])), intval(round($textpoint[1])), $text, $textcol, $angle, $strheight);
+
+		if (WeatherMapSvg::$active) {
+			WeatherMapSvg::$active->role = null;
+		}
+
+		$areaname = 'LINK:L' . $map->links[$linkname]->id . ':' . ($direction + 2);
+		$map->imap->addArea('Polygon', $areaname, '', $box);
 	}
 
 	function ColourFromPercent($image, $percent, $scalename = 'DEFAULT', $name = '') {
@@ -2864,7 +2960,7 @@ class WeatherMap extends WeatherMapBase {
 					array('LINK', '/^\s*COMMENTSTYLE\s+(edge|center)\s*$/i', array('commentstyle'=>1)),
 					array('LINK', '/^\s*COMMENTCURVE\s+([01])\s*$/i', array('commentcurve'=>1)),
 					array('LINK', '/^\s*DUPLEX\s+(full|half)\s*$/i', array('duplex'=>1)),
-					array('LINK', '/^\s*BWSTYLE\s+(classic|angled)\s*$/i', array('labelboxstyle'=>1)),
+					array('LINK', '/^\s*BWSTYLE\s+(classic|angled|pill)\s*$/i', array('labelboxstyle'=>1)),
 					array('LINK', '/^\s*LINKSTYLE\s+(twoway|oneway)\s*$/i', array('linkstyle'=>1)),
 					array('LINK', '/^\s*BWLABELPOS\s+(\d+)\s(\d+)\s*$/i', array('labeloffset_in'=>1,'labeloffset_out'=>2)),
 					array('LINK', '/^\s*COMMENTPOS\s+(\d+)\s(\d+)\s*$/i', array('commentoffset_in'=>1, 'commentoffset_out'=>2)),

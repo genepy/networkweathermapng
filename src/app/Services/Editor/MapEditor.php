@@ -53,6 +53,7 @@ class MapEditor
         'linkstyle' => ['twoway', 'oneway'],
         'labelstyle' => ['percent', 'bits', 'unformatted', 'none'],
         'commentcurve' => ['0', '1'],
+        'bwstyle' => ['classic', 'angled', 'pill'],
     ];
 
     /** Zone fields the inspector may change: request key => [property, type] */
@@ -501,7 +502,7 @@ class MapEditor
                     if (!in_array($value, self::LINK_CHOICES[$key], true)) {
                         throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
                     }
-                    $field = $key === 'labelstyle' ? 'labelstyle' : $key;
+                    $field = $key === 'bwstyle' ? 'labelboxstyle' : $key;
                     $link->$field = $value;
                 } elseif ($key === 'width') {
                     $link->width = strtolower((string) $value) === 'auto' ? 'auto' : max(1, (int) $value);
@@ -1054,7 +1055,7 @@ class MapEditor
                 } else {
                     $map->add_hint('background_sizing', $value);
                 }
-            } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont'], true)) {
+            } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont', 'link_bwstyle'], true)) {
                 $this->setLinkDefault($map, $key, $value, $fonts);
             } else {
                 throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
@@ -1161,6 +1162,7 @@ class MapEditor
             'link_width' => ['width'],
             'link_labelstyle' => ['labelstyle'],
             'link_bwfont' => ['bwfont'],
+            'link_bwstyle' => ['labelboxstyle'],
         };
         $new = match ($key) {
             'link_bandwidth' => $this->bandwidth((string) $value),
@@ -1169,6 +1171,8 @@ class MapEditor
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
             'link_bwfont' => in_array((int) $value, $fonts, true) ? (int) $value
                 : throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value])),
+            'link_bwstyle' => in_array($value, self::LINK_CHOICES['bwstyle'], true) ? $value
+                : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
         };
 
         foreach ($fields as $field) {
@@ -1203,6 +1207,13 @@ class MapEditor
             $link = $parent;
         }
         return $value === (string) $map->links['DEFAULT']->$field;
+    }
+
+    /** BWSTYLE of a link: classic, angled or pill */
+    private static function bwStyle(object $link): string
+    {
+        $v = strtolower((string) $link->labelboxstyle);
+        return in_array($v, self::LINK_CHOICES['bwstyle'], true) ? $v : 'classic';
     }
 
     /** SET background_sizing as the editor shows it: image when unset or unknown */
@@ -1247,6 +1258,7 @@ class MapEditor
             'link_width' => $default ? (string) $default->width : '',
             'link_labelstyle' => $default ? (string) $default->labelstyle : 'percent',
             'link_bwfont' => $default ? (int) $default->bwfont : 2,
+            'link_bwstyle' => $default ? self::bwStyle($default) : 'classic',
         ];
     }
 
@@ -1373,6 +1385,7 @@ class MapEditor
                 'comment_in' => (string) ($link->comments[IN] ?? ''),
                 'comment_out' => (string) ($link->comments[OUT] ?? ''),
                 'commentcurve' => (string) $link->commentcurve === '1' ? '1' : '0',
+                'bwstyle' => self::bwStyle($link),
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),
