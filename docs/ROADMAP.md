@@ -13,7 +13,7 @@ Last updated: 2026-11-04.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| UI redesign, step 2: app shell | `claude/project-thread-qvyinv` | Shell, toasts, dialog, error pages and versioned assets written; browser check and PR left |
+| (none) | | |
 
 ## Paused
 
@@ -61,6 +61,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #60 | UI redesign, step 2: app shell: thin top bar, user menu (language, theme, password, log out), no footer, bottom navigation on phones, toasts (`WMUI.toast`), a styled confirmation dialog (`WMUI.confirm`), error pages in the shell (`ErrorPage`), versioned asset addresses (`asset()`) |
 | #59 | UI redesign, step 1: design tokens in `tokens.css` for both themes, contrast-checked colours (WCAG 2.2 AA, `DesignTokensTest`), field and control edges at 3:1, a Lucide icon sprite (`icon('name')`) instead of emojis; no layout change |
 | #58 | Node label position presets: *Label position* in the node panel puts the label above, at the top, centre, bottom or below the icon in one click (`SET editor_label_position`, the 2.0 hint, now drawn on import too) |
 | #57 | Background fit or stretch: *Background size* in the map panel draws the background at its natural size, fitted to the map (ratio kept, centred) or stretched, in PNG, SVG and the editor (`SET background_sizing image\|fit\|stretch`, the 2.0 hint, so imported maps use it) |
