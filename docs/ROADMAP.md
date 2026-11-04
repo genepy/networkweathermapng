@@ -68,7 +68,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
-| (this PR) | Nine IX style, task 1: *Night* map theme, applied in one click from *Map properties* (dark canvas, cream to amber link scale, dark labels, gold-edged modern legend), and a per-map link glow in the SVG (`SET link_glow 1`) |
+| #62 | Nine IX style, task 1: *Night* map theme, applied in one click from *Map properties* (dark canvas, cream to amber link scale, dark labels, gold-edged modern legend), and a per-map link glow in the SVG (`SET link_glow 1`) |
 | #59 | UI redesign, step 1: design tokens in `tokens.css` for both themes, contrast-checked colours (WCAG 2.2 AA, `DesignTokensTest`), field and control edges at 3:1, a Lucide icon sprite (`icon('name')`) instead of emojis; no layout change |
 | #58 | Node label position presets: *Label position* in the node panel puts the label above, at the top, centre, bottom or below the icon in one click (`SET editor_label_position`, the 2.0 hint, now drawn on import too) |
 | #57 | Background fit or stretch: *Background size* in the map panel draws the background at its natural size, fitted to the map (ratio kept, centred) or stretched, in PNG, SVG and the editor (`SET background_sizing image\|fit\|stretch`, the 2.0 hint, so imported maps use it) |
