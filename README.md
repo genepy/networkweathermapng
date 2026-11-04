@@ -310,6 +310,23 @@ and saves each change straight into the map's `.conf` file.
   (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
   *reduce motion* setting the glow stays and the pulse stops. The PNG is not
   changed.
+- **Glow**: another switch of that tab draws a soft glow around every link,
+  in its own colour (`SET link_glow 1`), in the live map and the editor.
+  The PNG keeps plain links.
+- **Pill link labels**: *Bandwidth labels* in the link panel (or *Label
+  box* in *Link defaults* for every link) draws the label on a level box
+  (`BWSTYLE classic`), a box along the link (`angled`) or a pill along the
+  link with a small arrow toward where the traffic goes (`pill`), in the
+  PNG and the SVG. The built-in fonts cannot turn in the PNG: pick a
+  TrueType font for labels on links that are not level.
+- **Themes**: *Apply the theme* in the *General* tab of *Map properties*
+  restyles the whole map in one click, saved at once and undone with
+  Ctrl+Z. *Night* (an idea from the Nine IX traffic map): a dark canvas,
+  links from cream to amber as the load grows, with the glow, pill link
+  labels, dark node and link labels with light text, and the modern legend card with a gold edge.
+  A theme only writes ordinary settings (colours, `KEYSTYLE`, the `SCALE`
+  steps, the label colours of `NODE DEFAULT` and `LINK DEFAULT`); nodes and
+  links with their own colours keep them.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and
   the links between them, also into another map open in another tab (the
   copy is kept in the browser). Pasted items take free names (`name_2`…),
@@ -326,7 +343,12 @@ and saves each change straight into the map's `.conf` file.
   (warnings with their line). *Apply* saves it as one undo step. INCLUDE and
   the output paths (`*OUTPUTFILE`, `IMAGEURI`) cannot be changed there.
 - **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
-  `DATA_ROOT/history/<map id>`, so they survive a reload.
+  `DATA_ROOT/history/<map id>`, so they survive a reload. Each step keeps a
+  fingerprint of the file it left: if the map was saved outside the history
+  since then (text editor of the classic editor, rename, a copy on disk),
+  that undo or redo is refused instead of overwriting the change, and the
+  button says why. An undo sent from a tab that has not seen the latest save
+  of another tab or user is refused too, and the map is reloaded.
 
 The previous editor is still available at `/editor/classic/<map id>`.
 

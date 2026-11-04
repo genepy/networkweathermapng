@@ -148,6 +148,10 @@ return [
     // Copy, paste, text mode (server)
     'No text' => 'Aucun texte',
     'The map was changed by someone else since the text was loaded. Copy your text, reload and try again.' => 'La carte a été modifiée par quelqu’un d’autre depuis le chargement du texte. Copiez votre texte, rechargez et réessayez.',
+    // Undo refused after an outside change
+    'The map was saved outside this editor since this step. Undo is refused so that change is not lost.' => 'La carte a été enregistrée hors de cet éditeur depuis cette étape. L’annulation est refusée pour ne pas perdre ce changement.',
+    'The map was saved outside this editor since this step. Redo is refused so that change is not lost.' => 'La carte a été enregistrée hors de cet éditeur depuis cette étape. Le rétablissement est refusé pour ne pas perdre ce changement.',
+    'The map was changed by someone else since you loaded it. It has been reloaded: look at it before undoing.' => 'La carte a été modifiée par quelqu’un d’autre depuis son chargement. Elle a été rechargée : regardez-la avant d’annuler.',
     'Nothing to copy: select nodes' => 'Rien à copier : sélectionnez des nœuds',
     'Nothing to paste' => 'Rien à coller',
     'The pasted content is too large' => 'Le contenu collé est trop volumineux',
@@ -174,6 +178,7 @@ return [
     'the upload failed' => 'l’envoi a échoué',
     'Invalid font: :value' => 'Police invalide : :value',
     'Unknown map property: :key' => 'Propriété de carte inconnue : :key',
+    'Unknown theme: :name' => 'Thème inconnu : :name',
     'This map has no DEFAULT link' => 'Cette carte n’a pas de lien DEFAULT',
     'The file is too big (2 MB at most)' => 'Le fichier est trop gros (2 Mo au plus)',
     'Only PNG, GIF, JPEG and SVG icons are accepted' => 'Seules les icônes PNG, GIF, JPEG et SVG sont acceptées',

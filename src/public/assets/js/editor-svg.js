@@ -124,12 +124,24 @@
         });
     }
 
+    // The map was saved outside this editor since the step: undoing it
+    // would overwrite that change, so the server refuses it.
+    function outsideMessage(direction) {
+        return direction === 'undo'
+            ? t('The map was saved outside this editor since this step. Undo is refused so that change is not lost.')
+            : t('The map was saved outside this editor since this step. Redo is refused so that change is not lost.');
+    }
+
     function historyStep(direction) {
         if (!state.history[direction]) {
             return;
         }
+        if (state.history.outside && state.history.outside[direction]) {
+            toast(outsideMessage(direction), true);
+            return;
+        }
         run(function () {
-            return api('POST', '/editor/' + direction + '/' + cfg.mapId).then(function (d) { applyRender(d); });
+            return api('POST', '/editor/' + direction + '/' + cfg.mapId, { version: lastVersion || '' }).then(function (d) { applyRender(d); });
         });
     }
 
@@ -726,8 +738,13 @@
     }
 
     function updateToolbar() {
-        $('[data-cmd="undo"]').disabled = !state.history.undo;
-        $('[data-cmd="redo"]').disabled = !state.history.redo;
+        ['undo', 'redo'].forEach(function (direction) {
+            var b = $('[data-cmd="' + direction + '"]');
+            var outside = !!(state.history.outside && state.history.outside[direction] && state.history[direction]);
+            if (b.dataset.title === undefined) { b.dataset.title = b.title; }
+            b.disabled = !state.history[direction] || outside;
+            b.title = outside ? outsideMessage(direction) : b.dataset.title;
+        });
         var nodes = selected('node').length, any = state.selection.size, objects = alignUnits(selectedObjects()).length;
         $$('[data-needs]').forEach(function (e) {
             var need = e.dataset.needs, ok = true;
@@ -2535,6 +2552,7 @@
                 return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
             }))),
             row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
+            row(t('Bandwidth labels'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] })),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
             row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }))
         );

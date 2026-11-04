@@ -252,12 +252,40 @@
         return h('label', { 'class': 'inline' }, [h('input', { type: 'checkbox', name: name, checked: checked }), ' ' + label]);
     }
 
+    /** Themes the server knows (MapThemes), by id */
+    var THEMES = [['night', t('Night: dark canvas, cream to amber glowing links')]];
+
+    /** The theme row of the General tab: applied and saved at once, one undo step */
+    function themePane() {
+        var pick = h('select', { 'aria-label': t('Theme') }, THEMES.map(function (x) {
+            return h('option', { value: x[0], text: x[1] });
+        }));
+        var go = h('button', { type: 'button', text: t('Apply the theme') });
+        go.addEventListener('click', function () {
+            var name = pick.selectedOptions[0].text, done = false;
+            go.disabled = true;
+            ed.send([{ op: 'apply_theme', theme: pick.value }], function () { done = true; return undefined; }).then(function () {
+                if (!done) { return; }
+                // show the new values; the dialog stays open on the same tab
+                build(ed.state.model.map.props, ed.state.model.map);
+                show(current);
+                start = values();
+                ed.toast(t('Theme applied: :name. Ctrl+Z to undo.', { name: name }));
+            }).finally(function () { go.disabled = false; });
+        });
+        return [
+            h('h4', { text: t('Theme') }),
+            h('div', { 'class': 'pair' }, [pick, go]),
+            h('span', { 'class': 'hint', text: t('Sets the colours of the map, the legend, the link colours and the default node and link labels. Saved at once; changes not yet applied in this dialog are dropped.') })
+        ];
+    }
+
     function build(p, m) {
         var panes = {
             general: [
                 field(t('Map title'), h('input', { name: 'title', value: m.title, autocomplete: 'off' })),
                 field(t('Background colour'), colour('bg_colour', p.bg_colour, false), t('Seen where the background image does not cover the map.'))
-            ],
+            ].concat(themePane()),
             title: [
                 field(t('Map title'), h('input', { name: 'title_again', value: m.title, autocomplete: 'off' })),
                 field(t('Font'), fontSelect('title_font', p.title_font)),
@@ -295,12 +323,18 @@
                 field(t('Label'), choice('link_labelstyle', p.link_labelstyle, [
                     ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
                 ])),
-                field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont))
+                field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
+                field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
+                    ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
+                ]))
             ],
             scale: scalePane(m.scale).concat([
                 h('h4', { text: t('Saturated links') }),
                 check('traffic_pulse', p.traffic_pulse, t('Make links at 80 % or more pulse and glow in the viewer')),
-                h('span', { 'class': 'hint', text: t('Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.') })
+                h('span', { 'class': 'hint', text: t('Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.') }),
+                h('h4', { text: t('Glow') }),
+                check('link_glow', p.link_glow, t('Draw a soft glow around the links, in their own colour')),
+                h('span', { 'class': 'hint', text: t('In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.') })
             ]),
             fonts: fontsPane()
         };

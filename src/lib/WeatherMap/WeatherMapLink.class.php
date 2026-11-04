@@ -690,14 +690,15 @@ class WeatherMapLink extends WeatherMapItem {
 						$thelabel = screenshotify($thelabel);
 					}
 
-					if ($this->labelboxstyle == 'angled') {
+					if ($this->labelboxstyle == 'angled' || $this->labelboxstyle == 'pill') {
 						$angle = $task[6];
 					} else {
 						$angle = 0;
 					}
 
 					$args = array($task[0], $task[1], $angle, $thelabel, $this->bwfont, $padding,
-						$this->name, $this->bwfontcolour, $this->bwboxcolour, $this->bwoutlinecolour, $map, $task[7]
+						$this->name, $this->bwfontcolour, $this->bwboxcolour, $this->bwoutlinecolour, $map, $task[7],
+						$this->labelboxstyle == 'pill'
 					);
 
 					// DrawMap() draws the labels once all the links of the layer are drawn
