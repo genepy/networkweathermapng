@@ -369,4 +369,5 @@ return [
     'Background :name removed' => 'Arrière-plan :name retiré',
     ':n background(s) added' => ':n arrière-plan(s) ajouté(s)',
     'Choose a background' => 'Choisir un arrière-plan',
+    'Discard' => 'Abandonner',
 ];

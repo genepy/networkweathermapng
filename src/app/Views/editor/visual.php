@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?= \App\Core\Csrf::metaTag() ?>
-    <script src="/assets/js/csrf.js"></script>
+    <script src="<?= asset('/assets/js/csrf.js') ?>"></script>
     <title><?= htmlspecialchars($title ?? 'Map Editor') ?></title>
-    <link rel="stylesheet" href="/assets/css/tokens.css">
-    <link rel="stylesheet" href="/assets/css/weathermap.css">
-    <link rel="stylesheet" href="/assets/css/editor.css">
+    <link rel="stylesheet" href="<?= asset('/assets/css/tokens.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/weathermap.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/assets/css/editor.css') ?>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #fff; overflow: hidden; }

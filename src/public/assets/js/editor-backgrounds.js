@@ -98,7 +98,13 @@
     }
 
     function remove(b) {
-        if (!window.confirm(t('Remove the background :name from the library?', { name: b.name }))) { return; }
+        var question = t('Remove the background :name from the library?', { name: b.name });
+        var ask = window.WMUI ? window.WMUI.confirm({ message: question, confirm: t('Remove'), danger: true })
+            : Promise.resolve(window.confirm(question));
+        ask.then(function (ok) { if (ok) { removeNow(b); } });
+    }
+
+    function removeNow(b) {
         ed.api('POST', '/editor/backgrounds/delete', { path: b.path }).then(function (d) {
             update(d);
             ed.toast(t('Background :name removed', { name: b.name }));

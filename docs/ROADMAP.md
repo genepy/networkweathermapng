@@ -13,7 +13,7 @@ Last updated: 2026-11-04.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| UI redesign, step 2: app shell | `claude/project-thread-qvyinv` | Shell, toasts, dialog, error pages and versioned assets written; browser check and PR left |
 
 ## Paused
 
@@ -41,7 +41,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Cacti plugin study | Study what it would take to run as, or import from, the Cacti Weathermap plugin. A written study first, no code |
 | Fresh map style inspired by Nine IX | Dark geographic basemap, glowing links, pill rate labels, badge nodes, richer hover card, floating panels, link flow animation, site focus, clusters, light theme. Eight small tasks, to be split when started |
-| UI redesign, step 2: app shell | Thin top bar, user menu (language, theme, password, logout), no footer, bottom navigation on phones, toasts, a styled confirmation dialog instead of `confirm()`, error pages. Plan and decisions: [docs/studies/ui-redesign.md](studies/ui-redesign.md) |
 | UI redesign, step 3: one Maps page | Thumbnails and list on the same page, filter chips, actions on hover, bulk actions; the Editor tab redirects to Maps (decision: merge Maps and Editor) |
 | UI redesign, step 4: map viewer | Floating bar, Live / Last 24 h, a single fullscreen, status and legend at the bottom, kiosk controls that fade out |
 | UI redesign, step 5: Map settings panel | Every setting of a map in one panel; map name and title merged (decision), asking which one to keep where they differ |

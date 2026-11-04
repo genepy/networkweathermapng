@@ -3,7 +3,7 @@
  * - adds a hidden "_token" field to forms posted to this site;
  * - adds the "X-CSRF-Token" header to fetch() and XMLHttpRequest calls;
  * - turns links marked data-method="post" into small POST forms, with an
- *   optional confirmation from data-confirm.
+ *   optional confirmation from data-confirm (the shell's dialog, see ui.js).
  */
 (function () {
     'use strict';
@@ -85,14 +85,28 @@
         }
         event.preventDefault();
         var question = link.getAttribute('data-confirm');
-        if (question && !window.confirm(question)) {
+        var post = function () {
+            var form = document.createElement('form');
+            form.method = 'post';
+            form.action = link.href;
+            form.style.display = 'none';
+            document.body.appendChild(form);
+            form.submit();
+        };
+        if (!question) {
+            post();
             return;
         }
-        var form = document.createElement('form');
-        form.method = 'post';
-        form.action = link.href;
-        form.style.display = 'none';
-        document.body.appendChild(form);
-        form.submit();
+        // the styled dialog of the shell (ui.js) when the page has it; its
+        // button says what the link does (data-confirm-label, else its text)
+        if (window.WMUI) {
+            window.WMUI.confirm({
+                message: question,
+                confirm: link.getAttribute('data-confirm-label') || link.textContent.trim(),
+                danger: link.classList.contains('btn-danger') || link.classList.contains('danger')
+            }).then(function (ok) { if (ok) { post(); } });
+        } else if (window.confirm(question)) {
+            post();
+        }
     });
 })();

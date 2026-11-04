@@ -41,6 +41,25 @@ if (!function_exists('breadcrumb')) {
     }
 }
 
+if (!function_exists('asset')) {
+    /**
+     * Address of a file of src/public/assets with a version taken from the
+     * file, so a changed file is fetched again although /assets is cached
+     * for 30 days (docker/nginx/default.conf). Escaped for HTML attributes.
+     */
+    function asset(string $path): string
+    {
+        static $versions = [];
+        if (!isset($versions[$path])) {
+            $root = defined('PUBLIC_ROOT') ? PUBLIC_ROOT : dirname(__DIR__, 2) . '/public';
+            $file = $root . '/' . ltrim($path, '/');
+            $versions[$path] = is_file($file) ? substr(md5(filemtime($file) . ':' . filesize($file)), 0, 10) : '';
+        }
+        $url = htmlspecialchars($path, ENT_QUOTES);
+        return $versions[$path] === '' ? $url : $url . '?v=' . $versions[$path];
+    }
+}
+
 if (!function_exists('icon')) {
     /**
      * An icon of the interface sprite (src/public/assets/icons/ui.svg, Lucide).
@@ -49,6 +68,6 @@ if (!function_exists('icon')) {
     function icon(string $name, string $class = 'icon'): string
     {
         return '<svg class="' . htmlspecialchars($class, ENT_QUOTES) . '" aria-hidden="true" focusable="false">'
-            . '<use href="/assets/icons/ui.svg#' . htmlspecialchars($name, ENT_QUOTES) . '"/></svg>';
+            . '<use href="' . asset('/assets/icons/ui.svg') . '#' . htmlspecialchars($name, ENT_QUOTES) . '"/></svg>';
     }
 }

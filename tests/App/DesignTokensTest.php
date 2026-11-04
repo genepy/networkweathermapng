@@ -93,11 +93,12 @@ final class DesignTokensTest extends TestCase
         $checked = 0;
         foreach ($iterator as $file) {
             $html = (string) file_get_contents((string) $file);
-            if (!preg_match('#href="/assets/css/(weathermap|editor-svg)\.css"#', $html, $m, PREG_OFFSET_CAPTURE)) {
+            // the views write the addresses through asset(), which adds a version
+            if (!preg_match('#asset\(\'/assets/css/(weathermap|editor-svg)\.css\'\)#', $html, $m, PREG_OFFSET_CAPTURE)) {
                 continue;
             }
             $checked++;
-            $tokens = strpos($html, 'href="/assets/css/tokens.css"');
+            $tokens = strpos($html, "asset('/assets/css/tokens.css')");
             $this->assertNotFalse($tokens, $file . ' does not load tokens.css');
             $this->assertLessThan($m[0][1], $tokens, $file . ' loads tokens.css after ' . $m[1][0] . '.css');
         }

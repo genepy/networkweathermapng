@@ -2,7 +2,7 @@
     $favourites = isset($favourites) ? array_map('intval', (array) $favourites) : [];
     $statuses = isset($statuses) ? (array) $statuses : [];
 ?>
-<link rel="stylesheet" href="/assets/css/viewer.css">
+<link rel="stylesheet" href="<?= asset('/assets/css/viewer.css') ?>">
 <div class="maps-page">
     <div class="page-header">
         <?= breadcrumb([[__('Network Weathermaps')]]) ?>
@@ -119,7 +119,7 @@
 <script>
 window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['Error: :msg', 'Failed to move map', 'An error occurred while moving the map']) + \App\Core\I18n::section('viewer-js')) ?>);
 </script>
-<script src="/assets/js/maplist.js" defer></script>
+<script src="<?= asset('/assets/js/maplist.js') ?>" defer></script>
 
 <script>
 function t(s) { return (window.WM_T && window.WM_T[s]) || s; }
@@ -162,12 +162,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 location.reload();
             } else {
-                alert(t('Error: :msg').replace(':msg', data.error || t('Failed to move map')));
+                WM.notify(t('Error: :msg').replace(':msg', data.error || t('Failed to move map')), 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert(t('An error occurred while moving the map'));
+            WM.notify(t('An error occurred while moving the map'), 'error');
         });
     });
     

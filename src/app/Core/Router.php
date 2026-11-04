@@ -10,6 +10,9 @@ namespace App\Core;
 class Router
 {
     private array $routes = [];
+
+    /** config and database of the request being dispatched, for the error pages */
+    private array $context = [];
     
     public function get(string $path, mixed $handler): void
     {
@@ -47,6 +50,8 @@ class Router
     
     public function dispatch(string $method, string $uri, array $context = []): void
     {
+        $this->context = $context;
+
         // Remove trailing slash
         $uri = rtrim($uri, '/') ?: '/';
         
@@ -106,32 +111,31 @@ class Router
     
     private function notFound(): void
     {
-        http_response_code(404);
-        echo '<h1>404 Not Found</h1>';
-        echo '<p>The requested page was not found.</p>';
+        ErrorPage::send(404, $this->auth());
     }
-    
+
     private function csrfFailed(): void
     {
-        http_response_code(419);
-
-        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
-        if (isset($_SERVER[Csrf::HEADER]) || str_contains($accept, 'application/json')) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => 'Session expired, reload the page and try again']);
-            return;
-        }
-
-        echo '<h1>Session expired</h1>';
-        echo '<p>The form was sent without a valid security token. <a href="javascript:history.back()">Go back</a>, reload the page and try again.</p>';
+        ErrorPage::send(419, $this->auth());
     }
 
     private function serverError(string $message): void
     {
-        http_response_code(500);
-        echo '<h1>500 Internal Server Error</h1>';
-        if (getenv('APP_DEBUG') === 'true') {
-            echo '<p>' . htmlspecialchars($message) . '</p>';
+        ErrorPage::send(500, $this->auth(), null, getenv('APP_DEBUG') === 'true' ? $message : null);
+    }
+
+    /** The signed-in user, for the shell of an error page; null when the context has no database */
+    private function auth(): ?Auth
+    {
+        $config = $this->context['config'] ?? null;
+        $database = $this->context['database'] ?? null;
+        if (!$config instanceof Config || !$database instanceof Database) {
+            return null;
+        }
+        try {
+            return new Auth($database, $config);
+        } catch (\Throwable) {
+            return null;
         }
     }
 }
