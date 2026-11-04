@@ -388,4 +388,8 @@ return [
     'Level box' => 'Cadre horizontal',
     'Box along the link' => 'Cadre le long du lien',
     'Pill along the link, with an arrow' => 'Pastille le long du lien, avec une flèche',
+    // Badge nodes
+    'Look' => 'Apparence',
+    'Box with the label' => 'Cadre avec l’étiquette',
+    'Round badge: icon or initials, name on hover' => 'Pastille ronde : icône ou initiales, nom au survol',
 ];

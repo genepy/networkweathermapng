@@ -93,6 +93,8 @@ class WeatherMapNode extends WeatherMapItem {
 	var $relative_to;
 	var $zorder;
 	var $svgparts = array();
+	/** The badge drawn by pre_render (SET node_style badge), or null */
+	var $badge = null;
 	var $template;
 	var $polar;
 	var $boundingboxes=array();
@@ -650,6 +652,32 @@ class WeatherMapNode extends WeatherMapItem {
 			}
 		}
 
+		// SET node_style badge: a round badge with the icon or the initials;
+		// the label is not drawn on the map (it is the badge's tooltip)
+		$this->badge = null;
+		if ($this->is_badge() && !$this->is_note()) {
+			$inner = isset($icon_im) && $icon_im ? $icon_im : null;
+			$this->badge = $this->make_badge($map, $inner, $col, isset($icon_vector) ? $icon_vector : null);
+			if ($inner) {
+				imagedestroy($inner);
+			}
+			$icon_im = $this->badge['image'];
+			$icon_w = imagesx($icon_im);
+			$icon_h = imagesy($icon_im);
+			$icon_x1 = $this->x - $icon_w / 2;
+			$icon_y1 = $this->y - $icon_h / 2;
+			$icon_x2 = $this->x + $icon_w / 2;
+			$icon_y2 = $this->y + $icon_h / 2;
+			$map->nodes[$this->name]->width = $icon_w;
+			$map->nodes[$this->name]->height = $icon_h;
+			$map->nodes[$this->name]->boundingboxes = array(array($icon_x1, $icon_y1, $icon_x2, $icon_y2));
+			// no label box: the layout is the badge alone
+			$boxwidth = 0;
+			$boxheight = 0;
+			$label_x1 = $label_x2 = $this->x;
+			$label_y1 = $label_y2 = $this->y;
+		}
+
 		// do any offset calculations
 		$dx = 0;
 		$dy = 0;
@@ -659,7 +687,7 @@ class WeatherMapNode extends WeatherMapItem {
 		// compass value of its own
 		$compass = $this->labeloffset != '' ? $this->labeloffset : self::label_preset((string) ($this->hints['editor_label_position'] ?? ''));
 
-		if ($compass != '' && $this->iconfile != '') {
+		if ($compass != '' && $this->iconfile != '' && $this->badge === null) {
 			$this->labeloffsetx = 0;
 			$this->labeloffsety = 0;
 
@@ -677,8 +705,12 @@ class WeatherMapNode extends WeatherMapItem {
 		$label_x2 += ($this->labeloffsetx + $dx);
 		$label_y1 += ($this->labeloffsety + $dy);
 		$label_y2 += ($this->labeloffsety + $dy);
+		if ($this->badge !== null) {
+			$label_x1 = $label_x2 = $this->x;
+			$label_y1 = $label_y2 = $this->y;
+		}
 
-		if ($this->label != '') {
+		if ($this->label != '' && $this->badge === null) {
 			// $map->imap->addArea("Rectangle", "NODE:" . $this->name .':1', '', array($label_x1, $label_y1, $label_x2, $label_y2));
 			$map->nodes[$this->name]->boundingboxes[] = array($label_x1, $label_y1, $label_x2, $label_y2);
 		}
@@ -728,7 +760,26 @@ class WeatherMapNode extends WeatherMapItem {
 
 		// Draw the icon, if any
 		if (isset($icon_im)) {
-			if ($svg) {
+			if ($svg && $this->badge !== null) {
+				$b = $this->badge;
+				$this->svgparts['badge'] = array(
+					'cx' => $this->x, 'cy' => $this->y, 'r' => $b['r'],
+					'fill' => $svg->rgba($b['fill']), 'ring' => $svg->rgba($b['ring']), 'ring_width' => $b['ring_width'],
+					'title' => $this->proclabel,
+				);
+				if ($b['inner'] !== null) {
+					$i = $b['inner'];
+					$this->svgparts['badge']['inner'] = array(
+						'x' => $this->x - $i['w'] / 2, 'y' => $this->y - $i['h'] / 2, 'w' => $i['w'], 'h' => $i['h'],
+						'href' => $i['vector'] !== null ? WeatherMapSvg::dataUri($i['vector']) : WeatherMapSvg::gdToDataUri($i['image']),
+					);
+				} elseif ($b['text'] !== '') {
+					$this->svgparts['badge']['text'] = array(
+						'x' => $this->x + $b['tx'], 'y' => $this->y + $b['ty'], 'text' => $b['text'],
+						'font' => $this->labelfont, 'colour' => $svg->rgba($b['ink']),
+					);
+				}
+			} elseif ($svg) {
 				$this->svgparts['icon'] = array(
 					'x' => $icon_x1 + $bbox_x1, 'y' => $icon_y1 + $bbox_y1,
 					'w' => imagesx($icon_im), 'h' => imagesy($icon_im),
@@ -741,7 +792,7 @@ class WeatherMapNode extends WeatherMapItem {
 		}
 
 		// Draw the label, if any
-		if ($this->label != '') {
+		if ($this->label != '' && $this->badge === null) {
 			$txt_x -= $bbox_x1;
 			$txt_x += ($this->labeloffsetx + $dx);
 			$txt_y -= $bbox_y1;
@@ -837,6 +888,106 @@ class WeatherMapNode extends WeatherMapItem {
 
 		# $this->image = $node_im;
 		$map->nodes[$this->name]->image = $node_im;
+	}
+
+	/** SET node_style badge (our hint; DEFAULT passes it on to every node) */
+	function is_badge() {
+		return isset($this->hints['node_style']) && strtolower(trim((string) $this->hints['node_style'])) === 'badge';
+	}
+
+	/** Up to two letters for a badge without a picture: "core-rtr1" gives CR, "Paris" PA */
+	static function initials($label) {
+		$label = trim(preg_replace('/\{[^}]*\}/', '', (string) $label));
+		$words = preg_split('/[\s\-_.\/:]+/u', $label, -1, PREG_SPLIT_NO_EMPTY);
+		if (!$words) {
+			return '';
+		}
+		if (count($words) == 1) {
+			return mb_strtoupper(mb_substr($words[0], 0, 2));
+		}
+		return mb_strtoupper(mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1));
+	}
+
+	/**
+	 * The badge picture: a disc in the label background colour (or the
+	 * colour of its USESCALE), a ring in the label outline colour and a soft
+	 * shadow, with the icon or the initials of the label in the middle.
+	 * Drawn four times larger, then shrunk, so the edge is smooth in GD.
+	 *
+	 * @return array the GD image and what the SVG needs to draw the same
+	 */
+	function make_badge(&$map, $inner, $col, $vector) {
+		$fill = $col->is_real() ? $col : new Colour(26, 30, 38);
+		$ring = new Colour($this->labeloutlinecolour);
+		if (!$ring->is_real()) {
+			$ring = null;
+		}
+		$ink = new Colour($this->labelfontcolour);
+		if ($ink->is_contrast()) {
+			$ink = $fill->contrast();
+		} elseif (!$ink->is_real()) {
+			$ink = $fill->contrast();
+		}
+
+		$text = '';
+		$tw = $th = 0;
+		if ($inner) {
+			$iw = imagesx($inner);
+			$ih = imagesy($inner);
+			$d = (int) ceil(max($iw, $ih) * 1.3) + 4;
+		} else {
+			$text = self::initials($this->proclabel != '' ? $this->proclabel : $this->name);
+			list($tw, $th) = $map->myimagestringsize($this->labelfont, $text !== '' ? $text : 'M');
+			$d = (int) max(24, ceil(max($tw, $th) * 1.6) + 6);
+		}
+		$d += $d % 2;
+		$ring_width = $ring ? max(1.5, $d / 16) : 0;
+		$shadow = 3;
+		$size = $d + 2 * $shadow;
+
+		// the disc, ring and shadow at 4x, then shrunk
+		$k = 4;
+		$big = imagecreatetruecolor($size * $k, $size * $k);
+		imagealphablending($big, false);
+		imagefill($big, 0, 0, imagecolorallocatealpha($big, 0, 0, 0, 127));
+		imagealphablending($big, true);
+		$c = $size * $k / 2;
+		imagefilledellipse($big, intval($c), intval($c + $k * 1.5), intval(($d + 2) * $k), intval(($d + 2) * $k), imagecolorallocatealpha($big, 0, 0, 0, 96));
+		if ($ring) {
+			imagefilledellipse($big, intval($c), intval($c), intval($d * $k), intval($d * $k), $ring->gdallocate($big));
+		}
+		$inside = ($d - 2 * $ring_width) * $k;
+		imagefilledellipse($big, intval($c), intval($c), intval($inside), intval($inside), $fill->gdallocate($big));
+
+		$im = imagecreatetruecolor($size, $size);
+		imagealphablending($im, false);
+		imagesavealpha($im, true);
+		imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
+		imagecopyresampled($im, $big, 0, 0, 0, 0, $size, $size, $size * $k, $size * $k);
+		imagedestroy($big);
+		imagealphablending($im, true);
+
+		$innerinfo = null;
+		$tx = $ty = 0;
+		if ($inner) {
+			imagecopy($im, $inner, intval(round(($size - $iw) / 2)), intval(round(($size - $ih) / 2)), 0, 0, $iw, $ih);
+			// GD drew it from a picture; keep a copy for the SVG
+			$copy = imagecreatetruecolor($iw, $ih);
+			imagealphablending($copy, false);
+			imagesavealpha($copy, true);
+			imagecopy($copy, $inner, 0, 0, 0, 0, $iw, $ih);
+			$innerinfo = array('w' => $iw, 'h' => $ih, 'image' => $copy, 'vector' => $vector);
+		} elseif ($text !== '') {
+			// the baseline, as for a node label: centred in the disc
+			$tx = -$tw / 2;
+			$ty = $th / 2;
+			$map->myimagestring($im, $this->labelfont, intval(round($size / 2 + $tx)), intval(round($size / 2 + $ty)), $text, $ink->gdallocate($im), 0);
+		}
+
+		return array(
+			'image' => $im, 'r' => $d / 2, 'fill' => $fill, 'ring' => $ring, 'ring_width' => $ring_width,
+			'ink' => $ink, 'text' => $text, 'tx' => $tx, 'ty' => $ty, 'inner' => $innerinfo,
+		);
 	}
 
 	function update_cache($cachedir,$mapname) {
