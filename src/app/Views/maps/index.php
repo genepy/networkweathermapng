@@ -68,7 +68,7 @@
             </span>
             <button type="button" class="map-fav" aria-pressed="<?= $isFav ? 'true' : 'false' ?>"
                     title="<?= $isFav ? e__('Remove from favourites') : e__('Add to favourites') ?>"
-                    aria-label="<?= htmlspecialchars(__('Favourite: :name', ['name' => $title])) ?>"><?= $isFav ? '★' : '☆' ?></button>
+                    aria-label="<?= htmlspecialchars(__('Favourite: :name', ['name' => $title])) ?>"><?= icon('star') ?></button>
             <a href="/map/<?= $map['id'] ?>" class="map-link">
                 <div class="map-thumbnail">
                     <img src="/map/<?= $map['id'] ?>/thumb?fast=1" 
@@ -81,9 +81,7 @@
                     <span class="map-group"><?= htmlspecialchars($map['group_name']) ?></span>
                     <?php endif; ?>
                     <?php if ($auth->canEdit()): ?>
-                    <button class="btn-icon move-map-btn" data-map-id="<?= $map['id'] ?>" data-current-group="<?= $map['group_id'] ?>" title="<?= e__('Move to another group') ?>" aria-label="<?= e__('Move to another group') ?>">
-                        ↔️
-                    </button>
+                    <button class="btn-icon move-map-btn" data-map-id="<?= $map['id'] ?>" data-current-group="<?= $map['group_id'] ?>" title="<?= e__('Move to another group') ?>" aria-label="<?= e__('Move to another group') ?>"><?= icon('arrow-left-right') ?></button>
                     <?php endif; ?>
                 </div>
             </a>
@@ -198,16 +196,14 @@ function closeMoveModal() {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.2rem;
-    padding: 5px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
+    padding: 8px;
+    color: var(--wm-text-muted);
     z-index: 10;
 }
+.move-map-btn .icon { width: 18px; height: 18px; display: block; }
 
 .move-map-btn:hover {
-    opacity: 1;
-    transform: scale(1.1);
+    color: var(--wm-accent);
 }
 
 .modal {
@@ -257,15 +253,5 @@ function closeMoveModal() {
     justify-content: flex-end;
     gap: 10px;
     margin-top: 20px;
-}
-
-.btn-secondary {
-    background-color: var(--secondary-color);
-    color: white;
-}
-
-.btn-secondary:hover {
-    background-color: var(--secondary-color);
-    filter: brightness(0.9);
 }
 </style>

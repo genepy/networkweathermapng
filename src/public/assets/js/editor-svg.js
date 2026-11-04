@@ -247,6 +247,15 @@
         return e;
     }
 
+    /** An icon of the editor sprite (toolbar-icons.php), decorative */
+    function icon(id) {
+        var svg = document.createElementNS(SVGNS, 'svg');
+        svg.setAttribute('class', 'i');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.appendChild(el('use', { href: '#i-' + id }));
+        return svg;
+    }
+
     function h(tag, attrs, children) {
         var e = document.createElement(tag);
         Object.keys(attrs || {}).forEach(function (k) {
@@ -502,8 +511,7 @@
                     width: n.box[2] - n.box[0] + 6, height: n.box[3] - n.box[1] + 6
                 }, overlay);
                 if (n.locked) {
-                    var mark = el('text', { 'class': 'lock-mark', x: n.box[2] + 2 + dx, y: n.box[1] + dy }, overlay);
-                    mark.textContent = '🔒';
+                    el('use', { 'class': 'lock-mark', href: '#i-lock', x: n.box[2] + 2 + dx, y: n.box[1] - 11 + dy, width: 11, height: 11 }, overlay);
                 }
             } else if (p.kind === 'zone') {
                 renderZoneBox(state.zones.get(p.name), drag);
@@ -3267,10 +3275,10 @@
                     }
                 }),
                 h('button', {
-                    type: 'button', text: locked ? '🔒' : '🔓', 'class': locked ? 'on' : '',
+                    type: 'button', 'class': locked ? 'on' : '', 'aria-pressed': locked ? 'true' : 'false',
                     title: locked ? t('Unlock this layer') : t('Lock this layer'), 'aria-label': locked ? t('Unlock this layer') : t('Lock this layer'),
                     onclick: function () { send(membersOps(members, 'editor_lock', locked ? null : '1')); }
-                }),
+                }, [icon(locked ? 'lock' : 'unlock')]),
                 h('button', {
                     type: 'button', text: '×', title: t('Remove this layer (its items stay on the map)'), 'aria-label': t('Remove this layer (its items stay on the map)'),
                     onclick: function () {
@@ -3358,9 +3366,9 @@
         if (objects >= 2) {
             entries.push('-', {
                 row: t('Align'), items: [
-                    ['⎸←', t('Align left edges'), 'left'], ['↕', t('Align centres vertically'), 'hcenter'], ['→⎹', t('Align right edges'), 'right'],
-                    ['⤒', t('Align top edges'), 'top'], ['↔', t('Align centres horizontally'), 'vcenter'], ['⤓', t('Align bottom edges'), 'bottom']
-                ].concat(objects >= 3 ? [['⋯', t('Space evenly, left to right'), 'distribute-h'], ['⋮', t('Space evenly, top to bottom'), 'distribute-v']] : [])
+                    ['align-left', t('Align left edges'), 'left'], ['align-hcenter', t('Align centres vertically'), 'hcenter'], ['align-right', t('Align right edges'), 'right'],
+                    ['align-top', t('Align top edges'), 'top'], ['align-vcenter', t('Align centres horizontally'), 'vcenter'], ['align-bottom', t('Align bottom edges'), 'bottom']
+                ].concat(objects >= 3 ? [['distribute-h', t('Space evenly, left to right'), 'distribute-h'], ['distribute-v', t('Space evenly, top to bottom'), 'distribute-v']] : [])
             });
         }
         entries.push('-',
@@ -3381,9 +3389,9 @@
             if (e.row) {
                 return h('div', { 'class': 'ctx-row', role: 'group', 'aria-label': e.row }, [h('span', { text: e.row })].concat(e.items.map(function (it) {
                     return h('button', {
-                        type: 'button', role: 'menuitem', tabindex: '-1', title: it[1], 'aria-label': it[1], text: it[0],
+                        type: 'button', role: 'menuitem', tabindex: '-1', title: it[1], 'aria-label': it[1],
                         onclick: function () { closeMenu(); align(it[2]); }
-                    });
+                    }, [icon(it[0])]);
                 })));
             }
             return h('button', {

@@ -111,7 +111,7 @@
     min-width: 30px;
     height: 30px;
     padding: 0 8px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     border-radius: 6px;
     background: var(--input-bg);
     color: var(--text-color);
@@ -123,6 +123,7 @@
     cursor: pointer;
 }
 .wmv-btn-text { font-size: 13px; }
+.wmv-btn .icon { vertical-align: -3px; }
 .wmv-btn:hover { background: var(--hover-bg); text-decoration: none; }
 .wmv-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
@@ -138,7 +139,7 @@
     width: 170px;
     height: 30px;
     padding: 0 8px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     border-radius: 6px;
     background: var(--input-bg);
     color: var(--text-color);
@@ -249,7 +250,7 @@ body.wmv-noc {
     max-width: 420px;
     height: 36px;
     padding: 0 12px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     border-radius: 6px;
     background: var(--input-bg);
     color: var(--text-color);
@@ -269,7 +270,7 @@ body.wmv-noc {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     background: color-mix(in srgb, var(--card-bg) 88%, transparent);
     color: var(--text-muted);
     font-size: 18px;
@@ -280,9 +281,11 @@ body.wmv-noc {
     align-items: center;
     justify-content: center;
 }
-.map-fav:hover { color: var(--warning-color); }
+.map-fav:hover { color: var(--wm-warning); }
 .map-fav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.map-fav[aria-pressed="true"] { color: #f5b301; border-color: #f5b301; }
+.map-fav .icon { width: 18px; height: 18px; }
+.map-fav[aria-pressed="true"] { color: var(--wm-warning); border-color: var(--wm-warning); }
+.map-fav[aria-pressed="true"] .icon { fill: currentColor; }
 
 .map-state {
     position: absolute;
@@ -342,8 +345,8 @@ body.wmv-noc {
 .wmv-history[hidden] { display: none; }
 .wmv-history-slider { flex: 1; min-width: 80px; accent-color: var(--accent); }
 .wmv-history-time { min-width: 92px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.wmv-history-speed { height: 30px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--input-bg); color: var(--text-color); }
-.wmv-btn.wmv-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.wmv-history-speed { height: 30px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--input-bg); color: var(--text-color); }
+.wmv-btn.wmv-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .wmv-in-history .wmv-state { opacity: 0.85; }
 @media (max-width: 600px) {
     .wmv-history-speed { display: none; }

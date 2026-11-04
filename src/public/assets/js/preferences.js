@@ -16,14 +16,19 @@
     }
 
     var ORDER = ['', 'light', 'dark'];
-    var ICONS = { '': '◐', light: '☀', dark: '☾' };
+    // Icons of the interface sprite (/assets/icons/ui.svg)
+    var ICONS = { '': 'sun-moon', light: 'sun', dark: 'moon' };
 
     function paint(button) {
         var labels = {};
         try { labels = JSON.parse(button.getAttribute('data-labels') || '{}'); } catch (e) { /* defaults */ }
         var t = currentTheme();
-        button.textContent = ICONS[t];
+        var use = button.querySelector('use');
+        if (use) {
+            use.setAttribute('href', '/assets/icons/ui.svg#' + ICONS[t]);
+        }
         button.title = labels[t] || t || 'auto';
+        button.setAttribute('aria-label', button.title);
     }
 
     document.addEventListener('DOMContentLoaded', function () {

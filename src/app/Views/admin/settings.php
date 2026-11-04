@@ -70,7 +70,7 @@
 .form-group select {
     width: 100%;
     padding: 10px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     border-radius: 4px;
     font-size: 14px;
     background: var(--input-bg);

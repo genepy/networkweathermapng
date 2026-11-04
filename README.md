@@ -27,7 +27,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
 - **Translations** - English and French built in, chosen in the header or with `APP_LOCALE`; [add your language](TRANSLATING.md)
-- **Light and dark themes** - Automatic (system setting) or chosen in the header
+- **Light and dark themes** - Automatic (system setting) or chosen in the header; colours meet WCAG 2.2 AA contrast in both
 - **Responsive UI** - Modern, mobile-friendly interface
 
 ## Quick Start
@@ -403,6 +403,13 @@ appears in the language menu. In code, wrap texts with `__('…')` (or
 `php src/bin/i18n-check.php` lists missing and unused keys.
 
 To add or improve a language, see [TRANSLATING.md](TRANSLATING.md).
+
+Colours, spacing and type come from one file of design tokens,
+`src/public/assets/css/tokens.css`, for both themes; `tests/App/DesignTokensTest.php`
+checks their contrast (text 4.5:1, field edges and focus 3:1). Interface icons
+are a Lucide subset in `src/public/assets/icons/ui.svg`, printed with
+`icon('name')`. The redesign plan is in
+[docs/studies/ui-redesign.md](docs/studies/ui-redesign.md).
 
 ## Directory Structure
 

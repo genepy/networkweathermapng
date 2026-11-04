@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <title><?= e__('Map Cycle') ?> - NetworkWeathermapNG</title>
+    <link rel="stylesheet" href="/assets/css/tokens.css">
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <style>
         body { margin: 0; padding: 0; background: var(--bg-color); }

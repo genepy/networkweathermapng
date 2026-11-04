@@ -6,11 +6,11 @@
     <div>
         <?php if ($results['status'] === 'ok'): ?>
             <div class="alert alert-success">
-                <strong>✅ <?= e__('Database integrity check passed.') ?></strong> <?= e__('All required tables and columns are present.') ?>
+                <strong><?= icon('circle-check') ?> <?= e__('Database integrity check passed.') ?></strong> <?= e__('All required tables and columns are present.') ?>
             </div>
         <?php else: ?>
             <div class="alert alert-danger">
-                <strong>❌ <?= e__('Database integrity check failed.') ?></strong>
+                <strong><?= icon('circle-x') ?> <?= e__('Database integrity check failed.') ?></strong>
                 <ul>
                     <?php foreach ($results['errors'] as $error): ?>
                         <li><?= htmlspecialchars($error) ?></li>
@@ -94,11 +94,11 @@
     border-radius: 0.25rem;
 }
 .badge-success {
-    color: #fff;
+    color: var(--wm-on-fill);
     background-color: var(--success-color);
 }
 .badge-danger {
-    color: #fff;
+    color: var(--wm-on-fill);
     background-color: var(--danger-color);
 }
 .table {

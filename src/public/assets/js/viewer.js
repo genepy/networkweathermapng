@@ -786,7 +786,7 @@
         H.playing = on && H.frames.length > 1;
         clearInterval(H.timer);
         const b = H.bar.querySelector('[data-hist="play"]');
-        b.textContent = H.playing ? '❚❚' : '▶';
+        b.querySelector('use').setAttribute('href', '/assets/icons/ui.svg#' + (H.playing ? 'pause' : 'play'));
         b.setAttribute('aria-label', H.playing ? t('Pause') : t('Play'));
         if (!H.playing) return;
         if (H.i >= H.frames.length - 1) showFrame(0);

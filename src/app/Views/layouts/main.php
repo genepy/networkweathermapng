@@ -15,6 +15,7 @@ $uri = $_SERVER['REQUEST_URI'] ?? '/';
     <script src="/assets/js/preferences.js"></script>
     <title><?= htmlspecialchars($title ?? 'NetworkWeathermapNG') ?></title>
     <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <script src="/assets/js/weathermap.js" defer></script>
 </head>
@@ -43,7 +44,7 @@ $uri = $_SERVER['REQUEST_URI'] ?? '/';
                 </select>
                 <button type="button" class="theme-toggle" data-pref="theme"
                         data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"
-                        aria-label="<?= e__('Theme') ?>"></button>
+                        aria-label="<?= e__('Theme') ?>"><?= icon('sun-moon') ?></button>
                 <?php if ($user): ?>
                     <span class="username"><?= htmlspecialchars($user['username']) ?></span>
                     <a href="/account/password" class="login-btn"><?= e__('Change password') ?></a>

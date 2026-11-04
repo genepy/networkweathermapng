@@ -44,14 +44,15 @@
     max-width: 500px;
     padding: 0.5rem 0.75rem;
     font-size: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--field-border);
     border-radius: 4px;
     background: var(--input-bg);
     color: var(--text-color);
 }
 
 .form-control:focus {
-    outline: none;
+    outline: 2px solid var(--wm-focus);
+    outline-offset: 0;
     border-color: var(--accent);
     box-shadow: 0 0 0 2px var(--accent-soft);
 }

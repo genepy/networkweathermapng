@@ -25,6 +25,7 @@
     <meta name="color-scheme" content="light dark">
     <title><?= htmlspecialchars($mapTitle) ?> - NetworkWeathermapNG</title>
     <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/assets/css/tokens.css">
     <link rel="stylesheet" href="/assets/css/weathermap.css">
     <link rel="stylesheet" href="/assets/css/viewer.css">
     <script src="/assets/js/weathermap.js" defer></script>
@@ -166,7 +167,7 @@
         </div>
         <?php if (!empty($history)): ?>
         <div class="wmv-history" role="group" aria-label="<?= e__('Playback') ?>" hidden>
-            <button type="button" class="wmv-btn" data-hist="play" title="<?= e__('Play or pause (Space)') ?>" aria-label="<?= e__('Play') ?>">▶</button>
+            <button type="button" class="wmv-btn" data-hist="play" title="<?= e__('Play or pause (Space)') ?>" aria-label="<?= e__('Play') ?>"><?= icon('play') ?></button>
             <input type="range" class="wmv-history-slider" min="0" max="0" value="0" aria-label="<?= e__('Time of the frame shown') ?>">
             <span class="wmv-history-time" aria-live="polite"></span>
             <select class="wmv-history-speed" aria-label="<?= e__('Playback speed') ?>">
