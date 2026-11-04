@@ -39,7 +39,7 @@ copied.
 | Optional pulse/glow on links at 80 % load or more (`SET traffic_pulse`) | Missing |
 | Separate icon and background libraries: upload, delete, searchable picker | Icons done in #25 (themes, add and remove from the editor). Backgrounds still have no upload outside a migration zip |
 | Background fit or stretch to the canvas (`SET background_sizing fit/stretch/image`) | Done: *Background size* in the map panel |
-| Node label position presets inside the icon: top, centre, bottom (`SET editor_label_position N60/C/S60`) | Partly: the label can be dragged (#23); no one-click presets |
+| Node label position presets inside the icon: top, centre, bottom (`SET editor_label_position N60/C/S60`) | Done: *Label position* in the node panel, the hint is drawn |
 | Readable defaults for a new blank map (1400 x 750, compact arrows, TrueType font) | To check: new maps start from our own template |
 | Default link capacity 1000M when none is set | Ours comes from the data source (interface speed) |
 | Two-step undo and redo, per browser tab, refused when the map changed elsewhere | We already have 100 steps per map. The "changed elsewhere" protection is missing |

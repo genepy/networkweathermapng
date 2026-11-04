@@ -182,6 +182,16 @@ class WeatherMapNode extends WeatherMapItem {
 		return $align === 'center' ? 'centre' : (in_array($align, array('centre', 'right'), true) ? $align : 'left');
 	}
 
+	/**
+	 * The compass offset of a label position preset (N60, C, S60...), in
+	 * upper case, or '' when the value is not one
+	 */
+	static function label_preset($value) {
+		$value = strtoupper(trim((string) $value));
+
+		return preg_match('/^(NE|SE|NW|SW|N|S|E|W|C)(\d{1,3})?$/', $value) ? $value : '';
+	}
+
 	/** SET editor_note_escaped 1: the label holds \n for a new line and \\ for a backslash */
 	static function note_decode($text) {
 		return preg_replace_callback('/\\\\([\\\\n])/', function ($m) {
@@ -644,11 +654,16 @@ class WeatherMapNode extends WeatherMapItem {
 		$dx = 0;
 		$dy = 0;
 
-		if ($this->labeloffset != '' && $this->iconfile != '') {
+		// a label position preset (SET editor_label_position, as written by
+		// PHP Weathermap 2.0 and our editor) applies when LABELOFFSET has no
+		// compass value of its own
+		$compass = $this->labeloffset != '' ? $this->labeloffset : self::label_preset((string) ($this->hints['editor_label_position'] ?? ''));
+
+		if ($compass != '' && $this->iconfile != '') {
 			$this->labeloffsetx = 0;
 			$this->labeloffsety = 0;
 
-			list($dx, $dy) = calc_offset($this->labeloffset,
+			list($dx, $dy) = calc_offset($compass,
 				($icon_w + $boxwidth -1),
 				($icon_h + $boxheight)
 			);

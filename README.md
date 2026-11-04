@@ -289,7 +289,10 @@ and saves each change straight into the map's `.conf` file.
   moves bandwidth labels that overlap (`BWLABELPOS`).
 - **Labels**: drag a bandwidth label of the selected link along it
   (`BWLABELPOS`), or the label of a selected node with an icon away from the
-  icon (`LABELOFFSET`).
+  icon (`LABELOFFSET`). *Label position* in the node panel puts the label
+  above, at the top, in the centre, at the bottom or below the icon in one
+  click, for every selected node (`SET editor_label_position N`, `N60`, `C`,
+  `S60` or `S`, the PHP Weathermap 2.0 hint; a drag replaces it).
 - **Add**: drag a node or an icon from the left panel, or Ctrl+click an
   empty spot.
 - **Edit**: the right panel changes every selected item at once. The
@@ -501,8 +504,8 @@ For each map the review page shows:
   drawn (see Map notes), `SET traffic_pulse` works (see Saturated links)
   and `COMMENTCURVE 1` makes comments follow the curve (see Comments along
   curved links) and `SET background_sizing` sizes the background (see
-  Backgrounds); the hint `SET editor_label_position` is kept in the
-  converted map and listed, but not drawn yet. A 2.0 map that does not set `COMMENTCURVE` keeps straight
+  Backgrounds) and `SET editor_label_position` places node labels (see
+  Labels in the editor). A 2.0 map that does not set `COMMENTCURVE` keeps straight
   comments here (2.0 curves them by default): add `COMMENTCURVE 1` to
   `LINK DEFAULT` to curve them all.
 - **Images**: found, found under `objects/` or `backgrounds/` by file name, or

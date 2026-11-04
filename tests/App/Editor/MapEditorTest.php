@@ -614,6 +614,61 @@ final class MapEditorTest extends TestCase
         $this->assertSame($before['label_box'], array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
     }
 
+    public function testANodeLabelGoesToAPresetPlace(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $before = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame('', $before['label_position']);
+        $icon = $before['icon_box'];
+        $label = $before['label_box'];
+
+        // below: the label starts where the icon ends
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['label_position' => 's']]]);
+        $this->assertStringContainsString('SET editor_label_position S', file_get_contents($this->file));
+        $below = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame('S', $below['label_position']);
+        $this->assertGreaterThan($label[1], $below['label_box'][1]);
+        $this->assertEqualsWithDelta($icon[3], $below['label_box'][1], 2);
+
+        // top of the icon: inside it, above the centre
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['label_position' => 'N60']]]);
+        $top = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame('N60', $top['label_position']);
+        $this->assertLessThan($label[1], $top['label_box'][1]);
+        $this->assertGreaterThan($icon[1] - 8, $top['label_box'][1]);
+
+        // a drag replaces the preset, a reset removes both
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => [$top['label_shift'][0] + 5, $top['label_shift'][1]]]]]);
+        $this->assertStringNotContainsString('editor_label_position', file_get_contents($this->file));
+        $moved = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame('', $moved['label_position']);
+        $this->assertSame([$top['label_box'][0] + 5, $top['label_box'][1]], array_slice($moved['label_box'], 0, 2));
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['label_position' => 'C']]]);
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['labelshift' => null]]]);
+        $this->assertStringNotContainsString('editor_label_position', file_get_contents($this->file));
+        $this->assertStringNotContainsString('LABELOFFSET', file_get_contents($this->file));
+        $this->assertSame($label, array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_box']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['label_position' => 'NE; DROP']]]);
+    }
+
+    public function testALabelPresetWinsOverTheTemplateCompassOffset(): void
+    {
+        file_put_contents($this->file, str_replace("LINK DEFAULT", "NODE DEFAULT\n\tLABELOFFSET S\n\nLINK DEFAULT", file_get_contents($this->file)));
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['icon' => 'src/public/objects/net/router.png']]]);
+        $this->assertSame('S', array_column($this->drawnModel()['nodes'], null, 'name')['backup']['label_position']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['backup'], 'props' => ['label_position' => 'N']]]);
+        $conf = file_get_contents($this->file);
+        $this->assertStringContainsString('SET editor_label_position N', $conf);
+        $this->assertStringContainsString('LABELOFFSET N', $conf);
+        $node = array_column($this->drawnModel()['nodes'], null, 'name')['backup'];
+        $this->assertSame('N', $node['label_position']);
+        $this->assertLessThan($node['icon_box'][1] + 2, $node['label_box'][3]);
+    }
+
     public function testMapPropertiesAreSavedAndLinkDefaultsFollow(): void
     {
         $this->editor->apply([['op' => 'set_map', 'props' => [

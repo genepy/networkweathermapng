@@ -120,9 +120,8 @@ final class MigrationTest extends TestCase
 
         $this->assertSame([], $report['warnings']);
         $this->assertSame(['nodes' => 3, 'links' => 2], $report['counts']);
-        $this->assertSame([
-            'SET editor_label_position N60',
-        ], $report['later']);
+        // every 2.0 hint is drawn now, the label position preset included
+        $this->assertSame([], $report['later']);
 
         // the 2.0 settings are kept for the features that will use them
         $out = $migrator->convert($conf, $report);

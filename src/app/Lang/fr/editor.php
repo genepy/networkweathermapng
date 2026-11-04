@@ -236,6 +236,7 @@ return [
     'Open this map in the new SVG editor' => 'Ouvrir cette carte dans le nouvel éditeur SVG',
     'New editor' => 'Nouvel éditeur',
     'Unknown alignment: :value' => 'Alignement inconnu : :value',
+    'Unknown label position: :value' => 'Position d’étiquette inconnue : :value',
     'Note' => 'Note',
     'Add a note: free text on several lines, for a legend, a contact or a maintenance window' => 'Ajouter une note : du texte libre sur plusieurs lignes, pour une légende, un contact ou une fenêtre de maintenance',
     'A colour scale has 1 to :n steps' => 'Une échelle de couleurs a de 1 à :n paliers',
