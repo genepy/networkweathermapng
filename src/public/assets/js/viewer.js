@@ -566,8 +566,10 @@
     function nodeEntries(svg) {
         return Array.from(svg.querySelectorAll('g.wm-node[data-name]')).map(function (g) {
             const texts = g.querySelectorAll('text');
-            // the last text is the label itself (a shadow comes first)
-            const label = texts.length ? texts[texts.length - 1].textContent.trim() : '';
+            // a badge node keeps its label in its title; otherwise the last
+            // text is the label itself (a shadow comes first)
+            const title = g.querySelector('title');
+            const label = title ? title.textContent.trim() : (texts.length ? texts[texts.length - 1].textContent.trim() : '');
             const name = g.getAttribute('data-name');
             return {g: g, label: label || name, name: name};
         });

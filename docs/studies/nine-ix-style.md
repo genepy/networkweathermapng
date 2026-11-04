@@ -2,8 +2,8 @@
 
 Reference: https://stats.nine-ix.net/ (screenshots shared by the user on
 2026-11-03, dark and light theme, zoomed Paris view; site visited the same
-day, version 1.8.11). Status: tasks 1 (Night theme) and 2 (pill labels)
-done, tasks 3 to 8 to do, listed in [ROADMAP.md](../ROADMAP.md). Ideas only: copy no code, logo
+day, version 1.8.11). Status: tasks 1 (Night theme), 2 (pill labels) and 3
+(badge nodes) done, tasks 4 to 8 to do, listed in [ROADMAP.md](../ROADMAP.md). Ideas only: copy no code, logo
 or artwork; credit the idea in THIRD-PARTY-NOTICES.md ("Ideas from other
 projects") when a piece ships.
 
@@ -73,9 +73,12 @@ comments (#55); colour scale presets (#53); shipped fonts (#46).
    `classic|angled`), drawn by `WeatherMap::DrawLabelPill`. Built-in GD
    fonts cannot turn in the PNG, so use a TrueType font for links that are
    not level.
-3. **Badge nodes**: a node style "badge" (disc with icon or initials, ring,
+3. (done) **Badge nodes**: a node style "badge" (disc with icon or initials, ring,
    shadow), label hidden on the map and shown in the popup / panel. Can reuse
    the icon library (#39).
+   Built as `SET node_style badge` (a node hint, so `NODE DEFAULT` can set
+   it for every node): `WeatherMapNode::make_badge`, initials from the
+   label, the label kept as the SVG `<title>` and in *Find a node*.
 4. **Richer hover card**: link speed badge from `BANDWIDTH`, "A ↔ B" title
    from node names, IN above / OUT below graph, and 1 day / 1 week / 1 month
    switch when the data source gives graphs for those ranges.
