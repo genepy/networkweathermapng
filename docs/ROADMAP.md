@@ -13,7 +13,7 @@ Last updated: 2026-11-04.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Cacti plugin study | `claude/project-thread-ym97ux` | Written study only, no code: `docs/studies/cacti-plugin.md` |
+| (none) | | |
 
 ## Paused
 
@@ -61,6 +61,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #61 | Cacti plugin study ([docs/studies/cacti-plugin.md](studies/cacti-plugin.md)): stay standalone and read Cacti as a data source (database and RRD backends), convert Cacti targets and the plugin's map list on import, a thin bridge plugin only if asked; a native plugin is not recommended (name collisions with the Weathermap plugin, Cacti's `__()`, rewrite of the app shell). Next items are left to the maintainer |
 | #59 | UI redesign, step 1: design tokens in `tokens.css` for both themes, contrast-checked colours (WCAG 2.2 AA, `DesignTokensTest`), field and control edges at 3:1, a Lucide icon sprite (`icon('name')`) instead of emojis; no layout change |
 | #58 | Node label position presets: *Label position* in the node panel puts the label above, at the top, centre, bottom or below the icon in one click (`SET editor_label_position`, the 2.0 hint, now drawn on import too) |
 | #57 | Background fit or stretch: *Background size* in the map panel draws the background at its natural size, fitted to the map (ratio kept, centred) or stretched, in PNG, SVG and the editor (`SET background_sizing image\|fit\|stretch`, the 2.0 hint, so imported maps use it) |
