@@ -381,7 +381,21 @@ class SvgEditorController extends BaseController
             return;
         }
 
+        $file = $this->configFile($map);
+        $body = $this->body();
+        if (isset($body['version']) && $body['version'] !== '' && (string) $body['version'] !== $this->version($file)) {
+            $this->json(['error' => __('The map was changed by someone else since you loaded it. It has been reloaded: look at it before undoing.')], 409);
+            return;
+        }
+
         $history = $this->history($map);
+        if ($history->changedOutside()[$direction]) {
+            $this->json(['error' => $direction === 'undo'
+                ? __('The map was saved outside this editor since this step. Undo is refused so that change is not lost.')
+                : __('The map was saved outside this editor since this step. Redo is refused so that change is not lost.')], 409);
+            return;
+        }
+
         $done = $direction === 'undo' ? $history->undo() : $history->redo();
 
         if (!$done) {
@@ -426,7 +440,7 @@ class SvgEditorController extends BaseController
         $this->json([
             'svg' => $svg,
             'model' => MapEditor::model($wmap),
-            'history' => $this->history($map)->counts(),
+            'history' => $this->history($map)->counts() + ['outside' => $this->history($map)->changedOutside()],
             'version' => $this->version($file),
             'result' => $result,
         ]);

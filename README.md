@@ -343,7 +343,12 @@ and saves each change straight into the map's `.conf` file.
   (warnings with their line). *Apply* saves it as one undo step. INCLUDE and
   the output paths (`*OUTPUTFILE`, `IMAGEURI`) cannot be changed there.
 - **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
-  `DATA_ROOT/history/<map id>`, so they survive a reload.
+  `DATA_ROOT/history/<map id>`, so they survive a reload. Each step keeps a
+  fingerprint of the file it left: if the map was saved outside the history
+  since then (text editor of the classic editor, rename, a copy on disk),
+  that undo or redo is refused instead of overwriting the change, and the
+  button says why. An undo sent from a tab that has not seen the latest save
+  of another tab or user is refused too, and the map is reloaded.
 
 The previous editor is still available at `/editor/classic/<map id>`.
 

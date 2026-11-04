@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Refuse undo after an outside change | Do not overwrite a map saved elsewhere since the step was recorded (`ConfigHistory`). Study item 9 |
 | Nine IX style, task 3: badge nodes | Study: [docs/studies/nine-ix-style.md](studies/nine-ix-style.md). A node style "badge" (disc with icon or initials, ring, shadow), label shown in the popup and panel |
 | Nine IX style, task 4: richer hover card | Speed badge, "A ↔ B" title, IN above / OUT below graph, 1 day / 1 week / 1 month |
 | Nine IX style, task 5: viewer side panels | Site list (optional site field), total traffic, legend in a floating card |
@@ -67,6 +66,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | PR | Item |
 |----|------|
 | #64 | Nine IX style, task 2: pill link labels: `BWSTYLE pill` draws the bandwidth label on a rounded box along the link with a small arrow toward where the traffic goes, in PNG and SVG; per link in the inspector, for every link in *Link defaults*, and in the *Night* theme |
+| #63 | Refuse undo after an outside change: each undo step keeps a fingerprint of the file it left (`ConfigHistory`), so an undo or redo is refused when the map was saved outside the history since; an undo from a tab that missed another save is refused too (study item 9) |
 | #62 | Nine IX style, task 1: *Night* map theme, applied in one click from *Map properties* (dark canvas, cream to amber link scale, dark labels, gold-edged modern legend), and a per-map link glow in the SVG (`SET link_glow 1`) |
 | #61 | Cacti plugin study ([docs/studies/cacti-plugin.md](studies/cacti-plugin.md)): stay standalone and read Cacti as a data source (database and RRD backends), convert Cacti targets and the plugin's map list on import, a thin bridge plugin only if asked; a native plugin is not recommended (name collisions with the Weathermap plugin, Cacti's `__()`, rewrite of the app shell). Next items are left to the maintainer |
 | #59 | UI redesign, step 1: design tokens in `tokens.css` for both themes, contrast-checked colours (WCAG 2.2 AA, `DesignTokensTest`), field and control edges at 3:1, a Lucide icon sprite (`icon('name')`) instead of emojis; no layout change |
