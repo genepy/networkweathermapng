@@ -261,6 +261,26 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $styles, 'no style without a saturated link');
     }
 
+    /** SET link_glow 1: a glow filter on the link arrows, but not on saturated links nor in the plain SVG */
+    public function testLinkGlow(): void
+    {
+        $conf = "WIDTH 400\nHEIGHT 200\nNODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 50\n"
+            . "LINK ab\n\tNODES a b\n\tBANDWIDTH 1G\n\tTARGET static:300M:100M\n";
+        $file = TESTS_OUTPUT . '/glow.conf';
+
+        file_put_contents($file, "SET link_glow 1\n" . $conf);
+        $map = $this->load($file);
+        $svg = \WeatherMapSvg::render($map);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $this->assertStringContainsString('<filter id="wm-glow"', $svg);
+        $this->assertStringContainsString('.wm-link:not(.wm-hot) .wm-arrow{filter:url(#wm-glow)}', $svg);
+
+        file_put_contents($file, $conf);
+        $plain = $this->load($file);
+        $this->assertStringNotContainsString('wm-glow', \WeatherMapSvg::render($plain));
+    }
+
     /** SET background_sizing: natural size (image), fit keeping the ratio, or stretch, in the PNG and the SVG */
     public function testBackgroundSizing(): void
     {
