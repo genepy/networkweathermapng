@@ -372,4 +372,13 @@ return [
     // Undo refused after an outside change
     'The map was saved outside this editor since this step. Undo is refused so that change is not lost.' => 'La carte a été enregistrée hors de cet éditeur depuis cette étape. L’annulation est refusée pour ne pas perdre ce changement.',
     'The map was saved outside this editor since this step. Redo is refused so that change is not lost.' => 'La carte a été enregistrée hors de cet éditeur depuis cette étape. Le rétablissement est refusé pour ne pas perdre ce changement.',
+    // Map themes
+    'Theme' => 'Thème',
+    'Night: dark canvas, cream to amber glowing links' => 'Nuit : fond sombre, liens lumineux de crème à ambre',
+    'Apply the theme' => 'Appliquer le thème',
+    'Theme applied: :name. Ctrl+Z to undo.' => 'Thème appliqué : :name. Ctrl+Z pour annuler.',
+    'Sets the colours of the map, the legend, the link colours and the default node and link labels. Saved at once; changes not yet applied in this dialog are dropped.' => 'Règle les couleurs de la carte, de la légende, des liens et des étiquettes par défaut des nœuds et des liens. Enregistré tout de suite ; les modifications pas encore appliquées dans cette fenêtre sont perdues.',
+    'Glow' => 'Lueur',
+    'Draw a soft glow around the links, in their own colour' => 'Dessiner une lueur douce autour des liens, dans leur propre couleur',
+    'In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.' => 'Dans la carte en direct et l’éditeur ; l’image PNG garde des liens simples. Plus joli sur un fond sombre.',
 ];

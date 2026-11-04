@@ -156,6 +156,27 @@ class WeatherMapSvg {
 			&& max((float) $link->inpercent, (float) $link->outpercent) >= self::SATURATED;
 	}
 
+	/**
+	 * SET link_glow 1: a soft glow in the colour of each link (the Night
+	 * theme). SVG only: the PNG keeps plain links.
+	 */
+	static function hasGlow($map) {
+		return (string) $map->get_hint('link_glow') === '1';
+	}
+
+	/** The glow filter and its style, '' when the map has no glow */
+	function glowStyle() {
+		if (!self::hasGlow($this->map)) {
+			return '';
+		}
+		// a saturated link keeps its own red glow and pulse
+		return '<defs><filter id="wm-glow" x="-50%" y="-50%" width="200%" height="200%" color-interpolation-filters="sRGB">'
+			. '<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>'
+			. '<feComponentTransfer in="blur" result="soft"><feFuncA type="linear" slope="0.8"/></feComponentTransfer>'
+			. '<feMerge><feMergeNode in="soft"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' . "\n"
+			. "<style>\n.wm-map .wm-link:not(.wm-hot) .wm-arrow{filter:url(#wm-glow)}\n</style>";
+	}
+
 	function hotStyle() {
 		if (!$this->hasHot) {
 			return '';
@@ -357,6 +378,7 @@ class WeatherMapSvg {
 		$out = array();
 		$out[] = sprintf('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="%d" height="%d" viewBox="0 0 %d %d" class="wm-map">', $w, $h, $w, $h);
 		$out[] = $this->fontFaces();
+		$out[] = $this->glowStyle();
 		$out[] = $this->hotStyle();
 
 		$group = null;
