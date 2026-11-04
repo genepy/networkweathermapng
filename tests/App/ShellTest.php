@@ -60,6 +60,9 @@ final class ShellTest extends TestCase
     {
         $js = dirname(TESTS_ROOT) . '/src/public/assets/js';
         foreach (glob($js . '/*.js') ?: [] as $file) {
+            if (basename($file) === 'ui.js') {
+                continue; // the dialog itself, with its own fallback
+            }
             $code = (string) file_get_contents($file);
             // window.confirm()/alert() are only the fallback when ui.js is missing
             preg_match_all('#(?<![\w.])(alert|confirm)\(#', $code, $bare);
