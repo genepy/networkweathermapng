@@ -22,7 +22,6 @@ return [
 
     // Map list
     'Search maps' => 'Rechercher une carte',
-    'No map matches your search.' => 'Aucune carte ne correspond à la recherche.',
     'No data yet' => 'Pas encore de données',
     'Max load :pct %' => 'Charge max. :pct %',
     'Updated :time' => 'Mis à jour le :time',

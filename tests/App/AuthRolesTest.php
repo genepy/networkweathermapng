@@ -74,7 +74,7 @@ final class AuthRolesTest extends TestCase
         $this->assertSame('/editor/edit/3', MapManagementController::safeReturn('/editor/edit/3'));
         $this->assertSame('/maps?group_id=2', MapManagementController::safeReturn('/maps?group_id=2'));
         foreach (['', 'https://evil.example', '//evil.example', '/\\evil.example', "/x\r\nLocation: y", 'editor'] as $bad) {
-            $this->assertSame('/editor', MapManagementController::safeReturn($bad), $bad);
+            $this->assertSame('/', MapManagementController::safeReturn($bad), $bad);
         }
     }
 }

@@ -396,23 +396,34 @@ The PNG, the SVG and the editor draw it the same way.
 
 ## Managing maps
 
-Admin > Maps lists every map:
+Editors and administrators manage the maps from the **Maps** page (`/`),
+the same page everybody uses to open them (the old Editor tab, `/editor`,
+redirects there). They also see the inactive maps, greyed with a *Hidden*
+badge. Hovering a thumbnail (always shown on touch screens) shows **Edit**
+and a **⋯** menu; the list view has the same menu on each row:
 
 - **New map**: empty (size of your choice) or a copy of an existing map.
-- **Properties**: name (the `TITLE` follows), group, visibility, and
-  optionally renaming the `.conf` file after the name.
+- **Settings**: name, group, visibility, and optionally renaming the
+  `.conf` file after the name. The name and the title drawn on the map are
+  one thing: renaming a map changes its `TITLE`, and changing the title in
+  the editor (or in its text mode) renames the map in the list. A map whose
+  name and title already differ keeps both until its title is edited.
+- **Move to…**: another group, without leaving the page.
+- **Hide from users** / **Show to users**: an inactive map is only shown to
+  editors.
 - **Duplicate**: choose the copy's name, group and visibility.
-- **.conf** / **Export all**: download one configuration, or a zip of every
-  map with its icons and backgrounds, which Admin > Migration imports back.
+- **Download .conf** / **Export all** (page menu ⋯): download one
+  configuration, or a zip of every map with its icons and backgrounds,
+  which *Import maps* (page menu ⋯, Admin > Migration) imports back.
 - **Delete**: removes the map and everything kept for it: configuration and
   backup, rendered images and pages, link graphs, editor history,
   permissions and settings.
-- Tick several maps to activate, deactivate, move, export or delete them at
-  once.
+- In the list view, tick several maps to show, hide, move, export or delete
+  them at once.
 
 ## Viewing maps
 
-- **Map list** (`/`): type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
+- **Maps** (`/`): the maps as thumbnails or as a list (the switch at the top right; your browser remembers the choice). The chips filter them: *All*, *Favourites*, one chip per group with its number of maps, and *Over 80 %* (maps whose most loaded link is at 80 % or more); the chosen chip is kept in the address (`?filter=favourites`, `?filter=busy`, `?group_id=2`). On phones the chips scroll sideways and the bottom bar has a *Favourites* entry. Type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
 - **Map view** (`/map/{id}`): the map is drawn as SVG and can be zoomed with the mouse wheel or a pinch, moved by dragging, or with the toolbar (+, −, Fit, 100 %) and the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows, `/` to search). "Find a node" centres the map on a node by label or name. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
 - Hovering a link shows its current in/out traffic and, when it has a data source, the last 24 hours; the traffic graph takes about 40 % of the window width (500 to 1400 px) and is drawn sharper on large or high-density screens. Clicking a link or node opens its INFOURL in a new tab.
 - The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.

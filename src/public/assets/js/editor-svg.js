@@ -145,6 +145,15 @@
         });
     }
 
+    // The map's name is its title: a new title renames the map in the bar too
+    function showMapName(name) {
+        var bar = document.querySelector('#appbar .tb-title');
+        if (bar && bar.textContent !== name) {
+            bar.textContent = name;
+            bar.title = name;
+        }
+    }
+
     function applyRender(d, selectKeys) {
         var doc = new DOMParser().parseFromString(d.svg, 'image/svg+xml');
         var root = doc.documentElement;
@@ -157,6 +166,7 @@
         state.model = d.model;
         if (d.version) { lastVersion = d.version; }
         state.history = d.history || { undo: 0, redo: 0 };
+        if (d.name) { showMapName(d.name); }
         state.nodes = new Map(d.model.nodes.map(function (n) { return [n.name, n]; }));
         state.links = new Map(d.model.links.map(function (l) { return [l.name, l]; }));
         state.zones = new Map((d.model.zones || []).map(function (z) { return [z.name, z]; }));
@@ -2177,7 +2187,7 @@
 
     function mapPanel() {
         var m = state.model.map;
-        var title = h('input', { name: 'title', value: m.title });
+        var title = h('input', { name: 'title', value: m.title, title: t('Drawn as the title of the map and shown in the map list.') });
         title.addEventListener('change', function () { send([{ op: 'set_map', title: title.value }]); });
         var w = h('input', { name: 'width', type: 'number', min: 50, value: m.width });
         var hh = h('input', { name: 'height', type: 'number', min: 50, value: m.height });
@@ -2201,7 +2211,7 @@
 
         return [
             h('h2', { text: t('Map') }),
-            row(t('Title'), title),
+            row(t('Map name'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
             m.background ? row(t('Background size'), sizing) : null,

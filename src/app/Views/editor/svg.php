@@ -27,7 +27,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
 ?>
 <div id="app" data-map-id="<?= $mapId ?>">
     <header id="appbar">
-        <a class="tb-back" href="/editor" title="<?= e__('Back to the map list') ?>" aria-label="<?= e__('Back to the map list') ?>"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></a>
+        <a class="tb-back" href="/" title="<?= e__('Back to the map list') ?>" aria-label="<?= e__('Back to the map list') ?>"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></a>
         <span class="tb-title" title="<?= $e($map['name']) ?>"><?= $e($map['name']) ?></span>
         <span class="appbar-right">
             <?= $btn('map-properties', 'properties', __('Map properties'), __('Title, legend, timestamp, fonts, colours and link defaults of the map')) ?>

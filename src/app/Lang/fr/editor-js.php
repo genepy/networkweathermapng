@@ -282,7 +282,6 @@ return [
     'Legend' => 'Légende',
     'Link defaults' => 'Liens par défaut',
     'None' => 'Aucune',
-    'Map title' => 'Titre de la carte',
     'Background colour' => 'Couleur de fond',
     'Background size' => 'Taille du fond',
     'Natural size' => 'Taille d’origine',
@@ -388,6 +387,9 @@ return [
     'Level box' => 'Cadre horizontal',
     'Box along the link' => 'Cadre le long du lien',
     'Pill along the link, with an arrow' => 'Pastille le long du lien, avec une flèche',
+    // The map's name is its drawn title
+    'Map name' => 'Nom de la carte',
+    'Drawn as the title of the map and shown in the map list.' => 'Dessiné comme titre de la carte et affiché dans la liste des cartes.',
     // Badge nodes
     'Look' => 'Apparence',
     'Box with the label' => 'Cadre avec l’étiquette',

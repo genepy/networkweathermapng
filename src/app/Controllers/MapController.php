@@ -25,64 +25,23 @@ class MapController extends BaseController
         $this->mapService = new MapService($this->database, $this->config);
         $this->dataSourceService = new DataSourceService($this->database);
     }
+    /**
+     * The one Maps page: every map the user can see, as thumbnails or as a
+     * list, with filter chips (all, favourites, each group, over 80 %).
+     * Editors also see inactive maps and manage them from here.
+     */
     public function index(array $params): void
     {
         $this->requireAuth();
-        
-        $groupId = (int) $this->getInput('group_id', 0);
-        
-        // Get all maps the user can view to determine visible groups
-        // We fetch ALL accessible maps first, then filter for the current view
-        $allUserMaps = $this->getMapsForUser(0);
-        
-        // Determine which groups should be visible (groups containing at least one accessible map)
-        $visibleGroupIds = array_unique(array_column($allUserMaps, 'group_id'));
-        
-        $allGroups = $this->getMapGroups();
-        $visibleGroups = [];
-        
-        foreach ($allGroups as $group) {
-            // Editors and admins see all groups (even empty ones)
-            // Users see groups they have accessible maps in
-            // Users also see groups they are explicitly assigned to (even if empty)
-            if ($this->auth->canEdit()) {
-                $visibleGroups[] = $group;
-                continue;
-            }
-            
-            // Check if user has maps in this group
-            if (in_array($group['id'], $visibleGroupIds)) {
-                $visibleGroups[] = $group;
-                continue;
-            }
-            
-            // Check explicit group permission (for empty groups)
-            $user = $this->auth->user();
-            if ($user) {
-                $permission = $this->database->queryOne(
-                    "SELECT 1 FROM user_group_permissions WHERE user_id = ? AND group_id = ?",
-                    [$user['id'], $group['id']]
-                );
-                if ($permission) {
-                    $visibleGroups[] = $group;
-                }
-            }
-        }
-        
-        // Filter maps for current view if a group is selected
-        $maps = $allUserMaps;
-        if ($groupId > 0) {
-            $maps = array_filter($allUserMaps, function($map) use ($groupId) {
-                return (int)$map['group_id'] === $groupId;
-            });
-        }
-        
+
+        $canEdit = $this->auth->canEdit();
         $favourites = $this->mapService->favouriteMapIds($this->currentUserId());
-        $maps = array_values($maps);
+        $maps = $this->getMapsForUser(0, $canEdit);
         foreach ($maps as $k => $m) {
             $maps[$k]['list_order'] = $k;
         }
         $maps = MapService::favouritesFirst($maps, $favourites);
+
         $statuses = [];
         foreach ($maps as $m) {
             $status = $this->mapService->mapStatus($m);
@@ -92,14 +51,30 @@ class MapController extends BaseController
             }
         }
 
+        // a chip per group that holds at least one of these maps
+        $counts = array_count_values(array_map(static fn ($m) => (int) $m['group_id'], $maps));
+        $groups = array_values(array_filter($this->getMapGroups(), static fn ($g) => isset($counts[(int) $g['id']])));
+
+        $filter = (string) $this->getInput('filter', '');
+        $groupId = (int) $this->getInput('group_id', 0);
+        if ($groupId > 0 && isset($counts[$groupId])) {
+            $filter = 'group:' . $groupId;
+        } elseif (!in_array($filter, ['favourites', 'busy'], true)) {
+            $filter = 'all';
+        }
+
         $this->render('maps/index', [
             'maps' => $maps,
             'favourites' => $favourites,
             'statuses' => $statuses,
             'timezones' => $this->timezones()->forMaps(array_column($maps, 'id')),
-            'groups' => $visibleGroups,
-            'currentGroup' => $groupId,
-            'title' => __('Network Weathermaps'),
+            'groups' => $groups,
+            'groupCounts' => $counts,
+            'allGroups' => $canEdit ? $this->getMapGroups() : [],
+            'filter' => $filter,
+            'canEdit' => $canEdit,
+            'canImport' => $this->auth->isAdmin(),
+            'title' => __('Maps'),
         ]);
     }
     
@@ -871,12 +846,13 @@ class MapController extends BaseController
         ], !$fullscreen);
     }
     
-    private function getMapsForUser(int $groupId = 0): array
+    /** Maps the user can see; inactive ones too when $withInactive (editors) */
+    private function getMapsForUser(int $groupId = 0, bool $withInactive = false): array
     {
         $sql = "SELECT DISTINCT m.*, g.name as group_name 
                 FROM maps m 
                 LEFT JOIN map_groups g ON m.group_id = g.id 
-                WHERE m.active = 1";
+                WHERE " . ($withInactive ? '1 = 1' : 'm.active = 1');
         $params = [];
         
         if ($groupId > 0) {

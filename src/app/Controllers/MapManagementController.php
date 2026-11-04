@@ -1,7 +1,8 @@
 <?php
 /**
- * NetworkWeathermapNG - Map management: the map list of the Editor tab and
- * the map properties, for administrators and editors
+ * NetworkWeathermapNG - Map management for administrators and editors: the
+ * actions of the Maps page (create, properties, duplicate, move, activate,
+ * export, delete, bulk actions)
  */
 
 declare(strict_types=1);
@@ -13,7 +14,7 @@ use App\Services\GroupService;
 
 class MapManagementController extends BaseController
 {
-    private const DEFAULT_RETURN = '/editor';
+    private const DEFAULT_RETURN = '/';
 
     private MapService $mapService;
     private GroupService $groupService;
@@ -25,27 +26,13 @@ class MapManagementController extends BaseController
         $this->groupService = new GroupService($this->database);
     }
 
+    /** The Editor tab of older versions: the maps are managed from the Maps page now */
     public function index(array $params): void
     {
         $this->requireEditor();
-        
-        $maps = $this->database->query(
-            "SELECT m.*, g.name as group_name 
-             FROM maps m 
-             LEFT JOIN map_groups g ON m.group_id = g.id 
-             ORDER BY m.sort_order, m.name"
-        );
-        
-        $groups = $this->groupService->getAllGroups();
-        
-        $this->render('editor/index', [
-            'maps' => $maps,
-            'groups' => $groups,
-            'canImport' => $this->auth->isAdmin(),
-            'title' => __('Maps'),
-        ]);
+        $this->redirect(self::DEFAULT_RETURN);
     }
-    
+
     /**
      * Create a new map
      */
@@ -362,7 +349,7 @@ class MapManagementController extends BaseController
         $this->redirect($this->returnUrl());
     }
 
-    /** /admin/maps of older versions: the list now lives in the Editor tab */
+    /** /admin/maps and /editor/maps of older versions: the list is the Maps page */
     public function legacyList(array $params): void
     {
         $this->redirect(self::DEFAULT_RETURN);

@@ -33,14 +33,14 @@ class EditorController extends BaseController
         $id = (int) ($params['id'] ?? 0);
         if ($id <= 0) {
             $this->flash('error', __('Invalid map ID'));
-            $this->redirect('/editor');
+            $this->redirect('/');
             return;
         }
         
         $map = $this->mapService->getMap($id);
         if (!$map) {
             $this->flash('error', __('Map not found'));
-            $this->redirect('/editor');
+            $this->redirect('/');
             return;
         }
         
@@ -943,7 +943,9 @@ class EditorController extends BaseController
             return;
         }
         
+        $before = $this->mapService->getMapConfig($id);
         if ($this->mapService->saveMapConfig($id, $config)) {
+            $this->mapService->followTitle($id, $before, (string) $config);
             $this->json(['success' => true, 'message' => __('Configuration saved successfully')]);
         } else {
             $this->json(['success' => false, 'error' => __('Failed to save configuration')], 500);

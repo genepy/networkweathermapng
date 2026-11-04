@@ -549,7 +549,7 @@
 <body id="mainView" class="mainView">
     <div id="toolbar">
         <ul>
-            <li class="back-btn" onclick="window.location.href='/editor'">← Back to<br>Map List</li>
+            <li class="back-btn" onclick="window.location.href='/'">← Back to<br>Map List</li>
             <li class="tb_active" id="tb_neweditor" title="<?= e__('Open this map in the new SVG editor') ?>"><?= e__('New editor') ?></li>
             <li class="tb_active" id="tb_addnode">Add<br>Node</li>
             <li class="tb_active" id="tb_addlink">Add<br>Link</li>
