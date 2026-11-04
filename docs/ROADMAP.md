@@ -64,7 +64,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
-| (this PR) | Nine IX style, task 3: badge nodes: `SET node_style badge` draws a node as a round badge (its icon, or the initials of its label, on a disc with a ring and a soft shadow) in PNG and SVG; the label becomes the tooltip; *Look* in the node panel |
+| #65 | Nine IX style, task 3: badge nodes: `SET node_style badge` draws a node as a round badge (its icon, or the initials of its label, on a disc with a ring and a soft shadow) in PNG and SVG; the label becomes the tooltip; *Look* in the node panel |
 | #64 | Nine IX style, task 2: pill link labels: `BWSTYLE pill` draws the bandwidth label on a rounded box along the link with a small arrow toward where the traffic goes, in PNG and SVG; per link in the inspector, for every link in *Link defaults*, and in the *Night* theme |
 | #63 | Refuse undo after an outside change: each undo step keeps a fingerprint of the file it left (`ConfigHistory`), so an undo or redo is refused when the map was saved outside the history since; an undo from a tab that missed another save is refused too (study item 9) |
 | #62 | Nine IX style, task 1: *Night* map theme, applied in one click from *Map properties* (dark canvas, cream to amber link scale, dark labels, gold-edged modern legend), and a per-map link glow in the SVG (`SET link_glow 1`) |
