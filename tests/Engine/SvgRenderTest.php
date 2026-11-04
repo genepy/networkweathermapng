@@ -261,6 +261,44 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $styles, 'no style without a saturated link');
     }
 
+    /** BWSTYLE pill: a rounded box along the link and an arrow toward where the traffic goes */
+    public function testPillLinkLabels(): void
+    {
+        $file = TESTS_OUTPUT . '/pill.conf';
+        file_put_contents($file, "WIDTH 400\nHEIGHT 200\nNODE a\n\tPOSITION 50 100\nNODE b\n\tPOSITION 350 100\n"
+            . "LINK ab\n\tNODES a b\n\tBANDWIDTH 1G\n\tBWSTYLE pill\n\tTARGET static:300M:100M\n");
+        $map = $this->load($file);
+        $this->assertSame('pill', $map->links['ab']->labelboxstyle);
+        $svg = \WeatherMapSvg::render($map);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        foreach (['out' => 1, 'in' => -1] as $dir => $sign) {
+            $shapes = $xpath->query('//s:polygon[@class="wm-bwlabel-' . $dir . '"]');
+            $this->assertSame(2, $shapes->length, "a pill and an arrow for $dir");
+            $pill = self::points($shapes->item(0)->getAttribute('points'));
+            $arrow = self::points($shapes->item(1)->getAttribute('points'));
+            $this->assertCount(26, $pill, 'two half circles of 13 points');
+            $this->assertCount(3, $arrow);
+            // OUT goes from a to b (to the right), IN the other way: the tip is the far point
+            $xs = array_column($arrow, 0);
+            $this->assertSame($sign > 0 ? max($xs) : min($xs), $arrow[0][0], "the $dir arrow points the traffic way");
+            $this->assertSame(1, $xpath->query('//s:text[@class="wm-bwlabel-' . $dir . '"]')->length);
+        }
+
+        $conf = TESTS_OUTPUT . '/pill-out.conf';
+        $map->WriteConfig($conf);
+        $this->assertStringContainsString("BWSTYLE pill", (string) file_get_contents($conf));
+    }
+
+    /** @return list<array{float, float}> */
+    private static function points(string $s): array
+    {
+        return array_map(static fn ($p) => array_map('floatval', explode(',', $p)), preg_split('/\s+/', trim($s)));
+    }
+
     /** SET link_glow 1: a glow filter on the link arrows, but not on saturated links nor in the plain SVG */
     public function testLinkGlow(): void
     {

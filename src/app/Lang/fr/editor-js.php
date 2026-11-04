@@ -378,4 +378,10 @@ return [
     'Glow' => 'Lueur',
     'Draw a soft glow around the links, in their own colour' => 'Dessiner une lueur douce autour des liens, dans leur propre couleur',
     'In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.' => 'Dans la carte en direct et l’éditeur ; l’image PNG garde des liens simples. Plus joli sur un fond sombre.',
+    // Pill link labels
+    'Bandwidth labels' => 'Étiquettes de débit',
+    'Label box' => 'Cadre de l’étiquette',
+    'Level box' => 'Cadre horizontal',
+    'Box along the link' => 'Cadre le long du lien',
+    'Pill along the link, with an arrow' => 'Pastille le long du lien, avec une flèche',
 ];

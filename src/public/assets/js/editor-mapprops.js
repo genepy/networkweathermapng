@@ -323,7 +323,10 @@
                 field(t('Label'), choice('link_labelstyle', p.link_labelstyle, [
                     ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
                 ])),
-                field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont))
+                field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
+                field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
+                    ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
+                ]))
             ],
             scale: scalePane(m.scale).concat([
                 h('h4', { text: t('Saturated links') }),
