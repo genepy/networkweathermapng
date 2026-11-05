@@ -92,6 +92,8 @@ class Application
         $this->router->get('/map/{id}/history/{time}', 'MapController@historyFrame');
         $this->router->get('/map/{id}/font/{n}', 'MapController@font');
         $this->router->post('/map/{id}/favourite', 'MapController@favourite');
+        // what the Ctrl+K command palette searches
+        $this->router->get('/palette', 'MapController@palette');
         
         // Map cycling
         $this->router->get('/cycle', 'MapController@cycle');

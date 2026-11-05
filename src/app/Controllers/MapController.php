@@ -10,6 +10,7 @@ namespace App\Controllers;
 use App\Core\ErrorPage;
 use App\Services\MapService;
 use App\Services\DataSourceService;
+use App\Services\CommandPalette;
 use App\Services\KioskService;
 use App\Services\RecordingService;
 use App\Services\TimezoneService;
@@ -81,6 +82,40 @@ class MapController extends BaseController
         ]);
     }
     
+    /**
+     * GET /palette: what the Ctrl+K command palette searches, as JSON
+     * (maps, their nodes, kiosk groups, Settings pages for admins).
+     */
+    public function palette(array $params): void
+    {
+        $this->requireAuth();
+
+        $canEdit = $this->auth->canEdit();
+        $maps = $this->getMapsForUser(0, $canEdit);
+        $configs = [];
+        $statuses = [];
+        foreach ($maps as $m) {
+            $id = (int) $m['id'];
+            $configs[$id] = $this->mapService->getMapConfig($id);
+            $status = $this->mapService->mapStatus($m);
+            $statuses[$id] = $status === null ? null : ['max' => $status['max'] ?? null, 'level' => $status['level'] ?? ''];
+        }
+        $user = $this->auth->user();
+
+        header('Cache-Control: private, no-store');
+        $this->json(CommandPalette::index(
+            $maps,
+            $configs,
+            $statuses,
+            $this->mapService->favouriteMapIds($this->currentUserId()),
+            [
+                'edit' => $canEdit,
+                'admin' => $this->auth->isAdmin(),
+                'account' => $this->config->isAuthEnabled() && (string) ($user['username'] ?? '') !== '',
+            ]
+        ));
+    }
+
     public function view(array $params): void
     {
         $this->requireAuth();
