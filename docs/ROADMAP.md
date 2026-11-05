@@ -13,7 +13,7 @@ Last updated: 2026-11-05.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| UI redesign, step 8: editor, part 1 | `claude/project-thread-x6mpru` | Top bar, *Add* panel, map properties in the inspector, shortcuts behind `?` |
 
 ## Paused
 
@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| UI redesign, step 8: editor, part 1 | Top bar, *Add* panel, map properties in the inspector, shortcuts behind `?` |
 | UI redesign, step 9: editor, part 2 | Floating contextual bar by default, palette in the editor, movable toolbars as an option (decision) |
 | UI redesign, step 10: hover card with uPlot | The card and its IN/OUT graph are drawn in the browser since Nine IX task 4 (plain SVG); what is left: values under the pointer (crosshair), zoom on a period, the same graph in the node card |
 | UI redesign, step 11: remove the classic editor | List what only the classic editor can do, port it to the SVG editor or report it, then remove its views, routes, scripts, strings and link (decision) |
