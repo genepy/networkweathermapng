@@ -9,11 +9,12 @@
     $isFit = !empty($fit);
     $mode = isset($mode) ? (string) $mode : '';
     $fsFitUrl = '/map/' . (int)$map['id'] . '?fullscreen=1&fit=1&autorefresh=120';
-    $fsOrigUrl = '/map/' . (int)$map['id'] . '?fullscreen=1&fit=0&autorefresh=120';
     $normalUrl = '/map/' . (int)$map['id'];
     $previewUrl = '/map/' . (int)$map['id'] . '?mode=preview&hours=4&fullscreen=1&fit=0';
     $rootClasses = 'map-view-page' . ($isFullscreen ? ' fullscreen' : '') . ($isFit ? ' fit' : '') . ($mode === 'preview' ? ' preview' : '') . ($isSvg ? ' svg-view' : '');
     $mapTitle = $map['title_cache'] ?: $map['name'];
+    $canEdit = $auth->canEdit();
+    $historyHours = isset($historyHours) ? (int) $historyHours : 24;
 ?>
 <?php if ($isFullscreen): ?>
 <?php $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''; ?>
@@ -117,57 +118,78 @@
             object-fit: contain;
         }
     </style>
-    <?php if (!$isFullscreen): ?>
+    <?php if (!$isFullscreen && !$isSvg): ?>
         <div class="page-header">
-            <?= breadcrumb([[__('Maps'), '/'], [$map['title_cache'] ?: $map['name']]]) ?>
+            <?= breadcrumb([[__('Maps'), '/'], [$mapTitle]]) ?>
             <div class="page-actions">
-                <?php if ($isSvg): ?>
-                <a href="<?= $svgFsUrl ?>" class="btn btn-secondary" id="wmv-fullscreen-link"><?= e__('Fullscreen') ?></a>
-                <a href="<?= $pngUrl ?>" class="btn btn-secondary" title="<?= e__('Show the map as a PNG picture') ?>"><?= e__('PNG') ?></a>
-                <?php else: ?>
                 <a href="<?= $normalUrl ?>" class="btn btn-secondary" title="<?= e__('Zoomable view of the map') ?>"><?= e__('Zoomable view') ?></a>
-                <a href="<?= $fsFitUrl ?>&amp;view=png" class="btn btn-secondary"><?= e__('Fullscreen (Fit)') ?></a>
-                <a href="<?= $fsOrigUrl ?>&amp;view=png" class="btn btn-secondary"><?= e__('Fullscreen (Original)') ?></a>
-                <?php endif; ?>
-                <a href="<?= $previewUrl ?>" class="btn btn-success"><?= e__('Preview') ?></a>
-                <?php if ($auth->canEdit()): ?>
-                <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn btn-primary"><?= e__('Edit Map') ?></a>
+                <a href="<?= $fsFitUrl ?>&amp;view=png" class="btn btn-secondary"><?= e__('Fullscreen') ?></a>
+                <a href="<?= $previewUrl ?>" class="btn btn-secondary"><?= e__('Preview') ?></a>
+                <?php if ($canEdit): ?>
+                <a href="/editor/edit/<?= $mapId ?>" class="btn btn-primary"><?= e__('Edit') ?></a>
                 <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
     
     <?php if ($isSvg): ?>
-    <div class="wmv<?= $isFullscreen ? ' wmv-fullscreen' : '' ?>" id="wmv"
+    <div class="wmv<?= $isFullscreen ? ' wmv-fullscreen wmv-standalone' : '' ?>" id="wmv"
          data-map-id="<?= $mapId ?>"
          data-timezone="<?= htmlspecialchars($timezone) ?>"
          data-refresh="<?= max(30, $dataRefresh) ?>"
          data-fullscreen="<?= $isFullscreen ? '1' : '0' ?>"
          data-normal-url="<?= htmlspecialchars($normalUrl) ?>"
+         data-kiosk-url="<?= htmlspecialchars($svgFsUrl) ?>"
          data-png-url="/map/<?= $mapId ?>/image"
          data-history="<?= !empty($history) ? '1' : '0' ?>">
         <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
             <div class="wmv-stage"></div>
             <div class="wmv-message" role="status"><?= e__('Loading the map…') ?></div>
         </div>
-        <div class="wmv-toolbar" role="toolbar" aria-label="<?= e__('Map view') ?>">
+
+        <div class="wmv-bar wmv-fades" role="toolbar" aria-label="<?= e__('Map view') ?>">
+            <nav class="wmv-crumbs" aria-label="<?= e__('Breadcrumb') ?>">
+                <a href="/"><?= e__('Maps') ?></a>
+                <?= icon('chevron-right', 'icon wmv-crumb-sep') ?>
+                <h1 title="<?= htmlspecialchars($mapTitle) ?>"><?= htmlspecialchars($mapTitle) ?></h1>
+                <span class="wmv-badge" data-live="<?= e__('Live') ?>" data-playback="<?= e__('Playback') ?>"><?= e__('Live') ?></span>
+            </nav>
             <form class="wmv-find" role="search" autocomplete="off">
-                <input type="search" class="wmv-find-input" list="wmv-nodes" placeholder="<?= e__('Find a node') ?>" aria-label="<?= e__('Find a node') ?>">
+                <?= icon('search') ?>
+                <input type="search" class="wmv-find-input" list="wmv-nodes" placeholder="<?= e__('Find a node') ?>" aria-label="<?= e__('Find a node') ?>" aria-keyshortcuts="/">
+                <kbd aria-hidden="true">/</kbd>
                 <datalist id="wmv-nodes"></datalist>
             </form>
-            <button type="button" class="wmv-btn" data-act="out" title="<?= e__('Zoom out (-)') ?>" aria-label="<?= e__('Zoom out') ?>">−</button>
-            <span class="wmv-zoom" aria-live="polite">100 %</span>
-            <button type="button" class="wmv-btn" data-act="in" title="<?= e__('Zoom in (+)') ?>" aria-label="<?= e__('Zoom in') ?>">+</button>
-            <button type="button" class="wmv-btn wmv-btn-text" data-act="fit" title="<?= e__('Fit the map to the window (0)') ?>"><?= e__('Fit') ?></button>
-            <button type="button" class="wmv-btn wmv-btn-text" data-act="actual" title="<?= e__('Actual size (1)') ?>">100 %</button>
             <?php if (!empty($history)): ?>
-            <button type="button" class="wmv-btn wmv-btn-text" data-act="history" aria-pressed="false" title="<?= e__('Play back the recorded hours (H)') ?>"><?= e__('History') ?></button>
+            <div class="segmented wmv-when" role="group" aria-label="<?= e__('Time shown') ?>">
+                <button type="button" data-act="live" aria-pressed="true" aria-label="<?= e__('Live') ?>" title="<?= e__('The map with the latest data') ?>"><span class="wmv-live-dot" aria-hidden="true"></span><span><?= e__('Live') ?></span></button>
+                <button type="button" data-act="history" aria-pressed="false" aria-keyshortcuts="H" aria-label="<?= e__('Last :hours h', ['hours' => $historyHours]) ?>" title="<?= e__('Play back the recorded hours (H)') ?>"><?= icon('history') ?><span><?= e__('Last :hours h', ['hours' => $historyHours]) ?></span></button>
+            </div>
             <?php endif; ?>
             <?php if ($isFullscreen): ?>
-            <a class="wmv-btn wmv-btn-text" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" title="<?= e__('Leave fullscreen (Esc)') ?>"><?= e__('Exit') ?></a>
+            <a class="wmv-icon-btn" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" aria-keyshortcuts="F" title="<?= e__('Leave fullscreen (Esc)') ?>" aria-label="<?= e__('Leave fullscreen') ?>"><?= icon('minimize') ?></a>
+            <?php else: ?>
+            <button type="button" class="wmv-icon-btn" data-act="fullscreen" aria-keyshortcuts="F" aria-pressed="false"
+                    data-enter="<?= e__('Fullscreen (F)') ?>" data-leave="<?= e__('Leave fullscreen (F)') ?>"
+                    title="<?= e__('Fullscreen (F)') ?>" aria-label="<?= e__('Fullscreen') ?>"><?= icon('maximize') ?></button>
             <?php endif; ?>
-            <span class="wmv-state" hidden><span class="wmv-dot"></span><span class="wmv-state-text"></span></span>
+            <?php if ($canEdit && !$isFullscreen): ?>
+            <a class="wmv-icon-btn" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode($normalUrl) ?>" title="<?= e__('Map settings') ?>" aria-label="<?= e__('Map settings') ?>"><?= icon('settings') ?></a>
+            <?php endif; ?>
+            <details class="row-menu wmv-more">
+                <summary class="wmv-icon-btn" title="<?= e__('More actions') ?>" aria-label="<?= e__('More actions') ?>"><?= icon('ellipsis') ?></summary>
+                <div class="row-menu-items">
+                    <a href="<?= htmlspecialchars($pngUrl) ?>"><?= icon('image') ?><?= e__('Open as PNG') ?></a>
+                    <a href="<?= htmlspecialchars($previewUrl) ?>"><?= icon('chart-line') ?><?= e__('Graphs on hover (PNG)') ?></a>
+                    <button type="button" data-act="copy-kiosk"><?= icon('link') ?><?= e__('Copy kiosk link') ?></button>
+                    <a href="/map/<?= $mapId ?>/image" download="<?= htmlspecialchars(preg_replace('/[^A-Za-z0-9._-]+/', '-', (string) $map['name']) ?: 'map') ?>.png"><?= icon('download') ?><?= e__('Download PNG') ?></a>
+                </div>
+            </details>
+            <?php if ($canEdit): ?>
+            <a class="wm-btn wm-btn-primary wmv-edit" href="/editor/edit/<?= $mapId ?>" aria-keyshortcuts="E"><?= icon('pencil') ?><span><?= e__('Edit') ?></span></a>
+            <?php endif; ?>
         </div>
+
         <?php if (!empty($history)): ?>
         <div class="wmv-history" role="group" aria-label="<?= e__('Playback') ?>" hidden>
             <button type="button" class="wmv-btn" data-hist="play" title="<?= e__('Play or pause (Space)') ?>" aria-label="<?= e__('Play') ?>"><?= icon('play') ?></button>
@@ -179,10 +201,27 @@
                 <option value="150">5×</option>
                 <option value="60">10×</option>
             </select>
-            <button type="button" class="wmv-btn wmv-btn-text" data-hist="live" title="<?= e__('Back to the live map (Esc)') ?>"><?= e__('Live') ?></button>
         </div>
         <?php endif; ?>
-        <div class="wmv-minimap" hidden aria-hidden="true">
+
+        <div class="wmv-status" hidden>
+            <span class="wmv-status-when"><span class="wmv-dot" aria-hidden="true"></span><span class="wmv-updated"></span></span>
+            <span class="wmv-status-max"></span>
+            <span class="wmv-legend" hidden>
+                <span class="wmv-legend-min"></span>
+                <span class="wmv-legend-bar" role="img"></span>
+                <span class="wmv-legend-max"></span>
+            </span>
+        </div>
+
+        <div class="wmv-zoombar wmv-fades" role="group" aria-label="<?= e__('Zoom') ?>">
+            <button type="button" class="wmv-icon-btn" data-act="in" aria-keyshortcuts="+" title="<?= e__('Zoom in (+)') ?>" aria-label="<?= e__('Zoom in') ?>"><?= icon('plus') ?></button>
+            <button type="button" class="wmv-zoom" data-act="actual" aria-keyshortcuts="1" title="<?= e__('Actual size (1)') ?>" aria-live="polite">100 %</button>
+            <button type="button" class="wmv-icon-btn" data-act="out" aria-keyshortcuts="-" title="<?= e__('Zoom out (-)') ?>" aria-label="<?= e__('Zoom out') ?>"><?= icon('minus') ?></button>
+            <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" title="<?= e__('Fit the map to the window (0)') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
+        </div>
+
+        <div class="wmv-minimap wmv-fades" hidden aria-hidden="true">
             <img alt="">
             <div class="wmv-minimap-view"></div>
         </div>

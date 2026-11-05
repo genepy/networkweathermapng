@@ -2,9 +2,12 @@
  * NetworkWeathermapNG - zoomable SVG view of a map (/map/{id}).
  *
  * The map comes as SVG from /map/{id}/svg (cached on the server like the
- * PNG). Wheel or pinch zooms at the pointer, drag pans, the toolbar has
- * + / − / Fit / 100 % and a node search; a minimap shows where the view is
- * when the map does not fit. Zoom and position live in the URL hash
+ * PNG). Wheel or pinch zooms at the pointer, drag pans. Floating controls
+ * over the map: the bar at the top (node search, Live / recorded hours,
+ * fullscreen, more actions, Edit), the zoom at the bottom right, the state
+ * and the colour legend at the bottom left; a minimap shows where the view
+ * is when the map does not fit. In fullscreen the controls fade out after
+ * a few seconds without movement. Zoom and position live in the URL hash
  * (#z=2&x=..&y=.., x/y the map point at the centre), so a shared link opens
  * on the same view. The saved map is never changed.
  */
@@ -29,10 +32,16 @@
     const minimap = root.querySelector('.wmv-minimap');
     const minimapImg = minimap.querySelector('img');
     const minimapView = minimap.querySelector('.wmv-minimap-view');
-    const stateBox = root.querySelector('.wmv-state');
+    const statusBox = root.querySelector('.wmv-status');
+    const badge = root.querySelector('.wmv-badge');
+    const fsButton = root.querySelector('[data-act="fullscreen"]');
 
     const mapId = root.dataset.mapId;
-    const fullscreen = root.dataset.fullscreen === '1';
+    // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
+    const standalone = root.dataset.fullscreen === '1';
+    function isFullscreen() {
+        return standalone || document.fullscreenElement === root;
+    }
     const refreshMs = Math.max(30, parseInt(root.dataset.refresh || '300', 10)) * 1000;
     const svgUrl = '/map/' + mapId + '/svg';
     const versionUrl = '/map/' + mapId + '/version';
@@ -138,8 +147,6 @@
                 hash = '#z=' + (Math.round(S.z * 1000) / 1000) + '&x=' + Math.round(c.x) + '&y=' + Math.round(c.y);
             }
             history.replaceState(null, '', base + hash);
-            const fsLink = document.getElementById('wmv-fullscreen-link');
-            if (fsLink) fsLink.href = '/map/' + mapId + '?fullscreen=1' + hash;
             const exit = root.querySelector('[data-act="exit"]');
             if (exit) exit.href = root.dataset.normalUrl + hash;
         }, 250);
@@ -161,7 +168,7 @@
             centreOn(h.x, h.y, h.z);
         } else {
             // On the page, never enlarge a small map; in fullscreen, fill the screen
-            centreOn(S.w / 2, S.h / 2, fullscreen ? fitZ() : Math.min(1, fitZ()));
+            centreOn(S.w / 2, S.h / 2, isFullscreen() ? fitZ() : Math.min(1, fitZ()));
         }
     }
 
@@ -323,22 +330,60 @@
         }
     }
 
-    function showState(status) {
-        if (!stateBox || !status) return;
-        const dot = stateBox.querySelector('.wmv-dot');
-        const text = stateBox.querySelector('.wmv-state-text');
-        stateBox.hidden = false;
-        stateBox.className = 'wmv-state wmv-level-' + (status.level || 'none');
-        dot.style.background = status.colour || '';
-        const when = status.time ? formatTime(status.time) : '';
-        if (status.max === null || status.max === undefined) {
-            text.textContent = t('No data');
-            stateBox.title = when ? fmt('Updated at :time', {time: when}) : '';
-        } else {
-            text.textContent = fmt('Max :pct %', {pct: Math.round(status.max)});
-            stateBox.title = fmt('Most loaded link: :link (:pct %)', {link: status.link || '', pct: status.max})
-                + (when ? ' — ' + fmt('Updated at :time', {time: when}) : '');
+    /** Name of a time zone for people: "Europe/Paris" stays, "UTC" too */
+    function zoneLabel() {
+        return root.dataset.timezone || '';
+    }
+
+    /**
+     * The colour legend: the map's DEFAULT scale as one bar, each band at its
+     * place between the lowest and the highest value
+     */
+    function showLegend(scale) {
+        const box = statusBox.querySelector('.wmv-legend');
+        if (!Array.isArray(scale) || !scale.length) {
+            box.hidden = true;
+            return;
         }
+        let lo = Infinity, hi = -Infinity;
+        scale.forEach(function (b) { lo = Math.min(lo, b.bottom); hi = Math.max(hi, b.top); });
+        const span = hi > lo ? hi - lo : 1;
+        const pos = function (v) { return (Math.round((v - lo) / span * 1000) / 10) + '%'; };
+        const stops = [];
+        scale.forEach(function (b) {
+            stops.push(b.colour + ' ' + pos(b.bottom));
+            stops.push((b.colour2 || b.colour) + ' ' + pos(b.top));
+        });
+        const num = function (v) { return Math.round(v * 10) / 10; };
+        box.querySelector('.wmv-legend-bar').style.background = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+        box.querySelector('.wmv-legend-bar').setAttribute('aria-label', fmt('Colour scale from :min to :max %', {min: num(lo), max: num(hi)}));
+        box.querySelector('.wmv-legend-min').textContent = num(lo);
+        box.querySelector('.wmv-legend-max').textContent = num(hi) + ' %';
+        box.hidden = false;
+    }
+
+    function showState(status) {
+        if (!statusBox || !status) return;
+        statusBox.hidden = false;
+        statusBox.className = 'wmv-status wmv-level-' + (status.level || 'none');
+        statusBox.querySelector('.wmv-dot').style.background = status.colour || '';
+        const when = status.time ? formatTime(status.time) : '';
+        const zone = zoneLabel();
+        statusBox.querySelector('.wmv-updated').textContent = when
+            ? (H.on ? fmt('Recorded at :time', {time: formatWhen(status.time)}) : fmt('Updated at :time', {time: when})) + (zone ? ' · ' + zone : '')
+            : '';
+        const max = statusBox.querySelector('.wmv-status-max');
+        if (status.max === null || status.max === undefined) {
+            max.textContent = t('No data');
+            max.title = '';
+        } else {
+            const pct = Math.round(status.max);
+            max.textContent = status.link
+                ? fmt('Max load :pct % (:link)', {pct: pct, link: status.link})
+                : fmt('Max load :pct %', {pct: pct});
+            max.title = fmt('Most loaded link: :link (:pct %)', {link: status.link || '', pct: status.max});
+        }
+        showLegend(status.scale);
     }
 
     // ------------------------------------------------------------------
@@ -646,6 +691,8 @@
                 case 'out': zoomBy(1 / 1.4); break;
                 case 'fit': fit(); break;
                 case 'actual': actualSize(); break;
+                case 'fullscreen': toggleFullscreen(); break;
+                case 'copy-kiosk': copyKioskLink(); closeMenus(); break;
                 default: return;
             }
             e.preventDefault();
@@ -658,8 +705,9 @@
             if (e.key === 'Escape' && e.target === findInput) findInput.blur();
             return;
         }
-        // On the page, the keys act only while the map has the focus
-        if (!fullscreen && !root.contains(document.activeElement)) return;
+        // The map is the whole page: the keys act unless another control
+        // outside the map (the user menu...) has the focus
+        if (!keysForMap()) return;
         const step = 60;
         switch (e.key) {
             case '+': case '=': zoomBy(1.4); break;
@@ -671,8 +719,19 @@
             case 'ArrowUp': S.ty += step; userMoved(); break;
             case 'ArrowDown': S.ty -= step; userMoved(); break;
             case '/': findInput.focus(); break;
+            case 'f': case 'F': toggleFullscreen(); break;
+            case 'e': case 'E': {
+                const edit = root.querySelector('.wmv-edit');
+                if (!edit) return;
+                window.location.href = edit.href;
+                break;
+            }
             case 'Escape':
-                if (fullscreen) {
+                if (root.querySelector('.wmv-more[open]')) {
+                    closeMenus();
+                    break;
+                }
+                if (standalone) {
                     window.location.href = root.dataset.normalUrl + location.hash;
                 }
                 return;
@@ -690,26 +749,108 @@
         const c = {x: (lastVp.w / 2 - S.tx) / S.z, y: (lastVp.h / 2 - S.ty) / S.z};
         lastVp = vpSize();
         if (!S.touched) {
-            centreOn(S.w / 2, S.h / 2, fullscreen ? fitZ() : Math.min(1, fitZ()));
+            centreOn(S.w / 2, S.h / 2, isFullscreen() ? fitZ() : Math.min(1, fitZ()));
         } else {
             centreOn(c.x, c.y, S.z);
         }
         apply();
     });
 
-    if (fullscreen) {
-        let idle = 0;
-        const wake = function () {
-            root.classList.remove('wmv-idle');
-            clearTimeout(idle);
-            idle = setTimeout(function () {
-                if (document.activeElement !== findInput) root.classList.add('wmv-idle');
-            }, 3000);
-        };
-        ['mousemove', 'pointerdown', 'keydown', 'wheel'].forEach(function (ev) {
-            document.addEventListener(ev, wake, {passive: true});
-        });
+    // In fullscreen the controls fade out after 3 s without movement; any
+    // movement, touch or key brings them back
+    let idle = 0;
+    function wake() {
+        root.classList.remove('wmv-idle');
+        clearTimeout(idle);
+        if (!isFullscreen()) return;
+        idle = setTimeout(function () {
+            // not while typing a search (a key brings the controls back anyway)
+            if (document.activeElement === findInput) return;
+            if (root.querySelector('.wmv-more[open]') || H.on) return;
+            root.classList.add('wmv-idle');
+        }, 3000);
+    }
+    ['mousemove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
+        document.addEventListener(ev, wake, {passive: true});
+    });
+
+    // ------------------------------------------------------------------
+    // Fullscreen: one mode, the browser's fullscreen on the map with the
+    // current zoom. The fullscreen page (?fullscreen=1) stays for kiosk
+    // links and for browsers without the Fullscreen API.
+
+    function fullscreenUrl() {
+        return root.dataset.kioskUrl + (S.touched ? location.hash : '');
+    }
+
+    function toggleFullscreen() {
+        if (standalone) {
+            window.location.href = root.dataset.normalUrl + location.hash;
+            return;
+        }
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(function () {});
+            return;
+        }
+        if (!root.requestFullscreen) {
+            window.location.href = fullscreenUrl();
+            return;
+        }
+        root.requestFullscreen().catch(function () { window.location.href = fullscreenUrl(); });
+    }
+
+    function fullscreenChanged() {
+        const on = isFullscreen();
+        root.classList.toggle('wmv-fullscreen', on);
+        if (fsButton) {
+            fsButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+            fsButton.title = on ? fsButton.dataset.leave : fsButton.dataset.enter;
+            const use = fsButton.querySelector('use');
+            use.setAttribute('href', use.getAttribute('href').split('#')[0] + '#' + (on ? 'minimize' : 'maximize'));
+        }
         wake();
+    }
+    document.addEventListener('fullscreenchange', fullscreenChanged);
+    fullscreenChanged();
+
+    function keysForMap() {
+        const a = document.activeElement;
+        return isFullscreen() || !a || a === document.body || root.contains(a);
+    }
+
+    // ------------------------------------------------------------------
+    // More actions
+
+    function closeMenus() {
+        root.querySelectorAll('.wmv-more[open]').forEach(function (d) { d.open = false; });
+    }
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest || !e.target.closest('.wmv-more')) closeMenus();
+    });
+
+    /** Address of the fullscreen page on the current view, for a wall screen */
+    function copyKioskLink() {
+        const url = location.origin + fullscreenUrl();
+        const done = function () { if (window.WMUI) WMUI.toast(t('Kiosk link copied'), 'success'); };
+        const fallback = function () {
+            const area = document.createElement('textarea');
+            area.value = url;
+            area.setAttribute('readonly', '');
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            document.body.appendChild(area);
+            area.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            area.remove();
+            if (ok) done();
+            else if (window.WMUI) WMUI.toast(fmt('Copy this link: :url', {url: url}), 'info');
+        };
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(done, fallback);
+        } else {
+            fallback();
+        }
     }
 
     // ------------------------------------------------------------------
@@ -733,8 +874,20 @@
     const H = {
         on: false, frames: [], i: 0, playing: false, timer: 0, cache: {}, want: null, busy: false,
         bar: root.querySelector('.wmv-history'),
-        button: root.querySelector('[data-act="history"]')
+        button: root.querySelector('[data-act="history"]'),
+        live: root.querySelector('[data-act="live"]')
     };
+
+    /** Live / recorded hours switch and the badge next to the title */
+    function showMode(history) {
+        if (H.button) H.button.setAttribute('aria-pressed', history ? 'true' : 'false');
+        if (H.live) H.live.setAttribute('aria-pressed', history ? 'false' : 'true');
+        if (badge) {
+            badge.textContent = history ? badge.dataset.playback : badge.dataset.live;
+            badge.classList.toggle('wmv-badge-playback', history);
+        }
+        root.classList.toggle('wmv-in-history', history);
+    }
 
     function formatWhen(seconds) {
         const options = {weekday: 'short', hour: '2-digit', minute: '2-digit'};
@@ -772,7 +925,8 @@
         frameData(time).then(function (data) {
             if (!H.on) return;
             installSvg(data.svg, data.items);
-            showState(data.status);
+            // the time of the frame, rather than when it was drawn
+            showState(Object.assign({}, data.status, {time: data.time || time}));
             showMessage('');
             // load the next one ahead, for a smooth playback
             if (H.frames[H.i + 1]) frameData(H.frames[H.i + 1]);
@@ -819,9 +973,7 @@
                 }
                 H.on = true;
                 H.bar.hidden = false;
-                H.button.setAttribute('aria-pressed', 'true');
-                H.button.classList.add('wmv-active');
-                root.classList.add('wmv-in-history');
+                showMode(true);
                 const slider = H.bar.querySelector('.wmv-history-slider');
                 slider.max = H.frames.length - 1;
                 showFrame(0);
@@ -835,16 +987,14 @@
         setPlaying(false);
         H.on = false;
         H.bar.hidden = true;
-        H.button.setAttribute('aria-pressed', 'false');
-        H.button.classList.remove('wmv-active');
-        root.classList.remove('wmv-in-history');
+        showMode(false);
         load();
     }
 
     if (H.bar && H.button) {
-        H.button.addEventListener('click', function () { if (H.on) closeHistory(); else openHistory(); });
+        H.button.addEventListener('click', function () { if (!H.on) openHistory(); });
+        if (H.live) H.live.addEventListener('click', closeHistory);
         H.bar.querySelector('[data-hist="play"]').addEventListener('click', function () { setPlaying(!H.playing); });
-        H.bar.querySelector('[data-hist="live"]').addEventListener('click', closeHistory);
         H.bar.querySelector('.wmv-history-slider').addEventListener('input', function (e) {
             setPlaying(false);
             showFrame(parseInt(e.target.value, 10));
@@ -856,7 +1006,7 @@
             const tag = (e.target && e.target.tagName) || '';
             if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) && e.target.type !== 'range') return;
             if (e.ctrlKey || e.metaKey || e.altKey) return;
-            if (!fullscreen && !root.contains(document.activeElement)) return;
+            if (!keysForMap()) return;
             if (e.key === 'h' || e.key === 'H') {
                 if (H.on) closeHistory(); else openHistory();
             } else if (H.on && e.key === ' ') {

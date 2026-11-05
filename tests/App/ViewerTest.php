@@ -82,6 +82,23 @@ CONF);
         }
     }
 
+    public function testScaleStopsKeepGradientsAndSkipTheSpecialColours(): void
+    {
+        $file = $this->data . '/scale.conf';
+        file_put_contents($file, "WIDTH 100\nHEIGHT 100\nSCALE DEFAULT 50 100 255 255 0 255 0 0\nSCALE DEFAULT 0 50 0 0 255\nSCALE DEFAULT 0 0 none\nSCALE other 0 100 1 2 3\nKEYBGCOLOR 10 10 10\n");
+        $wmap = new \WeatherMap();
+        ob_start();
+        try {
+            $wmap->ReadConfig($file);
+        } finally {
+            ob_end_clean();
+        }
+        $this->assertSame([
+            ['bottom' => 0.0, 'top' => 50.0, 'colour' => '#0000ff'],
+            ['bottom' => 50.0, 'top' => 100.0, 'colour' => '#ffff00', 'colour2' => '#ff0000'],
+        ], MapService::scaleStops($wmap));
+    }
+
     public function testFreshness(): void
     {
         $this->assertFalse(MapService::isFresh(null, 100, 200, 300), 'never drawn');
@@ -114,6 +131,12 @@ CONF);
         $this->assertSame('crit', $status['level']);
         $this->assertSame('#ff0000', $status['colour']);
         $this->assertFalse($status['stale']);
+        // read back from JSON: whole numbers come back as integers
+        $this->assertEquals([
+            ['bottom' => 0.0, 'top' => 50.0, 'colour' => '#00ff00'],
+            ['bottom' => 50.0, 'top' => 85.0, 'colour' => '#ffc000'],
+            ['bottom' => 85.0, 'top' => 100.0, 'colour' => '#ff0000'],
+        ], $status['scale'], 'the colour scale, for the legend of the viewer');
 
         $items = $status['items'];
         $ab = array_values(array_filter($items, fn ($i) => $i['name'] === 'a-b'))[0];

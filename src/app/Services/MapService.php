@@ -641,6 +641,7 @@ class MapService
                 'colour' => $summary['colour'] ?? null,
                 'link' => $summary['link'] ?? null,
                 'time' => $summary['time'] ?? time(),
+                'scale' => $summary['scale'] ?? [],
             ],
         ];
     }
@@ -709,8 +710,40 @@ class MapService
             'colour' => $max['colour'] ?? null,
             'link' => $max['link'] ?? null,
             'level' => self::loadLevel($max === null ? null : $max['pct']),
+            'scale' => self::scaleStops($wmap),
             'items' => $items,
         ];
+    }
+
+    /**
+     * The DEFAULT colour scale of a map, for the viewer's legend: its bands
+     * from the lowest, each {bottom, top, colour} and colour2 when the band
+     * is a gradient. Empty when the map has no usable scale.
+     *
+     * @return list<array{bottom: float, top: float, colour: string, colour2?: string}>
+     */
+    public static function scaleStops(\WeatherMap $wmap): array
+    {
+        $stops = [];
+        foreach ((array) ($wmap->colours['DEFAULT'] ?? []) as $band) {
+            if (!is_array($band) || !empty($band['special']) || !isset($band['bottom'], $band['top'], $band['red1'])) {
+                continue;
+            }
+            if ((int) $band['red1'] < 0) {
+                continue;   // a "none" colour draws nothing
+            }
+            $stop = [
+                'bottom' => (float) $band['bottom'],
+                'top' => (float) $band['top'],
+                'colour' => sprintf('#%02x%02x%02x', (int) $band['red1'], (int) $band['green1'], (int) $band['blue1']),
+            ];
+            if (isset($band['red2']) && (int) $band['red2'] >= 0) {
+                $stop['colour2'] = sprintf('#%02x%02x%02x', (int) $band['red2'], (int) $band['green2'], (int) $band['blue2']);
+            }
+            $stops[] = $stop;
+        }
+        usort($stops, static fn (array $a, array $b) => [$a['bottom'], $a['top']] <=> [$b['bottom'], $b['top']]);
+        return $stops;
     }
 
     /** ok / warn / crit / none, for a maximum link load in % */

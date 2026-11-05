@@ -2,8 +2,6 @@
 // Map viewer: zoomable SVG view of a map, map list search, favourites and state
 return [
     // Map view
-    'Show the map as a PNG picture' => 'Afficher la carte en image PNG',
-    'PNG' => 'PNG',
     'Zoomable view of the map' => 'Vue zoomable de la carte',
     'Zoomable view' => 'Vue zoomable',
     'Map :name, zoom with the wheel, drag to move' => 'Carte :name : zoomer avec la molette, faire glisser pour se déplacer',
@@ -18,7 +16,17 @@ return [
     'Fit' => 'Ajuster',
     'Actual size (1)' => 'Taille réelle (1)',
     'Leave fullscreen (Esc)' => 'Quitter le plein écran (Échap)',
-    'Exit' => 'Quitter',
+    'Leave fullscreen' => 'Quitter le plein écran',
+    'Fullscreen (F)' => 'Plein écran (F)',
+    'Leave fullscreen (F)' => 'Quitter le plein écran (F)',
+    'Time shown' => 'Période affichée',
+    'The map with the latest data' => 'La carte avec les dernières données',
+    'Last :hours h' => 'Dernières :hours h',
+    'Map settings' => 'Réglages de la carte',
+    'Open as PNG' => 'Ouvrir en PNG',
+    'Graphs on hover (PNG)' => 'Graphes au survol (PNG)',
+    'Copy kiosk link' => 'Copier le lien kiosque',
+    'Download PNG' => 'Télécharger le PNG',
 
     // Map list
     'Search maps' => 'Rechercher une carte',
@@ -35,6 +43,5 @@ return [
     'Play or pause (Space)' => 'Lecture ou pause (Espace)',
     'Time of the frame shown' => 'Heure de l’image affichée',
     'Playback speed' => 'Vitesse de lecture',
-    'Back to the live map (Esc)' => 'Revenir à la carte en direct (Échap)',
     'Live' => 'Direct',
 ];

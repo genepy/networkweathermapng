@@ -303,66 +303,6 @@ button.btn {
     margin: 10px 0;
 }
 
-/* Cycle Page */
-.cycle-page {
-    background: #1a1a1a;
-    min-height: calc(100vh - var(--header-height) - var(--footer-height));
-    margin: -20px;
-    padding: 20px;
-}
-
-.cycle-controls {
-    background: rgba(0,0,0,0.5);
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    color: #fff;
-}
-
-.cycle-info {
-    margin: 0 20px;
-}
-
-.cycle-map-container {
-    height: 75vh;
-    min-height: 300px;
-    overflow: hidden;
-}
-
-.cycle-map {
-    display: none;
-}
-
-/* Overflowing maps (fixed zoom) stay centred and are cut on every side */
-.cycle-map.active {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
-
-.cycle-map img {
-    border-radius: 4px;
-}
-
-.cycle-map.zoom-fit img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.cycle-map.zoom-fixed img {
-    flex: none;
-    max-width: none;
-    max-height: none;
-}
-
 /* Data Tables */
 .data-table-container {
     background: var(--card-bg);
