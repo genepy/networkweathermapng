@@ -13,7 +13,7 @@ Last updated: 2026-11-05.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| UI redesign, step 7: command palette | `claude/project-thread-fq9yez` | `Ctrl+K` on the home page, the viewer and the settings: in progress |
 
 ## Paused
 
@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| UI redesign, step 7: command palette | `Ctrl+K` on the home page, the viewer and the settings |
 | UI redesign, step 8: editor, part 1 | Top bar, *Add* panel, map properties in the inspector, shortcuts behind `?` |
 | UI redesign, step 9: editor, part 2 | Floating contextual bar by default, palette in the editor, movable toolbars as an option (decision) |
 | UI redesign, step 10: hover card with uPlot | The card and its IN/OUT graph are drawn in the browser since Nine IX task 4 (plain SVG); what is left: values under the pointer (crosshair), zoom on a period, the same graph in the node card |
