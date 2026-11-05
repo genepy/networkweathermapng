@@ -166,6 +166,8 @@
                 <button type="button" data-act="history" aria-pressed="false" aria-keyshortcuts="H" aria-label="<?= e__('Last :hours h', ['hours' => $historyHours]) ?>" title="<?= e__('Play back the recorded hours (H)') ?>"><?= icon('history') ?><span><?= e__('Last :hours h', ['hours' => $historyHours]) ?></span></button>
             </div>
             <?php endif; ?>
+            <button type="button" class="wmv-icon-btn" data-act="panel" aria-controls="wmv-panel" aria-pressed="false" aria-keyshortcuts="P"
+                    title="<?= e__('Side panel: sites, total traffic, legend (P)') ?>" aria-label="<?= e__('Side panel') ?>"><?= icon('panel-left') ?></button>
             <?php if ($isFullscreen): ?>
             <a class="wmv-icon-btn" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" aria-keyshortcuts="F" title="<?= e__('Leave fullscreen (Esc)') ?>" aria-label="<?= e__('Leave fullscreen') ?>"><?= icon('minimize') ?></a>
             <?php else: ?>
@@ -220,6 +222,33 @@
             <button type="button" class="wmv-icon-btn" data-act="out" aria-keyshortcuts="-" title="<?= e__('Zoom out (-)') ?>" aria-label="<?= e__('Zoom out') ?>"><?= icon('minus') ?></button>
             <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" title="<?= e__('Fit the map to the window (0)') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
         </div>
+
+        <aside class="wmv-panel wmv-fades" id="wmv-panel" hidden aria-label="<?= e__('Side panel') ?>">
+            <section class="wmv-panel-sec wmv-sites" aria-labelledby="wmv-sites-title">
+                <header class="wmv-panel-head">
+                    <h2 id="wmv-sites-title" data-sites="<?= e__('Sites') ?>" data-nodes="<?= e__('Nodes') ?>"><?= e__('Nodes') ?></h2>
+                    <span class="wmv-panel-count"></span>
+                    <button type="button" class="wmv-icon-btn" data-act="panel-close" title="<?= e__('Close the side panel (P)') ?>" aria-label="<?= e__('Close the side panel') ?>"><?= icon('x') ?></button>
+                </header>
+                <ul class="wmv-site-list"></ul>
+            </section>
+            <section class="wmv-panel-sec wmv-total" aria-labelledby="wmv-total-title" hidden>
+                <header class="wmv-panel-head">
+                    <h2 id="wmv-total-title"><?= e__('Total traffic') ?></h2>
+                    <span class="wmv-panel-count wmv-total-links"></span>
+                </header>
+                <dl class="wmv-total-now">
+                    <div class="wmv-total-in"><dt><?= e__('IN') ?></dt><dd></dd></div>
+                    <div class="wmv-total-out"><dt><?= e__('OUT') ?></dt><dd></dd></div>
+                </dl>
+                <svg class="wmv-total-graph" viewBox="0 0 260 64" preserveAspectRatio="none" role="img" hidden></svg>
+                <p class="wmv-total-stats" hidden></p>
+            </section>
+            <section class="wmv-panel-sec wmv-panel-legend" aria-labelledby="wmv-legend-title" hidden>
+                <header class="wmv-panel-head"><h2 id="wmv-legend-title"><?= e__('Link load') ?></h2></header>
+                <div class="wmv-panel-scale"></div>
+            </section>
+        </aside>
 
         <aside class="wmv-card wmv-fades" hidden aria-label="<?= e__('Selected node') ?>">
             <header class="wmv-card-head">

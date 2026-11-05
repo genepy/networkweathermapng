@@ -397,6 +397,25 @@ class MapEditor
         }
     }
 
+    /**
+     * A hint written only where an item differs from its template (NODE or
+     * LINK DEFAULT, or the template it names); $empty is the value meaning
+     * "not set".
+     *
+     * @param \WeatherMapNode|\WeatherMapLink $item
+     * @param \WeatherMapNode|\WeatherMapLink|null $template
+     */
+    private function setHint(object $item, ?object $template, string $key, string $value, string $empty): void
+    {
+        $inherited = $template !== null && isset($template->hints[$key]) ? trim((string) $template->hints[$key]) : $empty;
+        if ($value === $inherited) {
+            unset($item->hints[$key]);
+        } else {
+            // a template sets it: write the empty value to override it
+            $item->hints[$key] = $value;
+        }
+    }
+
     private function setNodes(\WeatherMap $map, array $op): void
     {
         $props = (array) ($op['props'] ?? []);
@@ -440,6 +459,10 @@ class MapEditor
                     $this->setLabelPreset($map, $node, $value);
                 } elseif ($key === 'style') {
                     $this->setNodeStyle($map, $node, (string) $value);
+                } elseif ($key === 'site') {
+                    // SET site: the group of the node in the viewer's site list
+                    $site = trim((string) preg_replace('/\s+/u', ' ', $this->text($value)));
+                    $this->setHint($node, $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null, 'site', $site, '');
                 } elseif ($key === 'labelshift') {
                     // where the label sits from its default place, in pixels; null puts it back
                     $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
@@ -550,6 +573,13 @@ class MapEditor
                     $link->infourl[OUT] = $link->infourl[IN];
                 } elseif ($key === 'via') {
                     $this->setVias($link, (array) $value);
+                } elseif ($key === 'traffic_total') {
+                    // SET traffic_total 0 leaves the link out of the viewer's total traffic
+                    if (!in_array((string) $value, ['0', '1'], true)) {
+                        throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => (string) $value]));
+                    }
+                    $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
+                    $this->setHint($link, $template, 'traffic_total', (string) $value, '1');
                 } else {
                     throw new InvalidArgumentException(__('Unknown link property: :key', ['key' => $key]));
                 }
@@ -1342,6 +1372,7 @@ class MapEditor
                 // the preset the label sits at, '' when none or moved by hand
                 'label_position' => self::labelPresetOf($node),
                 'style' => $node->is_badge() ? 'badge' : 'box',
+                'site' => \App\Services\MapService::siteOf($node),
                 'icon' => (string) $node->iconfile,
                 'iconscalew' => (int) $node->iconscalew,
                 'iconscaleh' => (int) $node->iconscaleh,
@@ -1415,6 +1446,7 @@ class MapEditor
                 'comment_out' => (string) ($link->comments[OUT] ?? ''),
                 'commentcurve' => (string) $link->commentcurve === '1' ? '1' : '0',
                 'bwstyle' => self::bwStyle($link),
+                'traffic_total' => \App\Services\MapService::countsInTotal($link) ? '1' : '0',
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),

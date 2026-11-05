@@ -61,6 +61,31 @@ final class RecordingServiceTest extends TestCase
         $this->assertTrue($this->recording->canPlay(3));
     }
 
+    /** The total traffic of each frame, for the graph of the viewer's side panel; worked out once */
+    public function testTotalsOfTheFrames(): void
+    {
+        $this->recording->setRecorded(4, true);
+        $frame = static fn (float $in, float $out) => ['svg' => '<svg/>', 'items' => [
+            'L1' => ['kind' => 'link', 'in' => $in, 'out' => $out],
+            'L2' => ['kind' => 'link', 'in' => 1.0, 'out' => 1.0, 'total' => false],
+        ], 'status' => []];
+        $t0 = 1_800_000_000;
+        $this->recording->save(4, $frame(10, 20), $t0);
+        $this->recording->save(4, $frame(30, 40), $t0 + 300);
+
+        $this->assertSame([[$t0, 10.0, 20.0], [$t0 + 300, 30.0, 40.0]], $this->recording->totals(4, $t0 + 300));
+        $this->assertFileExists($this->data . '/recordings/4/totals.json');
+
+        // read from totals.json the next time
+        $this->recording->save(4, $frame(99, 99), $t0);
+        $this->assertSame([$t0, 10.0, 20.0], $this->recording->totals(4, $t0 + 300)[0]);
+
+        // a frame past the retention leaves the totals too
+        $later = $t0 + 300 + 24 * 3600;
+        $this->assertSame([], $this->recording->totals(4, $later + 3600));
+        $this->assertSame([], $this->recording->totals(9), 'a map without frames');
+    }
+
     public function testOldFramesAreDeleted(): void
     {
         $this->recording->setRecorded(3, true);

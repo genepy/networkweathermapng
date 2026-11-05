@@ -642,6 +642,7 @@ class MapService
                 'link' => $summary['link'] ?? null,
                 'time' => $summary['time'] ?? time(),
                 'scale' => $summary['scale'] ?? [],
+                'total' => self::trafficTotal((array) ($summary['items'] ?? [])),
             ],
         ];
     }
@@ -691,6 +692,10 @@ class MapService
             if (is_string($ds) && $ds !== '') {
                 $item['ds'] = $ds;
             }
+            if (!self::countsInTotal($link)) {
+                // left out of the total traffic of the viewer's side panel
+                $item['total'] = false;
+            }
             $urls = self::itemUrls($wmap, $link);
             if (!isset($urls['graph']) && $mapId !== null && self::hasTrafficHistory($link)) {
                 $urls['graph'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/graph';
@@ -703,6 +708,11 @@ class MapService
                 continue;
             }
             $urls = self::itemUrls($wmap, $node);
+            $site = self::siteOf($node);
+            if ($site !== '') {
+                // the group of the node in the viewer's site list
+                $urls['site'] = $site;
+            }
             if ($urls) {
                 $items['N' . $node->id] = ['kind' => 'node', 'name' => (string) $node->name] + $urls;
             }
@@ -715,8 +725,56 @@ class MapService
             'link' => $max['link'] ?? null,
             'level' => self::loadLevel($max === null ? null : $max['pct']),
             'scale' => self::scaleStops($wmap),
+            'total' => self::trafficTotal($items),
             'items' => $items,
         ];
+    }
+
+    /** SET site <name> on a node (or its template): the site it belongs to, '' for none */
+    public static function siteOf(\WeatherMapNode $node): string
+    {
+        $site = $node->hints['site'] ?? '';
+        return is_scalar($site) ? trim(preg_replace('/\s+/u', ' ', (string) $site) ?? '') : '';
+    }
+
+    /** Whether a link counts in the total traffic: always, unless SET traffic_total 0 */
+    public static function countsInTotal(\WeatherMapLink $link): bool
+    {
+        $v = $link->hints['traffic_total'] ?? '1';
+        return !is_scalar($v) || trim((string) $v) !== '0';
+    }
+
+    /**
+     * The total traffic of a map: the sum of the IN and OUT rates (bits per
+     * second) of its links that count in it ("total" => false leaves a link
+     * out), from summary items. In and out are null when no link has data.
+     *
+     * @param array<string, mixed> $items
+     * @return array{in: float|null, out: float|null, links: int}
+     */
+    public static function trafficTotal(array $items): array
+    {
+        $in = null;
+        $out = null;
+        $links = 0;
+        foreach ($items as $item) {
+            if (!is_array($item) || ($item['kind'] ?? '') !== 'link' || ($item['total'] ?? true) === false) {
+                continue;
+            }
+            $hasIn = is_numeric($item['in'] ?? null);
+            $hasOut = is_numeric($item['out'] ?? null);
+            if (!$hasIn && !$hasOut) {
+                continue;
+            }
+            $links++;
+            if ($hasIn) {
+                $in = ($in ?? 0.0) + (float) $item['in'];
+            }
+            if ($hasOut) {
+                $out = ($out ?? 0.0) + (float) $item['out'];
+            }
+        }
+        return ['in' => $in, 'out' => $out, 'links' => $links];
     }
 
     /**

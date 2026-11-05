@@ -12,8 +12,12 @@
  * on the same view. Clicking a node (or finding it) zooms onto it and
  * pins its card: its links with their load, the nodes at their other end,
  * its page; the rest of the map dims and the minimap frames it (#n=<node>
- * in the hash). Hovering a node frames it in the minimap too. The saved
- * map is never changed.
+ * in the hash). Hovering a node frames it in the minimap too. A side
+ * panel on the left (P, remembered per browser) lists the nodes grouped by
+ * site (SET site), the total traffic of the map with a graph of the
+ * recorded hours, and the colour legend; hovering a node on the map
+ * highlights it in the list, hovering it in the list frames it on the map
+ * and in the minimap. The saved map is never changed.
  */
 (function () {
     'use strict';
@@ -41,6 +45,8 @@
     const fsButton = root.querySelector('[data-act="fullscreen"]');
     const card = root.querySelector('.wmv-card');
     const minimapMark = minimap.querySelector('.wmv-minimap-mark');
+    const panel = root.querySelector('.wmv-panel');
+    const panelButton = root.querySelector('[data-act="panel"]');
 
     const mapId = root.dataset.mapId;
     // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
@@ -294,6 +300,7 @@
         updateMinimapImage(text);
         setupFlow(svg);
         refocus();
+        fillSites();
     }
 
     // ---- Traffic flow (SET link_flow 1) ----
@@ -480,6 +487,7 @@
         const box = statusBox.querySelector('.wmv-legend');
         if (!Array.isArray(scale) || !scale.length) {
             box.hidden = true;
+            if (panel) panel.querySelector('.wmv-panel-legend').hidden = true;
             return;
         }
         let lo = Infinity, hi = -Infinity;
@@ -497,6 +505,24 @@
         box.querySelector('.wmv-legend-min').textContent = num(lo);
         box.querySelector('.wmv-legend-max').textContent = num(hi) + ' %';
         box.hidden = false;
+        // the same legend, larger, in the side panel: one row per band
+        if (panel) {
+            const sec = panel.querySelector('.wmv-panel-legend');
+            const rows = scale.slice().reverse().map(function (b) {
+                const row = document.createElement('div');
+                row.className = 'wmv-scale-row';
+                const sw = document.createElement('span');
+                sw.className = 'wmv-scale-swatch';
+                sw.style.background = b.colour2 ? 'linear-gradient(to right, ' + b.colour + ', ' + b.colour2 + ')' : b.colour;
+                const label = document.createElement('span');
+                label.textContent = num(b.bottom) + ' – ' + num(b.top) + ' %';
+                row.append(sw, label);
+                return row;
+            });
+            const box2 = sec.querySelector('.wmv-panel-scale');
+            box2.replaceChildren.apply(box2, rows);
+            sec.hidden = false;
+        }
     }
 
     function showState(status) {
@@ -521,6 +547,7 @@
             max.title = fmt('Most loaded link: :link (:pct %)', {link: status.link || '', pct: status.max});
         }
         showLegend(status.scale);
+        showTotal(status.total);
     }
 
     // ------------------------------------------------------------------
@@ -753,7 +780,366 @@
     viewport.addEventListener('mouseover', function (e) {
         const node = e.target && e.target.closest ? e.target.closest('g.wm-node') : null;
         markMinimap(node && stage.contains(node) ? node : focusedNode());
+        markRow(node && stage.contains(node) ? node.getAttribute('data-name') : null);
     });
+
+    // ------------------------------------------------------------------
+    // Side panel: sites, total traffic, legend
+
+    const PANEL_KEY = 'wmv-panel';
+    const P = {open: {}, rows: {}, hover: null, totals: null, totalsAt: 0, totalsBusy: false, total: null};
+
+    function storedPanel() {
+        try { return localStorage.getItem(PANEL_KEY); } catch (e) { return null; }
+    }
+
+    /** Open or close the panel; a choice of the user is remembered in this browser */
+    function setPanel(open, remember) {
+        if (!panel) return;
+        panel.hidden = !open;
+        root.classList.toggle('wmv-panel-open', open);
+        if (panelButton) panelButton.setAttribute('aria-pressed', open ? 'true' : 'false');
+        if (remember) {
+            try { localStorage.setItem(PANEL_KEY, open ? '1' : '0'); } catch (e) { /* private window */ }
+        }
+        if (open) {
+            fillSites();
+            loadTotals();
+            drawTotals();
+        }
+    }
+
+    /** The node groups of the map (notes left out), by site; '' gathers the nodes without one */
+    function siteGroups() {
+        const bySite = {};
+        let named = 0;
+        nodeEntries(S.el).forEach(function (n) {
+            if (n.g.querySelector('.wm-note')) return;
+            const it = S.items[n.g.getAttribute('data-id')];
+            const site = it && typeof it.site === 'string' ? it.site : '';
+            if (!bySite[site]) {
+                bySite[site] = [];
+                if (site !== '') named++;
+            }
+            bySite[site].push(n);
+        });
+        const names = Object.keys(bySite).sort(function (a, b) {
+            // the nodes without a site come last
+            if (a === '' || b === '') return a === '' ? 1 : -1;
+            return a.localeCompare(b);
+        });
+        return {named: named, groups: names.map(function (site) {
+            return {site: site, nodes: bySite[site].sort(function (a, b) { return a.label.localeCompare(b.label); })};
+        })};
+    }
+
+    /** The highest load of the links of a node, -1 without data */
+    function nodeLoad(name) {
+        let max = -1;
+        linksOf(name).forEach(function (l) { max = Math.max(max, loadOf(l.data)); });
+        return max;
+    }
+
+    function levelOf(load) {
+        return load < 0 ? 'none' : (load >= 80 ? 'crit' : (load >= 50 ? 'warn' : 'ok'));
+    }
+
+    function loadBadge(load) {
+        const span = document.createElement('span');
+        span.className = 'wmv-site-load';
+        span.dataset.level = levelOf(load);
+        span.textContent = load < 0 ? '' : Math.round(load) + ' %';
+        return span;
+    }
+
+    /** Frame some nodes on the map: zoom so they fill the middle of the view */
+    function frameNodes(nodes) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        nodes.forEach(function (n) {
+            let b;
+            try { b = n.g.getBBox(); } catch (e) { b = null; }
+            if (!b) return;
+            x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+            x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
+        });
+        if (!isFinite(x0)) return;
+        const vp = vpSize();
+        const pad = 80;
+        const z = clampZ(Math.min(4, (vp.w - 2 * pad) / Math.max(40, x1 - x0), (vp.h - 2 * pad) / Math.max(40, y1 - y0)));
+        animateTo(z, (x0 + x1) / 2, (y0 + y1) / 2);
+        S.touched = true;
+        saveHash();
+    }
+
+    function highlightNodes(nodes) {
+        if (!S.el || !S.el.querySelectorAll) return;
+        S.el.querySelectorAll('.wmv-hl').forEach(function (n) { n.classList.remove('wmv-hl'); });
+        (nodes || []).forEach(function (n) { n.g.classList.add('wmv-hl'); });
+        markMinimap(nodes && nodes.length === 1 ? nodes[0].g : focusedNode());
+    }
+
+    function isPhone() {
+        return vpSize().w <= 640;
+    }
+
+    function nodeRow(n) {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'wmv-site-node';
+        b.dataset.name = n.name;
+        const label = document.createElement('span');
+        label.className = 'wmv-site-label';
+        label.textContent = n.label;
+        b.title = n.name !== n.label ? n.label + ' (' + n.name + ')' : n.label;
+        b.append(label, loadBadge(nodeLoad(n.name)));
+        b.addEventListener('click', function () {
+            const g = nodeByName(n.name);
+            if (!g) return;
+            // on a phone the panel would cover the card
+            if (isPhone()) setPanel(false, false);
+            focusNode(g, true);
+        });
+        b.addEventListener('mouseenter', function () { highlightNodes([{g: n.g}]); });
+        b.addEventListener('mouseleave', function () { highlightNodes(null); });
+        b.addEventListener('focus', function () { highlightNodes([{g: n.g}]); });
+        b.addEventListener('blur', function () { highlightNodes(null); });
+        P.rows[n.name] = b;
+        li.appendChild(b);
+        return li;
+    }
+
+    /** Fill the list of nodes by site (again after each new drawing of the map) */
+    function fillSites() {
+        if (!panel || panel.hidden || !S.el || !S.el.querySelectorAll) return;
+        const list = panel.querySelector('.wmv-site-list');
+        const title = panel.querySelector('#wmv-sites-title');
+        const scroll = list.scrollTop;
+        const info = siteGroups();
+        P.rows = {};
+        let count = 0;
+        const items = [];
+        if (!info.named) {
+            // no site on this map: one plain list of the nodes
+            title.textContent = title.dataset.nodes;
+            info.groups.forEach(function (grp) {
+                grp.nodes.forEach(function (n) { items.push(nodeRow(n)); count++; });
+            });
+            panel.querySelector('.wmv-sites .wmv-panel-count').textContent = String(count);
+        } else {
+            title.textContent = title.dataset.sites;
+            info.groups.forEach(function (grp) {
+                const key = grp.site;
+                const open = P.open[key] !== undefined ? P.open[key] : info.groups.length <= 6;
+                const li = document.createElement('li');
+                li.className = 'wmv-site';
+                const head = document.createElement('div');
+                head.className = 'wmv-site-head';
+                const toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'wmv-site-toggle';
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                const chevron = document.createElementNS(SVG_NS, 'svg');
+                chevron.setAttribute('class', 'icon wmv-site-chevron');
+                chevron.setAttribute('aria-hidden', 'true');
+                const use = document.createElementNS(SVG_NS, 'use');
+                use.setAttribute('href', iconHref('chevron-down'));
+                chevron.appendChild(use);
+                const name = document.createElement('span');
+                name.className = 'wmv-site-name';
+                name.textContent = key === '' ? t('No site') : key;
+                const n = document.createElement('span');
+                n.className = 'wmv-site-count';
+                n.textContent = String(grp.nodes.length);
+                let load = -1;
+                grp.nodes.forEach(function (x) { load = Math.max(load, nodeLoad(x.name)); });
+                toggle.append(chevron, name, n, loadBadge(load));
+                const nodes = document.createElement('ul');
+                nodes.className = 'wmv-site-nodes';
+                nodes.hidden = !open;
+                grp.nodes.forEach(function (x) { nodes.appendChild(nodeRow(x)); });
+                toggle.addEventListener('click', function () {
+                    const now = nodes.hidden;
+                    nodes.hidden = !now;
+                    P.open[key] = now;
+                    toggle.setAttribute('aria-expanded', now ? 'true' : 'false');
+                });
+                toggle.addEventListener('mouseenter', function () { highlightNodes(grp.nodes); });
+                toggle.addEventListener('mouseleave', function () { highlightNodes(null); });
+                head.appendChild(toggle);
+                const locate = document.createElement('button');
+                locate.type = 'button';
+                locate.className = 'wmv-icon-btn wmv-site-frame';
+                const label = fmt('Show :site on the map', {site: name.textContent});
+                locate.title = label;
+                locate.setAttribute('aria-label', label);
+                const icon = chevron.cloneNode(true);
+                icon.setAttribute('class', 'icon');
+                icon.firstChild.setAttribute('href', iconHref('locate'));
+                locate.appendChild(icon);
+                locate.addEventListener('click', function () {
+                    if (isPhone()) setPanel(false, false);
+                    frameNodes(grp.nodes);
+                });
+                locate.addEventListener('mouseenter', function () { highlightNodes(grp.nodes); });
+                locate.addEventListener('mouseleave', function () { highlightNodes(null); });
+                head.appendChild(locate);
+                li.append(head, nodes);
+                items.push(li);
+                count++;
+            });
+            panel.querySelector('.wmv-sites .wmv-panel-count').textContent = String(count);
+        }
+        list.replaceChildren.apply(list, items);
+        list.scrollTop = scroll;
+        markCurrentRow();
+        if (P.hover) markRow(P.hover);
+    }
+
+    /** The address of an icon of the sprite the page uses (versioned) */
+    function iconHref(name) {
+        const any = root.querySelector('svg.icon use');
+        const base = any ? (any.getAttribute('href') || '').split('#')[0] : '/assets/icons/ui.svg';
+        return base + '#' + name;
+    }
+
+    /** The node hovered on the map stands out in the list */
+    function markRow(name) {
+        P.hover = name;
+        if (!panel || panel.hidden) return;
+        panel.querySelectorAll('.wmv-row-hover').forEach(function (el) { el.classList.remove('wmv-row-hover'); });
+        const row = name !== null ? P.rows[name] : null;
+        if (!row) return;
+        const nodes = row.closest('.wmv-site-nodes');
+        // in a closed site, its heading stands out
+        const target = nodes && nodes.hidden ? nodes.parentNode.querySelector('.wmv-site-toggle') : row;
+        target.classList.add('wmv-row-hover');
+        const list = panel.querySelector('.wmv-site-list');
+        const lr = list.getBoundingClientRect(), r = target.getBoundingClientRect();
+        if (r.top < lr.top) list.scrollTop -= lr.top - r.top + 4;
+        else if (r.bottom > lr.bottom) list.scrollTop += r.bottom - lr.bottom + 4;
+    }
+
+    /** The focused node is the current row */
+    function markCurrentRow() {
+        if (!panel) return;
+        Object.keys(P.rows).forEach(function (name) {
+            if (name === S.focus) P.rows[name].setAttribute('aria-current', 'true');
+            else P.rows[name].removeAttribute('aria-current');
+        });
+    }
+
+    // ---- Total traffic ----
+
+    function showTotal(total) {
+        P.total = total || null;
+        if (!panel) return;
+        const sec = panel.querySelector('.wmv-total');
+        if (!total || (total.in === null && total.out === null)) {
+            sec.hidden = true;
+            return;
+        }
+        sec.hidden = false;
+        sec.querySelector('.wmv-total-in dd').textContent = rate(total.in);
+        sec.querySelector('.wmv-total-out dd').textContent = rate(total.out);
+        sec.querySelector('.wmv-total-links').textContent = total.links === 1 ? t('1 link') : fmt(':n links', {n: total.links});
+        loadTotals();
+        drawTotals();
+    }
+
+    /** The totals of the recorded frames, at most once per refresh interval */
+    function loadTotals() {
+        if (!panel || panel.hidden || root.dataset.history !== '1' || P.totalsBusy) return;
+        if (P.totals && Date.now() - P.totalsAt < refreshMs) return;
+        P.totalsBusy = true;
+        fetch('/map/' + mapId + '/totals', {cache: 'no-store', credentials: 'same-origin'})
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                P.totals = data && Array.isArray(data.frames) ? data.frames : [];
+                P.totalsAt = Date.now();
+                drawTotals();
+            })
+            .catch(function () { P.totals = []; P.totalsAt = Date.now(); })
+            .finally(function () { P.totalsBusy = false; });
+    }
+
+    function percentile(values, p) {
+        if (!values.length) return null;
+        const v = values.slice().sort(function (a, b) { return a - b; });
+        return v[Math.min(v.length - 1, Math.ceil(p * v.length) - 1)];
+    }
+
+    /** IN above the line, OUT below it, over the recorded hours; peak and 95th percentile */
+    function drawTotals() {
+        if (!panel) return;
+        const sec = panel.querySelector('.wmv-total');
+        const graph = sec.querySelector('.wmv-total-graph');
+        const stats = sec.querySelector('.wmv-total-stats');
+        const frames = (P.totals || []).filter(function (f) { return f[1] !== null || f[2] !== null; });
+        if (frames.length < 2) {
+            graph.hidden = true;
+            stats.hidden = true;
+            return;
+        }
+        const W = 260, H = 64, mid = H / 2;
+        const ins = frames.map(function (f) { return f[1] || 0; });
+        const outs = frames.map(function (f) { return f[2] || 0; });
+        const top = Math.max.apply(null, ins.concat(outs)) || 1;
+        const t0 = frames[0][0], t1 = frames[frames.length - 1][0];
+        const x = function (time) { return t1 > t0 ? (time - t0) / (t1 - t0) * W : 0; };
+        const area = function (vals, sign) {
+            let d = 'M0 ' + mid;
+            frames.forEach(function (f, i) {
+                d += ' L' + x(f[0]).toFixed(1) + ' ' + (mid - sign * vals[i] / top * (mid - 2)).toFixed(1);
+            });
+            return d + ' L' + W + ' ' + mid + ' Z';
+        };
+        const mk = function (cls, d) {
+            const p = document.createElementNS(SVG_NS, 'path');
+            p.setAttribute('class', cls);
+            p.setAttribute('d', d);
+            return p;
+        };
+        const parts = [mk('wmv-total-area-in', area(ins, 1)), mk('wmv-total-area-out', area(outs, -1)), mk('wmv-total-axis', 'M0 ' + mid + ' H' + W)];
+        if (H_on()) {
+            // the frame shown during the playback
+            const at = H.frames[H.i];
+            if (at >= t0 && at <= t1) parts.push(mk('wmv-total-now-mark', 'M' + x(at).toFixed(1) + ' 0 V' + H));
+        }
+        graph.replaceChildren.apply(graph, parts);
+        const hours = Math.max(1, Math.round((t1 - t0) / 3600));
+        graph.setAttribute('aria-label', fmt('Total traffic over the last :hours h, IN above the line and OUT below', {hours: hours}));
+        graph.hidden = false;
+        const peakIn = Math.max.apply(null, ins), peakOut = Math.max.apply(null, outs);
+        stats.replaceChildren(
+            statLine(t('Peak'), peakIn, peakOut),
+            statLine(t('95th percentile'), percentile(ins, 0.95), percentile(outs, 0.95)),
+            Object.assign(document.createElement('span'), {className: 'wmv-total-span', textContent: fmt('Last :hours h', {hours: hours})})
+        );
+        stats.hidden = false;
+    }
+
+    function statLine(label, vin, vout) {
+        const row = document.createElement('span');
+        row.className = 'wmv-total-stat';
+        const k = document.createElement('span');
+        k.textContent = label;
+        const v = document.createElement('span');
+        v.textContent = t('IN') + ' ' + rate(vin) + ' · ' + t('OUT') + ' ' + rate(vout);
+        row.append(k, v);
+        return row;
+    }
+
+    function H_on() {
+        // H is declared further down: not there yet while the page starts
+        try { return H.on; } catch (e) { return false; }
+    }
+
+    if (panel) {
+        const stored = storedPanel();
+        // open on a wide screen until the user says otherwise
+        setPanel(stored !== null ? stored === '1' : vpSize().w >= 1100, false);
+    }
 
     // ------------------------------------------------------------------
     // Find a node
@@ -846,10 +1232,12 @@
     function focusCentre(box, z) {
         const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
         const vp = vpSize();
-        if (!card || card.hidden) return {x: cx, y: cy};
+        // the side panel on the left takes its share too
+        const left = panel && !panel.hidden && vp.w > 640 ? panel.offsetWidth + 16 : 0;
+        if (!card || card.hidden) return {x: cx - left / 2 / z, y: cy};
         // a sheet at the bottom on a phone, a card on the right elsewhere
         if (vp.w <= 640) return {x: cx, y: cy + (card.offsetHeight + 8) / 2 / z};
-        return {x: cx + (card.offsetWidth + 16) / 2 / z, y: cy};
+        return {x: cx + (card.offsetWidth + 16 - left) / 2 / z, y: cy};
     }
 
     function focusNode(g, zoom) {
@@ -857,6 +1245,7 @@
         markFocus();
         fillCard(g);
         markMinimap(g);
+        markCurrentRow();
         if (zoom) {
             let box;
             try { box = g.getBBox(); } catch (e) { box = null; }
@@ -881,6 +1270,7 @@
         markFocus();
         if (card) card.hidden = true;
         markMinimap(null);
+        markCurrentRow();
         saveHash();
     }
 
@@ -1045,6 +1435,8 @@
                 case 'actual': actualSize(); break;
                 case 'fullscreen': toggleFullscreen(); break;
                 case 'copy-kiosk': copyKioskLink(); closeMenus(); break;
+                case 'panel': setPanel(panel ? panel.hidden : false, true); break;
+                case 'panel-close': setPanel(false, true); break;
                 default: return;
             }
             e.preventDefault();
@@ -1071,6 +1463,7 @@
             case 'ArrowUp': S.ty += step; userMoved(); break;
             case 'ArrowDown': S.ty -= step; userMoved(); break;
             case '/': findInput.focus(); break;
+            case 'p': case 'P': if (!panel) return; setPanel(panel.hidden, true); break;
             case 'f': case 'F': toggleFullscreen(); break;
             case 'e': case 'E': {
                 const edit = root.querySelector('.wmv-edit');

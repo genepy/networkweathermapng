@@ -167,6 +167,51 @@ CONF);
         $this->assertFileDoesNotExist($paths['status']);
     }
 
+    /** The side panel of the viewer: the site of each node, the total traffic of the map */
+    public function testSitesAndTotalTraffic(): void
+    {
+        $id = $this->createMap(<<<CONF
+NODE d
+	POSITION 100 250
+	SET site  Paris   north 
+LINK c-d
+	NODES c d
+	TARGET static:1M:2M
+	SET traffic_total 0
+CONF);
+        ob_start();
+        $this->maps->renderMap($id, true, true);
+        ob_end_clean();
+        $status = (array) $this->maps->mapStatus((array) $this->maps->getMap($id));
+        $items = $status['items'];
+
+        $d = array_values(array_filter($items, fn ($i) => $i['kind'] === 'node' && $i['name'] === 'd'));
+        $this->assertCount(1, $d, 'a node with a site is listed even without a URL');
+        $this->assertSame('Paris north', $d[0]['site']);
+        $this->assertArrayNotHasKey('url', $d[0]);
+
+        $cd = array_values(array_filter($items, fn ($i) => $i['name'] === 'c-d'))[0];
+        $this->assertFalse($cd['total'], 'SET traffic_total 0 leaves the link out');
+        $ab = array_values(array_filter($items, fn ($i) => $i['name'] === 'a-b'))[0];
+        $this->assertArrayNotHasKey('total', $ab);
+
+        // a-b (30M / 87M) and b-c (10M / 5M); c-d is left out
+        $this->assertEqualsWithDelta(40e6, $status['total']['in'], 1);
+        $this->assertEqualsWithDelta(92e6, $status['total']['out'], 1);
+        $this->assertSame(2, $status['total']['links']);
+    }
+
+    public function testTrafficTotalSkipsLinksWithoutData(): void
+    {
+        $this->assertSame(['in' => null, 'out' => null, 'links' => 0], MapService::trafficTotal([]));
+        $this->assertSame(['in' => 5.0, 'out' => null, 'links' => 1], MapService::trafficTotal([
+            'L1' => ['kind' => 'link', 'in' => 5, 'out' => null],
+            'L2' => ['kind' => 'link', 'in' => null, 'out' => null],
+            'L3' => ['kind' => 'link', 'in' => 7, 'out' => 9, 'total' => false],
+            'N1' => ['kind' => 'node', 'in' => 100],
+        ]));
+    }
+
     public function testLiveRenderIsCachedUntilTheConfigurationChanges(): void
     {
         $id = $this->createMap();

@@ -400,6 +400,32 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_node', 'names' => ['lyon'], 'props' => ['style' => 'hexagon']]]);
     }
 
+    /** SET site groups nodes in the viewer's side panel; SET traffic_total 0 leaves a link out of the total */
+    public function testSiteAndTrafficTotal(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['paris', 'lyon'], 'props' => ['site' => "  Paris\n  north "]]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertSame(2, substr_count($conf, 'SET site Paris north'), 'one line, spaces folded');
+        $nodes = array_column(MapEditor::model($this->editor->load())['nodes'], null, 'name');
+        $this->assertSame('Paris north', $nodes['paris']['site']);
+        $this->assertSame('', $nodes['core']['site']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['lyon'], 'props' => ['site' => '']]]);
+        $this->assertSame(1, substr_count((string) file_get_contents($this->file), 'SET site'), 'an empty site removes the hint');
+
+        $links = array_column(MapEditor::model($this->editor->load())['links'], null, 'name');
+        $this->assertSame('1', $links['core-paris']['traffic_total'], 'every link counts by default');
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['traffic_total' => '0']]]);
+        $this->assertStringContainsString('SET traffic_total 0', (string) file_get_contents($this->file));
+        $links = array_column(MapEditor::model($this->editor->load())['links'], null, 'name');
+        $this->assertSame('0', $links['core-paris']['traffic_total']);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['traffic_total' => '1']]]);
+        $this->assertStringNotContainsString('traffic_total', (string) file_get_contents($this->file), 'back to the default: no hint');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['traffic_total' => 'maybe']]]);
+    }
+
     /** The Night theme: map colours, scale and the DEFAULT labels, in one batch; own values stay */
     public function testNightThemeInOneStep(): void
     {
