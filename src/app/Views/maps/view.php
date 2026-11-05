@@ -178,7 +178,7 @@
                     title="<?= e__('Fullscreen (F)') ?>" aria-label="<?= e__('Fullscreen') ?>"><?= icon('maximize') ?></button>
             <?php endif; ?>
             <?php if ($canEdit && !$isFullscreen): ?>
-            <a class="wmv-icon-btn" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode($normalUrl) ?>" title="<?= e__('Map settings') ?>" aria-label="<?= e__('Map settings') ?>"><?= icon('settings') ?></a>
+            <a class="wmv-icon-btn" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode($normalUrl) ?>" data-map-settings title="<?= e__('Map settings') ?>" aria-label="<?= e__('Map settings') ?>"><?= icon('settings') ?></a>
             <?php endif; ?>
             <details class="row-menu wmv-more">
                 <summary class="wmv-icon-btn" title="<?= e__('More actions') ?>" aria-label="<?= e__('More actions') ?>"><?= icon('ellipsis') ?></summary>

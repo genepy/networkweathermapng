@@ -114,6 +114,7 @@ class Application
             $this->router->get($prefix . '/export/{id}', 'MapManagementController@export');
             $this->router->post($prefix . '/move/{id}', 'MapManagementController@move');
         }
+        $this->router->post('/editor/maps/order', 'MapManagementController@order');
         $this->router->get('/editor/maps', 'MapManagementController@legacyList');
         $this->router->get('/admin/maps', 'MapManagementController@legacyList');
 

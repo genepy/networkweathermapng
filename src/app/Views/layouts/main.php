@@ -46,6 +46,7 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
     <link rel="stylesheet" href="<?= asset('/assets/css/weathermap.css') ?>">
     <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
     <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
+    <script src="<?= asset('/assets/js/map-settings.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/weathermap.js') ?>" defer></script>
 </head>
 <body class="app-shell">

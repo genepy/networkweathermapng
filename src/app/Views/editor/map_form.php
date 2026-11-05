@@ -1,11 +1,14 @@
 <?php
-/** @var string $action create, edit or duplicate @var string $return the page to go back to */
+/**
+ * New map and Duplicate. The settings of an existing map are in the Map
+ * settings panel (editor/map_settings.php).
+ * @var string $action create or duplicate @var string $return the page to go back to
+ */
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
-$targets = ['create' => '/editor/maps/create', 'edit' => '/editor/maps/edit/', 'duplicate' => '/editor/maps/duplicate/'];
+$targets = ['create' => '/editor/maps/create', 'duplicate' => '/editor/maps/duplicate/'];
 $url = $targets[$action] . ($action === 'create' ? '' : (int) $map['id']);
 $name = match ($action) {
     'duplicate' => $map['name'] . ' ' . __('(copy)'),
-    'edit' => $map['name'],
     default => '',
 };
 ?>
@@ -57,26 +60,11 @@ $name = match ($action) {
             </label>
         </div>
 
-        <?php if ($action === 'edit'): ?>
-        <div class="form-group">
-            <label><?= e__('Configuration file') ?></label>
-            <input type="text" class="form-control" value="<?= $h($map['config_file']) ?>" disabled>
-            <label class="checkbox-label">
-                <input type="checkbox" name="rename_file" value="1">
-                <?= e__('Rename the file after the map name') ?>
-            </label>
-        </div>
-        <?php endif; ?>
-
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">
-                <?= match ($action) { 'create' => e__('Create map'), 'duplicate' => e__('Duplicate'), default => e__('Save') } ?>
+                <?= $action === 'create' ? e__('Create map') : e__('Duplicate') ?>
             </button>
             <a href="<?= $h($return) ?>" class="btn btn-secondary"><?= e__('Cancel') ?></a>
-            <?php if ($action === 'edit'): ?>
-            <a href="/editor/maps/delete/<?= (int) $map['id'] ?>" data-method="post" class="btn btn-danger push-right"
-               data-confirm="<?= e__('Delete this map and all its data (configuration, images, history, permissions)? This cannot be undone.') ?>"><?= e__('Delete') ?></a>
-            <?php endif; ?>
         </div>
     </form>
 </div>

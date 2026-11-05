@@ -31,6 +31,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <span class="tb-title" title="<?= $e($map['name']) ?>"><?= $e($map['name']) ?></span>
         <span class="appbar-right">
             <?= $btn('map-properties', 'properties', __('Map properties'), __('Title, legend, timestamp, fonts, colours and link defaults of the map')) ?>
+            <a class="tb-link" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span class="lbl"><?= e__('Map settings') ?></span></a>
             <a class="tb-link" href="/map/<?= $mapId ?>" target="_blank" rel="noopener" title="<?= e__('Open the published map') ?>"><svg class="i" aria-hidden="true"><use href="#i-view"/></svg><span class="lbl"><?= e__('View map') ?></span></a>
             <a class="tb-link" href="/editor/classic/<?= $mapId ?>" title="<?= e__('The previous editor') ?>"><svg class="i" aria-hidden="true"><use href="#i-classic"/></svg><span class="lbl"><?= e__('Classic editor') ?></span></a>
             <button type="button" id="toolbars-button" popovertarget="toolbars-menu" title="<?= e__('Show, hide and arrange the toolbars and panels') ?>" aria-label="<?= e__('Toolbars and panels') ?>"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span class="lbl"><?= e__('Toolbars') ?></span></button>

@@ -75,6 +75,8 @@ class MapController extends BaseController
             'filter' => $filter,
             'canEdit' => $canEdit,
             'canImport' => $this->auth->isAdmin(),
+            // maps whose drawn title still differs from their name (before step 5)
+            'titleConflicts' => $canEdit ? $this->mapService->titleConflicts($maps) : [],
             'title' => __('Maps'),
         ]);
     }
