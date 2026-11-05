@@ -68,7 +68,7 @@ $menu = static function (array $r) use ($h): string {
     return '<details class="row-menu">'
         . '<summary class="map-action" title="' . e__('More actions') . '" aria-label="' . $h(__('More actions for :name', ['name' => $r['map']['name']])) . '">' . icon('ellipsis') . '</summary>'
         . '<div class="row-menu-items">'
-        . $item('/editor/maps/edit/' . $id . '?return=%2F', 'sliders-horizontal', __('Settings'))
+        . $item('/editor/maps/edit/' . $id . '?return=%2F', 'settings', __('Settings'), ' data-map-settings')
         . $item('/editor/maps/duplicate/' . $id . '?return=%2F', 'copy', __('Duplicate'))
         . '<button type="button" class="menu-move" data-map-id="' . $id . '" data-group="' . (int) $r['map']['group_id'] . '">' . icon('arrow-left-right') . e__('Move to…') . '</button>'
         . $item('/editor/maps/toggle/' . $id . '?return=%2F', $r['active'] ? 'eye-off' : 'eye', $r['active'] ? __('Hide from users') : __('Show to users'), ' data-method="post"')
@@ -133,6 +133,20 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
         <?php endif; ?>
     </div>
     <?php else: ?>
+    <?php if (!empty($titleConflicts)): ?>
+    <div class="maps-notice" role="note">
+        <?= icon('circle-dot') ?>
+        <div>
+            <p><?= e__('These maps draw a title that differs from their name. Open their settings to choose which one to keep:') ?></p>
+            <ul>
+                <?php foreach ($maps as $m): if (!isset($titleConflicts[(int) $m['id']])) { continue; } ?>
+                <li><a href="/editor/maps/edit/<?= (int) $m['id'] ?>?return=%2F" data-map-settings><?= $h($m['name']) ?></a>
+                    <span class="text-muted"><?= $h(__('title: :title', ['title' => $titleConflicts[(int) $m['id']]])) ?></span></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+    <?php endif; ?>
     <div class="chips" role="group" aria-label="<?= e__('Filter the maps') ?>" id="mapsChips">
         <?php foreach ($chips as [$key, $label, $n]): ?>
         <button type="button" class="chip<?= $key === 'busy' ? ' chip-busy' : '' ?>" data-filter="<?= $h($key) ?>" aria-pressed="<?= $filter === $key ? 'true' : 'false' ?>">
@@ -148,7 +162,8 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
     </div>
     <p class="maps-no-match" id="mapsNoMatch" hidden><?= e__('No map matches the search or the filter.') ?></p>
 
-    <div class="maps-grid" id="mapsGrid">
+    <p class="visually-hidden" id="mapsMoved" aria-live="polite"></p>
+    <div class="maps-grid" id="mapsGrid"<?= $canEdit ? ' data-reorder' : '' ?>>
         <?php foreach ($rows as $r): $map = $r['map']; $id = $r['id']; ?>
         <div class="map-card<?= $r['active'] ? '' : ' is-hidden-map' ?>"<?= $r['attrs'] ?>>
             <a href="/map/<?= $id ?>" class="map-link">
@@ -169,6 +184,9 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
             <?= $favButton($r) ?>
             <?php if ($canEdit): ?>
             <div class="map-card-actions">
+                <button type="button" class="map-action map-drag" draggable="true"
+                        aria-label="<?= $h(__('Reorder :name: drag it, or use the arrow keys', ['name' => $map['name']])) ?>"
+                        title="<?= e__('Drag to reorder (or use the arrow keys)') ?>"><?= icon('grip-vertical') ?></button>
                 <a href="/editor/edit/<?= $id ?>" class="map-action map-action-label" aria-label="<?= $h(__('Edit :name', ['name' => $map['name']])) ?>"><?= icon('pencil') ?><span><?= e__('Edit') ?></span></a>
                 <?= $menu($r) ?>
             </div>
@@ -276,6 +294,6 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
 <?php endif; ?>
 
 <script>
-window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode((object) (\App\Core\I18n::forScript([':n selected', 'Failed to move map']) + \App\Core\I18n::section('viewer-js')), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>);
+window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode((object) (\App\Core\I18n::forScript([':n selected', 'Failed to move map', 'Moved to position :pos of :total in :group', 'The new order could not be saved']) + \App\Core\I18n::section('viewer-js')), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>);
 </script>
 <script src="<?= asset('/assets/js/maplist.js') ?>" defer></script>

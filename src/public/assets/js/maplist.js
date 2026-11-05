@@ -3,7 +3,7 @@
  * browser), filter chips (all, favourites, a group, over 80 %), search,
  * favourites (starred maps first, stored per user on the server), the state
  * badge of each map, and for editors the actions on the maps (menus, move
- * dialog, bulk selection in the list).
+ * dialog, drag and drop to reorder, bulk selection in the list).
  */
 (function () {
     'use strict';
@@ -206,6 +206,113 @@
                 notify(t('The favourite could not be saved'));
             });
         });
+
+        // ------------------------------------------------------------------
+        // Drag and drop to reorder the thumbnails (editors): a map moves among
+        // the maps of its own group, which keep the order positions they held
+        // between them. The grip button also moves it with the arrow keys.
+
+        const live = document.getElementById('mapsMoved');
+        if (grid.hasAttribute('data-reorder')) {
+            let dragged = null;
+
+            const groupItems = function (group) {
+                return Array.from(grid.querySelectorAll('.map-card'))
+                    .filter(function (c) { return c.dataset.group === group; })
+                    .map(itemOf);
+            };
+            const clearMarks = function () {
+                grid.querySelectorAll('.drop-before, .drop-after').forEach(function (c) {
+                    c.classList.remove('drop-before', 'drop-after');
+                });
+            };
+            const groupName = function (group) {
+                const chip = chips.find(function (c) { return c.dataset.filter === 'group:' + group; });
+                return chip ? chip.querySelector('span').textContent : '';
+            };
+
+            // the group's maps in their new sequence take the positions they held
+            const commit = function (item) {
+                const group = item.card.dataset.group;
+                const list = groupItems(group);
+                const slots = list.map(function (i) { return Number(i.card.dataset.order); }).sort(function (a, b) { return a - b; });
+                list.forEach(function (i, k) { each(i, function (el) { el.dataset.order = slots[k]; }); });
+                reorder();
+                apply();
+                const pos = list.indexOf(item) + 1;
+                if (live) live.textContent = fmt('Moved to position :pos of :total in :group', {pos: pos, total: list.length, group: groupName(group)});
+                fetch('/editor/maps/order', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ids: list.map(function (i) { return Number(i.id); })})
+                }).then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                }).catch(function () {
+                    notify(t('The new order could not be saved'));
+                    setTimeout(function () { window.location.reload(); }, 1500);
+                });
+            };
+
+            const place = function (item, target, after) {
+                if (!target || target === item.card) return;
+                grid.insertBefore(item.card, after ? target.nextSibling : target);
+                commit(item);
+            };
+
+            grid.addEventListener('dragstart', function (e) {
+                const handle = e.target.closest ? e.target.closest('.map-drag') : null;
+                if (!handle) return;
+                dragged = itemOf(handle);
+                if (!dragged) return;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', dragged.id);
+                e.dataTransfer.setDragImage(dragged.card, 24, 24);
+                dragged.card.classList.add('is-dragging');
+            });
+            grid.addEventListener('dragover', function (e) {
+                const card = e.target.closest ? e.target.closest('.map-card') : null;
+                if (!dragged || !card || card === dragged.card || card.dataset.group !== dragged.card.dataset.group) {
+                    clearMarks();
+                    return; // no drop here: another group
+                }
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                const box = card.getBoundingClientRect();
+                const after = e.clientX > box.left + box.width / 2;
+                clearMarks();
+                card.classList.add(after ? 'drop-after' : 'drop-before');
+            });
+            grid.addEventListener('drop', function (e) {
+                const card = e.target.closest ? e.target.closest('.map-card') : null;
+                if (!dragged || !card) return;
+                e.preventDefault();
+                const after = card.classList.contains('drop-after');
+                clearMarks();
+                place(dragged, card, after);
+            });
+            grid.addEventListener('dragend', function () {
+                clearMarks();
+                if (dragged) dragged.card.classList.remove('is-dragging');
+                dragged = null;
+            });
+
+            grid.addEventListener('keydown', function (e) {
+                const handle = e.target.closest ? e.target.closest('.map-drag') : null;
+                if (!handle) return;
+                const back = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+                const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+                if (!back && !forward) return;
+                e.preventDefault();
+                const item = itemOf(handle);
+                const visible = groupItems(item.card.dataset.group).filter(function (i) { return !i.card.hidden; });
+                const k = visible.indexOf(item);
+                const other = visible[back ? k - 1 : k + 1];
+                if (!other) return;
+                place(item, other.card, forward);
+                handle.focus();
+            });
+        }
 
         // ------------------------------------------------------------------
         // State badges: maps with no recent data render are asked for it,

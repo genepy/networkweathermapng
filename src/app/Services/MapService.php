@@ -262,6 +262,79 @@ class MapService
         return $new;
     }
 
+    /**
+     * The title drawn on the map when it differs from the map's name, null
+     * when they agree or the file has no TITLE. Maps made before name and
+     * title were merged can still differ: the Map settings panel asks which
+     * one to keep.
+     */
+    public function titleConflict(array $map): ?string
+    {
+        $path = $this->configPath . '/' . $map['config_file'];
+        if (!is_file($path)) {
+            return null;
+        }
+        $title = self::titleOf((string) file_get_contents($path));
+        return ($title === null || $title === '' || $title === self::cleanName((string) $map['name'])) ? null : $title;
+    }
+
+    /**
+     * The maps among $maps whose drawn title differs from their name.
+     *
+     * @param array<int, array<string, mixed>> $maps
+     * @return array<int, string> drawn title by map id
+     */
+    public function titleConflicts(array $maps): array
+    {
+        $conflicts = [];
+        foreach ($maps as $map) {
+            $title = $this->titleConflict($map);
+            if ($title !== null) {
+                $conflicts[(int) $map['id']] = $title;
+            }
+        }
+        return $conflicts;
+    }
+
+    /**
+     * New order of maps, as dragged on the Maps page: the given maps take
+     * the order positions they already held between them, in the new
+     * sequence. Maps not listed keep theirs, so reordering the maps of one
+     * group (the list is sorted by group first) leaves the others alone.
+     *
+     * @param int[] $ids
+     * @return int the number of maps whose position changed
+     */
+    public function reorder(array $ids): int
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn ($id) => $id > 0)));
+        if (count($ids) < 2) {
+            return 0;
+        }
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->db->query("SELECT id, sort_order FROM maps WHERE id IN ($marks) ORDER BY sort_order, name, id", $ids);
+        if (count($rows) !== count($ids)) {
+            throw new \InvalidArgumentException('Unknown map in the new order');
+        }
+        // the positions they held, made distinct so the new order sticks
+        // (maps created together may share one)
+        $slots = [];
+        $last = PHP_INT_MIN;
+        foreach ($rows as $row) {
+            $last = max((int) $row['sort_order'], $last + 1);
+            $slots[] = $last;
+        }
+        $current = array_column($rows, 'sort_order', 'id');
+        $changed = 0;
+        foreach ($ids as $i => $id) {
+            if ((int) $current[$id] !== $slots[$i]) {
+                $this->db->update('maps', ['sort_order' => $slots[$i]], 'id = ?', [$id]);
+                $changed++;
+            }
+        }
+        return $changed;
+    }
+
     /** The TITLE of a configuration text (the first one), null when it has none */
     public static function titleOf(string $content): ?string
     {

@@ -972,6 +972,31 @@ body.wmv-noc {
 .map-action-label { padding: 0 12px; }
 .map-card .row-menu-items { min-width: 190px; }
 
+/* Drag and drop to reorder the thumbnails (editors, within a group) */
+.map-drag { cursor: grab; padding: 0 4px; min-width: 28px; touch-action: none; }
+.map-drag:active { cursor: grabbing; }
+.map-card.is-dragging { opacity: 0.4; }
+.map-card.drop-before { box-shadow: -4px 0 0 0 var(--wm-accent); }
+.map-card.drop-after { box-shadow: 4px 0 0 0 var(--wm-accent); }
+.maps-page[data-view="list"] .map-drag { display: none; }
+
+/* Maps whose drawn title differs from their name (made before step 5) */
+.maps-notice {
+    display: flex;
+    gap: var(--wm-space-3);
+    margin: 0 0 var(--wm-space-4);
+    padding: var(--wm-space-3) var(--wm-space-4);
+    border: 1px solid var(--wm-warning-mark);
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-warning-soft);
+    color: var(--wm-text);
+}
+.maps-notice > .icon { flex: none; width: 18px; height: 18px; margin-top: 2px; color: var(--wm-warning-text); }
+.maps-notice p { margin: 0 0 var(--wm-space-1); }
+.maps-notice ul { margin: 0; padding-left: var(--wm-space-4); }
+.maps-notice li { margin: 2px 0; }
+.maps-notice a { font-weight: 600; }
+
 .map-state {
     display: inline-flex;
     align-items: center;

@@ -22,8 +22,8 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Kiosk** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Admin > Kiosk mode), a progress bar and controls that fade out
-- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Admin > Time zone)
-- **Map Management** - Create, rename, duplicate, export and delete maps (with all their data) from Admin > Maps
+- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Admin > Time zone, or the map's *Map settings*)
+- **Map Management** - Create, duplicate, reorder, export and delete maps (with all their data) from the Maps page; every setting of a map (name, group, time zone, kiosk, recording, access) in one *Map settings* panel
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
 - **Translations** - English and French built in, chosen in the user menu or with `APP_LOCALE`; [add your language](TRANSLATING.md)
@@ -464,11 +464,27 @@ badge. Hovering a thumbnail (always shown on touch screens) shows **Edit**
 and a **⋯** menu; the list view has the same menu on each row:
 
 - **New map**: empty (size of your choice) or a copy of an existing map.
-- **Settings**: name, group, visibility, and optionally renaming the
-  `.conf` file after the name. The name and the title drawn on the map are
-  one thing: renaming a map changes its `TITLE`, and changing the title in
-  the editor (or in its text mode) renames the map in the list. A map whose
-  name and title already differ keeps both until its title is edited.
+- **Settings**: the *Map settings* panel, a drawer on the right (also the
+  ⚙ button of the map view and *Map settings* in the editor's top bar),
+  with every setting of the map on four tabs:
+  - *General*: name, group, *Visible to users*, the `.conf` file and
+    renaming it after the name, *Delete map…*. The name and the title drawn
+    on the map are one thing: renaming a map changes its `TITLE`, and
+    changing the title in the editor (or in its text mode) renames the map
+    in the list. Maps made before this, whose name and drawn title differ,
+    are listed at the top of the Maps page; their panel asks which one to
+    keep (without a choice both stay as they are).
+  - *Display & kiosk*: the map's time zone (type to search, empty for the
+    default one), its zoom and display time in the kiosk.
+  - *Recording*: record the map or not (while recording is allowed in
+    Admin > Map recording; switching it off deletes its images).
+  - *Access*: who sees the map, read from the permissions: administrators
+    and editors, the viewers of its group, viewers given the map itself.
+  The admin pages *Time zone*, *Kiosk mode* and *Map recording* keep the
+  defaults and the tables that set many maps at once.
+- **Reorder**: drag a thumbnail by its grip (or focus the grip and use the
+  arrow keys) to move it among the maps of its group; the order is the one
+  of the Maps page and the kiosk for everybody.
 - **Move to…**: another group, without leaving the page.
 - **Hide from users** / **Show to users**: an inactive map is only shown to
   editors.

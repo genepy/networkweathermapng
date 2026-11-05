@@ -1,7 +1,7 @@
 /*
  * NetworkWeathermapNG - application shell and shared components:
  * top bar, user menu, bottom navigation on phones, toasts, confirmation
- * dialog, buttons of these components. Colours come from tokens.css.
+ * dialog, the Map settings panel and its drawer, buttons of these components. Colours come from tokens.css.
  * Also loaded by the pages outside the shell (editor, fullscreen viewer)
  * for the toasts and the dialog.
  */
@@ -322,8 +322,111 @@
 .error-page p { color: var(--wm-text-muted); margin: 0 0 var(--wm-space-5); }
 .error-page .error-actions { display: flex; justify-content: center; gap: var(--wm-space-2); flex-wrap: wrap; }
 
+/* Map settings (step 5): a page of its own, or a drawer on the right
+   opened by map-settings.js from the Maps page and the viewer */
+.wm-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(480px, 100vw);
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid var(--wm-border);
+    background: var(--wm-surface);
+    color: var(--wm-text);
+    box-shadow: var(--wm-shadow-2);
+    font-family: var(--wm-font);
+    overflow: hidden;
+}
+.wm-drawer[open] { display: flex; flex-direction: column; animation: wm-drawer-in var(--wm-duration) var(--wm-ease); }
+.wm-drawer::backdrop { background: rgba(15, 23, 42, 0.35); }
+.wm-drawer-loading { margin: auto; color: var(--wm-text-muted); }
+@keyframes wm-drawer-in { from { transform: translateX(24px); opacity: 0; } }
+
+.map-settings { display: flex; flex-direction: column; min-height: 0; }
+.wm-drawer .map-settings { flex: 1; }
+.map-settings-page .map-settings { max-width: 680px; padding: 0; }
+.ms-head { display: flex; align-items: center; justify-content: space-between; gap: var(--wm-space-3); padding: var(--wm-space-5) var(--wm-space-5) var(--wm-space-2); }
+.ms-head h2 { margin: 0; font-size: var(--wm-text-xl); }
+.ms-close {
+    display: inline-grid; place-items: center; width: 34px; height: 34px;
+    border: 0; border-radius: var(--wm-radius-control); background: none; color: var(--wm-text-muted); cursor: pointer;
+}
+.ms-close:hover { background: var(--wm-hover); color: var(--wm-text); }
+.ms-close:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; }
+.ms-close .icon { width: 18px; height: 18px; }
+
+.ms-tabs { display: flex; gap: var(--wm-space-1); padding: 0 var(--wm-space-5); border-bottom: 1px solid var(--wm-border); overflow-x: auto; scrollbar-width: none; }
+.ms-tabs[hidden] { display: none; }
+.ms-tabs button {
+    flex: none; padding: var(--wm-space-3) var(--wm-space-3); border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    background: none; color: var(--wm-text-muted); font: inherit; font-size: var(--wm-text-md); font-weight: 500; cursor: pointer; white-space: nowrap;
+}
+.ms-tabs button:hover { color: var(--wm-text); }
+.ms-tabs button[aria-selected="true"] { color: var(--wm-text); border-bottom-color: var(--wm-accent); }
+.ms-tabs button:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: -2px; }
+
+.ms-body { flex: 1; min-height: 0; overflow-y: auto; padding: var(--wm-space-5); }
+.map-settings-page .ms-body { padding: var(--wm-space-5) var(--wm-space-6); }
+.ms-section + .ms-section { margin-top: var(--wm-space-6); }
+.ms-section-title { margin: 0 0 var(--wm-space-4); font-size: var(--wm-text-lg); }
+.map-settings.has-tabs .ms-section + .ms-section { margin-top: 0; }
+.map-settings.has-tabs .ms-section-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.map-settings .form-control { max-width: none; }
+.map-settings .form-pair label { max-width: none; }
+.ms-mono { font-family: var(--wm-font-mono); }
+.ms-note { margin: var(--wm-space-2) 0 0; font-size: var(--wm-text-sm); line-height: 1.5; }
+.ms-warn { color: var(--wm-warning-text); }
+
+.ms-switch, .form-group > .ms-switch { display: flex; align-items: flex-start; gap: var(--wm-space-3); cursor: pointer; font-weight: 400; }
+.ms-switch > span { display: flex; flex-direction: column; gap: 2px; }
+.ms-switch small { margin: 0; }
+.ms-switch input {
+    appearance: none; flex: none; position: relative; width: 38px; height: 22px; margin: 1px 0 0;
+    border: 1px solid var(--wm-field-border); border-radius: 11px; background: var(--wm-input-bg); cursor: pointer;
+    transition: background var(--wm-duration) var(--wm-ease);
+}
+.ms-switch input::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--wm-text-muted); transition: transform var(--wm-duration) var(--wm-ease);
+}
+.ms-switch input:checked { background: var(--wm-accent); border-color: var(--wm-accent); }
+.ms-switch input:checked::after { transform: translateX(16px); background: var(--wm-on-accent); }
+.ms-switch input:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; }
+
+.ms-conflict {
+    margin: 0 0 var(--wm-space-5); padding: var(--wm-space-3) var(--wm-space-4);
+    border: 1px solid var(--wm-warning-mark); border-radius: var(--wm-radius-control); background: var(--wm-warning-soft);
+}
+.ms-conflict legend { float: left; width: 100%; margin-bottom: var(--wm-space-2); padding: 0; font-weight: 600; line-height: 1.4; }
+.ms-choice { display: flex; align-items: baseline; gap: var(--wm-space-2); margin: var(--wm-space-1) 0; cursor: pointer; clear: both; }
+.ms-conflict small { display: block; margin-top: var(--wm-space-2); }
+
+.ms-access { display: grid; gap: var(--wm-space-1) 0; margin: 0; }
+.ms-access dt { font-weight: 600; margin-top: var(--wm-space-3); }
+.ms-access dt:first-child { margin-top: 0; }
+.ms-access dd { margin: 0; overflow-wrap: anywhere; }
+
+.ms-actions { display: flex; align-items: center; gap: var(--wm-space-2); padding: var(--wm-space-4) var(--wm-space-5); border-top: 1px solid var(--wm-border); background: var(--wm-surface); }
+.ms-actions .ms-delete { margin-right: auto; border-color: transparent; background: none; color: var(--wm-danger-text); padding: 0 var(--wm-space-2); }
+.ms-actions .ms-delete:hover { background: var(--wm-danger-soft); }
+.ms-actions .icon { width: 16px; height: 16px; }
+
+@media (max-width: 640px) {
+    .wm-drawer { width: 100vw; border-left: 0; }
+    .ms-head, .ms-body, .ms-actions { padding-left: var(--wm-space-4); padding-right: var(--wm-space-4); }
+    .ms-tabs { padding: 0 var(--wm-space-2); }
+    .ms-actions { padding-bottom: calc(var(--wm-space-4) + env(safe-area-inset-bottom)); }
+    .map-settings .form-pair { flex-direction: column; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .wm-toast { animation: none; }
     .wm-toast.is-leaving { transition: none; }
     .wm-btn { transition: none; }
+    .wm-drawer[open] { animation: none; }
+    .ms-switch input, .ms-switch input::after { transition: none; }
 }

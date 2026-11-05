@@ -103,4 +103,11 @@ return [
     'Edit :name' => 'Modifier :name',
     'Load' => 'Charge',
     'Move' => 'Déplacer',
+    // Maps page: titles that differ from the name, drag and drop to reorder
+    'These maps draw a title that differs from their name. Open their settings to choose which one to keep:' => 'Ces cartes affichent un titre différent de leur nom. Ouvrez leurs réglages pour choisir lequel garder :',
+    'title: :title' => 'titre : :title',
+    'Reorder :name: drag it, or use the arrow keys' => 'Réordonner :name : faites-la glisser, ou utilisez les flèches',
+    'Drag to reorder (or use the arrow keys)' => 'Glisser pour réordonner (ou utiliser les flèches)',
+    'Moved to position :pos of :total in :group' => 'Déplacée en position :pos sur :total dans :group',
+    'The new order could not be saved' => 'Le nouvel ordre n’a pas pu être enregistré',
 ];
