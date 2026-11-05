@@ -1065,6 +1065,13 @@ class MapEditor
                 } else {
                     unset($map->hints['link_glow']);
                 }
+            } elseif ($key === 'link_flow') {
+                // dots moving along the links in the viewer, in the SVG only
+                if ($value) {
+                    $map->add_hint('link_flow', '1');
+                } else {
+                    unset($map->hints['link_flow']);
+                }
             } elseif ($key === 'background_sizing') {
                 // the PHP Weathermap 2.0 hint: natural size (image), fit or stretch
                 if (!in_array($value, \WeatherMap::BACKGROUND_SIZINGS, true)) {
@@ -1271,6 +1278,7 @@ class MapEditor
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
             'link_glow' => (string) $map->get_hint('link_glow') === '1',
+            'link_flow' => (string) $map->get_hint('link_flow') === '1',
             'background_sizing' => self::backgroundSizing($map),
             'time_font' => (int) $map->timefont,
             'time_colour' => $colour('TIME'),

@@ -586,6 +586,12 @@ class WeatherMapLink extends WeatherMapItem {
 			);
 		}
 
+		// SET link_flow 1: the paths the viewer moves its dots along
+		$svg = WeatherMapSvg::$active;
+		if ($svg && $svg->accepts($image)) {
+			$svg->flow($this, $link_width);
+		}
+
 		if (!$commentcol->is_none()) {
 			if ($commentcol->is_contrast()) {
 				$commentcol_in  = $link_in_colour->contrast();

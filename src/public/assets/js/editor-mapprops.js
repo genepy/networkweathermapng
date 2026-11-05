@@ -334,7 +334,10 @@
                 h('span', { 'class': 'hint', text: t('Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.') }),
                 h('h4', { text: t('Glow') }),
                 check('link_glow', p.link_glow, t('Draw a soft glow around the links, in their own colour')),
-                h('span', { 'class': 'hint', text: t('In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.') })
+                h('span', { 'class': 'hint', text: t('In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.') }),
+                h('h4', { text: t('Traffic flow') }),
+                check('link_flow', p.link_flow, t('Move glowing dots along the links, in the direction of the traffic')),
+                h('span', { 'class': 'hint', text: t('Only on the live map. Busier links move faster. No motion for a visitor who asked their system for less motion.') })
             ]),
             fonts: fontsPane()
         };

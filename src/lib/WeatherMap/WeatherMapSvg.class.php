@@ -177,6 +177,97 @@ class WeatherMapSvg {
 			. "<style>\n.wm-map .wm-link:not(.wm-hot) .wm-arrow{filter:url(#wm-glow)}\n</style>";
 	}
 
+	/**
+	 * SET link_flow 1: the viewer moves glowing dots along the links, in
+	 * the direction of the traffic. The SVG only carries the path of each
+	 * direction (invisible); the motion is left to the viewer script, so
+	 * the editor, the PNG and a downloaded SVG stay still.
+	 */
+	static function hasFlow($map) {
+		return (string) $map->get_hint('link_flow') === '1';
+	}
+
+	/**
+	 * Record the paths the traffic of $link follows: OUT from A to the
+	 * split point and IN from B back to it, or OUT over the whole link
+	 * for a one-way link.
+	 */
+	function flow($link, $width) {
+		if ($this->owner === null || !self::hasFlow($this->map)) {
+			return;
+		}
+		$points = $link->curvepoints;
+		if (!is_array($points) || count($points) < 2 || !isset($points[0][2])) {
+			return;
+		}
+		$total = $points[count($points) - 1][2];
+		if ($total <= 0) {
+			return;
+		}
+		$oneway = $link->linkstyle == 'oneway';
+		$split = $oneway ? $total : $total * max(0, min(100, (float) $link->splitpos)) / 100;
+
+		$runs = array(array('out', 0, $split, $link->outpercent));
+		if (!$oneway) {
+			$runs[] = array('in', $total, $split, $link->inpercent);
+		}
+		foreach ($runs as $run) {
+			$spine = self::spine($points, $run[1], $run[2]);
+			if (count($spine) < 2) {
+				continue;
+			}
+			$this->items[] = array(
+				'type'   => 'flow',
+				'owner'  => $this->owner,
+				'dir'    => $run[0],
+				'points' => $spine,
+				'load'   => max(0, (float) $run[3]),
+				'width'  => (float) $width,
+			);
+		}
+	}
+
+	/**
+	 * The part of a spine ([x, y, distance] points) between two distances,
+	 * from $from to $to (backwards when $to is smaller), as [x, y] points
+	 * at least 2 px apart.
+	 */
+	static function spine($points, $from, $to) {
+		$lo = min($from, $to);
+		$hi = max($from, $to);
+		$at = function ($d) use ($points) {
+			$n = count($points);
+			for ($i = 1; $i < $n; $i++) {
+				if ($points[$i][2] >= $d) {
+					$a = $points[$i - 1];
+					$b = $points[$i];
+					$span = $b[2] - $a[2];
+					$f = $span > 0 ? ($d - $a[2]) / $span : 0;
+					return array($a[0] + ($b[0] - $a[0]) * $f, $a[1] + ($b[1] - $a[1]) * $f);
+				}
+			}
+			return array($points[$n - 1][0], $points[$n - 1][1]);
+		};
+
+		$out = array($at($lo));
+		foreach ($points as $p) {
+			if ($p[2] > $lo && $p[2] < $hi) {
+				$out[] = array($p[0], $p[1]);
+			}
+		}
+		$out[] = $at($hi);
+
+		$kept = array();
+		foreach ($out as $i => $p) {
+			$last = end($kept);
+			if ($last && $i < count($out) - 1 && abs($p[0] - $last[0]) + abs($p[1] - $last[1]) < 2) {
+				continue;
+			}
+			$kept[] = $p;
+		}
+		return $from > $to ? array_reverse($kept) : $kept;
+	}
+
 	function hotStyle() {
 		if (!$this->hasHot) {
 			return '';
@@ -433,6 +524,14 @@ class WeatherMapSvg {
 				return sprintf('<polygon%s points="%s"%s%s/>', self::roleClass($item), implode(' ', $pts),
 					$item['fill'] ? self::paint('fill', $item['fill']) : ' fill="none"',
 					$item['stroke'] ? self::paint('stroke', $item['stroke']) : '');
+
+			case 'flow':
+				$d = array();
+				foreach ($item['points'] as $i => $p) {
+					$d[] = ($i ? 'L' : 'M') . self::num($p[0]) . ' ' . self::num($p[1]);
+				}
+				return sprintf('<path class="wm-flow" data-dir="%s" data-load="%s" data-width="%s" d="%s" fill="none" stroke="none" pointer-events="none"/>',
+					$item['dir'], self::num(round($item['load'], 1)), self::num($item['width']), implode('', $d));
 
 			case 'text':
 				return $this->textElement($item['font'], $item['x'], $item['y'], $item['text'], $item['fill'], $item['angle'], self::roleClass($item));
