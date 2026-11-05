@@ -11,6 +11,8 @@
  *   b.setConfig(config)                      // the map was edited
  *   b.destroy()
  *
+ *   var i = WMBasemap.inset(container, config, opts)   // the city inset
+ *
  * config is what the server gives (App\Services\Basemap::of):
  * {url, dark, kind: style|raster, center: [lat, lon], zoom, attribution}.
  * The projection is the one of src/lib/WeatherMap/geo.php: the canvas
@@ -256,8 +258,148 @@
         return self;
     }
 
+    // ------------------------------------------------------------------
+    // City inset: a small web map of its own, framed on some points
+
+    /**
+     *   var i = WMBasemap.inset(container, config, {onFail: fn});
+     *   i.show({points: [[lat, lon]...], maxZoom: 11, features: geojson})
+     *   i.destroy()
+     *
+     * The inset frames the points (the city of a site) and draws the
+     * features over the tiles: points (properties.on: the hovered ones)
+     * and lines (properties.colour), with the colours of opts.colours().
+     */
+    var OVERLAY = 'wm-inset';
+
+    function inset(container, cfg, opts) {
+        opts = opts || {};
+        var self = {map: null, failed: false};
+        var dark = isDark();
+        var gone = false;
+        var wanted = null;   // the last show() argument
+
+        function fail(err) {
+            if (self.failed || gone) return;
+            self.failed = true;
+            if (window.console) console.warn('Basemap inset:', err && err.message ? err.message : err);
+            if (opts.onFail) opts.onFail(err);
+        }
+
+        function colours() {
+            return opts.colours ? opts.colours() : {on: '#d97706', off: '#6b7280', ring: '#ffffff'};
+        }
+
+        /** Our points and lines over the tiles (again after each new style) */
+        function overlay() {
+            var m = self.map;
+            if (!m || !m.isStyleLoaded() || !wanted) return;
+            var data = wanted.features || {type: 'FeatureCollection', features: []};
+            var src = m.getSource(OVERLAY);
+            if (src) {
+                src.setData(data);
+            } else {
+                var c = colours();
+                m.addSource(OVERLAY, {type: 'geojson', data: data});
+                m.addLayer({
+                    id: OVERLAY + '-lines', type: 'line', source: OVERLAY,
+                    filter: ['==', ['geometry-type'], 'LineString'],
+                    layout: {'line-cap': 'round', 'line-join': 'round'},
+                    paint: {'line-color': ['coalesce', ['get', 'colour'], c.off], 'line-width': 3, 'line-opacity': 0.9}
+                });
+                m.addLayer({
+                    id: OVERLAY + '-points', type: 'circle', source: OVERLAY,
+                    filter: ['==', ['geometry-type'], 'Point'],
+                    paint: {
+                        'circle-radius': ['case', ['get', 'on'], 6, 4],
+                        'circle-color': ['case', ['get', 'on'], c.on, c.off],
+                        'circle-stroke-color': c.ring,
+                        'circle-stroke-width': 2
+                    }
+                });
+            }
+        }
+
+        function frame() {
+            if (!self.map || !wanted || !wanted.points.length) return;
+            var w = container.clientWidth || 260, h = container.clientHeight || 160;
+            var f = fitFrame(wanted.points, w, h, 28);
+            // fitFrame counts the canvas at zoom 0 as 512 pixels, as MapLibre does
+            var zoom = Math.min(wanted.maxZoom || 11, f.zoom);
+            self.map.jumpTo({center: [f.center[1], f.center[0]], zoom: zoom});
+        }
+
+        function build(lib) {
+            if (gone) return;
+            try {
+                self.map = new lib.Map({
+                    container: container,
+                    style: styleOf(cfg, dark),
+                    interactive: false,
+                    attributionControl: false,
+                    fadeDuration: 0
+                });
+            } catch (e) {
+                fail(e);
+                return;
+            }
+            self.map.on('error', function (e) {
+                if (!self.map || !self.map.isStyleLoaded()) fail(e && e.error ? e.error : e);
+            });
+            // the overlay goes on once the style is there (again after each new style)
+            self.map.on('style.load', overlay);
+            self.map.on('styledata', overlay);
+            self.map.on('load', overlay);
+            frame();
+        }
+
+        if (!webglAvailable()) {
+            setTimeout(function () { fail(new Error('WebGL is not available')); }, 0);
+        } else {
+            loadLibrary().then(build, fail);
+        }
+
+        function onTheme() {
+            var d = isDark();
+            if (d === dark) return;
+            dark = d;
+            if (!self.map) return;
+            // the colours of the points follow the theme too
+            if (self.map.getSource(OVERLAY)) {
+                self.map.removeLayer(OVERLAY + '-points');
+                self.map.removeLayer(OVERLAY + '-lines');
+                self.map.removeSource(OVERLAY);
+            }
+            if (cfg.dark) self.map.setStyle(styleOf(cfg, dark));
+            else overlay();
+        }
+        document.addEventListener('wm:theme', onTheme);
+        var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        if (mq && mq.addEventListener) mq.addEventListener('change', onTheme);
+
+        self.show = function (what) {
+            wanted = what;
+            if (!self.map) return;
+            // the box was hidden when the map was made: take its size now
+            self.map.resize();
+            frame();
+            overlay();
+        };
+
+        self.destroy = function () {
+            gone = true;
+            document.removeEventListener('wm:theme', onTheme);
+            if (mq && mq.removeEventListener) mq.removeEventListener('change', onTheme);
+            if (self.map) self.map.remove();
+            self.map = null;
+        };
+
+        return self;
+    }
+
     window.WMBasemap = {
         create: create,
+        inset: inset,
         project: project,
         unproject: unproject,
         fitFrame: fitFrame,

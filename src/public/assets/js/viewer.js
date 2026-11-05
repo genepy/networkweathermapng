@@ -48,6 +48,8 @@
     const panel = root.querySelector('.wmv-panel');
     const panelButton = root.querySelector('[data-act="panel"]');
     const basemapBox = root.querySelector('.wmv-basemap');
+    const clusterBox = root.querySelector('.wmv-clusters');
+    const insetBox = root.querySelector('.wmv-inset');
 
     const mapId = root.dataset.mapId;
     // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
@@ -84,6 +86,13 @@
 
     // the geographic basemap under the map (basemap.js), when the map has one
     const B = {inst: null, cfg: null};
+    // located nodes on the basemap (SET geo), their clusters and the city inset
+    const G = {
+        nodes: [], byName: {},   // {name, g, lat, lon, x, y, size, site}
+        clusters: [], key: null, z: 0,
+        menu: null,              // the list of a cluster that cannot split
+        inset: null, insetKey: null, hover: false, timer: 0
+    };
 
     // ------------------------------------------------------------------
     // View geometry
@@ -151,6 +160,7 @@
         stage.style.transform = 'translate(' + S.tx + 'px,' + S.ty + 'px)';
         zoomLabel.textContent = Math.round(S.z * 100) + ' %';
         if (B.inst) B.inst.sync(S.z, S.tx, S.ty, S.w, S.h);
+        updateGeo();
         root.classList.toggle('wmv-lod-far', S.labelFont > 0 && S.labelFont * S.z < LABEL_MIN_PX);
         drawMinimap();
     }
@@ -304,6 +314,9 @@
             if (f > 0 && (!font || f < font)) font = f;
         });
         S.labelFont = font;
+        // the located nodes of the previous drawing are gone
+        G.nodes = [];
+        G.byName = {};
 
         svg.querySelectorAll('g.wm-link, g.wm-node').forEach(function (g) {
             const d = S.items[g.getAttribute('data-id')];
@@ -315,6 +328,7 @@
         fillNodeList(svg);
         updateMinimapImage(text);
         setupFlow(svg);
+        setupGeo();
         refocus();
         fillSites();
     }
@@ -555,6 +569,8 @@
             B.cfg = null;
             basemapBox.hidden = true;
             root.classList.remove('wmv-on-basemap');
+            dropInset();
+            setupGeo();
             return;
         }
         // tiles that cannot load: keep the plain background until the page reloads
@@ -562,6 +578,8 @@
         if (B.inst && window.WMBasemap.same(B.cfg, cfg)) return;
         B.cfg = cfg;
         basemapBox.hidden = false;
+        // a new frame or style: the inset is made again on the next hover
+        dropInset();
         if (B.inst) {
             B.inst.setConfig(cfg);
         } else {
@@ -570,6 +588,8 @@
                 onFail: function () {
                     root.classList.remove('wmv-on-basemap');
                     B.cfg = null;
+                    dropInset();
+                    setupGeo();
                     if (S.z > MAX_Z) {
                         const c = viewCentre();
                         centreOn(c.x, c.y, MAX_Z);
@@ -579,6 +599,381 @@
             });
         }
         if (S.el) B.inst.sync(S.z, S.tx, S.ty, S.w, S.h);
+    }
+
+    // ------------------------------------------------------------------
+    // Located nodes on a basemap: clusters and the city inset
+    //
+    // A node with a point (SET geo) keeps, when the view zooms in past
+    // 100 %, the size it has at 100 %, so zooming in pulls close sites
+    // apart. Located nodes too close to tell apart at the current zoom
+    // merge into one badge with their number; a click on it zooms until
+    // they split (or lists them when they cannot). Hovering a site, a
+    // cluster or a row of the side panel shows its city in a small web
+    // map in the top right corner.
+
+    // two nodes closer than this on the screen merge (or than most of their size)
+    const CLUSTER_PX = 32;
+    const INSET_ZOOM = 11;
+    // above this on-screen size, bandwidth labels are hidden on a basemap
+    const LABEL_MAX_PX = 40;
+
+    function geoOn() {
+        return !!(B.cfg && G.nodes.length);
+    }
+
+    /** Find the located nodes of the drawing (after each new drawing, or a new basemap) */
+    function setupGeo() {
+        closeClusterMenu();
+        G.nodes = [];
+        G.byName = {};
+        if (B.cfg && window.WMBasemap && S.el && S.el.querySelectorAll) {
+            S.el.querySelectorAll('g.wm-node[data-id]').forEach(function (g) {
+                const it = S.items[g.getAttribute('data-id')];
+                if (!it || !Array.isArray(it.geo) || it.geo.length !== 2) return;
+                const p = window.WMBasemap.project(B.cfg, S.w, S.h, it.geo[0], it.geo[1]);
+                let size = 24;
+                try {
+                    const b = g.getBBox();
+                    size = Math.max(12, Math.min(b.width, b.height));
+                } catch (e) { /* not drawn */ }
+                const n = {
+                    name: g.getAttribute('data-name'), g: g, lat: it.geo[0], lon: it.geo[1],
+                    x: p[0], y: p[1], size: size, site: typeof it.site === 'string' ? it.site : ''
+                };
+                // it shrinks around its point
+                g.classList.add('wmv-geo');
+                g.style.transformOrigin = p[0] + 'px ' + p[1] + 'px';
+                G.nodes.push(n);
+                G.byName[n.name] = n;
+            });
+        } else if (S.el && S.el.querySelectorAll) {
+            S.el.querySelectorAll('g.wmv-geo').forEach(function (g) {
+                g.classList.remove('wmv-geo', 'wmv-clustered');
+                g.style.transformOrigin = '';
+            });
+        }
+        root.classList.toggle('wmv-geo-on', geoOn());
+        // fresh link colours in the inset at its next showing
+        G.insetKey = null;
+        if (!geoOn()) hideInset();
+        G.key = null;
+        G.z = 0;
+        updateGeo();
+    }
+
+    /** On each new view: the size of the located nodes, the clusters and where their badges are */
+    function updateGeo() {
+        if (!S.el || !S.el.style) return;
+        const on = geoOn();
+        S.el.style.setProperty('--wmv-geo-k', on && S.z > 1 ? String(1 / S.z) : '1');
+        // deep in a basemap, the bandwidth labels would cover the city: they go
+        root.classList.toggle('wmv-lod-near', on && S.labelFont > 0 && S.labelFont * S.z > LABEL_MAX_PX);
+        if (!on) {
+            if (G.clusters.length || G.key !== '') showClusters([]);
+            return;
+        }
+        if (S.z !== G.z) {
+            G.z = S.z;
+            regroup();
+        }
+        G.clusters.forEach(function (c) {
+            c.el.style.left = (S.tx + c.x * S.z) + 'px';
+            c.el.style.top = (S.ty + c.y * S.z) + 'px';
+        });
+        if (G.menu) placeClusterMenu();
+    }
+
+    /** Whether two located nodes are too close on the screen at the current zoom */
+    function tooClose(a, b) {
+        // their size on the screen: as on the map up to 100 %, then no bigger
+        const size = Math.min(a.size, b.size) * Math.min(S.z, 1);
+        return Math.hypot(a.x - b.x, a.y - b.y) * S.z < Math.max(CLUSTER_PX, 0.8 * size);
+    }
+
+    /** Merge the nodes too close at this zoom; the focused node always stays apart */
+    function regroup() {
+        const free = G.nodes.filter(function (n) { return n.name !== S.focus; });
+        const taken = new Set();
+        const groups = [];
+        free.forEach(function (n) {
+            if (taken.has(n)) return;
+            taken.add(n);
+            const group = [n];
+            free.forEach(function (m) {
+                if (!taken.has(m) && tooClose(n, m)) {
+                    taken.add(m);
+                    group.push(m);
+                }
+            });
+            if (group.length > 1) groups.push(group);
+        });
+        showClusters(groups);
+    }
+
+    function clusterLabel(nodes) {
+        return fmt(':n nodes close together: :names', {
+            n: nodes.length,
+            names: nodes.map(function (n) { return labelOf(n.g); }).join(', ')
+        });
+    }
+
+    /** Draw the badges of the clusters (only when they change) and hide their nodes */
+    function showClusters(groups) {
+        const key = groups.map(function (g) {
+            return g.map(function (n) { return n.name; }).join('\u0001');
+        }).join('\u0002');
+        if (key === G.key) return;
+        G.key = key;
+        closeClusterMenu();
+        const hidden = new Set();
+        G.clusters = groups.map(function (nodes) {
+            let x = 0, y = 0, load = -1;
+            nodes.forEach(function (n) {
+                x += n.x;
+                y += n.y;
+                load = Math.max(load, nodeLoad(n.name));
+                hidden.add(n);
+            });
+            const c = {nodes: nodes, x: x / nodes.length, y: y / nodes.length, el: null};
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'wmv-cluster';
+            b.dataset.level = levelOf(load);
+            b.textContent = String(nodes.length);
+            const label = clusterLabel(nodes);
+            b.title = label;
+            b.setAttribute('aria-label', label);
+            // not a drag of the map
+            b.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+            b.addEventListener('click', function (e) {
+                e.stopPropagation();
+                openCluster(c);
+            });
+            const enter = function () { highlightNodes(nodes); };
+            const leave = function () { highlightNodes(null); };
+            b.addEventListener('mouseenter', enter);
+            b.addEventListener('mouseleave', leave);
+            b.addEventListener('focus', enter);
+            b.addEventListener('blur', leave);
+            c.el = b;
+            return c;
+        });
+        G.nodes.forEach(function (n) { n.g.classList.toggle('wmv-clustered', hidden.has(n)); });
+        if (clusterBox) {
+            clusterBox.replaceChildren.apply(clusterBox, G.clusters.map(function (c) { return c.el; }));
+            G.clusters.forEach(function (c) {
+                c.el.style.left = (S.tx + c.x * S.z) + 'px';
+                c.el.style.top = (S.ty + c.y * S.z) + 'px';
+            });
+        }
+    }
+
+    /** A cluster stands out while its nodes are highlighted (side panel) */
+    function markClusters(names) {
+        G.clusters.forEach(function (c) {
+            c.el.classList.toggle('wmv-cluster-hl', c.nodes.some(function (n) { return names.has(n.name); }));
+        });
+    }
+
+    /** Zoom so the nodes of a cluster split; list them when the view cannot zoom more */
+    function openCluster(c) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        let near = Infinity, size = Infinity;
+        c.nodes.forEach(function (n, i) {
+            x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y);
+            x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y);
+            size = Math.min(size, n.size);
+            c.nodes.slice(i + 1).forEach(function (m) {
+                // nodes on the same point never split: they are listed
+                const d = Math.hypot(n.x - m.x, n.y - m.y);
+                if (d > 0.01) near = Math.min(near, d);
+            });
+        });
+        if (near === Infinity) {
+            showClusterMenu(c);
+            return;
+        }
+        const vp = vpSize();
+        const pad = 100;
+        // all of them in view...
+        const fitAll = Math.min((vp.w - 2 * pad) / Math.max(1, x1 - x0), (vp.h - 2 * pad) / Math.max(1, y1 - y0));
+        // ...and the two closest apart, with some room
+        const apart = 1.5 * Math.max(CLUSTER_PX, 0.8 * size) / near;
+        const z = clampZ(Math.min(fitAll, apart));
+        if (z <= S.z * 1.05) {
+            showClusterMenu(c);
+            return;
+        }
+        animateTo(z, (x0 + x1) / 2, (y0 + y1) / 2);
+        S.touched = true;
+        saveHash();
+    }
+
+    function showClusterMenu(c) {
+        closeClusterMenu();
+        const menu = document.createElement('div');
+        menu.className = 'wmv-cluster-menu';
+        menu.setAttribute('role', 'dialog');
+        const title = document.createElement('p');
+        title.className = 'wmv-cluster-menu-title';
+        title.textContent = fmt(':n nodes at the same place', {n: c.nodes.length});
+        menu.setAttribute('aria-label', title.textContent);
+        const list = document.createElement('ul');
+        c.nodes.slice().sort(function (a, b) { return labelOf(a.g).localeCompare(labelOf(b.g)); }).forEach(function (n) {
+            const li = document.createElement('li');
+            const b = document.createElement('button');
+            b.type = 'button';
+            const label = document.createElement('span');
+            label.className = 'wmv-site-label';
+            label.textContent = labelOf(n.g);
+            b.append(label, loadBadge(nodeLoad(n.name)));
+            b.addEventListener('click', function () {
+                closeClusterMenu();
+                focusNode(n.g, false);
+            });
+            li.appendChild(b);
+            list.appendChild(li);
+        });
+        menu.append(title, list);
+        menu.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+        menu.addEventListener('wheel', function (e) { e.stopPropagation(); });
+        G.menu = {el: menu, cluster: c};
+        (clusterBox || root).appendChild(menu);
+        placeClusterMenu();
+        const first = menu.querySelector('button');
+        if (first) first.focus();
+    }
+
+    function placeClusterMenu() {
+        const c = G.menu.cluster;
+        G.menu.el.style.left = (S.tx + c.x * S.z) + 'px';
+        G.menu.el.style.top = (S.ty + c.y * S.z + 24) + 'px';
+    }
+
+    function closeClusterMenu() {
+        if (!G.menu) return false;
+        G.menu.el.remove();
+        G.menu = null;
+        return true;
+    }
+
+    // ---- City inset ----
+
+    /** The colours of the points of the inset, from the theme */
+    function insetColours() {
+        const cs = getComputedStyle(root);
+        const v = function (name, other) { return cs.getPropertyValue(name).trim() || other; };
+        return {on: v('--wm-accent', '#2563eb'), off: v('--wm-text-muted', '#64748b'), ring: v('--wm-surface', '#ffffff')};
+    }
+
+    /** The colour of a link on the map (its first arrow), or of its load level when it has no arrow */
+    function linkColour(id) {
+        const g = S.el.querySelector('g.wm-link[data-id="' + CSS.escape(id) + '"] .wm-arrow');
+        const c = g ? g.getAttribute('fill') : null;
+        if (c && c !== 'none' && c.indexOf('url(') !== 0) return c;
+        const level = levelOf(loadOf(S.items[id] || null));
+        if (level === 'none') return null;
+        const name = {ok: '--wm-success', warn: '--wm-warning', crit: '--wm-danger'}[level];
+        return getComputedStyle(root).getPropertyValue(name).trim() || null;
+    }
+
+    /** The located nodes to show for some nodes: one node shows its whole site */
+    function insetNodes(names) {
+        const nodes = names.map(function (name) { return G.byName[name]; }).filter(Boolean);
+        if (nodes.length === 1 && nodes[0].site !== '') {
+            const site = nodes[0].site;
+            return G.nodes.filter(function (n) { return n.site === site; });
+        }
+        return nodes;
+    }
+
+    function insetTitle(nodes) {
+        const sites = Array.from(new Set(nodes.map(function (n) { return n.site; })));
+        if (sites.length === 1 && sites[0] !== '') return sites[0];
+        if (nodes.length === 1) return labelOf(nodes[0].g);
+        return fmt(':n nodes', {n: nodes.length});
+    }
+
+    /** Show the city of some nodes (their names) in the inset */
+    function showInset(names) {
+        clearTimeout(G.timer);
+        if (!insetBox || !geoOn() || !window.WMBasemap || isPhone()) return;
+        const nodes = insetNodes(names);
+        if (!nodes.length) {
+            hideInset();
+            return;
+        }
+        const key = nodes.map(function (n) { return n.name; }).join('\u0001');
+        insetBox.hidden = false;
+        if (key === G.insetKey && G.inset) return;
+        G.insetKey = key;
+        if (!G.inset) {
+            G.inset = window.WMBasemap.inset(insetBox.querySelector('.wmv-inset-map'), B.cfg, {
+                colours: insetColours,
+                onFail: function () { insetBox.hidden = true; }
+            });
+        }
+        if (G.inset.failed) {
+            insetBox.hidden = true;
+            return;
+        }
+        const on = new Set(nodes);
+        const features = G.nodes.map(function (n) {
+            return {type: 'Feature', properties: {on: on.has(n)}, geometry: {type: 'Point', coordinates: [n.lon, n.lat]}};
+        });
+        Object.keys(S.ends).forEach(function (id) {
+            const a = G.byName[S.ends[id].a], b = G.byName[S.ends[id].b];
+            if (!a || !b || a === b) return;
+            features.unshift({
+                type: 'Feature', properties: {colour: linkColour(id)},
+                geometry: {type: 'LineString', coordinates: [[a.lon, a.lat], [b.lon, b.lat]]}
+            });
+        });
+        insetBox.querySelector('.wmv-inset-title').textContent = insetTitle(nodes);
+        const count = insetBox.querySelector('.wmv-inset-count');
+        count.textContent = nodes.length > 1 ? String(nodes.length) : '';
+        G.inset.show({
+            points: nodes.map(function (n) { return [n.lat, n.lon]; }),
+            maxZoom: INSET_ZOOM,
+            features: {type: 'FeatureCollection', features: features}
+        });
+    }
+
+    function hideInset() {
+        clearTimeout(G.timer);
+        if (insetBox) insetBox.hidden = true;
+        G.insetKey = null;
+    }
+
+    /** What the inset shows when nothing is hovered: the focused node's city, or nothing */
+    function restInset() {
+        if (G.hover) return;
+        if (S.focus !== null && G.byName[S.focus]) showInset([S.focus]);
+        else hideInset();
+    }
+
+    /** Hovering something located shows its city; leaving it goes back after a moment */
+    function hoverInset(names) {
+        if (names && names.length && names.some(function (n) { return G.byName[n]; })) {
+            G.hover = true;
+            showInset(names);
+            return;
+        }
+        if (!G.hover) return;
+        G.hover = false;
+        clearTimeout(G.timer);
+        G.timer = setTimeout(restInset, 1200);
+    }
+
+    function dropInset() {
+        if (G.inset) G.inset.destroy();
+        G.inset = null;
+        G.insetKey = null;
+        if (insetBox) {
+            insetBox.hidden = true;
+            insetBox.querySelector('.wmv-inset-map').replaceChildren();
+        }
     }
 
     function showState(status) {
@@ -694,6 +1089,7 @@
     }
 
     viewport.addEventListener('pointerdown', function (e) {
+        closeClusterMenu();
         if (e.button !== 0 || !S.el) return;
         pointers.set(e.pointerId, local(e));
         cancelAnimationFrame(anim);
@@ -800,6 +1196,7 @@
     viewport.addEventListener('mouseleave', function () {
         if (!touch) hidePanel();
         markRow(null);
+        hoverInset(null);
     });
 
     viewport.addEventListener('click', function (e) {
@@ -834,11 +1231,14 @@
         if (!it && S.focus !== null) unfocus();
     }, true);
 
-    // Hovering a node frames it in the minimap
+    // Hovering a node frames it in the minimap, and shows its city on a basemap
     viewport.addEventListener('mouseover', function (e) {
         const node = e.target && e.target.closest ? e.target.closest('g.wm-node') : null;
-        markMinimap(node && stage.contains(node) ? node : focusedNode());
-        markRow(node && stage.contains(node) ? node.getAttribute('data-name') : null);
+        const name = node && stage.contains(node) ? node.getAttribute('data-name') : null;
+        markMinimap(name !== null ? node : focusedNode());
+        markRow(name);
+        // a cluster badge says itself what it shows
+        if (!(e.target.closest && e.target.closest('.wmv-clusters'))) hoverInset(name !== null ? [name] : null);
     });
 
     // ------------------------------------------------------------------
@@ -934,6 +1334,10 @@
         S.el.querySelectorAll('.wmv-hl').forEach(function (n) { n.classList.remove('wmv-hl'); });
         (nodes || []).forEach(function (n) { n.g.classList.add('wmv-hl'); });
         markMinimap(nodes && nodes.length === 1 ? nodes[0].g : focusedNode());
+        // on a basemap: the cluster they are in, and their city in the inset
+        const names = (nodes || []).map(function (n) { return n.name || n.g.getAttribute('data-name'); });
+        markClusters(new Set(names));
+        hoverInset(names);
     }
 
     function isPhone() {
@@ -1361,6 +1765,12 @@
         });
         const g = focusedNode();
         S.el.classList.toggle('wmv-focusing', !!g);
+        // the focused node leaves its cluster; its city shows in the inset
+        if (geoOn()) {
+            G.z = 0;
+            updateGeo();
+        }
+        restInset();
         if (!g) return;
         g.classList.add('wmv-focus');
         linksOf(S.focus).forEach(function (l) {
@@ -1532,6 +1942,7 @@
                 break;
             }
             case 'Escape':
+                if (closeClusterMenu()) break;
                 if (root.querySelector('.wmv-more[open]')) {
                     closeMenus();
                     break;

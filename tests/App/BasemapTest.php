@@ -146,6 +146,29 @@ final class BasemapTest extends TestCase
         $this->assertArrayHasKey('basemap', MapService::summarize($map));
     }
 
+    public function testTheSummaryGivesThePointOfLocatedNodes(): void
+    {
+        $body = "NODE paris\n\tPOSITION 100 100\n\tSET geo 48.8566 2.3522\n\tSET site Paris\n\n"
+            . "NODE title\n\tPOSITION 50 50\n\tLABEL Title\n\tINFOURL https://example.net/\n\n";
+        $items = MapService::summarize($this->read($this->mapFile($body)))['items'];
+        $nodes = [];
+        foreach ($items as $item) {
+            if ($item['kind'] === 'node') {
+                $nodes[$item['name']] = $item;
+            }
+        }
+        $this->assertSame([48.8566, 2.3522], $nodes['paris']['geo'], 'the viewer merges close sites by their point');
+        $this->assertSame('Paris', $nodes['paris']['site']);
+        $this->assertArrayNotHasKey('geo', $nodes['title'], 'a node without a point stays on the canvas');
+
+        // without a basemap, no point: nothing to merge or show in a city inset
+        $plain = $this->dir . '/plain.conf';
+        file_put_contents($plain, "WIDTH 800\nHEIGHT 600\n\n" . $body);
+        foreach (MapService::summarize($this->read($plain))['items'] as $item) {
+            $this->assertArrayNotHasKey('geo', $item);
+        }
+    }
+
     public function testEditorSetsTheBasemapAndLocatesNodes(): void
     {
         $file = $this->dir . '/map.conf';

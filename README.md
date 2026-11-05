@@ -255,6 +255,16 @@ own tiles under the same address. In the viewer the map zooms in further on a
 basemap (up to 64×). The PNG image and the downloaded SVG keep the plain
 background. Design note: [docs/studies/geographic-basemap.md](docs/studies/geographic-basemap.md).
 
+In the viewer, located nodes keep the size they have at 100 % when you zoom
+in, so zooming pulls close sites apart. Located nodes too close to tell apart
+at the current zoom merge into one round badge with their number (its ring
+takes the colour of their busiest link); a click on it zooms until they split,
+and nodes on the very same point are listed instead. Hovering a site, a
+cluster or a row of the side panel shows its city in a small web map in the
+top right corner, with the located nodes and their links (a node with
+`SET site` shows its whole site); the city of the focused node stays there.
+Bandwidth labels are hidden when they would grow over 40 pixels.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |
