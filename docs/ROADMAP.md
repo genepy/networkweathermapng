@@ -13,7 +13,7 @@ Last updated: 2026-11-05.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| UI redesign, step 7: command palette | `claude/project-thread-fq9yez` | `Ctrl+K` on the home page, the viewer and the settings: in progress |
+| (none) | | |
 
 ## Paused
 
@@ -53,6 +53,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #76 | UI redesign, step 7: command palette: `Ctrl+K` (`⌘K`) or the search box of the top bar opens one search on every page of the shell (Maps, viewer, Settings): maps with their load, nodes of every map (opens the map zoomed onto the node, `#n=`), Settings pages (admins) and commands (*Edit* / *Map settings* for the maps found and the current map, *New map*, *Start kiosk* for each group, favourite and busy maps, theme, *Change password*, *Log out*). Every word must match, accents ignored; arrows, Enter, Ctrl/Shift+Enter for a new tab, Esc. Index from `GET /palette` (`App\Services\CommandPalette`), script `assets/js/palette.js` |
 | #75 | UI redesign, step 6: Settings: a side navigation in four groups (*Monitoring*: Data sources, Import maps; *Display*: Maps & rendering, Kiosk, Recording, Time zone; *Access*: Users, Groups; *System*: Database check) with counters, chips on a phone; `/admin` opens on Data sources. Each page is a panel (title and main action at the top, *Cancel* and *Save* at the bottom right). Data sources: one row per source with a state dot, type, URL and "tested … ago", *Test* on the row (result and request/response on the row) and a ⋯ menu; the forms of data sources, users and groups open in a drawer (`WMUI.drawer`, ui.js) with *Delete…* on the left, the chosen data source type shows only its fields. *Maps & rendering* shows the `.env` values read only (its old form posted to a missing route) |
 | #74 | UI redesign, step 5: Map settings panel: every setting of a map in one drawer (⋯ › *Settings* on the Maps page, ⚙ in the viewer; a page of its own from the editor's *Map settings*), tabs *General* (name = drawn title, group, visible to users, file, delete), *Display & kiosk* (time zone with search, kiosk zoom and display time), *Recording*, *Access* (who sees the map, read only). Maps whose name and drawn title still differ are listed on the Maps page and their panel asks which one to keep. Editors reorder the thumbnails of a group by drag and drop (or the arrow keys on the grip) |
 | #73 | Nine IX style, task 4: richer hover card: a link's card shows its speed badge (`BANDWIDTH`), "A ↔ B" with the link name and the sites of its ends, IN and OUT now with load bars, and its traffic over 1 day, 1 week or 1 month (switch remembered in the browser) drawn in the browser with IN above the middle line and OUT below, with peak and average; series from `/map/{id}/link/{linkId}/traffic` (bucketed by `TrafficSeries`, cached 5 minutes, Zabbix trends for a week or a month). The card follows the theme, and waits a moment when the pointer leaves the link so the switch can be reached |

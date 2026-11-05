@@ -315,6 +315,161 @@
 .wm-confirm p { margin: 0 0 var(--wm-space-5); line-height: 1.5; white-space: pre-line; }
 .wm-confirm-actions { display: flex; justify-content: flex-end; gap: var(--wm-space-2); flex-wrap: wrap; }
 
+/* Command palette (step 7): Ctrl+K, or the search button of the top bar */
+.app-search {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--wm-space-2);
+    height: 36px;
+    min-width: 260px;
+    padding: 0 var(--wm-space-2) 0 var(--wm-space-3);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-bar);
+    background: var(--wm-surface-2);
+    color: var(--wm-text-muted);
+    font: inherit;
+    font-size: var(--wm-text-md);
+    cursor: pointer;
+}
+.app-search:hover { border-color: var(--wm-field-border); color: var(--wm-text); }
+.app-search:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; }
+.app-search .icon { width: 16px; height: 16px; flex: none; }
+.app-search-text { flex: 1; text-align: left; white-space: nowrap; }
+.app-search-key,
+.wm-palette kbd {
+    padding: 1px 6px;
+    border: 1px solid var(--wm-border);
+    border-radius: 4px;
+    background: var(--wm-surface);
+    color: var(--wm-text-muted);
+    font-family: var(--wm-font-mono);
+    font-size: 11.5px;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+@media (max-width: 860px) {
+    .app-search { min-width: 0; }
+    .app-search-text, .app-search-key { display: none; }
+    .app-search { width: 36px; justify-content: center; padding: 0; border-radius: 50%; border-color: transparent; background: transparent; color: var(--wm-text); }
+    .app-search:hover { background: var(--wm-hover); }
+    .app-search .icon { width: 18px; height: 18px; }
+}
+
+.wm-palette {
+    width: min(640px, calc(100vw - 2 * var(--wm-space-4)));
+    max-height: min(560px, calc(100dvh - 12vh - var(--wm-space-4)));
+    margin: 10vh auto auto;
+    padding: 0;
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-card);
+    background: var(--wm-surface);
+    color: var(--wm-text);
+    box-shadow: var(--wm-shadow-2);
+    font-family: var(--wm-font);
+    overflow: hidden;
+}
+.wm-palette[open] { display: flex; flex-direction: column; }
+.wm-palette::backdrop { background: rgba(15, 23, 42, 0.45); }
+.pal-search {
+    display: flex;
+    align-items: center;
+    gap: var(--wm-space-3);
+    padding: var(--wm-space-3) var(--wm-space-4);
+    border-bottom: 1px solid var(--wm-border);
+}
+.pal-search .icon { width: 18px; height: 18px; flex: none; color: var(--wm-text-muted); }
+.pal-input {
+    flex: 1;
+    min-width: 0;
+    padding: var(--wm-space-1) 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--wm-text);
+    font: inherit;
+    font-size: var(--wm-text-lg);
+}
+.pal-input::placeholder { color: var(--wm-text-muted); }
+.pal-list { flex: 1; overflow-y: auto; padding: var(--wm-space-1) 0 var(--wm-space-2); overscroll-behavior: contain; }
+.pal-head {
+    padding: var(--wm-space-3) var(--wm-space-4) var(--wm-space-1);
+    color: var(--wm-text-muted);
+    font-size: var(--wm-text-sm);
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.pal-item {
+    display: flex;
+    align-items: center;
+    gap: var(--wm-space-3);
+    min-height: 40px;
+    padding: var(--wm-space-2) var(--wm-space-4);
+    cursor: pointer;
+}
+.pal-item .icon { width: 17px; height: 17px; flex: none; color: var(--wm-text-muted); }
+.pal-item.is-active { background: var(--wm-accent-soft); }
+.pal-item.is-active .icon { color: var(--wm-text); }
+.pal-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-ctx { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--wm-text-muted); font-size: var(--wm-text-sm); }
+.pal-tag {
+    flex: none;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--wm-surface-2);
+    color: var(--wm-text-muted);
+    font-size: 11.5px;
+}
+.pal-end { margin-left: auto; display: inline-flex; align-items: center; gap: var(--wm-space-2); flex: none; }
+.pal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--wm-text-muted);
+    font-family: var(--wm-font-mono);
+    font-size: 12px;
+}
+.pal-badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--wm-disabled); }
+.pal-load-ok::before { background: var(--wm-success); }
+.pal-load-warn::before { background: var(--wm-warning-mark); }
+.pal-load-crit::before { background: var(--wm-danger); }
+.wm-palette .pal-enter { visibility: hidden; }
+.pal-item.is-active .pal-enter { visibility: visible; }
+.pal-empty { margin: 0; padding: var(--wm-space-5) var(--wm-space-4); color: var(--wm-text-muted); text-align: center; }
+.pal-foot {
+    display: flex;
+    gap: var(--wm-space-4);
+    padding: var(--wm-space-2) var(--wm-space-4);
+    border-top: 1px solid var(--wm-border);
+    background: var(--wm-surface-2);
+    color: var(--wm-text-muted);
+    font-size: var(--wm-text-sm);
+}
+.pal-foot kbd + kbd { margin-left: 2px; }
+@media (max-width: 640px) {
+    .wm-palette { margin-top: var(--wm-space-3); max-height: calc(100dvh - 2 * var(--wm-space-3)); }
+    .pal-foot { display: none; }
+    .pal-item { min-height: 48px; }
+}
+.pal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--wm-text-muted);
+    cursor: pointer;
+}
+.pal-close:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; border-radius: 4px; }
+.pal-close .icon { display: none; }
+@media (hover: none) {
+    .wm-palette .pal-enter, .pal-close kbd { display: none; }
+    .pal-close { width: 40px; height: 40px; margin: -8px -8px -8px 0; border-radius: 50%; }
+    .pal-close .icon { display: block; width: 20px; height: 20px; }
+}
+
 /* Error pages */
 .error-page { max-width: 560px; margin: 10vh auto; text-align: center; }
 .error-page .error-code { color: var(--wm-text-muted); font-size: var(--wm-text-md); font-weight: 600; letter-spacing: 0.08em; }

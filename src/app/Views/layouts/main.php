@@ -48,6 +48,9 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
     <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/map-settings.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/weathermap.js') ?>" defer></script>
+    <?php if ($showNav): ?>
+    <script src="<?= asset('/assets/js/palette.js') ?>" defer></script>
+    <?php endif; ?>
 </head>
 <body class="app-shell">
     <a class="skip-link" href="#main"><?= e__('Skip to content') ?></a>
@@ -66,6 +69,14 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
         </nav>
         <?php endif; ?>
         <div class="app-bar-end">
+            <?php if ($showNav): ?>
+            <button type="button" class="app-search" data-palette-open aria-keyshortcuts="Control+K Meta+K"
+                    aria-label="<?= e__('Search maps, nodes, commands') ?>">
+                <?= icon('search') ?>
+                <span class="app-search-text"><?= e__('Search maps, nodes, commands') ?></span>
+                <kbd class="app-search-key">Ctrl K</kbd>
+            </button>
+            <?php endif; ?>
             <?php if (!$showNav): ?>
             <a href="/login" class="wm-btn wm-btn-primary"><?= e__('Login') ?></a>
             <?php endif; ?>

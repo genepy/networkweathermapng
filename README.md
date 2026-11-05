@@ -29,7 +29,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Translations** - English and French built in, chosen in the user menu or with `APP_LOCALE`; [add your language](TRANSLATING.md)
 - **Geographic basemap** - A map can float on a web map (OpenStreetMap vector tiles from OpenFreeMap, or your own tile server), with nodes placed by latitude and longitude; see *Geographic basemap* below
 - **Light and dark themes** - Automatic (system setting) or chosen in the user menu; colours meet WCAG 2.2 AA contrast in both
-- **Responsive UI** - A thin top bar with a user menu, a bottom navigation bar on phones, toasts for messages and a styled confirmation dialog
+- **Responsive UI** - A thin top bar with a user menu and a `Ctrl+K` command palette (maps, nodes, settings, commands), a bottom navigation bar on phones, toasts for messages and a styled confirmation dialog
 
 ## Quick Start
 
@@ -527,6 +527,24 @@ left; without JavaScript the same forms are pages of their own.
 - **History**: when a map is recorded (Settings > Recording: off for every map until switched on, and the admin can turn recording off for all), its viewer has a **Live** / **Last 24 h** switch (`H`; the hours follow the retention): a player goes through the frames of the last hours (play/pause with Space, a time slider, speed 1× to 10×, **Live** or Esc to come back), and the badge next to the name says *Playback*. A background recorder (`php bin/record.php`) draws each recorded map with live data every interval (5 minutes by default) and keeps the frames for the retention time (24 hours by default) in `DATA_ROOT/recordings/<map id>/`, about 1 to 20 KB each. The recorder only runs while at least one map is recorded: it exits as soon as no map is left (or recording is turned off), and the application starts it again when a map is switched on in Settings > Recording or when a recorded map is viewed. Only one recorder runs at a time. In the Docker image, supervisor also starts it at boot; it exits at once when there is nothing to record. Outside Docker, the same start on demand works as long as PHP may run `exec`; otherwise run `php bin/record.php --once` from cron every minute.
 - **Fullscreen** (`F`) puts the map on the whole screen with the current zoom; the controls fade out after 3 seconds without movement and come back with the mouse, a touch or a key; Esc or `F` leaves it. *Copy kiosk link* copies the address of the fullscreen page (`/map/{id}?fullscreen=1`, with the current view) for a NOC wall: it opens fitted to the screen without the application bar. *Open as PNG* keeps the classic picture (also used for thumbnails, exports and the kiosk), with one *Fullscreen* (fitted) and *Preview* (traffic graph on hover).
 - **Kiosk** (`/cycle`, or `/cycle?group=N` for one group): the maps one after the other, each for its own time (Settings > Kiosk). The map fills the page; a thin bar at the top fills up until the next map; the controls at the bottom (previous, pause, next, the map name and its rank, fullscreen) fade out after 3 seconds without movement. Keys: left and right arrows, Space to pause, `F` for fullscreen. `/cycle?fullscreen=1` opens it without the application bar.
+
+## Command palette
+
+`Ctrl+K` (`⌘K` on a Mac), or the search box of the top bar, opens one search
+for everything, on every page of the application (the editor gets its own in
+a later step):
+
+- **Maps** you can see, with their current load (hidden maps for editors).
+- **Nodes** of every map, by label or name: opens the map zoomed onto the
+  node, its card pinned (`/map/{id}#n=<name>`).
+- **Settings** pages (administrators).
+- **Commands**: *Edit* and *Map settings* for the maps found (and for the
+  map you are on), *New map*, *Start kiosk* (for each group), favourite and
+  busy maps, the theme, *Change password*, *Log out*.
+
+Every word typed must appear, accents ignored. Up and Down move, `Enter`
+opens (`Ctrl`/`Shift+Enter` in a new tab), `Esc` closes. The list comes from
+`GET /palette`, fetched once per page.
 
 ## Language and theme
 
