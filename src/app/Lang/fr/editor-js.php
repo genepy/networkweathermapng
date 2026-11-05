@@ -434,7 +434,7 @@ return [
     'Search :n icons' => 'Chercher (:n icônes)',
     'Apply the colours' => 'Appliquer les couleurs',
     'Link colours saved' => 'Couleurs des liens enregistrées',
-    'Reset' => 'Rétablir',
+    'Reset' => 'Réinitialiser',
     'Back to the saved colours' => 'Revenir aux couleurs enregistrées',
     'Sets the colours of the map, the legend, the link colours and the default node and link labels. Ctrl+Z undoes it.' => 'Règle les couleurs de la carte, de la légende, des liens et les libellés par défaut des nœuds et des liens. Ctrl+Z l’annule.',
     'Shown' => 'Affichée',
