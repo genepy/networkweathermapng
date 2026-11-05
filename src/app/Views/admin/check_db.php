@@ -1,9 +1,8 @@
-<div class="page-header">
-    <?= breadcrumb([[__('Admin'), '/admin'], [__('Database Integrity Check')]]) ?>
-</div>
-
-<div class="form-card">
-    <div>
+<section class="set-panel">
+    <header class="set-head">
+        <h1><?= e__('Database check') ?></h1>
+    </header>
+    <div class="set-body">
         <?php if ($results['status'] === 'ok'): ?>
             <div class="alert alert-success">
                 <strong><?= icon('circle-check') ?> <?= e__('Database integrity check passed.') ?></strong> <?= e__('All required tables and columns are present.') ?>
@@ -63,7 +62,7 @@
             </table>
         </div>
     </div>
-</div>
+</section>
 
 <style>
 .alert {

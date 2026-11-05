@@ -7,12 +7,11 @@ $size = $diskUsage >= 1048576
     ? number_format($diskUsage / 1048576, 1) . ' MB'
     : number_format($diskUsage / 1024, 0) . ' KB';
 ?>
-<div class="admin-recording-page">
-    <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Map recording')]]) ?>
-    </div>
-
-    <form method="post" action="/admin/recording">
+<form method="post" action="/admin/recording" class="set-panel admin-recording-page">
+    <header class="set-head">
+        <h1><?= e__('Map recording') ?></h1>
+    </header>
+    <div class="set-body">
         <div class="form-card recording-defaults">
             <p class="text-muted">
                 <?= e__('A recorded map is drawn with live data at every interval, even when nobody looks at it, and each drawing is kept so the map can be played back in its viewer. Only the maps checked below are recorded: each one costs a data source query and a drawing per interval, and some disk space.') ?>
@@ -80,12 +79,12 @@ $size = $diskUsage >= 1048576
         </p>
         <?php endif; ?>
 
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary"><?= e__('Save') ?></button>
-            <a href="/admin" class="btn btn-secondary"><?= e__('Cancel') ?></a>
-        </div>
-    </form>
-</div>
+    </div>
+    <footer class="set-foot">
+        <button type="reset" class="wm-btn"><?= e__('Cancel') ?></button>
+        <button type="submit" class="wm-btn wm-btn-primary"><?= e__('Save') ?></button>
+    </footer>
+</form>
 
 <style>
 .recording-defaults { max-width: 620px; margin-bottom: 20px; }

@@ -1,12 +1,11 @@
 <?php
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
 ?>
-<div class="admin-timezone-page">
-    <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Time zone')]]) ?>
-    </div>
-
-    <form method="post" action="/admin/timezone">
+<form method="post" action="/admin/timezone" class="set-panel admin-timezone-page">
+    <header class="set-head">
+        <h1><?= e__('Time zone') ?></h1>
+    </header>
+    <div class="set-body">
         <div class="form-card timezone-defaults">
             <div class="form-group">
                 <label for="timezone-default"><?= e__('Default time zone') ?></label>
@@ -67,12 +66,12 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
         </p>
         <?php endif; ?>
 
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary"><?= e__('Save') ?></button>
-            <a href="/admin" class="btn btn-secondary"><?= e__('Cancel') ?></a>
-        </div>
-    </form>
-</div>
+    </div>
+    <footer class="set-foot">
+        <button type="reset" class="wm-btn"><?= e__('Cancel') ?></button>
+        <button type="submit" class="wm-btn wm-btn-primary"><?= e__('Save') ?></button>
+    </footer>
+</form>
 
 <style>
 .timezone-defaults { max-width: 520px; margin-bottom: 20px; }

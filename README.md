@@ -21,8 +21,8 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Observium Integration** - API, MySQL or RRD, Community edition included
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
-- **Kiosk** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Admin > Kiosk mode), a progress bar and controls that fade out
-- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Admin > Time zone, or the map's *Map settings*)
+- **Kiosk** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Settings > Kiosk), a progress bar and controls that fade out
+- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Settings > Time zone, or the map's *Map settings*)
 - **Map Management** - Create, duplicate, reorder, export and delete maps (with all their data) from the Maps page; every setting of a map (name, group, time zone, kiosk, recording, access) in one *Map settings* panel
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
@@ -82,7 +82,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 |----------|-------------|---------|
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
-| `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Admin > Time zone | `UTC` |
+| `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Settings > Time zone | `UTC` |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
 | `BASEMAP_SERVERS` | Tile servers a map's basemap may load from (space-separated URL prefixes), added to the default Content-Security-Policy. Same-site addresses (`/tiles/...`) are always allowed | `https://tiles.openfreemap.org` |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
@@ -100,8 +100,12 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 
 Data sources are configured via the web UI and stored in the database:
 
-- Go to **Admin → Data Sources**
-- Add your Zabbix API endpoint and credentials there
+- Go to **Settings → Data sources** and click **Add data source**
+- Add your Zabbix API endpoint and credentials in the panel that opens on the
+  right; the type you choose only shows its own fields
+- **Test** on the source's row checks the connection: the dot turns green or
+  red, the row says when it was tested, and *Request and response* shows the
+  request sent and the answer received. The ⋯ menu edits or deletes it
 
 
 ## Map Configuration
@@ -283,7 +287,7 @@ Bandwidth labels are hidden when they would grow over 40 pixels.
 | `observium:host:core-rtr1:if:xe-0/0/1` | Port by device hostname and interface name (ifName, ifDescr or ifAlias) |
 | `observium:host:core-rtr1:status` | Device status for a node: 0 when up, 100 when down |
 
-Add the source in **Admin → Data Sources** with the type *Observium*. The
+Add the source in **Settings → Data sources** with the type *Observium*. The
 editor's interface picker fills in the TARGET and the link bandwidth from the
 interface speed.
 
@@ -477,10 +481,10 @@ and a **⋯** menu; the list view has the same menu on each row:
   - *Display & kiosk*: the map's time zone (type to search, empty for the
     default one), its zoom and display time in the kiosk.
   - *Recording*: record the map or not (while recording is allowed in
-    Admin > Map recording; switching it off deletes its images).
+    Settings > Recording; switching it off deletes its images).
   - *Access*: who sees the map, read from the permissions: administrators
     and editors, the viewers of its group, viewers given the map itself.
-  The admin pages *Time zone*, *Kiosk mode* and *Map recording* keep the
+  The Settings pages *Time zone*, *Kiosk* and *Recording* keep the
   defaults and the tables that set many maps at once.
 - **Reorder**: drag a thumbnail by its grip (or focus the grip and use the
   arrow keys) to move it among the maps of its group; the order is the one
@@ -491,12 +495,28 @@ and a **⋯** menu; the list view has the same menu on each row:
 - **Duplicate**: choose the copy's name, group and visibility.
 - **Download .conf** / **Export all** (page menu ⋯): download one
   configuration, or a zip of every map with its icons and backgrounds,
-  which *Import maps* (page menu ⋯, Admin > Migration) imports back.
+  which *Import maps* (page menu ⋯, Settings > Import maps) imports back.
 - **Delete**: removes the map and everything kept for it: configuration and
   backup, rendered images and pages, link graphs, editor history,
   permissions and settings.
 - In the list view, tick several maps to show, hide, move, export or delete
   them at once.
+
+Administrators have a **Settings** space (`/admin`, opens on *Data
+sources*). A side navigation (a row of chips on a phone) groups its pages,
+with a counter next to the pages that list things:
+
+- *Monitoring*: **Data sources** (one row per source with its state, *Test*
+  on the row, ⋯ to edit or delete), **Import maps**.
+- *Display*: **Maps & rendering** (image format and refresh interval, read
+  from `.env`), **Kiosk**, **Recording**, **Time zone**.
+- *Access*: **Users**, **Groups**.
+- *System*: **Database check**.
+
+Each page is a panel: its title and main action at the top, *Cancel* and
+*Save* at the bottom right. Adding or editing a data source, a user or a
+group opens its form in a panel on the right, with *Delete…* at the bottom
+left; without JavaScript the same forms are pages of their own.
 
 ## Viewing maps
 
@@ -504,9 +524,9 @@ and a **⋯** menu; the list view has the same menu on each row:
 - **Map view** (`/map/{id}`): the map fills the page under the top bar and is drawn as SVG. Its controls float over it: a bar at the top (*Maps* › map name with a *Live* badge, *Find a node* (`/`), the *Live* / *Last 24 h* switch when the map is recorded, fullscreen (`F`), ⚙ *Map settings* and **Edit** (`E`) for editors, and a ⋯ menu: *Open as PNG*, *Graphs on hover (PNG)*, *Copy kiosk link*, *Download PNG*), the zoom at the bottom right (+, the zoom value (click for 100 %), −, fit) and the state at the bottom left (last update with the map's time zone, the most loaded link, and the colour legend of the map's scale). Zoom with the mouse wheel or a pinch, move by dragging, or use the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows). "Find a node" centres the map on a node by label or name. Clicking a node (or finding it) zooms onto it and pins its card at the top right (a sheet at the bottom on a phone): its links, busiest first, with their IN and OUT load and the node at the other end (click one to go there), and *Open its page* when the node has a URL; the rest of the map dims and the minimap rings the node, as it does for any node under the pointer. `Esc`, the × or a click on an empty part of the map closes the card. The address keeps the node (`#n=<name>`), so a shared link opens on it. The side panel (the panel button in the bar, or `P`; open by default on wide screens, then remembered in the browser) floats on the left: the nodes grouped by site (`SET site`, a plain list when the map has none) with the load of their busiest link, a click zooms onto a node and pins its card, the target button frames a whole site, and hovering a row highlights the node on the map and in the minimap while hovering a node on the map highlights its row; the map's total traffic (sum of the IN and OUT rates of the links that count, see *Sites and total traffic*) with, for a recorded map, a graph of the recorded hours (IN above the line, OUT below), its peak and 95th percentile; and the colour legend, one row per band. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
 - Hovering a link shows its card: the link speed as a badge (its `BANDWIDTH`, `10G`), "A ↔ B" with the link name and the sites of its ends (`SET site`), the current IN and OUT rates with their load, and, when the link reads a data source (set up with the editor's picker, or an Observium port `TARGET`), its traffic over *1 day*, *1 week* or *1 month* with IN above the middle line and OUT below it, the peak and the average of the period. The period you pick is remembered in the browser; the card waits a moment when the pointer leaves the link so you can reach the switch. The series come from `/map/{id}/link/{linkId}/traffic?range=day|week|month` (at most 360 averaged points, cached 5 minutes; Zabbix sends its hourly trends for a week or a month). A link with an `OVERLIBGRAPH` shows that picture instead (about 40 % of the window width, 500 to 1400 px). Clicking a link opens its INFOURL in a new tab; a node opens its card, with *Open its page*.
 - The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
-- **History**: when a map is recorded (Admin > Map recording: off for every map until switched on, and the admin can turn recording off for all), its viewer has a **Live** / **Last 24 h** switch (`H`; the hours follow the retention): a player goes through the frames of the last hours (play/pause with Space, a time slider, speed 1× to 10×, **Live** or Esc to come back), and the badge next to the name says *Playback*. A background recorder (`php bin/record.php`) draws each recorded map with live data every interval (5 minutes by default) and keeps the frames for the retention time (24 hours by default) in `DATA_ROOT/recordings/<map id>/`, about 1 to 20 KB each. The recorder only runs while at least one map is recorded: it exits as soon as no map is left (or recording is turned off), and the application starts it again when a map is switched on in Admin > Map recording or when a recorded map is viewed. Only one recorder runs at a time. In the Docker image, supervisor also starts it at boot; it exits at once when there is nothing to record. Outside Docker, the same start on demand works as long as PHP may run `exec`; otherwise run `php bin/record.php --once` from cron every minute.
+- **History**: when a map is recorded (Settings > Recording: off for every map until switched on, and the admin can turn recording off for all), its viewer has a **Live** / **Last 24 h** switch (`H`; the hours follow the retention): a player goes through the frames of the last hours (play/pause with Space, a time slider, speed 1× to 10×, **Live** or Esc to come back), and the badge next to the name says *Playback*. A background recorder (`php bin/record.php`) draws each recorded map with live data every interval (5 minutes by default) and keeps the frames for the retention time (24 hours by default) in `DATA_ROOT/recordings/<map id>/`, about 1 to 20 KB each. The recorder only runs while at least one map is recorded: it exits as soon as no map is left (or recording is turned off), and the application starts it again when a map is switched on in Settings > Recording or when a recorded map is viewed. Only one recorder runs at a time. In the Docker image, supervisor also starts it at boot; it exits at once when there is nothing to record. Outside Docker, the same start on demand works as long as PHP may run `exec`; otherwise run `php bin/record.php --once` from cron every minute.
 - **Fullscreen** (`F`) puts the map on the whole screen with the current zoom; the controls fade out after 3 seconds without movement and come back with the mouse, a touch or a key; Esc or `F` leaves it. *Copy kiosk link* copies the address of the fullscreen page (`/map/{id}?fullscreen=1`, with the current view) for a NOC wall: it opens fitted to the screen without the application bar. *Open as PNG* keeps the classic picture (also used for thumbnails, exports and the kiosk), with one *Fullscreen* (fitted) and *Preview* (traffic graph on hover).
-- **Kiosk** (`/cycle`, or `/cycle?group=N` for one group): the maps one after the other, each for its own time (Admin > Kiosk mode). The map fills the page; a thin bar at the top fills up until the next map; the controls at the bottom (previous, pause, next, the map name and its rank, fullscreen) fade out after 3 seconds without movement. Keys: left and right arrows, Space to pause, `F` for fullscreen. `/cycle?fullscreen=1` opens it without the application bar.
+- **Kiosk** (`/cycle`, or `/cycle?group=N` for one group): the maps one after the other, each for its own time (Settings > Kiosk). The map fills the page; a thin bar at the top fills up until the next map; the controls at the bottom (previous, pause, next, the map name and its rank, fullscreen) fade out after 3 seconds without movement. Keys: left and right arrows, Space to pause, `F` for fullscreen. `/cycle?fullscreen=1` opens it without the application bar.
 
 ## Language and theme
 
@@ -625,7 +645,7 @@ before committing them.
 ## Migration from an existing Weathermap
 
 Maps from the Cacti plugin or from older Weathermap versions are imported in
-**Admin → Migration**: upload one or more `.conf` files, or a `.zip` holding
+**Settings → Import maps**: upload one or more `.conf` files, or a `.zip` holding
 the `.conf` files with their icons and backgrounds.
 
 For each map the review page shows:

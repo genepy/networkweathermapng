@@ -1,17 +1,15 @@
-<div class="admin-container migration-page">
-    <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Migration')]]) ?>
-    </div>
-
-    <section class="panel">
-        <h2><?= e__('Import maps') ?></h2>
+<section class="set-panel migration-page">
+    <header class="set-head">
+        <h1><?= e__('Import maps') ?></h1>
+    </header>
+    <div class="set-body">
         <p class="text-muted"><?= e__('Upload Weathermap .conf files, or a .zip with the .conf files and their icons and backgrounds. Nothing is created until you have reviewed each map.') ?></p>
         <form method="post" action="/admin/migration/upload" enctype="multipart/form-data" class="upload-form">
             <input type="file" name="files[]" multiple required accept=".conf,.cfg,.txt,.zip,.png,.jpg,.jpeg,.gif,.svg">
             <button type="submit" class="btn btn-primary"><?= e__('Import') ?></button>
         </form>
         <p class="text-muted small"><?= e__('Many maps at once:') ?> <code>php bin/migrate.php --source=1 --apply maps/*.conf</code></p>
-    </section>
+    </div>
 
     <?php if ($migrations): ?>
     <div class="data-table-container">
@@ -54,4 +52,4 @@
     <?php else: ?>
     <div class="empty-state"><p><?= e__('No map imported yet.') ?></p></div>
     <?php endif; ?>
-</div>
+</section>
