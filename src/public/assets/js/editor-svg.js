@@ -172,6 +172,7 @@
         state.zones = new Map((d.model.zones || []).map(function (z) { return [z.name, z]; }));
         state.furniture = new Map((d.model.furniture || []).map(function (f) { return [key(f.kind, f.name), f]; }));
         computeOverlaps();
+        setBasemap(d.model.map.basemap || null);
 
         var w = d.model.map.width, h = d.model.map.height;
         [paper, gridLayer].forEach(function (r) { r.setAttribute('width', w); r.setAttribute('height', h); });
@@ -346,6 +347,7 @@
         var w = canvas.clientWidth / state.zoom;
         var hh = canvas.clientHeight / state.zoom;
         stage.setAttribute('viewBox', [state.view.x, state.view.y, w, hh].join(' '));
+        syncBasemap();
         var zoom = Math.round(state.zoom * 100);
         $('#zoom-value').textContent = zoom + '%';
         $('#zoom-level').title = t('Zoom of the editor view: :p%. Click for actual size (0)', { p: zoom });
@@ -398,6 +400,53 @@
         state.view.x = x - canvas.clientWidth / state.zoom / 2;
         state.view.y = y - canvas.clientHeight / state.zoom / 2;
         updateView();
+    }
+
+    // ------------------------------------------------------------------
+    // Geographic basemap (basemap.js), under the canvas as in the viewer
+
+    var basemap = { inst: null, cfg: null };
+
+    function setBasemap(cfg) {
+        var box = $('#basemap');
+        if (!box || !window.WMBasemap) { return; }
+        if (!cfg) {
+            if (basemap.inst) { basemap.inst.destroy(); }
+            basemap.inst = null;
+            basemap.cfg = null;
+            box.hidden = true;
+            canvas.classList.remove('on-basemap');
+            return;
+        }
+        if (basemap.inst && window.WMBasemap.same(basemap.cfg, cfg)) { return; }
+        basemap.cfg = cfg;
+        box.hidden = false;
+        if (basemap.inst && !basemap.inst.failed) {
+            basemap.inst.setConfig(cfg);
+        } else {
+            if (basemap.inst) { basemap.inst.destroy(); }
+            basemap.inst = window.WMBasemap.create(box, cfg, {
+                onReady: function () { canvas.classList.add('on-basemap'); },
+                onFail: function () {
+                    canvas.classList.remove('on-basemap');
+                    toast(t('The basemap could not be loaded'), true);
+                }
+            });
+        }
+        syncBasemap();
+    }
+
+    function syncBasemap() {
+        if (!basemap.inst || !state.model) { return; }
+        var m = state.model.map;
+        basemap.inst.sync(state.zoom, -state.view.x * state.zoom, -state.view.y * state.zoom, m.width, m.height);
+    }
+
+    /** The point [lat, lon] under map pixels, or null when the map has no basemap */
+    function geoAt(x, y) {
+        var cfg = state.model && state.model.map.basemap;
+        if (!cfg || !window.WMBasemap) { return null; }
+        return window.WMBasemap.unproject(cfg, state.model.map.width, state.model.map.height, x, y);
     }
 
     function updateMinimap() {
@@ -2364,6 +2413,7 @@
             row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true })),
             h('p', { 'class': 'help', text: t('Nodes of the same site are grouped in the side panel of the map view.') })
         );
+        out = out.concat(locationRows(nodes));
 
         if (single && single.label_box) {
             out.push(
@@ -2381,6 +2431,45 @@
             out.push(h('p', { 'class': 'help', text: t('Grouped: clicking one selects the whole group. Alt+click picks one.') }));
         }
         return out.filter(Boolean);
+    }
+
+    /**
+     * Where the nodes sit on the basemap (SET geo), when the map has one:
+     * a located node stays on its point when the basemap frame changes,
+     * and moving it moves the point.
+     */
+    function locationRows(nodes) {
+        if (!state.model || !state.model.map.basemap) { return []; }
+        var single = nodes.length === 1 ? nodes[0] : null;
+        var located = nodes.filter(function (n) { return n.geo; });
+        var out = [h('h3', { text: t('Location') })];
+        if (single) {
+            var here = geoAt(single.x, single.y);
+            var input = h('input', {
+                name: 'geo', value: single.geo ? single.geo[0] + ' ' + single.geo[1] : '',
+                placeholder: here ? here[0].toFixed(5) + ' ' + here[1].toFixed(5) : '', spellcheck: 'false', autocomplete: 'off'
+            });
+            input.addEventListener('change', function () {
+                send([{ op: 'set_node', names: [single.name], props: { geo: input.value } }]);
+            });
+            out.push(row(t('Latitude longitude'), input));
+        }
+        var pin = function () {
+            send(nodes.map(function (n) {
+                var p = geoAt(n.x, n.y);
+                return { op: 'set_node', names: [n.name], props: { geo: p[0].toFixed(6) + ' ' + p[1].toFixed(6) } };
+            }));
+        };
+        out.push(h('div', { 'class': 'actions' }, [
+            h('button', { type: 'button', text: single ? t('Locate where it is') : t('Locate where they are'),
+                disabled: located.length === nodes.length, onclick: pin }),
+            h('button', { type: 'button', text: t('Remove the location'), disabled: !located.length,
+                onclick: function () { send([{ op: 'set_node', names: located.map(function (n) { return n.name; }), props: { geo: '' } }]); } })
+        ]));
+        out.push(h('p', { 'class': 'help', text: single && single.geo
+            ? t('This node sits on its point of the basemap: it moves with the basemap, and dragging it moves the point.')
+            : t('Without a location, the node keeps its place on the canvas when the basemap moves.') }));
+        return out;
     }
 
     /** Label position presets: above, top, centre, bottom or below the icon, in one click */
@@ -3207,6 +3296,7 @@
     function applyLayers() {
         Object.keys(state.layers).forEach(function (k) {
             stage.classList.toggle('hide-' + k, !state.layers[k]);
+            if (k === 'background') { canvas.classList.toggle('hide-basemap', !state.layers[k]); }
             var box = $('#layers-panel input[name="' + k + '"]');
             if (box) { box.checked = state.layers[k]; }
         });

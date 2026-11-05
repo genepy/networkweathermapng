@@ -143,6 +143,7 @@
          data-png-url="/map/<?= $mapId ?>/image"
          data-history="<?= !empty($history) ? '1' : '0' ?>">
         <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
+            <div class="wmv-basemap" hidden></div>
             <div class="wmv-stage"></div>
             <div class="wmv-message" role="status"><?= e__('Loading the map…') ?></div>
         </div>
@@ -298,6 +299,8 @@ window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::f
 </script>
 
 <?php if ($isSvg): ?>
+<script>window.WM_MAPLIBRE = <?= json_encode(['js' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp.js'), 'worker' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp-worker.js'), 'css' => asset('/assets/vendor/maplibre-gl/maplibre-gl.css')], JSON_UNESCAPED_SLASHES) ?>;</script>
+<script src="<?= asset('/assets/js/basemap.js') ?>" defer></script>
 <script src="<?= asset('/assets/js/viewer.js') ?>" defer></script>
 <?php else: ?>
 

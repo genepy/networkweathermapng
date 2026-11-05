@@ -150,6 +150,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     </aside>
 
     <main id="canvas">
+        <div id="basemap" hidden></div>
         <svg id="stage" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -327,6 +328,8 @@ window.WM_EDITOR = {
 };
 </script>
 <script src="<?= asset('/assets/js/ui.js') ?>"></script>
+<script>window.WM_MAPLIBRE = <?= json_encode(['js' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp.js'), 'worker' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp-worker.js'), 'css' => asset('/assets/vendor/maplibre-gl/maplibre-gl.css')], JSON_UNESCAPED_SLASHES) ?>;</script>
+<script src="<?= asset('/assets/js/basemap.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-svg.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-icons.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-backgrounds.js') ?>"></script>

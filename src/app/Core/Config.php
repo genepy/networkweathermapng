@@ -32,6 +32,8 @@ class Config
             'APP_SECRET_KEY' => '',
             // Content-Security-Policy; empty = the default policy, 'off' = none
             'APP_CSP' => '',
+            // Tile servers a map's basemap may use (space separated URL prefixes)
+            'BASEMAP_SERVERS' => 'https://tiles.openfreemap.org',
             // Key that encrypts data source passwords; empty = DATA_ROOT/app.key
             'APP_KEY' => '',
             'APP_ROOT' => $appRoot,

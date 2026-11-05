@@ -224,6 +224,22 @@ class Application
         . "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; "
         . "connect-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
 
+    /**
+     * The default policy, with the tile servers of the basemaps
+     * (BASEMAP_SERVERS) allowed for images and requests.
+     *
+     * @param string[] $tileOrigins
+     */
+    public static function defaultCsp(array $tileOrigins): string
+    {
+        $extra = $tileOrigins ? ' ' . implode(' ', $tileOrigins) : '';
+        return str_replace(
+            ["img-src 'self' data: blob:;", "connect-src 'self';"],
+            ["img-src 'self' data: blob:" . $extra . ';', "connect-src 'self'" . $extra . ';'],
+            self::DEFAULT_CSP
+        );
+    }
+
     private function sendSecurityHeaders(): void
     {
         if (headers_sent()) {
@@ -232,7 +248,7 @@ class Application
 
         $csp = trim((string) $this->config->get('APP_CSP', ''));
         if ($csp === '') {
-            $csp = self::DEFAULT_CSP;
+            $csp = self::defaultCsp(\App\Services\Basemap::origins($this->config));
         }
         if (strtolower($csp) !== 'off') {
             header('Content-Security-Policy: ' . $csp);

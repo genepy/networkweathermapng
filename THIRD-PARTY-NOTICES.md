@@ -89,6 +89,12 @@ code.
 | `src/public/fonts/BarlowSemiCondensed-Regular.ttf`, `BarlowSemiCondensed-SemiBold.ttf` | The Barlow Project Authors (Jeremy Tribby) | SIL Open Font License 1.1; full text in `src/public/fonts/BarlowSemiCondensed-LICENSE.txt` | https://github.com/jpt/barlow |
 | `src/public/fonts/IBMPlexMono-Regular.ttf`, `IBMPlexMono-SemiBold.ttf` | IBM Corp. | SIL Open Font License 1.1, Reserved Font Name "Plex"; full text in `src/public/fonts/IBMPlexMono-LICENSE.txt` | https://github.com/IBM/plex |
 
+## JavaScript libraries
+
+| Files | Authors | License | Link |
+|---|---|---|---|
+| `src/public/assets/vendor/maplibre-gl/` (`maplibre-gl-csp.js`, `maplibre-gl-csp-worker.js`, `maplibre-gl.css`), MapLibre GL JS 5.24.0, the CSP build from the npm package, unchanged but for the source map comment | MapLibre contributors; portions from Mapbox GL JS, Mapbox, Inc. (BSD-3) | BSD-3-Clause, text in `src/public/assets/vendor/maplibre-gl/LICENSE.txt` | https://maplibre.org |
+
 ## PHP packages (Composer)
 
 Installed by Composer, not stored in this repository. Each package ships its
@@ -151,3 +157,13 @@ Observium (Community under QPL-1.0, Subscription under its commercial terms)
 and Zabbix (AGPL-3.0 since 7.0, GPL-2.0 before) are separate products. The
 application only reads them through their API, database or RRD files and
 contains none of their code.
+
+## Map tiles
+
+The geographic basemap (`SET basemap`) is drawn from tiles the visitor's
+browser loads from the tile server a map names; none are stored here. The
+editor offers [OpenFreeMap](https://openfreemap.org/) (free, no key) with
+its Positron and Dark styles (OpenMapTiles, BSD-3-Clause, design CC-BY 4.0)
+and OSM Liberty (BSD-3-Clause). The map data is © OpenStreetMap contributors,
+under the Open Database License (https://www.openstreetmap.org/copyright);
+each style shows its credit on the map.

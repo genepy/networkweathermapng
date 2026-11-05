@@ -261,4 +261,7 @@ return [
     'Search backgrounds' => 'Rechercher un arrière-plan',
     'Add backgrounds…' => 'Ajouter des arrière-plans…',
     'PNG, JPEG or GIF up to 4096 px, 10 MB at most per file. A background used by a map, or shipped with NetworkWeathermapNG, cannot be removed.' => 'PNG, JPEG ou GIF jusqu’à 4096 px, 10 Mo au plus par fichier. Un arrière-plan utilisé par une carte, ou fourni avec NetworkWeathermapNG, ne peut pas être retiré.',
+    // Geographic basemap
+    'The basemap must come from this site or from a tile server of BASEMAP_SERVERS: :value' => 'Le fond de carte doit venir de ce site ou d’un serveur de tuiles de BASEMAP_SERVERS : :value',
+    'Invalid latitude and longitude: :value' => 'Latitude et longitude invalides : :value',
 ];

@@ -52,6 +52,22 @@
     box-shadow: 0 0 0 1px var(--wm-border), var(--wm-shadow-2);
 }
 
+/* Geographic basemap (basemap.js): web map tiles under the map */
+.wmv-basemap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.wmv-basemap .maplibregl-ctrl-attrib { pointer-events: auto; font-size: 11px; }
+/* clear of the zoom bar */
+.wmv-basemap .maplibregl-ctrl-bottom-right { right: calc(var(--wm-space-3) + 48px); bottom: var(--wm-space-2); }
+/* once the tiles are drawn, the map floats on them: no canvas colour, no frame */
+.wmv-on-basemap .wmv-stage > svg {
+    background: transparent;
+    box-shadow: none;
+}
+.wmv-on-basemap .wmv-stage rect.wm-bg { fill-opacity: 0; }
+
 /* Items */
 .wmv-svg .wmv-hoverable,
 .wmv-svg .wmv-clickable { cursor: pointer; }

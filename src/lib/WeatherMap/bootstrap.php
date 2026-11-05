@@ -38,6 +38,7 @@ $weathermap_debug_suppress = [];
 
 // Load geometry and helper classes first (before compat layer)
 require_once __DIR__ . '/geometry.php';
+require_once __DIR__ . '/geo.php';
 require_once __DIR__ . '/WMPoint.class.php';
 require_once __DIR__ . '/WMVector.class.php';
 require_once __DIR__ . '/WMLine.class.php';

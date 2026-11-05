@@ -130,8 +130,69 @@
 
     var SECTIONS = [
         ['general', t('General')], ['title', t('Title')], ['legend', t('Legend')], ['scale', t('Link colours')],
-        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['fonts', t('Fonts')]
+        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
     ];
+
+    /**
+     * Basemaps to start from: [id, label, url, dark url]. OpenFreeMap serves
+     * OpenStreetMap vector tiles for free, without a key; its styles come
+     * from OpenMapTiles (Positron, Dark Matter) and OSM Liberty (BSD-3).
+     */
+    var BASEMAPS = [
+        ['openfreemap', t('OpenFreeMap, light or dark with the theme'), 'https://tiles.openfreemap.org/styles/positron', 'https://tiles.openfreemap.org/styles/dark'],
+        ['liberty', t('OpenFreeMap Liberty, in colour'), 'https://tiles.openfreemap.org/styles/liberty', '']
+    ];
+
+    /** The Basemap tab: tiles under the map in the viewer and the editor, and where the canvas sits on them */
+    function basemapPane(p, m) {
+        var url = h('input', { name: 'basemap', value: p.basemap, autocomplete: 'off', placeholder: 'https://…', spellcheck: 'false' });
+        var dark = h('input', { name: 'basemap_dark', value: p.basemap_dark, autocomplete: 'off', placeholder: t('same as above'), spellcheck: 'false' });
+        var centre = h('input', { name: 'basemap_center', value: p.basemap_center, autocomplete: 'off', placeholder: '48.8566 2.3522', spellcheck: 'false' });
+        var zoom = h('input', { type: 'number', name: 'basemap_zoom', min: 0, max: 22, step: 'any', value: p.basemap_zoom, placeholder: '5' });
+        var credit = h('input', { name: 'basemap_attribution', value: p.basemap_attribution, autocomplete: 'off', placeholder: t('© OpenStreetMap contributors') });
+        var preset = h('select', { 'aria-label': t('Preset') }, [
+            h('option', { value: '', text: t('Choose a basemap…') }),
+            h('option', { value: 'none', text: t('None: the plain background') })
+        ].concat(BASEMAPS.map(function (b) { return h('option', { value: b[0], text: b[1] }); })));
+        var msg = h('span', { 'class': 'hint', role: 'status' });
+        preset.addEventListener('change', function () {
+            var b = BASEMAPS.filter(function (x) { return x[0] === preset.value; })[0];
+            if (preset.value === 'none') { url.value = ''; dark.value = ''; }
+            if (b) {
+                url.value = b[2];
+                dark.value = b[3];
+                credit.value = '';
+                if (!centre.value) { centre.value = '46.6 2.4'; }
+                if (!zoom.value) { zoom.value = '5'; }
+            }
+            preset.value = '';
+        });
+
+        // the nodes that have a point: frame the canvas around them
+        var pinned = [];
+        ed.state.nodes.forEach(function (n) { if (n.geo) { pinned.push(n.geo); } });
+        var fit = h('button', { type: 'button', text: t('Frame the located nodes'), disabled: !pinned.length,
+            title: pinned.length ? t(':n nodes have a location', { n: pinned.length }) : t('No node has a location yet') });
+        fit.addEventListener('click', function () {
+            var f = window.WMBasemap && window.WMBasemap.fitFrame(pinned, m.width, m.height, 60);
+            if (!f) { return; }
+            centre.value = f.center[0].toFixed(5) + ' ' + f.center[1].toFixed(5);
+            zoom.value = String(f.zoom);
+            msg.textContent = t('Apply to move the canvas over these nodes.');
+        });
+
+        var servers = (m.basemap_servers || []).join(', ');
+        return [
+            h('p', { 'class': 'mapprops-explain', text: t('A web map drawn under the map in the live view and in the editor. The canvas covers the area around its centre point; at 100 %, one pixel of the map is one pixel of the web map at the zoom level below. Nodes with a location (in the node panel) sit on their point; the others keep their position. The PNG image and the downloaded SVG keep the plain background.') }),
+            field(t('Start from'), preset),
+            field(t('Style or tiles address'), url, t('A MapLibre style (JSON) or raster tiles with {z}/{x}/{y}. Allowed: this site, or :servers (BASEMAP_SERVERS).', { servers: servers || '–' })),
+            field(t('For the dark theme'), dark, t('Optional, of the same kind as the address above.')),
+            field(t('Centre (latitude longitude)'), centre),
+            field(t('Zoom level'), zoom, t('0 shows the whole world, 5 a country, 11 a city.')),
+            h('div', { 'class': 'pair' }, [fit, msg]),
+            field(t('Credit'), credit, t('Shown on the map. Styles carry their own; raster tiles default to OpenStreetMap.'))
+        ];
+    }
 
     function fontSelect(name, value) {
         return h('select', { name: name, 'class': 'font-select' }, ed.state.model.fonts.map(function (f) {
@@ -339,6 +400,7 @@
                 check('link_flow', p.link_flow, t('Move glowing dots along the links, in the direction of the traffic')),
                 h('span', { 'class': 'hint', text: t('Only on the live map. Busier links move faster. No motion for a visitor who asked their system for less motion.') })
             ]),
+            basemap: basemapPane(p, m),
             fonts: fontsPane()
         };
 

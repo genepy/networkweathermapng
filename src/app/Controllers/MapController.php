@@ -370,6 +370,7 @@ class MapController extends BaseController
             'scale' => $summary['scale'] ?? [],
             // frames recorded before the total existed: work it out from their items
             'total' => $summary['total'] ?? MapService::trafficTotal((array) ($summary['items'] ?? [])),
+            'basemap' => $summary['basemap'] ?? null,
         ];
     }
 

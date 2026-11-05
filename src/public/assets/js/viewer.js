@@ -47,6 +47,7 @@
     const minimapMark = minimap.querySelector('.wmv-minimap-mark');
     const panel = root.querySelector('.wmv-panel');
     const panelButton = root.querySelector('[data-act="panel"]');
+    const basemapBox = root.querySelector('.wmv-basemap');
 
     const mapId = root.dataset.mapId;
     // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
@@ -62,6 +63,8 @@
     const LABEL_MIN_PX = 7;
     const MIN_Z = 0.05;
     const MAX_Z = 10;
+    // on a basemap, zoom in further: 64 is six web map zoom levels
+    const MAX_Z_BASEMAP = 64;
 
     const S = {
         z: 1, tx: 0, ty: 0,      // screen = t + z * map
@@ -79,6 +82,9 @@
         again: false
     };
 
+    // the geographic basemap under the map (basemap.js), when the map has one
+    const B = {inst: null, cfg: null};
+
     // ------------------------------------------------------------------
     // View geometry
 
@@ -87,7 +93,7 @@
     }
 
     function clampZ(z) {
-        return Math.min(MAX_Z, Math.max(MIN_Z, z));
+        return Math.min(B.cfg ? MAX_Z_BASEMAP : MAX_Z, Math.max(MIN_Z, z));
     }
 
     function fitZ() {
@@ -144,6 +150,7 @@
         S.el.style.height = (S.h * S.z) + 'px';
         stage.style.transform = 'translate(' + S.tx + 'px,' + S.ty + 'px)';
         zoomLabel.textContent = Math.round(S.z * 100) + ' %';
+        if (B.inst) B.inst.sync(S.z, S.tx, S.ty, S.w, S.h);
         root.classList.toggle('wmv-lod-far', S.labelFont > 0 && S.labelFont * S.z < LABEL_MIN_PX);
         drawMinimap();
     }
@@ -454,6 +461,8 @@
                 return r.json();
             })
             .then(function (data) {
+                // first, so the view from the address may zoom as far as a basemap allows
+                if (data.status) setBasemap(data.status.basemap || null);
                 installSvg(data.svg, data.items);
                 showState(data.status);
                 if (data.version) S.version = data.version;
@@ -534,7 +543,46 @@
         }
     }
 
+    // ------------------------------------------------------------------
+    // Geographic basemap
+
+    /** Draw the basemap of the map's summary (null: none) under the map */
+    function setBasemap(cfg) {
+        if (!basemapBox || !window.WMBasemap) return;
+        if (!cfg) {
+            if (B.inst) B.inst.destroy();
+            B.inst = null;
+            B.cfg = null;
+            basemapBox.hidden = true;
+            root.classList.remove('wmv-on-basemap');
+            return;
+        }
+        // tiles that cannot load: keep the plain background until the page reloads
+        if (B.inst && B.inst.failed) return;
+        if (B.inst && window.WMBasemap.same(B.cfg, cfg)) return;
+        B.cfg = cfg;
+        basemapBox.hidden = false;
+        if (B.inst) {
+            B.inst.setConfig(cfg);
+        } else {
+            B.inst = window.WMBasemap.create(basemapBox, cfg, {
+                onReady: function () { root.classList.add('wmv-on-basemap'); },
+                onFail: function () {
+                    root.classList.remove('wmv-on-basemap');
+                    B.cfg = null;
+                    if (S.z > MAX_Z) {
+                        const c = viewCentre();
+                        centreOn(c.x, c.y, MAX_Z);
+                        apply();
+                    }
+                }
+            });
+        }
+        if (S.el) B.inst.sync(S.z, S.tx, S.ty, S.w, S.h);
+    }
+
     function showState(status) {
+        if (status) setBasemap(status.basemap || null);
         if (!statusBox || !status) return;
         statusBox.hidden = false;
         statusBox.className = 'wmv-status wmv-level-' + (status.level || 'none');

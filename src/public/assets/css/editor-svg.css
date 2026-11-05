@@ -228,6 +228,13 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 /* Canvas */
 #canvas { grid-area: canvas; position: relative; overflow: hidden; }
 #stage { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
+/* geographic basemap (basemap.js) under the canvas; once drawn, the paper and the map background let it show */
+#basemap { position: absolute; inset: 0; pointer-events: none; }
+#basemap .maplibregl-ctrl-attrib { pointer-events: auto; font-size: 11px; }
+#canvas #stage { position: relative; }
+#canvas.on-basemap #paper { fill: none; filter: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
+#canvas.on-basemap #map rect.wm-bg { fill-opacity: 0; }
+#canvas.hide-basemap #basemap { visibility: hidden; }
 #stage.tool-link, #stage.placing { cursor: crosshair; }
 #stage.panning { cursor: grabbing; }
 #paper { fill: #fff; filter: drop-shadow(0 1px 4px var(--paper-shadow)); }
