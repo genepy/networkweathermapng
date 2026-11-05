@@ -234,6 +234,19 @@ class MapController extends BaseController
         $this->json(['frames' => $recording->frames($mapId), 'interval' => $recording->getInterval() * 60]);
     }
 
+    /** GET: the total traffic of each recorded frame: {frames: [[time, in, out]...]} */
+    public function totals(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        $recording = $this->recording();
+        if (!$this->canView($mapId) || !$recording->canPlay($mapId)) {
+            $this->json(['error' => __('This map is not recorded')], 404);
+            return;
+        }
+        header('Cache-Control: no-store');
+        $this->json(['frames' => $recording->totals($mapId)]);
+    }
+
     /** GET: one recorded frame, as /map/{id}/svg gives the live map */
     public function historyFrame(array $params): void
     {
@@ -252,7 +265,7 @@ class MapController extends BaseController
         $this->json([
             'svg' => (string) ($frame['svg'] ?? ''),
             'items' => (object) ($frame['items'] ?? []),
-            'status' => self::publicStatus((array) ($frame['status'] ?? [])),
+            'status' => self::publicStatus((array) ($frame['status'] ?? []) + ['items' => (array) ($frame['items'] ?? [])]),
             'time' => $time,
         ]);
     }
@@ -355,6 +368,8 @@ class MapController extends BaseController
             'link' => $summary['link'] ?? null,
             'time' => $summary['time'] ?? null,
             'scale' => $summary['scale'] ?? [],
+            // frames recorded before the total existed: work it out from their items
+            'total' => $summary['total'] ?? MapService::trafficTotal((array) ($summary['items'] ?? [])),
         ];
     }
 

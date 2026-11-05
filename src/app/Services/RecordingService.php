@@ -147,6 +147,48 @@ class RecordingService
         return is_array($data) ? $data : null;
     }
 
+    /**
+     * The total traffic of each frame kept for a map, oldest first, as
+     * [time, in, out] (bits per second, null without data), for the graph
+     * of the viewer's side panel. Worked out once per frame and kept in
+     * totals.json next to the frames.
+     *
+     * @return list<array{0: int, 1: float|null, 2: float|null}>
+     */
+    public function totals(int $mapId, ?int $now = null): array
+    {
+        $file = $this->mapDir($mapId) . '/totals.json';
+        $cache = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+        $cache = is_array($cache) ? $cache : [];
+        $out = [];
+        $kept = [];
+        $changed = false;
+        foreach ($this->frames($mapId, $now) as $time) {
+            $row = $cache[(string) $time] ?? null;
+            if (!is_array($row) || count($row) !== 2) {
+                $frame = $this->frame($mapId, $time);
+                if ($frame === null) {
+                    continue;
+                }
+                $total = MapService::trafficTotal((array) ($frame['items'] ?? []));
+                $row = [$total['in'], $total['out']];
+                $changed = true;
+            }
+            $in = is_numeric($row[0]) ? (float) $row[0] : null;
+            $o = is_numeric($row[1]) ? (float) $row[1] : null;
+            $kept[(string) $time] = [$in, $o];
+            $out[] = [$time, $in, $o];
+        }
+        if ($changed || count($kept) !== count($cache)) {
+            if (is_dir($this->mapDir($mapId))) {
+                $tmp = $file . '.' . getmypid() . '.tmp';
+                file_put_contents($tmp, (string) json_encode((object) $kept));
+                rename($tmp, $file);
+            }
+        }
+        return $out;
+    }
+
     /** @param array<string, mixed> $frame */
     public function save(int $mapId, array $frame, ?int $time = null): int
     {

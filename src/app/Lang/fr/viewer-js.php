@@ -33,4 +33,11 @@ return [
     'The recording could not be loaded.' => 'L’enregistrement n’a pas pu être chargé.',
     'Play' => 'Lecture',
     'Pause' => 'Pause',
+    // Side panel
+    'No site' => 'Sans site',
+    'Show :site on the map' => 'Montrer :site sur la carte',
+    'Total traffic over the last :hours h, IN above the line and OUT below' => 'Trafic total sur les dernières :hours h, ENTRANT au-dessus de la ligne et SORTANT en dessous',
+    'Peak' => 'Pic',
+    '95th percentile' => '95e centile',
+    'Last :hours h' => 'Dernières :hours h',
 ];

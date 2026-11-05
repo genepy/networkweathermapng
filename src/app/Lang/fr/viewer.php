@@ -51,4 +51,15 @@ return [
     'Close (Esc)' => 'Fermer (Échap)',
     'No links on this node.' => 'Aucun lien sur ce nœud.',
     'Open its page' => 'Ouvrir sa page',
+    // Side panel
+    'Side panel: sites, total traffic, legend (P)' => 'Panneau latéral : sites, trafic total, légende (P)',
+    'Side panel' => 'Panneau latéral',
+    'Sites' => 'Sites',
+    'Nodes' => 'Nœuds',
+    'Close the side panel (P)' => 'Fermer le panneau latéral (P)',
+    'Close the side panel' => 'Fermer le panneau latéral',
+    'Total traffic' => 'Trafic total',
+    'IN' => 'ENTRANT',
+    'OUT' => 'SORTANT',
+    'Link load' => 'Charge des liens',
 ];

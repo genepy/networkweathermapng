@@ -397,4 +397,10 @@ return [
     'Look' => 'Apparence',
     'Box with the label' => 'Cadre avec l’étiquette',
     'Round badge: icon or initials, name on hover' => 'Pastille ronde : icône ou initiales, nom au survol',
+    // Viewer side panel
+    'Site' => 'Site',
+    'Nodes of the same site are grouped in the side panel of the map view.' => 'Les nœuds d’un même site sont regroupés dans le panneau latéral de la vue de la carte.',
+    'Total traffic' => 'Trafic total',
+    'Counted' => 'Compté',
+    'Left out' => 'Exclu',
 ];

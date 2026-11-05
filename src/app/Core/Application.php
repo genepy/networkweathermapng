@@ -87,6 +87,7 @@ class Application
         $this->router->get('/map/{id}/svg', 'MapController@svg');
         $this->router->get('/map/{id}/status', 'MapController@status');
         $this->router->get('/map/{id}/history', 'MapController@history');
+        $this->router->get('/map/{id}/totals', 'MapController@totals');
         $this->router->get('/map/{id}/history/{time}', 'MapController@historyFrame');
         $this->router->get('/map/{id}/font/{n}', 'MapController@font');
         $this->router->post('/map/{id}/favourite', 'MapController@favourite');

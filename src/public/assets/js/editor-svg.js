@@ -2313,6 +2313,13 @@
         return out;
     }
 
+    /** The sites already used on the map, offered when typing one */
+    function siteOptions() {
+        var seen = new Set();
+        state.nodes.forEach(function (n) { if (n.site) { seen.add(n.site); } });
+        return h('datalist', { id: 'site-options' }, Array.from(seen).sort().map(function (v) { return h('option', { value: v }); }));
+    }
+
     function nodePanel(nodes) {
         var single = nodes.length === 1 ? nodes[0] : null;
         if (nodes.every(function (n) { return n.note; })) { return notePanel(nodes); }
@@ -2352,7 +2359,10 @@
             h('h3', { text: t('Data') }),
             row(t('Target'), field(nodes, 'target', 'node')),
             row(t('Info URL'), field(nodes, 'infourl', 'node')),
-            row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true }))
+            row(t('Site'), field(nodes, 'site', 'node', { list: 'site-options', placeholder: t('none') })),
+            siteOptions(),
+            row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true })),
+            h('p', { 'class': 'help', text: t('Nodes of the same site are grouped in the side panel of the map view.') })
         );
 
         if (single && single.label_box) {
@@ -2553,6 +2563,7 @@
             h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
+            row(t('Total traffic'), field(links, 'traffic_total', 'link', { options: [['1', t('Counted')], ['0', t('Left out')]] })),
             h('h3', { text: t('Shape') }),
             row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
             row(t('Right angles'), h('div', { 'class': 'pair' }, [
