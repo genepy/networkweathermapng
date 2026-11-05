@@ -38,13 +38,12 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| Nine IX style, task 4: richer hover card | Study: [docs/studies/nine-ix-style.md](studies/nine-ix-style.md). Speed badge, "A ↔ B" title, IN above / OUT below graph, 1 day / 1 week / 1 month |
 | UI redesign, step 5: Map settings panel | Every setting of a map in one panel; name and title are already kept together since step 3 (a title edit renames the map): ask which one to keep on maps where they still differ. Drag and drop to reorder the thumbnails (`list_order`) is left for this step or later |
 | UI redesign, step 6: Settings | Side navigation, pages as panels, data sources in a drawer with a test on the row |
 | UI redesign, step 7: command palette | `Ctrl+K` on the home page, the viewer and the settings |
 | UI redesign, step 8: editor, part 1 | Top bar, *Add* panel, map properties in the inspector, shortcuts behind `?` |
 | UI redesign, step 9: editor, part 2 | Floating contextual bar by default, palette in the editor, movable toolbars as an option (decision) |
-| UI redesign, step 10: hover card with uPlot | IN/OUT graphs drawn in the browser; joins item 4 of the Nine IX study |
+| UI redesign, step 10: hover card with uPlot | The card and its IN/OUT graph are drawn in the browser since Nine IX task 4 (plain SVG); what is left: values under the pointer (crosshair), zoom on a period, the same graph in the node card |
 | UI redesign, step 11: remove the classic editor | List what only the classic editor can do, port it to the SVG editor or report it, then remove its views, routes, scripts, strings and link (decision) |
 
 ## Stale branches
@@ -57,6 +56,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #73 | Nine IX style, task 4: richer hover card: a link's card shows its speed badge (`BANDWIDTH`), "A ↔ B" with the link name and the sites of its ends, IN and OUT now with load bars, and its traffic over 1 day, 1 week or 1 month (switch remembered in the browser) drawn in the browser with IN above the middle line and OUT below, with peak and average; series from `/map/{id}/link/{linkId}/traffic` (bucketed by `TrafficSeries`, cached 5 minutes, Zabbix trends for a week or a month). The card follows the theme, and waits a moment when the pointer leaves the link so the switch can be reached |
 | #72 | Nine IX style, task 8, part 2: city inset and clusters (viewer, maps with a basemap): located nodes keep their 100 % size when zooming in; nodes too close at the current zoom merge into a numbered badge (ring coloured by their busiest link), a click zooms until they split or lists nodes on the same point; hovering a site, a cluster or a side panel row shows its city in a small web map top right (located nodes and links), the focused node's city stays; bandwidth labels hidden above 40 px on a basemap. The summary gives `geo` for located nodes |
 | #71 | Nine IX style, task 6: geographic basemap: a web map under the map in the viewer and the SVG editor (MapLibre GL JS shipped, loaded only for these maps), with the canvas placed by `SET basemap_center` and `SET basemap_zoom`, style or raster tiles from `SET basemap` (+ `basemap_dark` for the dark theme), nodes on their point with `SET geo <lat> <lon>`; tile servers allowed by `BASEMAP_SERVERS` (default OpenFreeMap) and added to the CSP; *Map properties > Basemap* and *Location* in the node panel. Design note: [docs/studies/geographic-basemap.md](studies/geographic-basemap.md) |
 | #70 | Nine IX style, task 5: viewer side panels: a floating panel on the left of the map view (button or `P`, open by default on wide screens, remembered in the browser) with the nodes grouped by site (`SET site`, *Site* in the node panel) and the load of their busiest link, the map's total traffic (links count unless `SET traffic_total 0`, *Total traffic* in the link panel) with a graph of the recorded hours, peak and 95th percentile (`/map/{id}/totals`, cached in `totals.json` next to the frames), and the colour legend. Hovering a node on the map highlights its row; hovering a row highlights the node and frames it in the minimap; a click zooms onto it, the target button frames a site |

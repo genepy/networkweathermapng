@@ -147,6 +147,9 @@ CONF);
         $this->assertEqualsWithDelta(30000000.0, $ab['in'], 1);
         $abId = (int) substr((string) array_search($ab, $items, true), 1);
         $this->assertSame('/map/' . $id . '/link/' . $abId . '/graph', $ab['graph'], 'a link from a data source gets its traffic graph');
+        $this->assertSame('/map/' . $id . '/link/' . $abId . '/traffic', $ab['traffic'], 'and its series for the hover card');
+        $this->assertEquals([100000000, 100000000], $ab['speed'], 'the BANDWIDTH, for the speed badge');
+        $this->assertSame(['a', 'b'], $ab['labels'], 'nodes without a label show their name');
         $bc = array_values(array_filter($items, fn ($i) => $i['name'] === 'b-c'))[0];
         $this->assertArrayNotHasKey('graph', $bc);
         $this->assertArrayNotHasKey('url', $bc);
@@ -283,6 +286,8 @@ CONF);
         $ac = $items['L' . $wmap->links['a-c']->id];
         $this->assertArrayNotHasKey('url', $ac, 'only web pages are opened');
         $this->assertSame('https://nms.example/graph.png', $ac['graph'], 'OVERLIBGRAPH comes first');
+        $this->assertArrayNotHasKey('traffic', $ac, 'the OVERLIBGRAPH picture is shown as it is');
+        $this->assertSame('/map/' . $id . '/link/' . $wmap->links['c-a']->id . '/traffic', $ca['traffic']);
         $this->assertSame('https://nms.example/port/a-b', $items['L' . $wmap->links['a-b']->id]['url'], 'INFOURL comes first');
 
         $this->assertSame('observium:host:core-rtr1:if:xe-0/0/1', MapService::observiumPortTarget($wmap->links['c-a']));

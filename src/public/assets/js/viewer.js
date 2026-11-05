@@ -80,6 +80,7 @@
         focus: null,             // name of the node whose card is pinned
         focusZoom: false,        // zoom onto it when the map comes (#n= without a view)
         ends: {},                // link id -> {a, b} node names (kept across frames)
+        sites: {},               // node name -> its site (SET site), for the hover card
         loading: false,
         again: false
     };
@@ -304,9 +305,12 @@
         svg.classList.add('wmv-svg');
 
         S.items = items || {};
+        S.sites = {};
         Object.keys(S.items).forEach(function (id) {
             const d = S.items[id];
             if (d && d.kind === 'link' && typeof d.a === 'string' && typeof d.b === 'string') S.ends[id] = {a: d.a, b: d.b};
+            // the site of each node, for the hover card of its links
+            if (d && d.kind === 'node' && typeof d.site === 'string') S.sites[d.name] = d.site;
         });
         let font = 0;
         svg.querySelectorAll('text.wm-bwlabel-in, text.wm-bwlabel-out').forEach(function (n) {
@@ -1165,10 +1169,14 @@
         if (!window.WM || !WM.hover) return false;
         let hint = '';
         if (d.url) hint = touch ? t('Tap again to open its page in a new tab') : t('Click to open its page in a new tab');
+        const sites = typeof d.a === 'string' && typeof d.b === 'string' ? [S.sites[d.a] || '', S.sites[d.b] || ''] : [];
         WM.hover.show({
-            // the traffic graph, when there is one, rather than the sparklines
-            title: d.name, ds: d.graph ? '' : (d.ds || ''), in: d.in, out: d.out,
-            inpct: d.inpct, outpct: d.outpct, graph: d.graph || '', hint: hint
+            // the series of the last day, week or month when the map can read
+            // them, else the OVERLIBGRAPH picture, else the data source's
+            title: d.name, a: (d.labels && d.labels[0]) || d.a || '', b: (d.labels && d.labels[1]) || d.b || '', sites: sites, speed: d.speed || null,
+            traffic: d.traffic || '', ds: d.traffic || d.graph ? '' : (d.ds || ''),
+            graph: d.traffic ? '' : (d.graph || ''),
+            in: d.in, out: d.out, inpct: d.inpct, outpct: d.outpct, hint: hint
         }, e);
         return true;
     }
@@ -1188,13 +1196,17 @@
         if (id === (hovered ? hovered.getAttribute('data-id') : null)) return;
         hovered = g;
         if (!g || !it.data) {
-            if (window.WM && WM.hover) WM.hover.hide();
+            // a card with a period switch waits a moment so the pointer can reach it
+            if (window.WM && WM.hover) WM.hover.leave();
             return;
         }
         showPanel(g, it.data, e);
     });
     viewport.addEventListener('mouseleave', function () {
-        if (!touch) hidePanel();
+        if (!touch) {
+            hovered = null;
+            if (window.WM && WM.hover) WM.hover.leave();
+        }
         markRow(null);
         hoverInset(null);
     });

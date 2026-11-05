@@ -44,4 +44,13 @@ return [
     ':n nodes close together: :names' => ':n nœuds rapprochés : :names',
     ':n nodes at the same place' => ':n nœuds au même endroit',
     ':n nodes' => ':n nœuds',
+    // weathermap.js: hover card of a link
+    'Link speed' => 'Débit du lien',
+    'Traffic period' => 'Période du trafic',
+    '1 day' => '1 jour',
+    '1 week' => '1 semaine',
+    '1 month' => '1 mois',
+    'Average' => 'Moyenne',
+    'No traffic recorded for this period' => 'Aucun trafic enregistré sur cette période',
+    'IN above, OUT below' => 'ENTRANT au-dessus, SORTANT en dessous',
 ];

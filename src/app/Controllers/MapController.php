@@ -13,6 +13,7 @@ use App\Services\DataSourceService;
 use App\Services\KioskService;
 use App\Services\RecordingService;
 use App\Services\TimezoneService;
+use App\Services\TrafficSeries;
 
 class MapController extends BaseController
 {
@@ -419,49 +420,7 @@ class MapController extends BaseController
     {
         $mapId = (int) ($params['id'] ?? 0);
         $linkId = (int) ($params['linkId'] ?? 0);
-
-        if ($this->config->isAuthEnabled() && !$this->auth->canViewMap($mapId)) {
-            http_response_code(403);
-            exit;
-        }
-
-        $map = $this->getMap($mapId);
-        if (!$map) {
-            http_response_code(404);
-            exit;
-        }
-
-        $mapFile = $this->config->getConfigsPath() . '/' . $map['config_file'];
-        if (!file_exists($mapFile)) {
-            http_response_code(404);
-            exit;
-        }
-
-        require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
-
-        $wmap = new \WeatherMap();
-        $wmap->context = 'viewer';
-        $wmap->ReadConfig($mapFile);
-
-        $targetLink = null;
-        foreach ($wmap->links as $link) {
-            if ((int) ($link->id ?? 0) === $linkId) {
-                $targetLink = $link;
-                break;
-            }
-        }
-
-        // A link set up with the editor's picker names its source; otherwise
-        // an Observium TARGET is read from the first active Observium source
-        $selection = $targetLink ? json_decode((string) ($targetLink->hints['datasource'] ?? ''), true) : null;
-        if (!is_array($selection) || empty($selection['sourceId'])) {
-            $selection = null;
-        }
-        $observiumTarget = $targetLink && !$selection ? MapService::observiumPortTarget($targetLink) : null;
-        if (!$selection && $observiumTarget === null) {
-            http_response_code(404);
-            exit;
-        }
+        [$selection, $observiumTarget] = $this->linkSource($mapId, $linkId);
 
         $minutes = (int) $this->getInput('minutes', 1440);
         if ($minutes <= 0) {
@@ -507,6 +466,94 @@ class MapController extends BaseController
         header('Cache-Control: public, max-age=300');
         echo $png;
         exit;
+    }
+
+    /**
+     * Where the traffic history of a link comes from: the data source
+     * selection set up with the editor's picker, or else an Observium TARGET
+     * (read from the first active Observium source). Answers 403 or 404 and
+     * stops when the map or the link has none.
+     *
+     * @return array{0: array<string, mixed>|null, 1: string|null}
+     */
+    private function linkSource(int $mapId, int $linkId): array
+    {
+        if ($this->config->isAuthEnabled() && !$this->auth->canViewMap($mapId)) {
+            http_response_code(403);
+            exit;
+        }
+
+        $map = $this->getMap($mapId);
+        $mapFile = $map ? $this->config->getConfigsPath() . '/' . $map['config_file'] : '';
+        if (!$map || !file_exists($mapFile)) {
+            http_response_code(404);
+            exit;
+        }
+
+        require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
+
+        $wmap = new \WeatherMap();
+        $wmap->context = 'viewer';
+        $wmap->ReadConfig($mapFile);
+
+        $targetLink = null;
+        foreach ($wmap->links as $link) {
+            if ((int) ($link->id ?? 0) === $linkId) {
+                $targetLink = $link;
+                break;
+            }
+        }
+
+        $selection = $targetLink ? json_decode((string) ($targetLink->hints['datasource'] ?? ''), true) : null;
+        if (!is_array($selection) || empty($selection['sourceId'])) {
+            $selection = null;
+        }
+        $observiumTarget = $targetLink && !$selection ? MapService::observiumPortTarget($targetLink) : null;
+        if (!$selection && $observiumTarget === null) {
+            http_response_code(404);
+            exit;
+        }
+
+        return [$selection, $observiumTarget];
+    }
+
+    /**
+     * GET ?range=day|week|month: the IN and OUT traffic of a link over that
+     * period, for the hover card of the viewer (see TrafficSeries), with the
+     * map's time zone. Cached 5 minutes like the graph picture.
+     */
+    public function linkTraffic(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        $linkId = (int) ($params['linkId'] ?? 0);
+        $range = TrafficSeries::range((string) $this->getInput('range', 'day'));
+        [$selection, $observiumTarget] = $this->linkSource($mapId, $linkId);
+
+        $cacheDir = $this->config->getOutputPath() . '/graphs';
+        if (!file_exists($cacheDir)) {
+            @mkdir($cacheDir, 0775, true);
+        }
+        $cacheFile = sprintf('%s/map_%d_link_%d_%s.json', $cacheDir, $mapId, $linkId, $range);
+        $cached = is_file($cacheFile) && time() - (int) filemtime($cacheFile) < 300
+            ? json_decode((string) file_get_contents($cacheFile), true)
+            : null;
+
+        if (!is_array($cached)) {
+            $minutes = TrafficSeries::minutes($range);
+            try {
+                $data = $selection
+                    ? $this->dataSourceService->getLinkBandwidthData((int) $selection['sourceId'], $selection, $minutes)
+                    : $this->dataSourceService->observiumBandwidthForTarget((string) $observiumTarget, null, $minutes);
+            } catch (\Throwable $e) {
+                // shown as "no data" in the card rather than an error
+                $data = [];
+            }
+            $cached = TrafficSeries::fromBandwidthData($data, $range, time());
+            @file_put_contents($cacheFile, json_encode($cached));
+        }
+
+        header('Cache-Control: private, max-age=300');
+        $this->json($cached + ['tz' => $this->timezones()->forMap($mapId)]);
     }
 
     private function timezones(): TimezoneService

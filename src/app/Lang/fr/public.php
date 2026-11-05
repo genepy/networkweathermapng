@@ -41,7 +41,6 @@ return [
     'Invalid data source' => 'Source de données invalide',
     'Failed to load' => 'Échec du chargement',
     'Loading…' => 'Chargement…',
-    'Link bandwidth (24h)' => 'Bande passante du lien (24 h)',
     'IN' => 'ENTRANT',
     'OUT' => 'SORTANT',
 
