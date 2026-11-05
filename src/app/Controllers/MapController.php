@@ -187,6 +187,7 @@ class MapController extends BaseController
             'hours' => $hours,
             'autoRefresh' => $autoRefresh,
             'history' => $this->historyAvailable($mapId),
+            'historyHours' => $this->recording()->getRetention(),
             'title' => $map['title_cache'] ?: $map['name'],
         ], !$fullscreen);
     }
@@ -353,6 +354,7 @@ class MapController extends BaseController
             'colour' => $summary['colour'] ?? null,
             'link' => $summary['link'] ?? null,
             'time' => $summary['time'] ?? null,
+            'scale' => $summary['scale'] ?? [],
         ];
     }
 
@@ -842,7 +844,7 @@ class MapController extends BaseController
             'groupId' => $groupId,
             'fullscreen' => $fullscreen,
             'refreshInterval' => (int) $this->config->get('MAP_REFRESH_INTERVAL', 300),
-            'title' => __('Map Cycle'),
+            'title' => __('Kiosk'),
         ], !$fullscreen);
     }
     

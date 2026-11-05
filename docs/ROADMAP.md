@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-11-04.
+Last updated: 2026-11-05.
 
 ## In progress
 
@@ -43,7 +43,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Nine IX style, task 6: geographic basemap | Tiles under the map, nodes by latitude/longitude. A design note first: it changes the map format |
 | Nine IX style, task 7: link flow animation | A glowing dot along each link in the traffic direction, per-map switch, none under reduced motion |
 | Nine IX style, task 8: site focus and zoom | Click a node to zoom onto it and pin its card; hover frames it in the minimap or the site list |
-| UI redesign, step 4: map viewer | Floating bar, Live / Last 24 h, a single fullscreen, status and legend at the bottom, kiosk controls that fade out |
 | UI redesign, step 5: Map settings panel | Every setting of a map in one panel; name and title are already kept together since step 3 (a title edit renames the map): ask which one to keep on maps where they still differ. Drag and drop to reorder the thumbnails (`list_order`) is left for this step or later |
 | UI redesign, step 6: Settings | Side navigation, pages as panels, data sources in a drawer with a test on the row |
 | UI redesign, step 7: command palette | `Ctrl+K` on the home page, the viewer and the settings |
@@ -62,6 +61,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #PR | UI redesign, step 4: map viewer: the map fills the page with floating controls (bar with *Find a node*, *Live* / *Last 24 h*, one fullscreen with the browser's Fullscreen API keeping the zoom, ⚙ *Map settings*, ⋯ *Open as PNG* / *Copy kiosk link* / *Download PNG*, *Edit*), zoom at the bottom right, state and colour legend at the bottom left (`scale` in the map summary), controls that fade out in fullscreen; kiosk with a progress bar, floating controls that fade out, arrows, Space and `F` |
 | #66 | UI redesign, step 3: one Maps page: thumbnails and list (remembered), filter chips (*All*, *Favourites*, each group, *Over 80 %*), *Edit* and a ⋯ menu on hover (settings, duplicate, move, hide, preview, .conf, delete), bulk actions in the list, inactive maps greyed for editors; `/editor` redirects to `/`; *Favourites* in the phone bottom bar; a title edit in the editor renames the map (`MapService::followTitle`) |
 | #65 | Nine IX style, task 3: badge nodes: `SET node_style badge` draws a node as a round badge (its icon, or the initials of its label, on a disc with a ring and a soft shadow) in PNG and SVG; the label becomes the tooltip; *Look* in the node panel |
 | #60 | UI redesign, step 2: app shell: thin top bar, user menu (language, theme, password, log out), no footer, bottom navigation on phones, toasts (`WMUI.toast`), a styled confirmation dialog (`WMUI.confirm`), error pages in the shell (`ErrorPage`), versioned asset addresses (`asset()`) |

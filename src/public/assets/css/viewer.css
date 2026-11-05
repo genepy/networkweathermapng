@@ -2,16 +2,23 @@
    Uses the theme variables of weathermap.css. */
 
 /* ------------------------------------------------------------------
-   Zoomable view */
+   Zoomable view (UI redesign step 4): the map fills the page under the
+   top bar, its controls float over it */
+
+/* The map page has no margin: the map is the page */
+.main-content:has(> .map-view-page.svg-view) {
+    padding: 0;
+    max-width: none;
+    min-height: 0;
+}
 
 .wmv {
     position: relative;
-    height: calc(100vh - var(--header-height) - var(--footer-height) - 150px);
-    min-height: 360px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background: var(--bg-color);
+    height: calc(100dvh - var(--header-height));
+    min-height: 320px;
+    background: var(--wm-canvas, var(--bg-color));
     overflow: hidden;
+    color: var(--wm-text);
 }
 
 .wmv-viewport {
@@ -24,10 +31,10 @@
     -webkit-user-select: none;
     outline: none;
     background:
-        radial-gradient(circle, color-mix(in srgb, var(--text-muted) 22%, transparent) 1px, transparent 1px) 0 0 / 22px 22px,
-        var(--bg-color);
+        radial-gradient(circle, color-mix(in srgb, var(--wm-text-muted) 22%, transparent) 1px, transparent 1px) 0 0 / 22px 22px,
+        var(--wm-canvas, var(--bg-color));
 }
-.wmv-viewport:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.wmv-viewport:focus-visible { box-shadow: inset 0 0 0 2px var(--wm-focus); }
 .wmv-dragging .wmv-viewport { cursor: grabbing; }
 
 .wmv-stage {
@@ -41,7 +48,8 @@
 .wmv-stage > img {
     display: block;
     background: var(--map-bg);
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.18);
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--wm-border), var(--wm-shadow-2);
 }
 
 /* Items */
@@ -57,109 +65,238 @@
 }
 @keyframes wmv-found {
     from { filter: drop-shadow(0 0 0 transparent); }
-    to { filter: drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 2px var(--accent)); }
+    to { filter: drop-shadow(0 0 6px var(--wm-accent)) drop-shadow(0 0 2px var(--wm-accent)); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .wmv-svg g.wmv-found { animation: none; filter: drop-shadow(0 0 5px var(--accent)); }
+    .wmv-svg g.wmv-found { animation: none; filter: drop-shadow(0 0 5px var(--wm-accent)); }
 }
 
 /* Level of detail: bandwidth labels unreadable when zoomed out */
 .wmv-lod-far .wmv-svg .wm-bwlabel-in,
 .wmv-lod-far .wmv-svg .wm-bwlabel-out { display: none; }
 
-/* Messages */
+/* Messages, under the floating bar */
 .wmv-message {
     position: absolute;
     left: 50%;
-    top: 16px;
+    top: 76px;
     transform: translateX(-50%);
     padding: 6px 14px;
-    border-radius: 6px;
-    background: var(--card-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
-    font-size: 13px;
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-surface);
+    color: var(--wm-text);
+    border: 1px solid var(--wm-border);
+    box-shadow: var(--wm-shadow-1);
+    font-size: var(--wm-text-sm);
     pointer-events: none;
     z-index: 3;
 }
 .wmv-message[hidden] { display: none; }
-.wmv-message.wmv-error { background: var(--warning-bg); color: var(--warning-text); }
+.wmv-message.wmv-error { background: var(--wm-warning-soft); color: var(--wm-warning-text); }
 
-/* Toolbar */
-.wmv-toolbar {
+/* Floating surfaces: bar, zoom, state */
+.wmv-bar,
+.wmv-zoombar,
+.wmv-status {
     position: absolute;
-    right: 12px;
-    top: 12px;
+    z-index: 4;
+    background: color-mix(in srgb, var(--wm-surface) 92%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-bar);
+    box-shadow: var(--wm-shadow-2);
+    color: var(--wm-text);
+}
+.wmv-fades { transition: opacity 0.3s var(--wm-ease); }
+
+/* Top bar: where you are, then the actions */
+.wmv-bar {
+    left: var(--wm-space-3);
+    right: var(--wm-space-3);
+    top: var(--wm-space-3);
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: calc(100% - 24px);
-    padding: 4px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--card-bg) 92%, transparent);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
-    color: var(--text-color);
-    z-index: 4;
-    transition: opacity 0.3s;
+    gap: var(--wm-space-2);
+    padding: 6px 6px 6px var(--wm-space-4);
 }
 
+.wmv-crumbs {
+    display: flex;
+    align-items: center;
+    gap: var(--wm-space-2);
+    flex: 1;
+    min-width: 0;
+    font-size: var(--wm-text-md);
+}
+.wmv-crumbs a { color: var(--wm-text-muted); white-space: nowrap; }
+.wmv-crumbs a:hover { color: var(--wm-text); }
+.wmv-crumbs .wmv-crumb-sep { width: 16px; height: 16px; color: var(--wm-text-muted); flex: none; }
+.wmv-crumbs h1 {
+    margin: 0;
+    font-size: var(--wm-text-lg);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.wmv-badge {
+    flex: none;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--wm-success-soft);
+    color: var(--wm-text);
+    font-size: var(--wm-text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+}
+.wmv-badge-playback { background: var(--wm-warning-soft); }
+
+.wmv-find {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.wmv-find > .icon {
+    position: absolute;
+    left: 9px;
+    width: 16px;
+    height: 16px;
+    color: var(--wm-text-muted);
+    pointer-events: none;
+}
+.wmv-find-input {
+    width: 210px;
+    height: 34px;
+    padding: 0 30px 0 32px;
+    border: 1px solid var(--wm-field-border);
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-input-bg);
+    color: var(--wm-text);
+    font: inherit;
+    font-size: var(--wm-text-md);
+}
+.wmv-find-input:focus { outline: 2px solid var(--wm-focus); outline-offset: 0; }
+.wmv-find kbd {
+    position: absolute;
+    right: 8px;
+    padding: 0 5px;
+    border: 1px solid var(--wm-border);
+    border-radius: 4px;
+    color: var(--wm-text-muted);
+    font: 12px/18px var(--wm-font-mono);
+    pointer-events: none;
+}
+.wmv-find-input:focus + kbd,
+.wmv-find-input:not(:placeholder-shown) + kbd { display: none; }
+
+.wmv-when button { min-height: 34px; }
+.wmv-when .icon { width: 16px; height: 16px; }
+.wmv-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--wm-success);
+}
+
+.wmv-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--wm-radius-control);
+    background: none;
+    color: var(--wm-text);
+    font: inherit;
+    cursor: pointer;
+}
+.wmv-icon-btn:hover { background: var(--wm-hover); text-decoration: none; }
+.wmv-icon-btn:focus-visible,
+.wmv-zoom:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
+.wmv-icon-btn .icon { width: 18px; height: 18px; }
+.wmv-more > summary { list-style: none; }
+.wmv-more .row-menu-items { min-width: 230px; }
+.wmv-more .row-menu-items a,
+.wmv-more .row-menu-items button { white-space: nowrap; }
+.wmv-edit { flex: none; }
+.wmv-edit .icon { width: 16px; height: 16px; }
+
+/* Buttons of the playback bar */
 .wmv-btn {
     min-width: 30px;
     height: 30px;
     padding: 0 8px;
-    border: 1px solid var(--field-border);
-    border-radius: 6px;
-    background: var(--input-bg);
-    color: var(--text-color);
+    border: 1px solid var(--wm-field-border);
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-input-bg);
+    color: var(--wm-text);
     font: inherit;
     font-size: 16px;
     line-height: 28px;
     text-align: center;
-    text-decoration: none;
     cursor: pointer;
 }
-.wmv-btn-text { font-size: 13px; }
 .wmv-btn .icon { vertical-align: -3px; }
-.wmv-btn:hover { background: var(--hover-bg); text-decoration: none; }
-.wmv-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.wmv-btn:hover { background: var(--wm-hover); }
+.wmv-btn:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
 
-.wmv-zoom {
-    min-width: 52px;
-    text-align: center;
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-muted);
-}
-
-.wmv-find-input {
-    width: 170px;
-    height: 30px;
-    padding: 0 8px;
-    border: 1px solid var(--field-border);
-    border-radius: 6px;
-    background: var(--input-bg);
-    color: var(--text-color);
-    font: inherit;
-    font-size: 13px;
-}
-.wmv-find-input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
-
-.wmv-state {
-    display: inline-flex;
+/* Zoom: bottom right */
+.wmv-zoombar {
+    right: var(--wm-space-3);
+    bottom: var(--wm-space-3);
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 0 6px 0 8px;
-    font-size: 13px;
-    color: var(--text-color);
-    border-left: 1px solid var(--border-color);
-    margin-left: 2px;
-    white-space: nowrap;
+    padding: 4px;
+    gap: 2px;
 }
-.wmv-state[hidden] { display: none; }
+.wmv-zoom {
+    min-width: 48px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: var(--wm-radius-control);
+    background: none;
+    color: var(--wm-text-muted);
+    font: inherit;
+    font-size: var(--wm-text-sm);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+.wmv-zoom:hover { background: var(--wm-hover); color: var(--wm-text); }
+
+/* State and legend: bottom left */
+.wmv-status {
+    left: var(--wm-space-3);
+    bottom: var(--wm-space-3);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    max-width: calc(100% - 100px);
+    padding: 6px var(--wm-space-3);
+    font-size: var(--wm-text-sm);
+    font-variant-numeric: tabular-nums;
+    row-gap: 4px;
+}
+.wmv-status[hidden] { display: none; }
+.wmv-status > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.wmv-status > span + span {
+    margin-left: var(--wm-space-3);
+    padding-left: var(--wm-space-3);
+    border-left: 1px solid var(--wm-border);
+}
+.wmv-status > span[hidden] { display: none; }
+.wmv-legend-bar {
+    display: inline-block;
+    width: 120px;
+    height: 8px;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wm-text) 15%, transparent);
+}
 
 /* State dot, shared with the map list */
 .wmv-dot,
@@ -173,20 +310,19 @@
     flex: none;
 }
 
-/* Minimap */
+/* Minimap: next to the zoom */
 .wmv-minimap {
     position: absolute;
-    left: 12px;
-    bottom: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
+    right: 76px;
+    bottom: var(--wm-space-3);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-control);
     background: var(--map-bg);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--wm-shadow-2);
     overflow: hidden;
     cursor: crosshair;
     touch-action: none;
     z-index: 4;
-    transition: opacity 0.3s;
 }
 .wmv-minimap[hidden] { display: none; }
 .wmv-minimap img {
@@ -197,42 +333,73 @@
 }
 .wmv-minimap-view {
     position: absolute;
-    border: 2px solid var(--accent);
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 2px solid var(--wm-accent);
+    background: color-mix(in srgb, var(--wm-accent) 14%, transparent);
     pointer-events: none;
 }
 
-/* The page around: the "Last updated" line is in the toolbar state */
+/* The page around: the "Last updated" line is in the state */
 .map-view-page.svg-view .map-meta { display: none; }
 
 /* ------------------------------------------------------------------
-   NOC fullscreen */
+   Fullscreen: the browser's fullscreen on the map, or the fullscreen
+   page of a kiosk link. The controls fade out when nothing moves. */
 
 body.wmv-noc {
     margin: 0;
-    background: var(--bg-color);
-    color: var(--text-color);
+    background: var(--wm-canvas, var(--bg-color));
+    color: var(--wm-text);
     overflow: hidden;
 }
 .wmv.wmv-fullscreen {
+    height: 100vh;
+    height: 100dvh;
+}
+.wmv.wmv-standalone {
     position: fixed;
     inset: 0;
     height: auto;
     min-height: 0;
-    border: 0;
-    border-radius: 0;
 }
-.wmv-fullscreen .wmv-stage > svg,
-.wmv-fullscreen .wmv-stage > img { box-shadow: 0 0 0 1px var(--border-color), 0 6px 30px rgba(0, 0, 0, 0.35); }
-.wmv-fullscreen.wmv-idle .wmv-toolbar,
-.wmv-fullscreen.wmv-idle .wmv-minimap { opacity: 0; pointer-events: none; }
+.wmv-fullscreen.wmv-idle .wmv-fades { opacity: 0; pointer-events: none; }
 .wmv-fullscreen.wmv-idle .wmv-viewport { cursor: none; }
+@media (prefers-reduced-motion: reduce) {
+    .wmv-fades { transition: none; }
+}
+
+/* Narrow windows: the search and the labels shrink first */
+@media (max-width: 1000px) {
+    .wmv-find-input { width: 150px; }
+    .wmv-when button span:not(.wmv-live-dot) { display: none; }
+    .wmv-legend-bar { width: 80px; }
+}
 
 @media (max-width: 640px) {
-    .wmv { height: calc(100vh - var(--header-height) - 120px); }
-    .wmv-toolbar { left: 8px; right: 8px; top: 8px; max-width: none; }
-    .wmv-find-input { width: 120px; }
-    .wmv-state { display: none; }
+    .wmv { height: calc(100dvh - var(--header-height) - 64px - env(safe-area-inset-bottom)); }
+    .wmv.wmv-fullscreen { height: 100dvh; }
+    .wmv-bar {
+        left: var(--wm-space-2);
+        right: var(--wm-space-2);
+        top: var(--wm-space-2);
+        flex-wrap: wrap;
+        padding: 4px 4px 4px var(--wm-space-3);
+        gap: 4px;
+    }
+    .wmv-crumbs > a,
+    .wmv-crumbs .wmv-crumb-sep { display: none; }
+    .wmv-crumbs h1 { font-size: var(--wm-text-md); }
+    .wmv-find { order: 10; flex: 1 1 100%; }
+    .wmv-find-input { width: 100%; }
+    .wmv-find kbd { display: none; }
+    .wmv-edit span { display: none; }
+    .wmv-edit { padding: 0 var(--wm-space-3); }
+    .wmv-message { top: 104px; }
+    .wmv-status { left: var(--wm-space-2); bottom: var(--wm-space-2); max-width: calc(100% - 84px); }
+    .wmv-status-when,
+    .wmv-legend { display: none !important; }
+    .wmv-status > span + span { margin-left: 0; padding-left: 0; border-left: 0; }
+    .wmv-zoombar { right: var(--wm-space-2); bottom: var(--wm-space-2); }
+    .wmv-history { bottom: 56px; }
 }
 
 /* ------------------------------------------------------------------
@@ -438,48 +605,149 @@ body.wmv-noc {
     .maps-page .page-actions .wm-btn { padding: 0 var(--wm-space-3); }
 }
 
-/* Outside fullscreen the toolbar sits above the map, so it never hides
-   the map's corner (legend, title). */
-.wmv:not(.wmv-fullscreen) { display: flex; flex-direction: column; }
-.wmv:not(.wmv-fullscreen) .wmv-toolbar {
-    position: static;
-    order: -1;
-    max-width: none;
-    border: 0;
-    border-bottom: 1px solid var(--border-color);
-    border-radius: 0;
-    box-shadow: none;
-    background: var(--card-bg);
-}
-.wmv:not(.wmv-fullscreen) .wmv-viewport { position: relative; inset: auto; flex: 1; min-height: 0; }
-
 /* ------------------------------------------------------------------
    History: playback of the recorded frames */
 
 .wmv-history {
     position: absolute;
     left: 50%;
-    bottom: 14px;
+    bottom: 64px;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 8px;
     width: min(640px, calc(100% - 24px));
     padding: 6px 10px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--card-bg) 94%, transparent);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    color: var(--text-color);
+    border-radius: var(--wm-radius-bar);
+    background: color-mix(in srgb, var(--wm-surface) 94%, transparent);
+    border: 1px solid var(--wm-border);
+    box-shadow: var(--wm-shadow-2);
+    color: var(--wm-text);
     z-index: 5;
 }
 .wmv-history[hidden] { display: none; }
 .wmv-history-slider { flex: 1; min-width: 80px; accent-color: var(--accent); }
 .wmv-history-time { min-width: 92px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .wmv-history-speed { height: 30px; border: 1px solid var(--field-border); border-radius: 6px; background: var(--input-bg); color: var(--text-color); }
-.wmv-btn.wmv-active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.wmv-in-history .wmv-state { opacity: 0.85; }
 @media (max-width: 600px) {
     .wmv-history-speed { display: none; }
     .wmv-history-time { min-width: 0; font-size: 12px; }
+}
+
+/* ------------------------------------------------------------------
+   Kiosk (/cycle): the map fills the page, a thin bar at the top fills up
+   until the next map, the controls float at the bottom and fade out */
+
+.main-content:has(> .kiosk) {
+    padding: 0;
+    max-width: none;
+    min-height: 0;
+}
+
+.kiosk {
+    position: relative;
+    height: calc(100dvh - var(--header-height));
+    min-height: 320px;
+    overflow: hidden;
+    background: var(--wm-canvas, var(--bg-color));
+    color: var(--wm-text);
+}
+.kiosk.kiosk-standalone {
+    position: fixed;
+    inset: 0;
+    height: auto;
+}
+.kiosk.wmv-fullscreen { height: 100dvh; }
+.kiosk.wmv-idle { cursor: none; }
+
+.kiosk-stage {
+    position: absolute;
+    inset: 3px 0 0;
+}
+.cycle-map { display: none; }
+/* Overflowing maps (fixed zoom) stay centred and are cut on every side */
+.cycle-map.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+.cycle-map img { border-radius: 2px; }
+.cycle-map.zoom-fit img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.cycle-map.zoom-fixed img {
+    flex: none;
+    max-width: none;
+    max-height: none;
+}
+
+.kiosk-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 3px;
+    background: color-mix(in srgb, var(--wm-text) 10%, transparent);
+    z-index: 4;
+}
+.kiosk-progress > span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--wm-accent);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+}
+.kiosk-single .kiosk-progress { display: none; }
+@keyframes kiosk-fill {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+.kiosk-bar {
+    position: absolute;
+    left: 50%;
+    bottom: var(--wm-space-5);
+    transform: translateX(-50%);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: var(--wm-space-1);
+    max-width: calc(100% - 2 * var(--wm-space-3));
+    padding: 4px;
+    background: color-mix(in srgb, var(--wm-surface) 92%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-bar);
+    box-shadow: var(--wm-shadow-2);
+}
+.kiosk-single [data-kiosk="prev"],
+.kiosk-single [data-kiosk="next"],
+.kiosk-single [data-kiosk="pause"] { display: none; }
+.kiosk-info {
+    display: flex;
+    align-items: baseline;
+    gap: var(--wm-space-2);
+    min-width: 0;
+    padding: 0 var(--wm-space-3);
+    font-size: var(--wm-text-sm);
+    white-space: nowrap;
+}
+.kiosk-name { overflow: hidden; text-overflow: ellipsis; max-width: 40vw; font-size: var(--wm-text-md); }
+.kiosk-count { color: var(--wm-text-muted); font-variant-numeric: tabular-nums; }
+.kiosk.wmv-idle .wmv-fades { opacity: 0; pointer-events: none; }
+.kiosk .empty-state { padding-top: 20vh; }
+
+@media (max-width: 640px) {
+    .kiosk { height: calc(100dvh - var(--header-height) - 64px - env(safe-area-inset-bottom)); }
+    .kiosk.wmv-fullscreen { height: 100dvh; }
+    .kiosk-bar { bottom: var(--wm-space-3); }
+    .kiosk-count { display: none; }
+    .kiosk-name { max-width: 34vw; }
 }

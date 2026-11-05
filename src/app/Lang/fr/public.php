@@ -30,10 +30,7 @@ return [
     'Failed to move map' => 'Impossible de déplacer la carte',
 
     // Map view
-    'Fullscreen (Fit)' => 'Plein écran (ajusté)',
-    'Fullscreen (Original)' => 'Plein écran (taille réelle)',
     'Preview' => 'Aperçu',
-    'Edit Map' => 'Modifier la carte',
     'Last updated:' => 'Dernière mise à jour :',
     'Traffic last :hours h' => 'Trafic des dernières :hours h',
     'Access denied' => 'Accès refusé',
@@ -49,15 +46,17 @@ return [
     'OUT' => 'SORTANT',
 
     // Slideshow
-    'Map Cycle' => 'Défilement des cartes',
-    'Prev' => 'Précédente',
-    'Next' => 'Suivante',
     'Play' => 'Lecture',
     'Pause' => 'Pause',
     'Map :current of :total' => 'Carte :current sur :total',
+    'Previous map (←)' => 'Carte précédente (←)',
+    'Previous map' => 'Carte précédente',
+    'Next map (→)' => 'Carte suivante (→)',
+    'Next map' => 'Carte suivante',
+    'Pause (Space)' => 'Pause (Espace)',
+    'Play (Space)' => 'Lecture (Espace)',
+    'Leave the kiosk' => 'Quitter le kiosque',
     'Fullscreen' => 'Plein écran',
-    'Exit' => 'Quitter',
-    'Exit Fullscreen' => 'Quitter le plein écran',
 
     // Editor list
     'Map Editor' => 'Éditeur de cartes',

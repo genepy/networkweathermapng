@@ -1,3 +1,13 @@
+<?php
+/**
+ * Kiosk: the maps of a group one after the other, each for its own time
+ * (Settings > Kiosk). The map fills the page; the controls float at the
+ * bottom and fade out after a few seconds without movement. ?fullscreen=1
+ * is the same page without the application shell, for a wall screen.
+ */
+$cycleUrl = '/cycle' . ($groupId ? '?group=' . (int) $groupId : '');
+$fsUrl = '/cycle?fullscreen=1' . ($groupId ? '&group=' . (int) $groupId : '');
+?>
 <?php if ($fullscreen): ?>
 <?php $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''; ?>
 <!DOCTYPE html>
@@ -6,148 +16,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
-    <title><?= e__('Map Cycle') ?> - NetworkWeathermapNG</title>
+    <title><?= e__('Kiosk') ?> - NetworkWeathermapNG</title>
+    <link rel="icon" href="<?= asset('/assets/icons/favicon.svg') ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= asset('/assets/css/tokens.css') ?>">
     <link rel="stylesheet" href="<?= asset('/assets/css/weathermap.css') ?>">
-    <style>
-        body { margin: 0; padding: 0; background: var(--bg-color); }
-        .cycle-fullscreen { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
-        .cycle-controls { background: rgba(0,0,0,0.8); padding: 10px; color: #fff; text-align: center; }
-        .cycle-map-container { flex: 1; height: auto; min-height: 0; overflow: hidden; }
-    </style>
+    <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
 </head>
-<body>
+<body class="wmv-noc">
 <?php endif; ?>
+<link rel="stylesheet" href="<?= asset('/assets/css/viewer.css') ?>">
 
-<div class="<?= $fullscreen ? 'cycle-fullscreen' : 'cycle-page' ?>">
-    <div class="cycle-controls">
-        <button id="cycle-prev" class="btn btn-sm">&laquo; <?= e__('Prev') ?></button>
-        <button id="cycle-pause" class="btn btn-sm" data-play="<?= e__('Play') ?>" data-pause="<?= e__('Pause') ?>"><?= e__('Pause') ?></button>
-        <button id="cycle-next" class="btn btn-sm"><?= e__('Next') ?> &raquo;</button>
-        <span class="cycle-info">
-            <?= __('Map :current of :total', [
-                'current' => '<span id="current-map">1</span>',
-                'total' => '<span id="total-maps">' . count($maps) . '</span>',
-            ]) ?>
-        </span>
-        <?php if (!$fullscreen): ?>
-        <a href="/cycle?fullscreen=1&group=<?= $groupId ?>" class="btn btn-sm"><?= e__('Fullscreen') ?></a>
-        <?php if ($auth->isAdmin()): ?>
-        <a href="/admin/kiosk" class="btn btn-sm"><?= e__('Kiosk settings') ?></a>
-        <?php endif; ?>
-        <a href="/" class="btn btn-sm"><?= e__('Exit') ?></a>
-        <?php else: ?>
-        <a href="/cycle?group=<?= $groupId ?>" class="btn btn-sm"><?= e__('Exit Fullscreen') ?></a>
-        <?php endif; ?>
+<div class="kiosk<?= $fullscreen ? ' kiosk-standalone wmv-fullscreen' : '' ?>" id="kiosk"
+     data-refresh="<?= max(30, (int) $refreshInterval) ?>"
+     data-exit-url="<?= htmlspecialchars($cycleUrl) ?>"
+     data-fullscreen-url="<?= htmlspecialchars($fsUrl) ?>"
+     data-standalone="<?= $fullscreen ? '1' : '0' ?>">
+    <?php if (!$maps): ?>
+    <div class="empty-state">
+        <p><?= e__('No maps available.') ?></p>
+        <p><a href="/" class="wm-btn"><?= e__('Back to the maps') ?></a></p>
     </div>
-    
-    <div class="cycle-map-container">
+    <?php else: ?>
+    <div class="kiosk-progress" aria-hidden="true"><span></span></div>
+    <div class="kiosk-stage">
         <?php foreach ($maps as $index => $map):
             $settings = $kiosk[(int) $map['id']] ?? ['zoom' => 0, 'duration' => 30];
+            $name = (string) ($map['title_cache'] ?: $map['name']);
         ?>
-        <div class="cycle-map <?= $settings['zoom'] ? 'zoom-fixed' : 'zoom-fit' ?> <?= $index === 0 ? 'active' : '' ?>"
-             data-map-id="<?= $map['id'] ?>"
+        <div class="cycle-map <?= $settings['zoom'] ? 'zoom-fixed' : 'zoom-fit' ?><?= $index === 0 ? ' active' : '' ?>"
+             data-map-id="<?= (int) $map['id'] ?>"
+             data-name="<?= htmlspecialchars($name) ?>"
              data-zoom="<?= (int) $settings['zoom'] ?>"
              data-duration="<?= (int) $settings['duration'] ?>">
-            <img src="/map/<?= $map['id'] ?>/image?t=<?= time() ?>" 
-                 alt="<?= htmlspecialchars($map['name']) ?>">
+            <img src="/map/<?= (int) $map['id'] ?>/image?t=<?= time() ?>" alt="<?= htmlspecialchars($name) ?>">
         </div>
         <?php endforeach; ?>
     </div>
+
+    <div class="kiosk-bar wmv-fades" role="toolbar" aria-label="<?= e__('Kiosk') ?>">
+        <button type="button" class="wmv-icon-btn" data-kiosk="prev" aria-keyshortcuts="ArrowLeft" title="<?= e__('Previous map (←)') ?>" aria-label="<?= e__('Previous map') ?>"><?= icon('chevron-left') ?></button>
+        <button type="button" class="wmv-icon-btn" data-kiosk="pause" aria-keyshortcuts="Space" aria-pressed="false"
+                title="<?= e__('Pause (Space)') ?>" aria-label="<?= e__('Pause') ?>"
+                data-pause="<?= e__('Pause (Space)') ?>" data-play="<?= e__('Play (Space)') ?>"><?= icon('pause') ?></button>
+        <button type="button" class="wmv-icon-btn" data-kiosk="next" aria-keyshortcuts="ArrowRight" title="<?= e__('Next map (→)') ?>" aria-label="<?= e__('Next map') ?>"><?= icon('chevron-right') ?></button>
+        <span class="kiosk-info" aria-live="polite">
+            <strong class="kiosk-name"><?= htmlspecialchars((string) ($maps[0]['title_cache'] ?: $maps[0]['name'])) ?></strong>
+            <span class="kiosk-count"><?= __('Map :current of :total', [
+                'current' => '<span class="kiosk-current">1</span>',
+                'total' => '<span class="kiosk-total">' . count($maps) . '</span>',
+            ]) ?></span>
+        </span>
+        <?php if ($fullscreen): ?>
+        <a class="wmv-icon-btn" href="<?= htmlspecialchars($cycleUrl) ?>" data-kiosk="exit" title="<?= e__('Leave fullscreen (Esc)') ?>" aria-label="<?= e__('Leave fullscreen') ?>"><?= icon('minimize') ?></a>
+        <?php else: ?>
+        <button type="button" class="wmv-icon-btn" data-kiosk="fullscreen" aria-keyshortcuts="F" aria-pressed="false"
+                data-enter="<?= e__('Fullscreen (F)') ?>" data-leave="<?= e__('Leave fullscreen (F)') ?>"
+                title="<?= e__('Fullscreen (F)') ?>" aria-label="<?= e__('Fullscreen') ?>"><?= icon('maximize') ?></button>
+        <?php if ($auth->isAdmin()): ?>
+        <a class="wmv-icon-btn" href="/admin/kiosk" title="<?= e__('Kiosk settings') ?>" aria-label="<?= e__('Kiosk settings') ?>"><?= icon('settings') ?></a>
+        <?php endif; ?>
+        <a class="wmv-icon-btn" href="/" title="<?= e__('Leave the kiosk') ?>" aria-label="<?= e__('Leave the kiosk') ?>"><?= icon('x') ?></a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 </div>
 
-<script>
-(function() {
-    const maps = document.querySelectorAll('.cycle-map');
-    const totalMaps = maps.length;
-    const refreshInterval = <?= $refreshInterval ?> * 1000;
-    
-    // A fixed zoom is a percentage of the map's own size
-    maps.forEach(function(mapDiv) {
-        const zoom = parseInt(mapDiv.dataset.zoom, 10) || 0;
-        const img = mapDiv.querySelector('img');
-        if (!zoom || !img) return;
-        function size() {
-            if (img.naturalWidth) img.style.width = (img.naturalWidth * zoom / 100) + 'px';
-        }
-        img.addEventListener('load', size);
-        if (img.complete) size();
-    });
-    
-    let currentIndex = 0;
-    let isPaused = false;
-    let timer = null;
-    
-    function showMap(index) {
-        maps.forEach((map, i) => {
-            map.classList.toggle('active', i === index);
-        });
-        document.getElementById('current-map').textContent = index + 1;
-    }
-    
-    function nextMap() {
-        currentIndex = (currentIndex + 1) % totalMaps;
-        showMap(currentIndex);
-    }
-    
-    function prevMap() {
-        currentIndex = (currentIndex - 1 + totalMaps) % totalMaps;
-        showMap(currentIndex);
-    }
-    
-    // Each map stays on screen for its own display time
-    function startCycle() {
-        stopCycle();
-        const seconds = parseInt(maps[currentIndex].dataset.duration, 10) || 30;
-        timer = setTimeout(function() {
-            nextMap();
-            startCycle();
-        }, Math.max(5, seconds) * 1000);
-    }
-    
-    function stopCycle() {
-        if (timer) clearTimeout(timer);
-        timer = null;
-    }
-    
-    document.getElementById('cycle-prev').addEventListener('click', function() {
-        prevMap();
-        if (!isPaused) { stopCycle(); startCycle(); }
-    });
-    
-    document.getElementById('cycle-next').addEventListener('click', function() {
-        nextMap();
-        if (!isPaused) { stopCycle(); startCycle(); }
-    });
-    
-    document.getElementById('cycle-pause').addEventListener('click', function() {
-        isPaused = !isPaused;
-        this.textContent = isPaused ? this.dataset.play : this.dataset.pause;
-        if (isPaused) {
-            stopCycle();
-        } else {
-            startCycle();
-        }
-    });
-    
-    // Refresh images periodically
-    setInterval(function() {
-        maps.forEach(function(mapDiv) {
-            const img = mapDiv.querySelector('img');
-            if (img) {
-                const src = img.src.split('?')[0];
-                img.src = src + '?t=' + Date.now();
-            }
-        });
-    }, refreshInterval);
-    
-    // Start cycling
-    if (totalMaps > 1) {
-        startCycle();
-    }
-})();
-</script>
-
+<script src="<?= asset('/assets/js/kiosk.js') ?>" defer></script>
 <?php if ($fullscreen): ?>
 </body>
 </html>
