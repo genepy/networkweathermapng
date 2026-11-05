@@ -223,6 +223,8 @@ class MapClipboard
             $node->hints = $group((array) $src->hints);
             $node->defined_in = $map->configfile;
             $map->nodes[$newName] = $node;
+            // a node with a point on the basemap gets the point of where it lands
+            \WeatherMapGeo::follow($map, $node);
         }
 
         $links = [];

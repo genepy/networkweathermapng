@@ -643,6 +643,7 @@ class MapService
                 'time' => $summary['time'] ?? time(),
                 'scale' => $summary['scale'] ?? [],
                 'total' => self::trafficTotal((array) ($summary['items'] ?? [])),
+                'basemap' => $summary['basemap'] ?? null,
             ],
         ];
     }
@@ -726,6 +727,8 @@ class MapService
             'level' => self::loadLevel($max === null ? null : $max['pct']),
             'scale' => self::scaleStops($wmap),
             'total' => self::trafficTotal($items),
+            // the geographic basemap the viewer draws under the map, or null
+            'basemap' => Basemap::of($wmap),
             'items' => $items,
         ];
     }

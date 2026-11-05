@@ -27,6 +27,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
 - **Translations** - English and French built in, chosen in the user menu or with `APP_LOCALE`; [add your language](TRANSLATING.md)
+- **Geographic basemap** - A map can float on a web map (OpenStreetMap vector tiles from OpenFreeMap, or your own tile server), with nodes placed by latitude and longitude; see *Geographic basemap* below
 - **Light and dark themes** - Automatic (system setting) or chosen in the user menu; colours meet WCAG 2.2 AA contrast in both
 - **Responsive UI** - A thin top bar with a user menu, a bottom navigation bar on phones, toasts for messages and a styled confirmation dialog
 
@@ -83,6 +84,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `APP_DEBUG` | Enable debug mode | `false` |
 | `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Admin > Time zone | `UTC` |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
+| `BASEMAP_SERVERS` | Tile servers a map's basemap may load from (space-separated URL prefixes), added to the default Content-Security-Policy. Same-site addresses (`/tiles/...`) are always allowed | `https://tiles.openfreemap.org` |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
 | `APP_ROOT` | Application root path | - |
 | `DATA_ROOT` | Persistent data root path | - |
@@ -218,6 +220,40 @@ stays straight where the link is straight, where the link bends too much
 under it (a right angle, a tight curve), on several lines, or in a bitmap
 font. In the SVG editor, *Along the link* in the Comments part of a link's
 panel switches it.
+
+### Geographic basemap
+
+A map can be drawn over a web map: streets, coasts and place names under
+the nodes and links, in the live view and in the SVG editor. The canvas
+keeps its size in pixels; the basemap says which area it covers:
+
+```
+SET basemap https://tiles.openfreemap.org/styles/positron   # MapLibre style, or raster tiles .../{z}/{x}/{y}.png
+SET basemap_dark https://tiles.openfreemap.org/styles/dark  # optional, for the dark theme
+SET basemap_center 46.6 2.4     # latitude and longitude at the centre of the canvas
+SET basemap_zoom 5              # web map zoom level at 100 % (0 world, 5 country, 11 city)
+SET basemap_attribution ...     # optional credit; raster tiles default to OpenStreetMap
+
+NODE paris
+	POSITION 398 147
+	SET geo 48.8566 2.3522      # sits on this point; POSITION follows
+```
+
+A node with `SET geo` is placed on its point whenever the map is read, so
+changing the centre or the zoom moves it with the basemap; nodes without it
+keep their position. In the editor: *Map properties > Basemap* (presets,
+addresses, centre, zoom, *Frame the located nodes*), and *Location* in the
+node panel (latitude and longitude, *Locate where it is*, *Remove the
+location*). Nodes added on a basemap are located where they are dropped;
+moving a located node moves its point. The *Background* layer switch hides
+the tiles while editing.
+
+The tiles are drawn by the visitor's browser with MapLibre GL JS (shipped,
+loaded only for these maps; needs WebGL) and only from the servers of
+`BASEMAP_SERVERS` or from the site itself, so a closed network serves its
+own tiles under the same address. In the viewer the map zooms in further on a
+basemap (up to 64×). The PNG image and the downloaded SVG keep the plain
+background. Design note: [docs/studies/geographic-basemap.md](docs/studies/geographic-basemap.md).
 
 ### Zabbix TARGET Formats
 

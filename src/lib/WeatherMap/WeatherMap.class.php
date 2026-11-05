@@ -3702,6 +3702,12 @@ class WeatherMap extends WeatherMapBase {
 
 		wm_debug('Found ' . sizeof($this->seen_zlayers) . ' z-layers including builtins (0,100).');
 
+		// nodes with a point on the basemap (SET geo) go there first, so the
+		// nodes placed relative to them follow
+		if (!$is_include) {
+			WeatherMapGeo::placeNodes($this);
+		}
+
 		// calculate any relative positions here - that way, nothing else
 		// really needs to know about them
 

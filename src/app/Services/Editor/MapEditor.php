@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace App\Services\Editor;
 
+use App\Services\Basemap;
+
 use InvalidArgumentException;
 
 class MapEditor
@@ -164,6 +166,9 @@ class MapEditor
             }
         }
 
+        // nodes with a point on the basemap go there, also after the frame changed
+        \WeatherMapGeo::placeNodes($map);
+
         $this->save($map);
 
         return $result;
@@ -210,6 +215,8 @@ class MapEditor
 
             $node->x = $x;
             $node->y = $y;
+            // a node with a point on the basemap: the point moves with it
+            \WeatherMapGeo::follow($map, $node);
         }
 
         foreach ((array) ($op['vias'] ?? []) as $name => $vias) {
@@ -459,6 +466,9 @@ class MapEditor
                     $this->setLabelPreset($map, $node, $value);
                 } elseif ($key === 'style') {
                     $this->setNodeStyle($map, $node, (string) $value);
+                } elseif ($key === 'geo') {
+                    // SET geo <lat> <lon>: the node sits on that point of the basemap; '' or null frees it
+                    $this->setGeo($map, $node, $value);
                 } elseif ($key === 'site') {
                     // SET site: the group of the node in the viewer's site list
                     $site = trim((string) preg_replace('/\s+/u', ' ', $this->text($value)));
@@ -698,6 +708,13 @@ class MapEditor
             $this->setNoteText($node, isset($op['text']) ? (string) $op['text'] : __('Note'));
         }
 
+        // on a basemap, a new node is located where it is put (a note stays on the canvas)
+        $frame = \WeatherMapGeo::frame($map);
+        if ($frame !== null && !$note) {
+            [$lat, $lon] = \WeatherMapGeo::unproject($frame, $map->width, $map->height, $x, $y);
+            $node->hints['geo'] = \WeatherMapGeo::format($lat, $lon);
+        }
+
         $map->nodes[$name] = $node;
 
         return ['nodes' => [$name]];
@@ -760,6 +777,7 @@ class MapEditor
             $node->relative_to = '';
             $node->defined_in = $map->configfile;
             $map->nodes[$newName] = $node;
+            \WeatherMapGeo::follow($map, $node);
             $renamed[$source->name] = $newName;
         }
 
@@ -1025,6 +1043,48 @@ class MapEditor
 
     private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags', 'modern'];
 
+    /** SET basemap...: the geographic basemap; an empty value removes the hint */
+    private function setBasemapHint(\WeatherMap $map, string $key, mixed $value): void
+    {
+        $text = trim($this->text($value ?? ''));
+        if ($text === '') {
+            unset($map->hints[$key]);
+            return;
+        }
+        if ($key === 'basemap' || $key === 'basemap_dark') {
+            if (!Basemap::allowed($text)) {
+                throw new InvalidArgumentException(__('The basemap must come from this site or from a tile server of BASEMAP_SERVERS: :value', ['value' => $text]));
+            }
+        } elseif ($key === 'basemap_center') {
+            $p = \WeatherMapGeo::latLon($text);
+            if ($p === null) {
+                throw new InvalidArgumentException(__('Invalid latitude and longitude: :value', ['value' => $text]));
+            }
+            $text = \WeatherMapGeo::format($p[0], $p[1]);
+        } elseif ($key === 'basemap_zoom') {
+            if (!is_numeric($text) || (float) $text < 0 || (float) $text > 22) {
+                throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $text]));
+            }
+            $text = rtrim(rtrim(sprintf('%.3F', (float) $text), '0'), '.');
+        }
+        $map->hints[$key] = $text;
+    }
+
+    /** SET geo on a node: where it sits on the basemap; empty frees it where it is */
+    private function setGeo(\WeatherMap $map, \WeatherMapNode $node, mixed $value): void
+    {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+            unset($node->hints['geo']);
+            return;
+        }
+        $p = \WeatherMapGeo::latLon($text);
+        if ($p === null) {
+            throw new InvalidArgumentException(__('Invalid latitude and longitude: :value', ['value' => $text]));
+        }
+        $node->hints['geo'] = \WeatherMapGeo::format($p[0], $p[1]);
+    }
+
     /**
      * The Map properties dialog: texts, fonts and colours of the title,
      * legend and timestamp, and the defaults of the links. A new link
@@ -1048,6 +1108,8 @@ class MapEditor
                 $ref['top'] = -1;
                 $ref['special'] = 1;
                 unset($ref);
+            } elseif (in_array($key, Basemap::HINTS, true)) {
+                $this->setBasemapHint($map, $key, $value);
             } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
                 if (!in_array((int) $value, $fonts, true)) {
                     throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value]));
@@ -1317,6 +1379,11 @@ class MapEditor
             'link_labelstyle' => $default ? (string) $default->labelstyle : 'percent',
             'link_bwfont' => $default ? (int) $default->bwfont : 2,
             'link_bwstyle' => $default ? self::bwStyle($default) : 'classic',
+            'basemap' => (string) ($map->hints['basemap'] ?? ''),
+            'basemap_dark' => (string) ($map->hints['basemap_dark'] ?? ''),
+            'basemap_center' => (string) ($map->hints['basemap_center'] ?? ''),
+            'basemap_zoom' => (string) ($map->hints['basemap_zoom'] ?? ''),
+            'basemap_attribution' => (string) ($map->hints['basemap_attribution'] ?? ''),
         ];
     }
 
@@ -1373,6 +1440,8 @@ class MapEditor
                 'label_position' => self::labelPresetOf($node),
                 'style' => $node->is_badge() ? 'badge' : 'box',
                 'site' => \App\Services\MapService::siteOf($node),
+                // its point on the basemap, [lat, lon], or null
+                'geo' => \WeatherMapGeo::nodePoint($node),
                 'icon' => (string) $node->iconfile,
                 'iconscalew' => (int) $node->iconscalew,
                 'iconscaleh' => (int) $node->iconscaleh,
@@ -1485,6 +1554,9 @@ class MapEditor
                 'background' => (string) $map->background,
                 'props' => self::mapProps($map),
                 'scale' => self::scaleOut($map),
+                // the basemap the editor draws under the canvas (as the viewer does), or null
+                'basemap' => Basemap::of($map),
+                'basemap_servers' => Basemap::servers(),
             ],
             'nodes' => $nodes,
             'links' => $links,
