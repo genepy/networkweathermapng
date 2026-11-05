@@ -29,16 +29,40 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     <header id="appbar">
         <a class="tb-back" href="/" title="<?= e__('Back to the map list') ?>" aria-label="<?= e__('Back to the map list') ?>"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></a>
         <span class="tb-title" title="<?= $e($map['name']) ?>"><?= $e($map['name']) ?></span>
+        <span id="save-state" role="status" aria-live="polite" data-state="loading"><?= icon('circle-check', 'i') ?><span><?= e__('Loading…') ?></span></span>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <?= $btn('undo', 'undo', __('Undo'), __('Undo (Ctrl+Z)'), 'disabled') ?>
+        <?= $btn('redo', 'redo', __('Redo'), __('Redo (Ctrl+Shift+Z)'), 'disabled') ?>
         <span class="appbar-right">
-            <?= $btn('map-properties', 'properties', __('Map properties'), __('Title, legend, timestamp, fonts, colours and link defaults of the map')) ?>
-            <a class="tb-link" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span class="lbl"><?= e__('Map settings') ?></span></a>
-            <a class="tb-link" href="/map/<?= $mapId ?>" target="_blank" rel="noopener" title="<?= e__('Open the published map') ?>"><svg class="i" aria-hidden="true"><use href="#i-view"/></svg><span class="lbl"><?= e__('View map') ?></span></a>
-            <a class="tb-link" href="/editor/classic/<?= $mapId ?>" title="<?= e__('The previous editor') ?>"><svg class="i" aria-hidden="true"><use href="#i-classic"/></svg><span class="lbl"><?= e__('Classic editor') ?></span></a>
-            <button type="button" id="toolbars-button" popovertarget="toolbars-menu" title="<?= e__('Show, hide and arrange the toolbars and panels') ?>" aria-label="<?= e__('Toolbars and panels') ?>"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span class="lbl"><?= e__('Toolbars') ?></span></button>
-            <button type="button" data-pref="theme" aria-label="<?= e__('Theme') ?>"
-                    data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><?= icon('sun-moon', 'i') ?></button>
+            <span class="tb-layers">
+                <?= $btn('layers', 'layers', __('Layers'), __('Hide layers while editing (not saved in the map)'), 'aria-expanded="false" aria-controls="layers-panel"') ?>
+                <span id="layers-panel" role="group" aria-label="<?= e__('Layers shown in the editor') ?>" hidden>
+                    <label><input type="checkbox" name="background" checked> <?= e__('Background image') ?></label>
+                    <label><input type="checkbox" name="zones" checked> <?= e__('Zones') ?></label>
+                    <label><input type="checkbox" name="links" checked> <?= e__('Links') ?></label>
+                    <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
+                    <label><input type="checkbox" name="nodelabels" checked> <?= e__('Node labels') ?></label>
+                    <small><?= e__('Hiding a layer only changes your view in this editor. It is not saved in the map, and other people still see everything. This browser remembers your choice.') ?></small>
+                    <div id="custom-layers" role="group" aria-label="<?= e__('Your layers') ?>"></div>
+                </span>
+            </span>
+            <?= $btn('text-mode', 'text', __('Text mode'), __('Edit the map as text (.conf)')) ?>
+            <button type="button" id="more-button" popovertarget="editor-menu" title="<?= e__('More') ?>" aria-label="<?= e__('More') ?>" aria-haspopup="menu"><?= icon('ellipsis', 'i') ?></button>
+            <a class="tb-view" href="/map/<?= $mapId ?>" title="<?= e__('Open the published map') ?>"><?= icon('eye', 'i') ?><span><?= e__('View') ?></span></a>
         </span>
     </header>
+
+    <div id="editor-menu" popover role="menu" aria-label="<?= e__('More') ?>">
+        <button type="button" role="menuitem" data-cmd="map-properties"><?= icon('sliders-horizontal', 'i') ?><span><?= e__('Map properties') ?></span></button>
+        <a role="menuitem" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span><?= e__('Map settings') ?></span></a>
+        <button type="button" role="menuitem" popovertarget="toolbars-menu" id="toolbars-button"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span><?= e__('Toolbars and panels') ?></span></button>
+        <button type="button" role="menuitem" data-cmd="shortcuts"><?= icon('list', 'i') ?><span><?= e__('Keyboard shortcuts') ?></span><kbd>?</kbd></button>
+        <hr>
+        <button type="button" role="menuitem" data-pref="theme" aria-label="<?= e__('Theme') ?>"
+                data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><?= icon('sun-moon', 'i') ?><span class="theme-label"></span></button>
+        <a role="menuitem" href="/map/<?= $mapId ?>" target="_blank" rel="noopener"><?= icon('external-link', 'i') ?><span><?= e__('Open the map in a new tab') ?></span></a>
+        <a role="menuitem" href="/editor/classic/<?= $mapId ?>" title="<?= e__('The previous editor') ?>"><svg class="i" aria-hidden="true"><use href="#i-classic"/></svg><span><?= e__('Classic editor') ?></span></a>
+    </div>
 
     <div id="toolbars-menu" popover>
         <h3><?= e__('Toolbars') ?></h3>
@@ -67,10 +91,6 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     </div>
 
     <div class="dock" id="dock-top" data-dock="top">
-        <div class="toolbar" data-toolbar="history" aria-label="<?= e__('History') ?>" role="toolbar">
-            <?= $btn('undo', 'undo', __('Undo'), __('Undo (Ctrl+Z)'), 'disabled') ?>
-            <?= $btn('redo', 'redo', __('Redo'), __('Redo (Ctrl+Shift+Z)'), 'disabled') ?>
-        </div>
         <div class="toolbar" data-toolbar="clipboard" aria-label="<?= e__('Clipboard') ?>" role="toolbar">
             <?= $btn('cut', 'cut', __('Cut'), __('Cut (Ctrl+X)'), 'data-needs="nodes1"') ?>
             <?= $btn('copy', 'copy', __('Copy'), __('Copy the selected nodes and the links between them, also for another map (Ctrl+C)'), 'data-needs="nodes1"') ?>
@@ -106,19 +126,6 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <?= $btn('find', 'find', __('Select…'), __('Select by criteria (Ctrl+F)')) ?>
         </div>
         <div class="toolbar" data-toolbar="view" aria-label="<?= e__('View') ?>" role="toolbar">
-            <span class="tb-layers">
-                <?= $btn('layers', 'layers', __('Layers'), __('Hide layers while editing (not saved in the map)'), 'aria-expanded="false" aria-controls="layers-panel"') ?>
-                <span id="layers-panel" role="group" aria-label="<?= e__('Layers shown in the editor') ?>" hidden>
-                    <label><input type="checkbox" name="background" checked> <?= e__('Background image') ?></label>
-                    <label><input type="checkbox" name="zones" checked> <?= e__('Zones') ?></label>
-                    <label><input type="checkbox" name="links" checked> <?= e__('Links') ?></label>
-                    <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
-                    <label><input type="checkbox" name="nodelabels" checked> <?= e__('Node labels') ?></label>
-                    <small><?= e__('Hiding a layer only changes your view in this editor. It is not saved in the map, and other people still see everything. This browser remembers your choice.') ?></small>
-                    <div id="custom-layers" role="group" aria-label="<?= e__('Your layers') ?>"></div>
-                </span>
-            </span>
-            <?= $btn('text-mode', 'text', __('Text mode'), __('Edit the map as text (.conf)')) ?>
             <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid (G)')) ?>
             <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out (-)')) ?>
             <button type="button" data-cmd="zoom-reset" id="zoom-level" title="<?= e__('Actual size (0)') ?>" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-tag"><?= e__('Zoom') ?></span> <span id="zoom-value">100%</span></button>
@@ -130,24 +137,32 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     <div class="dock vertical" id="dock-right" data-dock="right"></div>
     <div class="dock" id="dock-bottom" data-dock="bottom"></div>
 
-    <aside id="palette">
+    <aside id="palette" aria-label="<?= e__('Add') ?>">
         <div class="splitter" data-panel="palette" title="<?= e__('Drag to resize, double-click to hide') ?>"></div>
         <h3><?= e__('Add') ?></h3>
-        <p class="hint"><?= e__('Drag onto the map') ?></p>
-        <div class="palette-item" draggable="true" data-template="DEFAULT">
-            <span class="pi-box"><?= e__('Label') ?></span> <?= e__('Node') ?>
+        <div class="add-tiles">
+            <button type="button" class="add-tile palette-item" draggable="true" data-template="DEFAULT" data-cmd="add-node" title="<?= e__('Add a node in the middle of the view, or drag it onto the map') ?>"><?= icon('rectangle-horizontal', 'i') ?><span><?= e__('Node') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="note" title="<?= e__('Add a note: free text on several lines, for a legend, a contact or a maintenance window') ?>"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg><span><?= e__('Note') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="zone" title="<?= e__('Add a zone: a labelled rectangle for a site, around the selected nodes if any') ?>"><svg class="i" aria-hidden="true"><use href="#i-zone"/></svg><span><?= e__('Zone') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes (L)') ?>"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg><span><?= e__('Link') ?></span><kbd>L</kbd></button>
         </div>
+        <p class="hint"><?= e__('Click to add in the middle of the view, or drag a node or an icon onto the map.') ?></p>
         <div id="palette-templates"></div>
         <div class="palette-head">
             <h3><?= e__('Icons') ?></h3>
             <span class="palette-tools">
-                <button type="button" id="icon-fold" title="<?= e__('Fold or unfold every theme') ?>" aria-label="<?= e__('Fold or unfold every theme') ?>">&#x2195;</button>
-                <button type="button" id="icon-manage" aria-pressed="false" title="<?= e__('Remove icons from the library') ?>" aria-label="<?= e__('Remove icons') ?>">&#x1F5D1;</button>
-                <button type="button" id="icon-add" title="<?= e__('Add icons to the library (PNG, GIF, JPEG or SVG)') ?>" aria-label="<?= e__('Add icons') ?>">+</button>
+                <button type="button" id="icon-fold" title="<?= e__('Fold or unfold every theme') ?>" aria-label="<?= e__('Fold or unfold every theme') ?>"><?= icon('chevron-down', 'i') ?></button>
+                <button type="button" id="icon-manage" aria-pressed="false" title="<?= e__('Remove icons from the library') ?>" aria-label="<?= e__('Remove icons') ?>"><?= icon('trash-2', 'i') ?></button>
+                <button type="button" id="icon-add" title="<?= e__('Add icons to the library (PNG, GIF, JPEG or SVG)') ?>" aria-label="<?= e__('Add icons') ?>"><?= icon('plus', 'i') ?></button>
             </span>
         </div>
         <input type="search" id="icon-search" placeholder="<?= e__('Search icons') ?>" aria-label="<?= e__('Search icons') ?>" autocomplete="off">
         <div id="palette-icons"></div>
+        <details id="palette-backgrounds" class="icon-theme">
+            <summary><span><?= e__('Backgrounds') ?></span><span class="icon-count"></span></summary>
+            <div class="pb-grid" role="group" aria-label="<?= e__('Backgrounds') ?>"></div>
+            <button type="button" class="pb-manage"><?= e__('Search, add or remove…') ?></button>
+        </details>
     </aside>
 
     <main id="canvas">
@@ -170,7 +185,6 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
                 <rect id="minimap-view"/>
             </svg>
         </div>
-        <div id="busy" hidden><?= e__('Saving…') ?></div>
         <div id="toast" hidden></div>
     </main>
 
@@ -276,14 +290,12 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     </form>
 </dialog>
 
-<dialog id="mapprops-dialog" aria-labelledby="mapprops-title">
+<dialog id="shortcuts-dialog" aria-labelledby="shortcuts-title">
     <form method="dialog">
-        <h3 id="mapprops-title"><?= e__('Map properties') ?></h3>
-        <nav class="mapprops-tabs" role="tablist"></nav>
-        <div class="mapprops-body"></div>
+        <h3 id="shortcuts-title"><?= e__('Keyboard shortcuts') ?></h3>
+        <div class="shortcuts-body"></div>
         <menu>
-            <button value="cancel" formnovalidate><?= e__('Cancel') ?></button>
-            <button value="ok" class="primary"><?= e__('Apply') ?></button>
+            <button value="cancel" class="primary"><?= e__('Close') ?></button>
         </menu>
     </form>
 </dialog>

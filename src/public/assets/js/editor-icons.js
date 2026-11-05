@@ -69,7 +69,8 @@
             if (!icons.length) { return; }
 
             var grid = h('div', { 'class': 'icon-grid' }, icons.map(function (i) {
-                return h('div', { 'class': 'palette-icon', draggable: state.manage ? 'false' : 'true', 'data-icon': i.path, title: i.name }, [
+                return h('div', { 'class': 'palette-icon', draggable: state.manage ? 'false' : 'true', 'data-icon': i.path, title: i.name,
+                    role: state.manage ? null : 'button', tabindex: state.manage ? null : '0', 'aria-label': state.manage ? null : t('Add a node with the icon :name', { name: i.name }) }, [
                     h('img', { src: '/' + i.preview, alt: '', loading: 'lazy' }),
                     state.manage && !i.shipped ? h('button', {
                         type: 'button', 'class': 'icon-delete', title: t('Remove this icon'), 'aria-label': t('Remove :name', { name: i.name }),
@@ -96,6 +97,8 @@
             sections.unshift(h('p', { 'class': 'hint', text: t('Icons shipped with NetworkWeathermapNG cannot be removed.') }));
         }
         holder.replaceChildren.apply(holder, sections);
+        var total = state.themes.reduce(function (n, th) { return n + th.icons.length; }, 0);
+        search.placeholder = t('Search :n icons', { n: total });
         manageBtn.classList.toggle('active', state.manage);
         manageBtn.setAttribute('aria-pressed', state.manage ? 'true' : 'false');
     }
@@ -289,6 +292,25 @@
         var anyOpen = state.themes.some(function (th) { return isOpen(th.theme); });
         setAll(!anyOpen);
     });
+    /** A node with this icon in the middle of the view */
+    function addWith(tile) {
+        if (state.manage || !tile || !ed.addNodeHere) { return; }
+        var path = tile.dataset.icon;
+        ed.addNodeHere({ icon: path, name: path.split('/').pop().replace(/\.\w+$/, '') });
+    }
+    holder.addEventListener('click', function (evt) {
+        if (evt.target.closest('.icon-delete')) { return; }
+        addWith(evt.target.closest('.palette-icon'));
+    });
+    holder.addEventListener('keydown', function (evt) {
+        var tile = evt.target.closest('.palette-icon');
+        if (tile && (evt.key === 'Enter' || evt.key === ' ')) {
+            addWith(tile);
+            evt.preventDefault();
+            evt.stopPropagation();
+        }
+    });
+
     search.addEventListener('input', render);
     search.addEventListener('keydown', function (evt) {
         if (evt.key === 'Escape' && search.value) { search.value = ''; render(); evt.stopPropagation(); }

@@ -24,7 +24,7 @@
     var ORDER = Object.keys(bars);
 
     var NAMES = {
-        history: t('History'), clipboard: t('Clipboard'), tools: t('Tools'), align: t('Align'),
+        clipboard: t('Clipboard'), tools: t('Tools'), align: t('Align'),
         arrange: t('Arrange'), tidy: t('Tidy up'), view: t('View')
     };
 
@@ -264,6 +264,47 @@
     });
 
     window.addEventListener('resize', keepFloatingInside);
+
+    // ------------------------------------------------------------------
+    // The ⋯ menu of the top bar: opens under its button, shows the theme
+    // in words, and its first item takes the focus
+
+    var more = document.getElementById('editor-menu');
+    var moreButton = document.getElementById('more-button');
+
+    function placeUnder(pop, button) {
+        var r = button.getBoundingClientRect();
+        pop.style.top = Math.round(r.bottom + 6) + 'px';
+        pop.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px';
+    }
+
+    function paintTheme() {
+        var b = more.querySelector('[data-pref="theme"]');
+        if (b) { b.querySelector('.theme-label').textContent = b.title; }
+    }
+
+    more.addEventListener('toggle', function (evt) {
+        if (evt.newState !== 'open') { return; }
+        placeUnder(more, moreButton);
+        paintTheme();
+        var first = more.querySelector('button, a');
+        if (first) { first.focus(); }
+    });
+    more.addEventListener('keydown', function (evt) {
+        var items = Array.prototype.slice.call(more.querySelectorAll('button, a'));
+        var i = items.indexOf(document.activeElement);
+        var step = { ArrowDown: 1, ArrowUp: -1 }[evt.key];
+        if (step) {
+            items[(i + step + items.length) % items.length].focus();
+            evt.preventDefault();
+        }
+    });
+    // Toolbars and panels opens under the same ⋯ button
+    menu.addEventListener('toggle', function (evt) {
+        if (evt.newState === 'open') { placeUnder(menu, moreButton); }
+    });
+    document.addEventListener('wm:theme', paintTheme);
+    paintTheme();
 
     apply();
 
