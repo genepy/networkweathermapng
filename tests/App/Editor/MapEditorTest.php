@@ -348,6 +348,16 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('link_glow', (string) file_get_contents($this->file));
     }
 
+    public function testLinkFlowIsAMapSwitch(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_flow' => true]]]);
+        $this->assertStringContainsString('SET link_flow 1', (string) file_get_contents($this->file));
+        $this->assertTrue(MapEditor::model($this->editor->load())['map']['props']['link_flow']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_flow' => false]]]);
+        $this->assertStringNotContainsString('link_flow', (string) file_get_contents($this->file));
+    }
+
     public function testPillLinkLabelsPerLinkAndByDefault(): void
     {
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bwstyle' => 'pill']]]);

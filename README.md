@@ -313,6 +313,14 @@ and saves each change straight into the map's `.conf` file.
 - **Glow**: another switch of that tab draws a soft glow around every link,
   in its own colour (`SET link_glow 1`), in the live map and the editor.
   The PNG keeps plain links.
+- **Traffic flow**: a third switch of that tab makes small glowing comets
+  run along the links on the live map (`SET link_flow 1`), each half of a
+  link from where its traffic leaves to its arrow head (the whole link for
+  a one-way link). Busier links run faster; a link with no traffic has no
+  comet. Under the system's *reduce motion* setting there is no motion,
+  and the animation pauses while the tab is hidden. The editor, the PNG
+  and a downloaded SVG stay still: the SVG only carries the invisible paths
+  (`path.wm-flow`, with the load in `data-load`).
 - **Pill link labels**: *Bandwidth labels* in the link panel (or *Label
   box* in *Link defaults* for every link) draws the label on a level box
   (`BWSTYLE classic`), a box along the link (`angled`) or a pill along the

@@ -273,6 +273,123 @@
         install(svg, w, h);
         fillNodeList(svg);
         updateMinimapImage(text);
+        setupFlow(svg);
+    }
+
+    // ---- Traffic flow (SET link_flow 1) ----
+    // The SVG carries an invisible path per direction of each link
+    // (path.wm-flow, from where the traffic leaves to the arrow head) and
+    // its load in %. Glowing dots run along it, faster on busier links.
+    // No dots under prefers-reduced-motion; paused while the tab is hidden.
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    const F = {dots: [], frame: 0, t0: performance.now()};
+
+    function flowPoints(d) {
+        const nums = (d.match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+        const pts = [];
+        let len = 0;
+        for (let i = 0; i + 1 < nums.length; i += 2) {
+            const x = nums[i], y = nums[i + 1];
+            if (pts.length) {
+                const p = pts[pts.length - 1];
+                len += Math.hypot(x - p[0], y - p[1]);
+            }
+            pts.push([x, y, len]);
+        }
+        return pts;
+    }
+
+    function flowGradient(svg) {
+        const defs = document.createElementNS(SVG_NS, 'defs');
+        const g = document.createElementNS(SVG_NS, 'radialGradient');
+        g.id = 'wmv-flow-glow';
+        [['0', '1'], ['0.3', '0.9'], ['0.6', '0.35'], ['1', '0']].forEach(function (s) {
+            const stop = document.createElementNS(SVG_NS, 'stop');
+            stop.setAttribute('offset', s[0]);
+            stop.setAttribute('stop-color', '#fff');
+            stop.setAttribute('stop-opacity', s[1]);
+            g.appendChild(stop);
+        });
+        defs.appendChild(g);
+        svg.insertBefore(defs, svg.firstChild);
+    }
+
+    function setupFlow(svg) {
+        stopFlow();
+        F.dots = [];
+        const paths = svg.querySelectorAll('path.wm-flow');
+        if (!paths.length) return;
+        flowGradient(svg);
+        paths.forEach(function (path, k) {
+            const load = parseFloat(path.getAttribute('data-load')) || 0;
+            if (load <= 0) return;
+            const pts = flowPoints(path.getAttribute('d') || '');
+            const len = pts.length ? pts[pts.length - 1][2] : 0;
+            if (len < 12) return;
+            const width = parseFloat(path.getAttribute('data-width')) || 4;
+            // a short comet, stretched along the link
+            const r = Math.max(3, Math.min(10, width * 0.8));
+            // px per second: a quiet link crawls, a full one runs
+            const speed = 18 + 1.6 * Math.min(load, 100);
+            const count = Math.max(1, Math.round(len / 160));
+            let after = path;
+            for (let i = 0; i < count; i++) {
+                const dot = document.createElementNS(SVG_NS, 'ellipse');
+                dot.setAttribute('class', 'wmv-flow-dot');
+                dot.setAttribute('rx', String(r * 2));
+                dot.setAttribute('ry', String(r));
+                dot.setAttribute('fill', 'url(#wmv-flow-glow)');
+                dot.setAttribute('pointer-events', 'none');
+                after.after(dot);
+                after = dot;
+                F.dots.push({el: dot, pts: pts, len: len, speed: speed, phase: (i / count + k * 0.618) % 1, at: 1});
+            }
+        });
+        startFlow();
+    }
+
+    function flowAt(dot, d) {
+        const pts = dot.pts;
+        let i = dot.at < pts.length && pts[dot.at - 1][2] <= d ? dot.at : 1;
+        while (i < pts.length - 1 && pts[i][2] < d) i++;
+        dot.at = i;
+        const a = pts[i - 1], b = pts[i];
+        const f = b[2] > a[2] ? (d - a[2]) / (b[2] - a[2]) : 0;
+        return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI];
+    }
+
+    function flowTick(now) {
+        const t = (now - F.t0) / 1000;
+        F.dots.forEach(function (dot) {
+            const d = ((t * dot.speed / dot.len + dot.phase) % 1) * dot.len;
+            const p = flowAt(dot, d);
+            dot.el.setAttribute('transform', 'translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ') rotate(' + p[2].toFixed(1) + ')');
+            // fade in out of the node, fade out at the arrow head
+            dot.el.setAttribute('opacity', Math.max(0, Math.min(1, d / 14, (dot.len - d) / 14)).toFixed(2));
+        });
+        F.frame = requestAnimationFrame(flowTick);
+    }
+
+    function startFlow() {
+        const still = reduceMotion && reduceMotion.matches;
+        F.dots.forEach(function (dot) { dot.el.style.display = still ? 'none' : ''; });
+        if (!F.dots.length || F.frame || still || document.hidden) return;
+        F.frame = requestAnimationFrame(flowTick);
+    }
+
+    function stopFlow() {
+        if (F.frame) cancelAnimationFrame(F.frame);
+        F.frame = 0;
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stopFlow(); else startFlow();
+    });
+    if (reduceMotion) {
+        const onMotion = function () { stopFlow(); startFlow(); };
+        if (reduceMotion.addEventListener) reduceMotion.addEventListener('change', onMotion);
+        else if (reduceMotion.addListener) reduceMotion.addListener(onMotion);
     }
 
     function fallbackToPng() {

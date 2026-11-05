@@ -354,6 +354,41 @@ final class SvgRenderTest extends TestCase
         $this->assertStringNotContainsString('wm-glow', \WeatherMapSvg::render($plain));
     }
 
+    /** SET link_flow 1: an invisible path per direction (OUT from A, IN from B, both to the split point), none without the hint */
+    public function testLinkFlowPaths(): void
+    {
+        $conf = "WIDTH 400\nHEIGHT 200\nNODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 50\nNODE c\n\tPOSITION 50 150\nNODE d\n\tPOSITION 350 150\n"
+            . "LINK ab\n\tNODES a b\n\tBANDWIDTH 1G\n\tTARGET static:300M:100M\n"
+            . "LINK cd\n\tNODES c d\n\tBANDWIDTH 1G\n\tLINKSTYLE oneway\n\tTARGET static:900M:100M\n";
+        $file = TESTS_OUTPUT . '/flow.conf';
+
+        file_put_contents($file, "SET link_flow 1\n" . $conf);
+        $svg = \WeatherMapSvg::render($this->load($file));
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $paths = [];
+        foreach ($xpath->query('//s:g[@data-kind="link"]/s:path[@class="wm-flow"]') as $p) {
+            $g = $p->parentNode;
+            $this->assertInstanceOf(\DOMElement::class, $g);
+            $paths[$g->getAttribute('data-name') . ':' . $p->getAttribute('data-dir')] = $p;
+        }
+        $this->assertSame(['ab:out', 'ab:in', 'cd:out'], array_keys($paths), 'a one-way link has no IN path');
+        $this->assertSame('10', $paths['ab:out']->getAttribute('data-load'));
+        $this->assertSame('30', $paths['ab:in']->getAttribute('data-load'));
+        $this->assertSame('none', $paths['ab:out']->getAttribute('stroke'));
+        $this->assertStringStartsWith('M50 50', $paths['ab:out']->getAttribute('d'));
+        $this->assertStringEndsWith('L200 50', $paths['ab:out']->getAttribute('d'), 'OUT stops at the split point');
+        $this->assertStringStartsWith('M350 50', $paths['ab:in']->getAttribute('d'));
+        $this->assertStringEndsWith('L200 50', $paths['ab:in']->getAttribute('d'));
+        $this->assertStringEndsWith('L350 150', $paths['cd:out']->getAttribute('d'), 'a one-way link flows to its end');
+
+        file_put_contents($file, $conf);
+        $this->assertStringNotContainsString('wm-flow', \WeatherMapSvg::render($this->load($file)));
+    }
+
     /** SET background_sizing: natural size (image), fit keeping the ratio, or stretch, in the PNG and the SVG */
     public function testBackgroundSizing(): void
     {
