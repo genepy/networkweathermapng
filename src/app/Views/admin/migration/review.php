@@ -21,7 +21,7 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
 ?>
 <div class="admin-container migration-page">
     <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Migration'), '/admin/migration'], [$meta['name']]]) ?>
+        <?= breadcrumb([[__('Settings'), '/admin'], [__('Import maps'), '/admin/migration'], [$meta['name']]]) ?>
         <?php if ($map): ?>
         <div class="page-actions">
             <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn"><?= e__('Edit map') ?></a>

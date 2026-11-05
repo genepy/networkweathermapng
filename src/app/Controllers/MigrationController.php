@@ -39,7 +39,7 @@ class MigrationController extends BaseController
     {
         $this->requireAdmin();
 
-        $this->render('admin/migration/index', [
+        $this->renderSettings('admin/migration/index', [
             'migrations' => $this->store->all(),
             'title' => __('Migration'),
         ]);

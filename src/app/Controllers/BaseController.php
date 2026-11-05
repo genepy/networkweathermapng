@@ -59,6 +59,29 @@ abstract class BaseController
         }
     }
     
+    /**
+     * A page of the Settings space (UI redesign step 6): the view drawn as
+     * a panel next to the side navigation. With ?panel=1 only the view,
+     * without the shell, for a drawer. The view gets $panel.
+     */
+    protected function renderSettings(string $view, array $data = []): void
+    {
+        $panel = !empty($_GET['panel']);
+        if ($panel) {
+            $this->render($view, $data + ['panel' => true], false);
+            return;
+        }
+        ob_start();
+        $this->render($view, $data + ['panel' => false], false);
+        $body = (string) ob_get_clean();
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        $this->render('admin/_settings', $data + [
+            'settingsBody' => $body,
+            'settingsPage' => \App\Services\SettingsNav::pageFor($path),
+            'settingsCounts' => \App\Services\SettingsNav::counts($this->database),
+        ]);
+    }
+
     protected function json(mixed $data, int $status = 200): void
     {
         http_response_code($status);

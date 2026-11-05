@@ -3,15 +3,14 @@ use App\Services\KioskService;
 
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
 ?>
-<div class="admin-kiosk-page">
-    <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Kiosk mode')]]) ?>
-        <div class="page-actions">
-            <a href="/cycle?fullscreen=1" class="btn btn-secondary"><?= e__('Open kiosk mode') ?></a>
+<form method="post" action="/admin/kiosk" class="set-panel admin-kiosk-page">
+    <header class="set-head">
+        <h1><?= e__('Kiosk mode') ?></h1>
+        <div class="set-head-actions">
+            <a href="/cycle?fullscreen=1" class="wm-btn"><?= icon('tv') ?><?= e__('Open kiosk mode') ?></a>
         </div>
-    </div>
-
-    <form method="post" action="/admin/kiosk">
+    </header>
+    <div class="set-body">
         <div class="form-card kiosk-defaults">
             <div class="form-group">
                 <label for="kiosk-duration"><?= e__('Display time of each map (seconds)') ?></label>
@@ -79,12 +78,12 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
         </p>
         <?php endif; ?>
 
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary"><?= e__('Save') ?></button>
-            <a href="/admin" class="btn btn-secondary"><?= e__('Cancel') ?></a>
-        </div>
-    </form>
-</div>
+    </div>
+    <footer class="set-foot">
+        <button type="reset" class="wm-btn"><?= e__('Cancel') ?></button>
+        <button type="submit" class="wm-btn wm-btn-primary"><?= e__('Save') ?></button>
+    </footer>
+</form>
 
 <style>
 .kiosk-defaults { max-width: 520px; margin-bottom: 20px; }

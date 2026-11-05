@@ -71,60 +71,18 @@
     }
 
     // ------------------------------------------------------------------
-    // Drawer
-
-    let drawer = null;
-    let opener = null;
-
-    function getDrawer() {
-        if (drawer) return drawer;
-        drawer = document.createElement('dialog');
-        drawer.className = 'wm-drawer';
-        drawer.setAttribute('aria-labelledby', 'ms-title');
-        document.body.appendChild(drawer);
-        drawer.addEventListener('click', function (e) {
-            // a click on the backdrop, or on Close or Cancel
-            if (e.target === drawer || e.target.closest('[data-ms-close]')) {
-                e.preventDefault();
-                drawer.close();
-            }
-        });
-        drawer.addEventListener('close', function () {
-            drawer.innerHTML = '';
-            if (opener && opener.isConnected) opener.focus();
-        });
-        return drawer;
-    }
-
-    function panelUrl(href) {
-        const url = new URL(href, window.location.href);
-        url.searchParams.set('panel', '1');
-        return url;
-    }
+    // Drawer (WMUI.drawer, ui.js)
 
     function open(link) {
-        const d = getDrawer();
-        opener = link;
-        d.innerHTML = '<p class="wm-drawer-loading">' + t('Loading…') + '</p>';
-        if (!d.open) d.showModal();
-        fetch(panelUrl(link.href), {credentials: 'same-origin', headers: {Accept: 'text/html'}})
-            .then(function (r) {
-                if (!r.ok || r.redirected) throw new Error('HTTP ' + r.status);
-                return r.text();
-            })
-            .then(function (html) {
-                d.innerHTML = html;
-                const form = d.querySelector('[data-map-settings-form]');
-                if (!form) throw new Error('no form');
-                if (link.dataset.tab) form.dataset.tab = link.dataset.tab;
-                setup(form);
-                form.addEventListener('submit', submit);
-                const first = form.querySelector('[role="tab"][aria-selected="true"]') || form.querySelector('input:not([type="hidden"])');
-                if (first) first.focus();
-            })
-            .catch(function () {
-                window.location.href = link.href;
-            });
+        WMUI.drawer(link.href, link, function (d) {
+            const form = d.querySelector('[data-map-settings-form]');
+            if (!form) throw new Error('no form');
+            if (link.dataset.tab) form.dataset.tab = link.dataset.tab;
+            setup(form);
+            form.addEventListener('submit', submit);
+            const first = form.querySelector('[role="tab"][aria-selected="true"]') || form.querySelector('input:not([type="hidden"])');
+            if (first) first.focus();
+        });
     }
 
     function submit(e) {
@@ -152,7 +110,7 @@
     document.addEventListener('click', function (e) {
         const link = e.target.closest ? e.target.closest('a[data-map-settings]') : null;
         if (!link || e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
-        if (typeof HTMLDialogElement === 'undefined') return;
+        if (typeof HTMLDialogElement === 'undefined' || !window.WMUI || !WMUI.drawer) return;
         e.preventDefault();
         const menu = link.closest('details');
         if (menu) menu.open = false;

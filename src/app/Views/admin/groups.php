@@ -1,39 +1,40 @@
-<div class="admin-groups-page">
-    <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Groups')]]) ?>
-        <div class="page-actions">
-            <a href="/admin/groups/create" class="btn btn-primary">+ <?= e__('Add Group') ?></a>
+<?php
+/** Map groups (Settings, UI redesign step 6). Add and Edit open the form in a drawer. */
+$h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
+?>
+<section class="set-panel">
+    <header class="set-head">
+        <h1><?= e__('Groups') ?></h1>
+        <div class="set-head-actions">
+            <a href="/admin/groups/create" class="wm-btn wm-btn-primary" data-drawer><?= icon('plus') ?><?= e__('Add group') ?></a>
         </div>
-    </div>
-    
+    </header>
     <div class="data-table-container">
-        <table class="data-table">
+        <table class="data-table set-table">
             <thead>
                 <tr>
                     <th><?= e__('Name') ?></th>
                     <th><?= e__('Maps') ?></th>
-                    <th><?= e__('Sort Order') ?></th>
-                    <th><?= e__('Actions') ?></th>
+                    <th class="set-col-actions"><span class="visually-hidden"><?= e__('Actions') ?></span></th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($groups as $group): ?>
                 <tr>
-                    <td><strong><?= htmlspecialchars($group['name']) ?></strong></td>
-                    <td><?= $group['map_count'] ?? 0 ?></td>
-                    <td><?= $group['sort_order'] ?></td>
-                    <td class="actions">
-                        <a href="/admin/groups/edit/<?= $group['id'] ?>" class="btn btn-sm"><?= e__('Edit') ?></a>
-                        <?php if ($group['id'] != 1): ?>
-                        <a href="/admin/groups/delete/<?= $group['id'] ?>" class="btn btn-sm btn-danger"
-                           data-method="post" data-confirm="<?= e__('Are you sure you want to delete this group? Maps will be moved to Default group.') ?>"><?= e__('Delete') ?></a>
-                        <?php else: ?>
-                        <span class="text-muted"><?= e__('Default') ?></span>
+                    <td>
+                        <a class="set-row-name" href="/admin/groups/edit/<?= (int) $group['id'] ?>" data-drawer><?= $h($group['name']) ?></a>
+                        <?php if ((int) $group['id'] === 1): ?>
+                        <span class="text-muted">· <?= e__('Default') ?></span>
                         <?php endif; ?>
+                    </td>
+                    <td><?= (int) ($group['map_count'] ?? 0) ?></td>
+                    <td class="set-col-actions">
+                        <a href="/admin/groups/edit/<?= (int) $group['id'] ?>" class="wm-btn" data-drawer aria-label="<?= $h(__('Edit :name', ['name' => $group['name']])) ?>"><?= icon('pencil') ?><span class="set-btn-label"><?= e__('Edit') ?></span></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-</div>
+    <p class="set-help set-body-tail"><?= e__('Groups sort the maps on the Maps page. A viewer sees the maps of the groups given to them.') ?></p>
+</section>

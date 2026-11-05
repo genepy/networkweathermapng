@@ -1,7 +1,7 @@
 <?php $id = $meta['id']; ?>
 <div class="admin-container migration-page">
     <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Migration'), '/admin/migration'], [$meta['name'], '/admin/migration/' . $id], [__('Compare')]]) ?>
+        <?= breadcrumb([[__('Settings'), '/admin'], [__('Import maps'), '/admin/migration'], [$meta['name'], '/admin/migration/' . $id], [__('Compare')]]) ?>
         <div class="page-actions">
             <a href="/admin/migration/<?= $id ?>" class="btn"><?= e__('Back to the choices') ?></a>
         </div>

@@ -35,31 +35,20 @@ class AdminController extends BaseController
         $this->dataSourceService = new DataSourceService($this->database);
     }
     
+    /** Settings opens on its first page */
     public function index(array $params): void
     {
         $this->requireAdmin();
-        
-        // Dashboard stats
-        $stats = [
-            'maps' => $this->database->queryOne("SELECT COUNT(*) as count FROM maps")['count'] ?? 0,
-            'groups' => $this->database->queryOne("SELECT COUNT(*) as count FROM map_groups")['count'] ?? 0,
-            'users' => $this->database->queryOne("SELECT COUNT(*) as count FROM users")['count'] ?? 0,
-        ];
-        
-        $this->render('admin/index', [
-            'stats' => $stats,
-            'title' => __('Administration'),
-        ]);
+        $this->redirect(\App\Services\SettingsNav::HOME);
     }
-    
-    
+
     public function groups(array $params): void
     {
         $this->requireAdmin();
         
         $groups = $this->groupService->getGroupsWithMapCount();
         
-        $this->render('admin/groups', [
+        $this->renderSettings('admin/groups', [
             'groups' => $groups,
             'title' => __('Manage Groups'),
         ]);
@@ -102,7 +91,7 @@ class AdminController extends BaseController
         // Get all users for assignment
         $users = $this->database->query("SELECT id, username, role FROM users ORDER BY username");
         
-        $this->render('admin/group_form', [
+        $this->renderSettings('admin/group_form', [
             'group' => null,
             'users' => $users,
             'groupUsers' => [],
@@ -159,7 +148,7 @@ class AdminController extends BaseController
         $users = $this->database->query("SELECT id, username, role FROM users ORDER BY username");
         $groupUsers = $this->groupService->getGroupUsers($id);
         
-        $this->render('admin/group_form', [
+        $this->renderSettings('admin/group_form', [
             'group' => $group,
             'users' => $users,
             'groupUsers' => $groupUsers,
@@ -209,7 +198,7 @@ class AdminController extends BaseController
             "SELECT id, username, email, role, active, created_at FROM users ORDER BY username"
         );
         
-        $this->render('admin/users', [
+        $this->renderSettings('admin/users', [
             'users' => $users,
             'title' => __('Manage Users'),
         ]);
@@ -290,7 +279,7 @@ class AdminController extends BaseController
 
         $groups = $this->groupService->getAllGroups();
 
-        $this->render('admin/user_form', [
+        $this->renderSettings('admin/user_form', [
             'userData' => null,
             'userGroups' => [],
             'groups' => $groups,
@@ -385,7 +374,7 @@ class AdminController extends BaseController
         $groups = $this->groupService->getAllGroups();
         $userGroups = $this->groupService->getUserGroups($id);
 
-        $this->render('admin/user_form', [
+        $this->renderSettings('admin/user_form', [
             'userData' => $userData,
             'userGroups' => $userGroups,
             'groups' => $groups,
@@ -425,18 +414,23 @@ class AdminController extends BaseController
         $this->redirect('/admin/users');
     }
     
+    /**
+     * Maps & rendering: the image format and the refresh
+     * interval, read from the environment (.env), shown read only.
+     */
     public function settings(array $params): void
     {
         $this->requireAdmin();
-        
-        $settings = $this->database->query("SELECT * FROM settings WHERE map_id = 0");
-        
-        $this->render('admin/settings', [
-            'settings' => $settings,
-            'title' => __('Settings'),
+
+        $this->renderSettings('admin/settings', [
+            'values' => [
+                'MAP_OUTPUT_FORMAT' => (string) $this->config->get('MAP_OUTPUT_FORMAT', 'png'),
+                'MAP_REFRESH_INTERVAL' => (string) $this->config->get('MAP_REFRESH_INTERVAL', '300'),
+            ],
+            'title' => __('Maps & rendering'),
         ]);
     }
-    
+
     /**
      * Map recording: whether it is allowed at all, the interval and how
      * long frames are kept, and which maps are recorded (none by default).
@@ -476,7 +470,7 @@ class AdminController extends BaseController
             $frames[$id] = count($recording->frames($id));
         }
 
-        $this->render('admin/recording', [
+        $this->renderSettings('admin/recording', [
             'maps' => $maps,
             'allowed' => $recording->isAllowed(),
             'interval' => $recording->getInterval(),
@@ -521,7 +515,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $this->render('admin/kiosk', [
+        $this->renderSettings('admin/kiosk', [
             'maps' => $maps,
             'duration' => $kiosk->getDefaultDuration(),
             'settings' => $kiosk->getMapSettings(array_column($maps, 'id')),
@@ -571,7 +565,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $this->render('admin/timezone', [
+        $this->renderSettings('admin/timezone', [
             'maps' => $maps,
             'appZone' => $timezones->getAppZone(),
             'default' => $timezones->getDefault(),
@@ -589,9 +583,10 @@ class AdminController extends BaseController
         
         $sources = $this->dataSourceService->getAllSources();
         
-        $this->render('admin/data_sources', [
+        $this->renderSettings('admin/data_sources', [
             'sources' => $sources,
-            'title' => __('Data Sources'),
+            'types' => self::DATA_SOURCE_TYPES,
+            'title' => __('Data sources'),
         ]);
     }
     
@@ -663,7 +658,7 @@ class AdminController extends BaseController
             return;
         }
         
-        $this->render('admin/data_source_form', [
+        $this->renderSettings('admin/data_source_form', [
             'source' => null,
             'title' => __('Add Data Source'),
             'action' => 'create',
@@ -725,7 +720,7 @@ class AdminController extends BaseController
             return;
         }
         
-        $this->render('admin/data_source_form', [
+        $this->renderSettings('admin/data_source_form', [
             'source' => $source,
             'title' => __('Edit Data Source: :name', ['name' => $source['name']]),
             'action' => 'edit',
@@ -791,7 +786,7 @@ class AdminController extends BaseController
         
         $results = $this->database->checkDatabaseIntegrity();
         
-        $this->render('admin/check_db', [
+        $this->renderSettings('admin/check_db', [
             'results' => $results,
             'title' => __('Database Integrity Check'),
         ]);

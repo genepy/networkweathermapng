@@ -1,14 +1,24 @@
-<div class="admin-container">
-    <div class="page-header">
-        <?= breadcrumb([[__('Admin'), '/admin'], [__('Data Sources'), '/admin/data-sources'], [$title]]) ?>
-    </div>
-    
-    <?php
-    $settings = json_decode((string) ($source['settings'] ?? ''), true) ?: [];
-    $type = $source['type'] ?? 'zabbix';
-    $setting = static fn(string $key, string $default = ''): string => htmlspecialchars((string) ($settings[$key] ?? $default));
-    ?>
-    <form method="post" class="form-container" data-type="<?= htmlspecialchars($type) ?>">
+<?php
+/**
+ * Add or edit a data source (Settings, UI redesign step 6): a panel of the
+ * Settings page, or ($panel) only the form, shown in a drawer. The chosen
+ * type shows only its own fields (settings.js).
+ *
+ * @var ?array $source @var string $action create|edit @var array $types @var bool $panel
+ */
+$settings = json_decode((string) ($source['settings'] ?? ''), true) ?: [];
+$type = $source['type'] ?? 'zabbix';
+$setting = static fn(string $key, string $default = ''): string => htmlspecialchars((string) ($settings[$key] ?? $default));
+$formAction = $action === 'create' ? '/admin/data-sources/create' : '/admin/data-sources/edit/' . (int) $source['id'];
+?>
+    <form method="post" action="<?= $formAction ?>" class="set-panel set-form ds-form" data-ds-form data-type="<?= htmlspecialchars($type) ?>">
+        <header class="set-head">
+            <h<?= $panel ? 2 : 1 ?>><?= $action === 'create' ? e__('Add data source') : e__('Edit data source') ?></h<?= $panel ? 2 : 1 ?>>
+            <?php if ($panel): ?>
+            <button type="button" class="ms-close" data-drawer-close aria-label="<?= e__('Close') ?>" title="<?= e__('Close') ?>"><?= icon('x') ?></button>
+            <?php endif; ?>
+        </header>
+        <div class="set-body">
         <div class="form-group">
             <label for="name"><?= e__('Name') ?> *</label>
             <input type="text" id="name" name="name" required
@@ -145,127 +155,13 @@
         </div>
         <?php endif; ?>
         
-        <div class="form-actions">
-            <a href="/admin/data-sources" class="btn btn-secondary"><?= e__('Cancel') ?></a>
-            <button type="submit" class="btn btn-primary">
-                <?= $action === 'create' ? e__('Create Data Source') : e__('Save Changes') ?>
-            </button>
         </div>
+        <footer class="set-foot">
+            <?php if ($source): ?>
+            <a href="/admin/data-sources/delete/<?= (int) $source['id'] ?>" class="wm-btn set-danger danger" data-method="post" data-confirm-label="<?= e__('Delete') ?>"
+               data-confirm="<?= htmlspecialchars(__('Delete the data source ":name"? Maps that read it show no data until they use another one.', ['name' => $source['name']]), ENT_QUOTES) ?>"><?= icon('trash-2') ?><span><?= e__('Delete…') ?></span></a>
+            <?php endif; ?>
+            <a href="/admin/data-sources" class="wm-btn" data-drawer-close><?= e__('Cancel') ?></a>
+            <button type="submit" class="wm-btn wm-btn-primary"><?= $action === 'create' ? e__('Add data source') : e__('Save') ?></button>
+        </footer>
     </form>
-</div>
-
-<script>
-(function () {
-    var form = document.querySelector('.form-container');
-    var type = document.getElementById('type');
-    var url = document.getElementById('url');
-    function update() {
-        form.setAttribute('data-type', type.value);
-        url.required = type.value === 'zabbix';
-    }
-    type.addEventListener('change', update);
-    update();
-})();
-</script>
-
-<style>
-.form-container {
-    max-width: 600px;
-    background: var(--card-bg);
-    padding: 30px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.form-group {
-    margin-bottom: 20px;
-}
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-}
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--field-border);
-    border-radius: 4px;
-    font-size: 14px;
-    background: var(--input-bg);
-    color: var(--text-color);
-}
-.form-group input:focus,
-.form-group select:focus {
-    outline: 2px solid var(--wm-focus);
-    outline-offset: 0;
-    border-color: var(--accent);
-}
-.form-group small {
-    display: block;
-    margin-top: 5px;
-    color: var(--text-muted);
-    font-size: 12px;
-}
-.form-fieldset {
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-.form-fieldset legend {
-    padding: 0 10px;
-    font-weight: 500;
-}
-.form-divider {
-    text-align: center;
-    margin: 20px 0;
-    position: relative;
-}
-.form-divider::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: 100%;
-    height: 1px;
-    background: var(--border-color);
-}
-.form-divider span {
-    background: var(--card-bg);
-    padding: 0 15px;
-    position: relative;
-    color: var(--text-muted);
-}
-.form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-color);
-}
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-.checkbox-label input {
-    width: auto;
-}
-.form-row {
-    display: flex;
-    gap: 15px;
-}
-.form-row .form-group {
-    flex: 1;
-}
-.form-row .form-group-small {
-    flex: 0 0 110px;
-}
-.form-container[data-type="zabbix"] .only-observium,
-.form-container:not([data-type="zabbix"]) .only-zabbix {
-    display: none;
-}
-</style>
