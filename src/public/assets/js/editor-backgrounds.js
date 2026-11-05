@@ -1,7 +1,8 @@
 /**
  * Background library of the SVG editor: the Background row of the map panel
  * opens a dialog to search the backgrounds, pick one, add new ones or remove
- * the ones no map uses.
+ * the ones no map uses. The Add panel lists them too: a click sets the
+ * background of the map.
  *
  * The backgrounds come from window.WM_EDITOR.backgrounds and, after a
  * change, from /editor/backgrounds (see BackgroundLibrary::all()).
@@ -95,6 +96,54 @@
         state.list = d.backgrounds || [];
         cfg.backgrounds = state.list;
         render();
+        renderPalette();
+    }
+
+    // ------------------------------------------------------------------
+    // The Backgrounds fold of the Add panel
+
+    var fold = document.getElementById('palette-backgrounds');
+    var foldGrid = fold && fold.querySelector('.pb-grid');
+    var FOLD_KEY = 'wm-editor-backgrounds-open';
+
+    function currentBackground() {
+        var m = ed.state.model && ed.state.model.map;
+        return m ? m.background || '' : '';
+    }
+
+    function setBackground(path) {
+        if (path === currentBackground()) { return; }
+        ed.send([{ op: 'set_map', background: path }], function () {
+            ed.toast(path ? t('Background set. Ctrl+Z to undo.') : t('Background removed. Ctrl+Z to undo.'));
+            return undefined;
+        });
+    }
+
+    function renderPalette() {
+        if (!fold) { return; }
+        fold.querySelector('.icon-count').textContent = String(state.list.length);
+        if (!fold.open) { return; }
+        var now = currentBackground();
+        foldGrid.replaceChildren.apply(foldGrid, [null].concat(state.list).map(function (b) {
+            var path = b ? b.path : '';
+            return h('button', {
+                type: 'button', 'class': 'pb-tile' + (path === now ? ' on' : ''), 'aria-pressed': path === now ? 'true' : 'false',
+                title: b ? b.name + (b.width ? ' · ' + b.width + ' × ' + b.height + ' px' : '') : t('No background image'),
+                'aria-label': b ? b.name : t('No background image'),
+                onclick: function () { setBackground(path); }
+            }, [b ? h('img', { src: '/' + b.path, alt: '', loading: 'lazy' }) : h('span', { 'class': 'bg-empty', 'aria-hidden': 'true' })]);
+        }));
+    }
+
+    if (fold) {
+        try { fold.open = localStorage.getItem(FOLD_KEY) === '1'; } catch (e) { /* closed */ }
+        fold.addEventListener('toggle', function () {
+            try { localStorage.setItem(FOLD_KEY, fold.open ? '1' : '0'); } catch (e) { /* this page only */ }
+            renderPalette();
+        });
+        fold.querySelector('.pb-manage').addEventListener('click', function () { open(currentBackground(), setBackground); });
+        document.addEventListener('wm-editor-render', renderPalette);
+        renderPalette();
     }
 
     function remove(b) {

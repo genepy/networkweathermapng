@@ -309,8 +309,16 @@ With Docker on the Observium server, uncomment the Observium volumes in
 
 ## Map editor
 
-The editor (Editor > Edit) draws the map as SVG, so zooming stays sharp,
-and saves each change straight into the map's `.conf` file.
+The editor (*Edit* on the Maps page or in the map view) draws the map as
+SVG, so zooming stays sharp, and saves each change straight into the map's
+`.conf` file.
+
+- **Top bar**: back to the maps, the map name, whether the last change is
+  saved (*Saving…*, *Saved*, *Not saved*), undo and redo; on the right
+  *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
+  *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab,
+  the classic editor) and *View*, which opens the map view.
+- **Keyboard shortcuts**: `?` (or ⋯ › *Keyboard shortcuts*) lists them all.
 
 - **Select**: click, Shift+click to add, drag on empty space for an area,
   Ctrl+A for everything (zones, legends, timestamps and title included), or
@@ -343,27 +351,38 @@ and saves each change straight into the map's `.conf` file.
   above, at the top, in the centre, at the bottom or below the icon in one
   click, for every selected node (`SET editor_label_position N`, `N60`, `C`,
   `S60` or `S`, the PHP Weathermap 2.0 hint; a drag replaces it).
-- **Add**: drag a node or an icon from the left panel, or Ctrl+click an
-  empty spot.
-- **Edit**: the right panel changes every selected item at once. The
-  width of all the links of a map is set in *Map properties* (a number of
+- **Add**: the *Add* panel on the left has four tiles: *Node* (click to add
+  it in the middle of the view, or drag it onto the map), *Note*, *Zone* and
+  *Link* (L). Below them come the node templates of the map, the icon
+  library (themes that fold, a search; click an icon to add a node with it,
+  or drag it) and *Backgrounds* (click one to set the background of the map,
+  one undo step). Ctrl+click on an empty spot also adds a node.
+- **Edit**: the right panel changes every selected item at once.
+- **Map properties**: with nothing selected, the right panel shows the map:
+  name, size, background, then sections that fold, each with its value on
+  its row (*Background colour and theme*, *Title*, *Legend*, *Link colours*,
+  *Timestamp*, *Link defaults*, *Basemap*, *Fonts*). A field is saved when
+  it changes, as one step Ctrl+Z undoes; the colour scale is saved with its
+  *Apply the colours* button. The browser remembers which sections are
+  open. A selected legend, title or timestamp shows its own section. The
+  width of all the links of a map is set in *Link defaults* (a number of
   pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).
-- **Link colours**: the *Link colours* tab of *Map properties* edits the
+- **Link colours**: the *Link colours* section of *Map properties* edits the
   colour scale of the links (`SCALE` lines of the DEFAULT scale, in % of the
   bandwidth): one row per step, with a preview bar. Presets start from the
   classic Weathermap colours, a traffic light, a colour-blind safe scale
   (Okabe and Ito colours), a heat scale or a single blue that darkens with
   the load. The presets but the classic one read on light and dark
   backgrounds. A step that fades between two colours keeps them.
-- **Saturated links**: the same tab has a switch that makes the links at
+- **Saturated links**: the same section has a switch that makes the links at
   80 % or more (in either direction) pulse and glow on the live map
   (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
   *reduce motion* setting the glow stays and the pulse stops. The PNG is not
   changed.
-- **Glow**: another switch of that tab draws a soft glow around every link,
+- **Glow**: another switch of that section draws a soft glow around every link,
   in its own colour (`SET link_glow 1`), in the live map and the editor.
   The PNG keeps plain links.
-- **Traffic flow**: a third switch of that tab makes small glowing comets
+- **Traffic flow**: a third switch of that section makes small glowing comets
   run along the links on the live map (`SET link_flow 1`), each half of a
   link from where its traffic leaves to its arrow head (the whole link for
   a one-way link). Busier links run faster; a link with no traffic has no
@@ -391,7 +410,8 @@ and saves each change straight into the map's `.conf` file.
   leaves one out, for example a backbone link whose traffic is already
   counted on the access links. Both hints can go in `NODE DEFAULT` /
   `LINK DEFAULT`.
-- **Themes**: *Apply the theme* in the *General* tab of *Map properties*
+- **Themes**: *Apply the theme* in the *Background colour and theme*
+  section of *Map properties*
   restyles the whole map in one click, saved at once and undone with
   Ctrl+Z. *Night* (an idea from the Nine IX traffic map): a dark canvas,
   links from cream to amber as the load grows, with the glow, pill link

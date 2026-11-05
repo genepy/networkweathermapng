@@ -41,7 +41,6 @@ return [
     'Fit to window (F)' => 'Ajuster à la fenêtre (F)',
     'Fit' => 'Ajuster',
     'Open the published map' => 'Ouvrir la carte publiée',
-    'View map' => 'Voir la carte',
     'The previous editor' => 'L’éditeur précédent',
     'Classic editor' => 'Éditeur classique',
     'Add' => 'Ajouter',
@@ -50,12 +49,10 @@ return [
     'Layer' => 'Calque',
     'An existing layer or a new one' => 'Un calque existant ou un nouveau',
     'A layer is a set of nodes, links and zones you name. It is saved in the map; you can then hide, lock or select it as a whole from the Layers panel.' => 'Un calque est un ensemble de nœuds, liens et zones que vous nommez. Il est enregistré dans la carte ; vous pouvez ensuite le masquer, le verrouiller ou le sélectionner d’un coup depuis le panneau Calques.',
-    'Drag onto the map' => 'Faire glisser sur la carte',
     'Label' => 'Étiquette',
     'Node' => 'Nœud',
     'Icons' => 'Icônes',
     'Drag to resize the map' => 'Faire glisser pour redimensionner la carte',
-    'Saving…' => 'Enregistrement…',
 
     // Select by criteria
     'Select by criteria' => 'Sélectionner selon des critères',
@@ -190,8 +187,6 @@ return [
     'This icon comes with NetworkWeathermapNG and cannot be removed' => 'Cette icône est livrée avec NetworkWeathermapNG et ne peut pas être supprimée',
     'Icon not found' => 'Icône introuvable',
     'A theme name is required (letters, digits, - and _, 32 at most)' => 'Un nom de thème est requis (lettres, chiffres, - et _, 32 au plus)',
-    'Title, legend, timestamp, fonts, colours and link defaults of the map' => 'Titre, légende, horodatage, polices, couleurs et valeurs par défaut des liens de la carte',
-    'Show, hide and arrange the toolbars and panels' => 'Afficher, masquer et disposer les barres d’outils et les panneaux',
     'Toolbars and panels' => 'Barres d’outils et panneaux',
     'Toolbars' => 'Barres d’outils',
     'Panels' => 'Panneaux',
@@ -209,7 +204,6 @@ return [
     'Icons only' => 'Icônes seules',
     'Drag a toolbar by its handle to the top, a side or the bottom, or drop it on the map to make it float. A floating toolbar can be resized from its corner.' => 'Faites glisser une barre d’outils par sa poignée vers le haut, un côté ou le bas, ou déposez-la sur la carte pour la rendre flottante. Une barre flottante se redimensionne par son coin.',
     'Reset the layout' => 'Rétablir la disposition',
-    'History' => 'Historique',
     'Undo' => 'Annuler',
     'Redo' => 'Rétablir',
     'Clipboard' => 'Presse-papiers',
@@ -264,4 +258,13 @@ return [
     // Geographic basemap
     'The basemap must come from this site or from a tile server of BASEMAP_SERVERS: :value' => 'Le fond de carte doit venir de ce site ou d’un serveur de tuiles de BASEMAP_SERVERS : :value',
     'Invalid latitude and longitude: :value' => 'Latitude et longitude invalides : :value',
+
+    // Top bar, ⋯ menu and Add panel (UI redesign, step 8)
+    'More' => 'Plus',
+    'Keyboard shortcuts' => 'Raccourcis clavier',
+    'Open the map in a new tab' => 'Ouvrir la carte dans un nouvel onglet',
+    'Add a node in the middle of the view, or drag it onto the map' => 'Ajouter un nœud au milieu de la vue, ou le glisser sur la carte',
+    'Click to add in the middle of the view, or drag a node or an icon onto the map.' => 'Cliquer pour ajouter au milieu de la vue, ou glisser un nœud ou une icône sur la carte.',
+    'Backgrounds' => 'Fonds',
+    'Search, add or remove…' => 'Chercher, ajouter ou supprimer…',
 ];

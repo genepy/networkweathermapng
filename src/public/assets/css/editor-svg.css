@@ -63,19 +63,50 @@ html, body {
 
 svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* Application bar */
+/* Top bar: back, map name, save state, undo and redo; layers, text mode, ⋯ and View */
 #appbar {
     grid-area: appbar;
     display: flex; align-items: center; gap: 6px;
-    padding: 4px 10px;
+    min-height: 48px; padding: 6px 12px;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     min-width: 0;
 }
-.tb-back { display: inline-flex; color: var(--text); padding: 4px; border-radius: 4px; }
+#appbar { --btn: 32px; --icon: 18px; }
+.tb-back { display: inline-flex; color: var(--text); padding: 6px; border-radius: var(--wm-radius-control, 6px); }
 .tb-back:hover { background: var(--accent-soft); }
-.tb-title { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.tb-back:focus-visible, .tb-view:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tb-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#save-state { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+#save-state svg.i { width: 15px; height: 15px; }
+#save-state[data-state="saved"] { color: var(--ok); }
+#save-state[data-state="error"] { color: var(--danger); }
+#save-state[data-state="saving"] svg.i, #save-state[data-state="loading"] svg.i { visibility: hidden; }
+.tb-sep { flex: 0 0 1px; align-self: stretch; margin: 4px 4px; background: var(--border); }
 .appbar-right { margin-left: auto; display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.tb-view {
+    display: inline-flex; align-items: center; gap: 6px; height: var(--btn); padding: 0 12px; margin-left: 4px;
+    color: var(--text); text-decoration: none; font-weight: 600;
+    border: 1px solid var(--field-border); border-radius: var(--wm-radius-control, 6px); background: var(--panel);
+}
+.tb-view:hover { border-color: var(--accent); background: var(--accent-soft); }
+#app.text-mode #appbar [data-cmd="undo"], #app.text-mode #appbar [data-cmd="redo"] { opacity: .35; pointer-events: none; }
+
+/* The ⋯ menu of the top bar */
+#editor-menu {
+    position: fixed; inset: auto; margin: 0; top: 50px; right: 12px;
+    min-width: 240px; padding: 4px; color: var(--text); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 18px var(--paper-shadow);
+}
+#editor-menu > button, #editor-menu > a {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+    border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer;
+}
+#editor-menu > button:hover, #editor-menu > a:hover, #editor-menu > button:focus-visible, #editor-menu > a:focus-visible { background: var(--accent-soft); outline: none; }
+#editor-menu svg.i { width: 16px; height: 16px; color: var(--muted); }
+#editor-menu kbd { margin-left: auto; color: var(--muted); font: inherit; font-size: 11px; border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
+#editor-menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 2px; }
+#app.text-mode #editor-menu [data-cmd="map-properties"] { opacity: .45; pointer-events: none; }
 
 /* Docks and toolbars */
 .dock { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; padding: 4px 6px; background: var(--panel-2); min-width: 0; }
@@ -134,7 +165,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 
 /* Toolbars menu */
 #toolbars-menu {
-    position: fixed; inset: auto; top: 44px; right: 10px; margin: 0;
+    position: fixed; inset: auto; top: 50px; right: 12px; margin: 0;
     min-width: 250px; max-height: calc(100vh - 60px); overflow: auto;
     padding: 8px 12px 12px; color: var(--text); background: var(--panel);
     border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 6px 18px var(--paper-shadow);
@@ -160,7 +191,29 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
     padding: 8px;
     overflow-y: auto;
 }
-#palette h3 { margin: 8px 0 4px; font-size: 12px; text-transform: uppercase; color: var(--muted); }
+#palette h3 { margin: 8px 0 6px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+/* Add panel: four tiles, then templates, icons and backgrounds */
+.add-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; margin-bottom: 6px; }
+.add-tile {
+    display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 6px;
+    font: inherit; font-weight: 600; color: var(--text); background: var(--panel);
+    border: 1px solid var(--field-border); border-radius: var(--wm-radius-control, 6px); cursor: pointer;
+}
+.add-tile.palette-item { margin: 0; cursor: grab; background: var(--panel); border-color: var(--field-border); }
+.add-tile:hover { border-color: var(--accent); background: var(--accent-soft); }
+.add-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.add-tile.active { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.add-tile kbd { font: inherit; font-size: 11px; font-weight: normal; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
+.add-tile.active kbd { color: inherit; border-color: currentColor; }
+#palette-backgrounds { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 4px; }
+.pb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 4px; padding: 4px 0; }
+.pb-tile { padding: 2px; border: 1px solid var(--border); border-radius: 4px; background: #f4f6f9; cursor: pointer; aspect-ratio: 16 / 10; overflow: hidden; }
+.pb-tile img, .pb-tile .bg-empty { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
+.pb-tile .bg-empty { background: repeating-conic-gradient(#e6e9ef 0 25%, #fff 0 50%) 0 0 / 12px 12px; }
+.pb-tile:hover { border-color: var(--accent); }
+.pb-tile.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pb-manage { width: 100%; margin: 2px 0 6px; padding: 4px 6px; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px; cursor: pointer; }
+.pb-manage:hover { border-color: var(--accent); }
 .hint { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
 .palette-item {
     display: flex; align-items: center; gap: 8px;
@@ -177,7 +230,10 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
     font: inherit; color: var(--text); background: var(--panel-2);
     border: 1px solid var(--field-border); border-radius: 4px;
 }
-.palette-tools button { min-width: 24px; height: 24px; padding: 0 4px; cursor: pointer; line-height: 1; }
+.palette-tools button { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 4px; cursor: pointer; line-height: 1; }
+.palette-tools svg.i { width: 14px; height: 14px; }
+#palette-icons .palette-icon { cursor: pointer; }
+#palette-icons .palette-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .palette-tools button:hover { border-color: var(--accent); }
 .palette-tools button.active { background: var(--danger-fill); border-color: var(--danger-fill); color: #fff; }
 #icon-search { width: 100%; margin: 6px 0; padding: 4px 6px; }
@@ -275,11 +331,6 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #minimap-svg { width: 100%; height: 100%; display: block; cursor: pointer; }
 #minimap-view { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
 
-#busy {
-    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
-    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
-    padding: 2px 12px; color: var(--muted); font-size: 12px;
-}
 #toast {
     position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
     background: #222b; color: #fff; padding: 6px 14px; border-radius: 4px; max-width: 80%;
@@ -336,9 +387,65 @@ dialog select, dialog input:not([type=checkbox]):not([type=radio]) { width: 100%
 dialog menu { display: flex; justify-content: flex-end; gap: 6px; padding: 0; margin: 12px 0 0; }
 dialog button { font: inherit; padding: 4px 12px; border-radius: 4px; border: 1px solid var(--field-border); background: var(--panel-2); color: var(--text); cursor: pointer; }
 dialog button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-#inspector .props-open { display: block; margin: 8px 0; }
+/* Map properties in the properties panel: sections that fold, with their value on the row */
+#inspector .map-sec { border-top: 1px solid var(--border); }
+#inspector .map-sec:last-of-type { border-bottom: 1px solid var(--border); }
+#inspector .map-sec > summary {
+    display: flex; align-items: center; gap: 8px; padding: 8px 2px; cursor: pointer; user-select: none; font-weight: 600; list-style: none;
+}
+#inspector .map-sec > summary::-webkit-details-marker { display: none; }
+#inspector .map-sec > summary::after {
+    content: ""; flex: 0 0 auto; width: 6px; height: 6px; margin: 0 4px 2px 0;
+    border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s;
+}
+#inspector .map-sec[open] > summary::after { transform: rotate(45deg); }
+#inspector .map-sec > summary:hover { color: var(--accent); }
+#inspector .map-sec > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
+#inspector .map-sec-value { margin-left: auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-weight: normal; font-size: 12px; }
+#inspector .map-sec-body { padding: 0 2px 12px; }
+#inspector .map-sec-body > label { display: block; margin-bottom: 8px; color: var(--muted); }
+#inspector .map-sec-body > label > input, #inspector .map-sec-body > label > select, #inspector .map-sec-body > label > .pair { margin-top: 2px; color: var(--text); }
+#inspector .map-sec-body label.inline { display: flex; gap: 6px; align-items: center; color: var(--text); }
+#inspector .map-sec-body .hint { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+#inspector .map-sec-body .mapprops-explain { background: var(--panel-2); border-left: 3px solid var(--accent); padding: 6px 8px; margin: 0 0 10px; font-size: 12px; }
+#inspector .map-sec-body input[type=color] { display: block; width: 64px; height: 28px; padding: 1px; }
+#inspector .map-sec-body .pair { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#inspector .map-sec-body .pair > * { flex: 0 0 auto; }
+#inspector .map-sec-body .pair > select { flex: 1 1 120px; min-width: 0; }
+#inspector .map-sec-body h4 { margin: 12px 0 6px; font-size: 12px; }
+#inspector .map-sec-body button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+#inspector .map-sec-body .actions { justify-content: flex-end; }
+#inspector .font-list { display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow-y: auto; }
+#inspector .font-row { display: grid; grid-template-columns: 32px 1fr 60px; gap: 6px; align-items: center; }
+#inspector .font-n { color: var(--muted); font-size: 12px; }
+#inspector .font-sample { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#inspector .font-add select { flex: 1 1 100px; min-width: 0; }
+#inspector .font-add input { width: 60px; }
+#inspector .font-add + .font-sample { display: block; margin-top: 8px; padding: 6px 8px; background: #fff; color: #000; border: 1px solid var(--border); border-radius: 4px; }
+#inspector .scale-bar { display: flex; height: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
+    background: repeating-conic-gradient(var(--panel-2) 0 25%, transparent 0 50%) 0 0 / 10px 10px; }
+#inspector .scale-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; margin-bottom: 8px; }
+#inspector .scale-row { display: flex; gap: 4px; align-items: center; }
+#inspector .scale-row input[type=number] { width: 52px; padding: 2px 4px; }
+#inspector .scale-row input[type=color] { display: inline-block; margin: 0; width: 36px; flex: 0 0 36px; }
+#inspector .scale-row label { margin: 0; font-size: 12px; }
+#inspector .scale-row button { padding: 2px 6px; }
+#inspector .scale-msg { color: var(--danger); margin: 0; }
+#inspector .shortcuts-hint {
+    display: flex; align-items: center; gap: 6px; margin-top: 14px; padding: 4px 0;
+    border: 0; background: none; color: var(--muted);
+}
+#inspector .shortcuts-hint:hover { color: var(--accent); }
 
-/* Map properties: one tab per part of the map */
+/* Keyboard shortcuts (?) */
+#shortcuts-dialog { width: min(760px, 94vw); }
+#shortcuts-dialog .shortcuts-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 4px 24px; max-height: 70vh; overflow-y: auto; }
+#shortcuts-dialog h4 { margin: 8px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+#shortcuts-dialog dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; align-items: baseline; }
+#shortcuts-dialog dt { white-space: nowrap; }
+#shortcuts-dialog dd { margin: 0; }
+#shortcuts-dialog kbd { border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; font-size: 11px; background: var(--panel-2); }
+
 /* Background library: search, add, pick or remove a background */
 #bg-dialog { width: min(640px, 94vw); }
 #bg-dialog .bg-tools { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
@@ -368,32 +475,6 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #bg-dialog .bg-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #bg-dialog .bg-meta { color: var(--muted); font-size: 11px; }
 #bg-dialog .hint { grid-column: 1 / -1; }
-#mapprops-dialog { width: min(480px, 92vw); }
-#mapprops-dialog .mapprops-tabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-#mapprops-dialog .mapprops-tabs button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 6px 10px; color: var(--muted); }
-#mapprops-dialog .mapprops-tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
-#mapprops-dialog fieldset { border: 0; padding: 0; margin: 0; min-height: 300px; }
-#mapprops-dialog .hint { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
-#mapprops-dialog .mapprops-explain { background: var(--panel-2); border-left: 3px solid var(--accent); padding: 6px 8px; margin: 0 0 10px; font-size: 13px; }
-#mapprops-dialog input[type=color] { display: block; width: 64px; height: 28px; padding: 1px; margin-top: 2px; }
-#mapprops-dialog .pair { display: flex; gap: 10px; align-items: center; }
-#mapprops-dialog .pair label { margin: 0; }
-#mapprops-dialog .font-list { display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow-y: auto; }
-#mapprops-dialog .font-row { display: grid; grid-template-columns: 40px 1fr 64px; gap: 8px; align-items: center; }
-#mapprops-dialog .font-n { color: var(--muted); font-size: 12px; }
-#mapprops-dialog .font-sample { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#mapprops-dialog .font-add select { flex: 1; min-width: 0; }
-#mapprops-dialog .font-add input { width: 64px; }
-#mapprops-dialog .scale-bar { display: flex; height: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
-    background: repeating-conic-gradient(var(--panel-2) 0 25%, transparent 0 50%) 0 0 / 10px 10px; }
-#mapprops-dialog .scale-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; margin-bottom: 8px; }
-#mapprops-dialog .scale-row { display: flex; gap: 6px; align-items: center; }
-#mapprops-dialog .scale-row input[type=number] { width: 64px; }
-#mapprops-dialog .scale-row input[type=color] { display: inline-block; margin: 0; width: 48px; }
-#mapprops-dialog .scale-row label { margin: 0; }
-#mapprops-dialog .scale-msg { color: var(--danger, #c62828); margin: 0; }
-#mapprops-dialog > form > .mapprops-body h4 { margin: 12px 0 6px; }
-#mapprops-dialog .font-add + .font-sample { display: block; margin-top: 8px; padding: 6px 8px; background: #fff; color: #000; border: 1px solid var(--border); border-radius: 4px; }
 .find-count { color: var(--muted); min-height: 1.2em; }
 
 @media (max-width: 900px) {
@@ -451,6 +532,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 .dock.vertical #layers-panel { top: 0; left: calc(100% + 4px); }
 #dock-right #layers-panel { left: auto; right: calc(100% + 4px); }
 #dock-bottom #layers-panel { top: auto; bottom: calc(100% + 4px); }
+#appbar #layers-panel { left: auto; right: 0; top: calc(100% + 8px); }
 #layers-panel label { display: flex; gap: 6px; align-items: center; white-space: nowrap; cursor: pointer; }
 #layers-panel small { color: var(--muted); }
 #custom-layers { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -488,7 +570,6 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 
 /* Text mode */
 #app.text-mode .toolbar > *:not([data-cmd="text-mode"]):not(.tb-grip) { opacity: .35; pointer-events: none; }
-#app.text-mode #appbar [data-cmd="map-properties"] { opacity: .35; pointer-events: none; }
 #text-mode {
     grid-row: 3; grid-column: 1 / -1; z-index: 5;
     display: grid; grid-template-rows: auto 1fr auto auto; min-height: 0;
@@ -528,3 +609,11 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #text-problems .warning .pb-line { color: var(--warn); }
 .pb-line { font-weight: 600; margin-right: 6px; }
 .text-help { margin: 0; padding: 4px 10px 6px; color: var(--muted); font-size: 12px; }
+
+/* Top bar on a phone: icons only, the map name keeps the room left */
+@media (max-width: 600px) {
+    #appbar { gap: 2px; padding: 4px 6px; }
+    #save-state > span, .tb-view > span, .tb-sep { display: none; }
+    .tb-view { padding: 0 8px; margin-left: 2px; }
+    .tb-title { flex: 1 1 auto; font-size: 14px; }
+}

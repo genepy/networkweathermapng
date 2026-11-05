@@ -1,21 +1,19 @@
 /**
- * Map properties of the SVG editor: the title, legend and timestamp texts,
- * fonts and colours, the background colour, the colour scale of the links
- * (with presets) and the link defaults (the DEFAULT link). Opened from the top bar, from the Map panel, or from a
- * selected legend, timestamp or title.
+ * Map properties of the SVG editor, shown in the properties panel when
+ * nothing is selected: sections that fold for the background colour and
+ * theme, the title, legend and timestamp texts, fonts and colours, the
+ * colour scale of the links (with presets), the link defaults (the DEFAULT
+ * link), the basemap and the fonts. A selected legend, timestamp or title
+ * shows its own section. Each field is saved when it changes, as one step
+ * that can be undone; the colour scale is saved with its Apply button.
  */
 (function () {
     'use strict';
 
     var ed = window.WMEditor;
     var t = ed.t, h = ed.h;
-    var dialog = document.getElementById('mapprops-dialog');
-    var form = dialog.querySelector('form');
-    var tabs = dialog.querySelector('.mapprops-tabs');
-    var body = dialog.querySelector('.mapprops-body');
-    var current = 'general';
-    var start = null; // values when the dialog opened
-    var scaleRows = []; // the steps of the colour scale while the dialog is open
+    var FOLD_KEY = 'wm-editor-map-sections';
+    var scaleRows = []; // the steps of the colour scale being edited
     var scaleStart = '';
 
     /**
@@ -118,13 +116,25 @@
             render();
         } });
 
+        var apply = h('button', { type: 'button', 'class': 'primary', text: t('Apply the colours'), onclick: function () {
+            if (scaleJson(scaleRows) === scaleStart) { return; }
+            ed.send([{ op: 'set_scale', steps: scaleRows.map(function (r) {
+                return { bottom: +r.bottom, top: +r.top, colour: r.colour, colour2: r.colour2 || '', tag: r.tag || '' };
+            }) }], function () { ed.toast(t('Link colours saved')); return undefined; });
+        } });
+        var reset = h('button', { type: 'button', text: t('Reset'), title: t('Back to the saved colours'), onclick: function () {
+            scaleRows = JSON.parse(scaleStart).map(function (r) { return { bottom: r[0], top: r[1], colour: r[2], colour2: r[3], tag: r[4] }; });
+            render();
+        } });
+
         render();
         return [
             h('p', { 'class': 'mapprops-explain', text: t('The colour of a link follows its load, in % of its bandwidth: each step gives the colour from one value to the next. A 0 to 0 step colours the links without traffic. The legend shows these steps.') }),
             field(t('Start from a preset'), preset, t('Replaces the steps below. Nothing is saved before Apply.')),
             bar,
             list,
-            h('div', { 'class': 'pair' }, [add, msg])
+            h('div', { 'class': 'pair' }, [add, msg]),
+            h('div', { 'class': 'actions' }, [reset, apply])
         ];
     }
 
@@ -154,7 +164,6 @@
             h('option', { value: '', text: t('Choose a basemap…') }),
             h('option', { value: 'none', text: t('None: the plain background') })
         ].concat(BASEMAPS.map(function (b) { return h('option', { value: b[0], text: b[1] }); })));
-        var msg = h('span', { 'class': 'hint', role: 'status' });
         preset.addEventListener('change', function () {
             var b = BASEMAPS.filter(function (x) { return x[0] === preset.value; })[0];
             if (preset.value === 'none') { url.value = ''; dark.value = ''; }
@@ -164,6 +173,9 @@
                 credit.value = '';
                 if (!centre.value) { centre.value = '46.6 2.4'; }
                 if (!zoom.value) { zoom.value = '5'; }
+            }
+            if (preset.value) {
+                sendProps({ basemap: url.value, basemap_dark: dark.value, basemap_attribution: credit.value, basemap_center: centre.value, basemap_zoom: zoom.value });
             }
             preset.value = '';
         });
@@ -178,7 +190,7 @@
             if (!f) { return; }
             centre.value = f.center[0].toFixed(5) + ' ' + f.center[1].toFixed(5);
             zoom.value = String(f.zoom);
-            msg.textContent = t('Apply to move the canvas over these nodes.');
+            sendProps({ basemap_center: centre.value, basemap_zoom: zoom.value });
         });
 
         var servers = (m.basemap_servers || []).join(', ');
@@ -189,7 +201,7 @@
             field(t('For the dark theme'), dark, t('Optional, of the same kind as the address above.')),
             field(t('Centre (latitude longitude)'), centre),
             field(t('Zoom level'), zoom, t('0 shows the whole world, 5 a country, 11 a city.')),
-            h('div', { 'class': 'pair' }, [fit, msg]),
+            fit,
             field(t('Credit'), credit, t('Shown on the map. Styles carry their own; raster tiles default to OpenStreetMap.'))
         ];
     }
@@ -270,7 +282,7 @@
         /** New fonts show in the lists of the other tabs, keeping what is chosen there */
         function afterChange() {
             renderList();
-            Array.prototype.forEach.call(body.querySelectorAll('select.font-select'), function (sel) {
+            Array.prototype.forEach.call(document.querySelectorAll('#inspector select.font-select'), function (sel) {
                 var v = sel.value;
                 sel.replaceChildren.apply(sel, ed.state.model.fonts.map(function (f) {
                     return h('option', { value: f, text: ed.fontName(f), selected: String(f) === v });
@@ -326,160 +338,198 @@
             var name = pick.selectedOptions[0].text, done = false;
             go.disabled = true;
             ed.send([{ op: 'apply_theme', theme: pick.value }], function () { done = true; return undefined; }).then(function () {
-                if (!done) { return; }
-                // show the new values; the dialog stays open on the same tab
-                build(ed.state.model.map.props, ed.state.model.map);
-                show(current);
-                start = values();
-                ed.toast(t('Theme applied: :name. Ctrl+Z to undo.', { name: name }));
+                if (done) { ed.toast(t('Theme applied: :name. Ctrl+Z to undo.', { name: name })); }
             }).finally(function () { go.disabled = false; });
         });
         return [
             h('h4', { text: t('Theme') }),
             h('div', { 'class': 'pair' }, [pick, go]),
-            h('span', { 'class': 'hint', text: t('Sets the colours of the map, the legend, the link colours and the default node and link labels. Saved at once; changes not yet applied in this dialog are dropped.') })
+            h('span', { 'class': 'hint', text: t('Sets the colours of the map, the legend, the link colours and the default node and link labels. Ctrl+Z undoes it.') })
         ];
     }
 
-    function build(p, m) {
-        var panes = {
-            general: [
-                field(t('Map name'), h('input', { name: 'title', value: m.title, autocomplete: 'off' }), t('Drawn as the title of the map and shown in the map list.')),
-                field(t('Background colour'), colour('bg_colour', p.bg_colour, false), t('Seen where the background image does not cover the map.'))
-            ].concat(themePane()),
-            title: [
-                field(t('Map name'), h('input', { name: 'title_again', value: m.title, autocomplete: 'off' }), t('Drawn as the title of the map and shown in the map list.')),
-                field(t('Font'), fontSelect('title_font', p.title_font)),
-                field(t('Colour'), colour('title_colour', p.title_colour, false))
-            ],
-            legend: [
-                h('p', { 'class': 'mapprops-explain', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth. A 1G link carrying 450M is at 45%, so that half of the link takes the colour of the 45% step.') }),
-                check('key_shown', p.key_shown, t('Show the legend on the map')),
-                field(t('Legend text'), h('input', { name: 'key_text', value: p.key_text, autocomplete: 'off' })),
-                field(t('Style'), choice('key_style', p.key_style, [
-                    ['classic', t('Classic: a list of colours')], ['horizontal', t('Horizontal bar')], ['vertical', t('Vertical bar')],
-                    ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')],
-                    ['modern', t('Modern: a rounded card with a colour bar')]
-                ])),
-                field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal, vertical and modern bars.')),
-                field(t('Font'), fontSelect('key_font', p.key_font)),
-                field(t('Text colour'), colour('key_text_colour', p.key_text_colour, false)),
-                field(t('Box colour'), colour('key_bg_colour', p.key_bg_colour, true)),
-                field(t('Box outline'), colour('key_outline_colour', p.key_outline_colour, true))
-            ],
-            timestamp: [
-                field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
-                    t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
-                field(t('Style'), choice('stamp_style', p.stamp_style, [
-                    ['plain', t('Plain text')], ['pill', t('On a rounded label, in the legend colours')]
-                ])),
-                field(t('Font'), fontSelect('time_font', p.time_font)),
-                field(t('Colour'), colour('time_colour', p.time_colour, false))
-            ],
-            links: [
-                h('p', { 'class': 'mapprops-explain', text: t('The values a link uses when it has none of its own. Links that had the old default value take the new one; links with their own value keep it.') }),
-                field(t('Bandwidth'), h('input', { name: 'link_bandwidth', value: p.link_bandwidth, autocomplete: 'off', placeholder: '1G' }),
-                    t('In bits per second: 100M, 1G, 10G. The link load in % is its traffic divided by this.')),
-                field(t('Width (px)'), h('input', { name: 'link_width', value: p.link_width, autocomplete: 'off' }), t('A number, or auto to follow the bandwidth.')),
-                field(t('Label'), choice('link_labelstyle', p.link_labelstyle, [
-                    ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
-                ])),
-                field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
-                field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
-                    ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
-                ]))
-            ],
-            scale: scalePane(m.scale).concat([
-                h('h4', { text: t('Saturated links') }),
-                check('traffic_pulse', p.traffic_pulse, t('Make links at 80 % or more pulse and glow in the viewer')),
-                h('span', { 'class': 'hint', text: t('Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.') }),
-                h('h4', { text: t('Glow') }),
-                check('link_glow', p.link_glow, t('Draw a soft glow around the links, in their own colour')),
-                h('span', { 'class': 'hint', text: t('In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.') }),
-                h('h4', { text: t('Traffic flow') }),
-                check('link_flow', p.link_flow, t('Move glowing dots along the links, in the direction of the traffic')),
-                h('span', { 'class': 'hint', text: t('Only on the live map. Busier links move faster. No motion for a visitor who asked their system for less motion.') })
-            ]),
-            basemap: basemapPane(p, m),
-            fonts: fontsPane()
-        };
-
-        tabs.replaceChildren.apply(tabs, SECTIONS.map(function (s) {
-            return h('button', { type: 'button', role: 'tab', 'data-section': s[0], text: s[1], onclick: function () { show(s[0]); } });
-        }));
-        body.replaceChildren.apply(body, SECTIONS.map(function (s) {
-            return h('fieldset', { 'data-section': s[0], role: 'tabpanel' }, panes[s[0]]);
-        }));
-
-        // the title is in two tabs; keep them the same
-        var t1 = form.elements.title, t2 = form.elements.title_again;
-        t1.addEventListener('input', function () { t2.value = t1.value; });
-        t2.addEventListener('input', function () { t1.value = t2.value; });
+    /** Saves map properties at once, as one step that can be undone */
+    function sendProps(props) {
+        return ed.send([{ op: 'set_map', props: props }], function () { return undefined; });
     }
 
-    function show(section) {
-        current = section;
-        Array.prototype.forEach.call(tabs.children, function (b) { b.setAttribute('aria-selected', b.dataset.section === section ? 'true' : 'false'); });
-        Array.prototype.forEach.call(body.children, function (f) { f.hidden = f.dataset.section !== section; });
+    /** The value of a named field of a section, as the server expects it */
+    function valueOf(box, name) {
+        var el = box.querySelector('[name="' + name + '"]');
+        if (!el) { return undefined; }
+        if (el.type === 'checkbox') { return el.checked; }
+        if (el.type === 'color') {
+            var none = box.querySelector('[name="' + name + '__none"]');
+            return none && none.checked ? 'none' : el.value.toLowerCase();
+        }
+        return el.value;
     }
 
-    /** The values of the form, as the server names them */
-    function values() {
-        var out = {};
-        // only the fields of the tabs: the page adds a CSRF field to every form
-        Array.prototype.forEach.call(body.querySelectorAll('[name]'), function (el) {
-            if (!el.name || el.name === 'title_again' || /__none$/.test(el.name)) { return; }
-            if (el.type === 'checkbox') { out[el.name] = el.checked; return; }
-            if (el.type === 'color') {
-                var none = form.elements[el.name + '__none'];
-                out[el.name] = none && none.checked ? 'none' : el.value.toLowerCase();
+    /** The fields of a section, by section id; title adds the map name when shown for the title itself */
+    function panes(id, p, m, withName) {
+        switch (id) {
+            case 'appearance':
+                return [
+                    field(t('Background colour'), colour('bg_colour', p.bg_colour, false), t('Seen where the background image does not cover the map.'))
+                ].concat(themePane());
+            case 'title':
+                return (withName ? [field(t('Map name'), h('input', { name: 'title', value: m.title, autocomplete: 'off' }), t('Drawn as the title of the map and shown in the map list.'))] : []).concat([
+                    field(t('Font'), fontSelect('title_font', p.title_font)),
+                    field(t('Colour'), colour('title_colour', p.title_colour, false))
+                ]);
+            case 'legend':
+                return [
+                    h('p', { 'class': 'mapprops-explain', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth. A 1G link carrying 450M is at 45%, so that half of the link takes the colour of the 45% step.') }),
+                    check('key_shown', p.key_shown, t('Show the legend on the map')),
+                    field(t('Legend text'), h('input', { name: 'key_text', value: p.key_text, autocomplete: 'off' })),
+                    field(t('Style'), choice('key_style', p.key_style, [
+                        ['classic', t('Classic: a list of colours')], ['horizontal', t('Horizontal bar')], ['vertical', t('Vertical bar')],
+                        ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')],
+                        ['modern', t('Modern: a rounded card with a colour bar')]
+                    ])),
+                    field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal, vertical and modern bars.')),
+                    field(t('Font'), fontSelect('key_font', p.key_font)),
+                    field(t('Text colour'), colour('key_text_colour', p.key_text_colour, false)),
+                    field(t('Box colour'), colour('key_bg_colour', p.key_bg_colour, true)),
+                    field(t('Box outline'), colour('key_outline_colour', p.key_outline_colour, true))
+                ];
+            case 'timestamp':
+                return [
+                    field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
+                        t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
+                    field(t('Style'), choice('stamp_style', p.stamp_style, [
+                        ['plain', t('Plain text')], ['pill', t('On a rounded label, in the legend colours')]
+                    ])),
+                    field(t('Font'), fontSelect('time_font', p.time_font)),
+                    field(t('Colour'), colour('time_colour', p.time_colour, false))
+                ];
+            case 'links':
+                return [
+                    h('p', { 'class': 'mapprops-explain', text: t('The values a link uses when it has none of its own. Links that had the old default value take the new one; links with their own value keep it.') }),
+                    field(t('Bandwidth'), h('input', { name: 'link_bandwidth', value: p.link_bandwidth, autocomplete: 'off', placeholder: '1G' }),
+                        t('In bits per second: 100M, 1G, 10G. The link load in % is its traffic divided by this.')),
+                    field(t('Width (px)'), h('input', { name: 'link_width', value: p.link_width, autocomplete: 'off' }), t('A number, or auto to follow the bandwidth.')),
+                    field(t('Label'), choice('link_labelstyle', p.link_labelstyle, [
+                        ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
+                    ])),
+                    field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
+                    field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
+                        ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
+                    ]))
+                ];
+            case 'scale':
+                return scalePane(m.scale).concat([
+                    h('h4', { text: t('Saturated links') }),
+                    check('traffic_pulse', p.traffic_pulse, t('Make links at 80 % or more pulse and glow in the viewer')),
+                    h('span', { 'class': 'hint', text: t('Only on the live map. A visitor who asked their system for less motion sees the glow without the pulse.') }),
+                    h('h4', { text: t('Glow') }),
+                    check('link_glow', p.link_glow, t('Draw a soft glow around the links, in their own colour')),
+                    h('span', { 'class': 'hint', text: t('In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.') }),
+                    h('h4', { text: t('Traffic flow') }),
+                    check('link_flow', p.link_flow, t('Move glowing dots along the links, in the direction of the traffic')),
+                    h('span', { 'class': 'hint', text: t('Only on the live map. Busier links move faster. No motion for a visitor who asked their system for less motion.') })
+                ]);
+            case 'basemap':
+                return basemapPane(p, m);
+            case 'fonts':
+                return fontsPane();
+        }
+        return [];
+    }
+
+    /** What a folded section shows on its row */
+    function summary(id, p, m) {
+        switch (id) {
+            case 'appearance': return p.bg_colour;
+            case 'title': return ed.fontName(p.title_font);
+            case 'legend': return p.key_shown ? t('Shown') : t('Hidden');
+            case 'scale': return t(':n steps', { n: (m.scale || []).length });
+            case 'timestamp': return p.stamp_text;
+            case 'links': return p.link_bandwidth;
+            case 'basemap':
+                if (!p.basemap) { return t('None'); }
+                try { return new URL(p.basemap, location.href).hostname; } catch (e) { return p.basemap; }
+            case 'fonts': return String(Object.keys(ed.state.model.font_info || {}).length);
+        }
+        return '';
+    }
+
+    var SECTIONS = [
+        ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Legend')], ['scale', t('Link colours')],
+        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
+    ];
+
+    function loadFolds() {
+        try { return JSON.parse(localStorage.getItem(FOLD_KEY) || 'null') || {}; } catch (e) { return {}; }
+    }
+
+    function saveFold(id, open) {
+        var folds = loadFolds();
+        folds[id] = open;
+        try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch (e) { /* this page only */ }
+    }
+
+    /** Saves a named field of a section when it changes */
+    function listen(box) {
+        box.addEventListener('change', function (evt) {
+            var el = evt.target, name = el.name || '';
+            if (!name || name === 'csrf_token') { return; }
+            name = name.replace(/__none$/, '');
+            var value = valueOf(box, name);
+            if (value === undefined) { return; }
+            if (name === 'title') {
+                ed.send([{ op: 'set_map', title: value }]);
                 return;
             }
-            out[el.name] = el.value;
+            var props = {};
+            props[name] = value;
+            sendProps(props);
         });
-        return out;
     }
 
-    function open(section) {
+    /**
+     * One section of the map properties, as a fold. `forItem` shows it open
+     * for a selected legend, title or timestamp, without remembering it.
+     */
+    function section(id, forItem) {
         var m = ed.state.model && ed.state.model.map;
-        if (!m || !m.props) { return; }
-        build(m.props, m);
-        show(section || current);
-        start = values();
-        dialog.showModal();
-        var first = body.querySelector('fieldset:not([hidden]) input, fieldset:not([hidden]) select');
-        if (first) { first.focus(); }
+        if (!m || !m.props) { return null; }
+        var label = SECTIONS.filter(function (x) { return x[0] === id; })[0];
+        var open = forItem ? true : !!loadFolds()[id];
+        var details = h('details', { 'class': 'map-sec', 'data-section': id, open: open }, [
+            h('summary', {}, [h('span', { text: label ? label[1] : id }), h('span', { 'class': 'map-sec-value', text: summary(id, m.props, m) || '' })]),
+            h('div', { 'class': 'map-sec-body' }, panes(id, m.props, m, forItem))
+        ]);
+        if (!forItem) {
+            details.addEventListener('toggle', function () { saveFold(id, details.open); });
+        }
+        listen(details);
+        return details;
     }
 
-    form.addEventListener('submit', function (evt) {
-        if (evt.submitter && evt.submitter.value === 'cancel') { return; }
-        evt.preventDefault();
-        var now = values(), props = {}, op = { op: 'set_map' }, changed = false, ops = [];
-        Object.keys(now).forEach(function (k) {
-            if (String(now[k]) === String(start[k])) { return; }
-            changed = true;
-            if (k === 'title') { op.title = now[k]; } else { props[k] = now[k]; }
-        });
-        if (Object.keys(props).length) { op.props = props; }
-        if (changed) { ops.push(op); }
-        if (scaleJson(scaleRows) !== scaleStart) {
-            ops.push({ op: 'set_scale', steps: scaleRows.map(function (r) {
-                return { bottom: +r.bottom, top: +r.top, colour: r.colour, colour2: r.colour2 || '', tag: r.tag || '' };
-            }) });
-        }
-        if (!ops.length) { dialog.close(); return; }
+    /** Every section, for the map panel */
+    function sections() {
+        return SECTIONS.map(function (s) { return section(s[0], false); }).filter(Boolean);
+    }
 
-        var apply = dialog.querySelector('button.primary'), saved = false;
-        apply.disabled = true;
-        // send() shows its own error and reloads the map; the select callback runs only on success
-        ed.send(ops, function () { saved = true; return undefined; }).then(function () {
-            if (saved) {
-                dialog.close();
-                ed.toast(t('Map properties saved'));
-            }
-        }).finally(function () { apply.disabled = false; });
-    });
+    /** Selects nothing, so the panel shows the map; opens a section if asked */
+    function open(id) {
+        ed.state.selection.clear();
+        ed.refresh();
+        if (id) { saveFold(id, true); ed.renderInspector(); }
+        var app = document.getElementById('app');
+        if (app.classList.contains('no-inspector')) { ed.toast(t('The properties panel is hidden: show it from ⋯ › Toolbars and panels.')); }
+        var target = id ? document.querySelector('#inspector .map-sec[data-section="' + id + '"]') : document.querySelector('#inspector-body input');
+        if (target) {
+            target.scrollIntoView({ block: 'start' });
+            (id ? target.querySelector('summary') : target).focus();
+        }
+    }
 
     ed.commands['map-properties'] = function () { open(); };
     ed.openMapProperties = open;
+    ed.mapSections = sections;
+    ed.mapSection = section;
+    // the panel was drawn before this script was loaded
+    if (ed.state.model) { ed.renderInspector(); }
 })();

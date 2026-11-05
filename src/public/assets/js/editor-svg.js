@@ -92,14 +92,16 @@
     }
 
     function run(task) {
+        var failed = false;
         state.queue = state.queue.then(function () {
             busy(true);
             return task();
         }).catch(function (e) {
+            failed = true;
             toast(e.message, true);
             return load();
         }).finally(function () {
-            busy(false);
+            busy(false, failed);
         });
         return state.queue;
     }
@@ -193,6 +195,7 @@
         renderCustomLayers();
         applyCustomLayers();
         refresh();
+        document.dispatchEvent(new CustomEvent('wm-editor-render'));
     }
 
     function pruneSelection() {
@@ -303,7 +306,19 @@
 
     function snap(v) { return state.snap ? Math.round(v / GRID) * GRID : Math.round(v); }
 
-    function busy(on) { $('#busy').hidden = !on; }
+    /**
+     * The save state of the top bar: Loading… before the map is drawn,
+     * Saving… while a change is sent, then Saved (or Not saved after an
+     * error, until the next change goes through).
+     */
+    function busy(on, failed) {
+        var box = $('#save-state');
+        if (!box) { return; }
+        var s = on ? (state.model ? 'saving' : 'loading') : (failed ? 'error' : 'saved');
+        box.dataset.state = s;
+        box.querySelector('span').textContent = { loading: t('Loading…'), saving: t('Saving…'), saved: t('Saved'), error: t('Not saved') }[s];
+        box.title = s === 'error' ? t('The last change could not be saved; the map shows what is saved.') : '';
+    }
 
     var toastTimer = null;
     function toast(msg, isError) {
@@ -815,12 +830,19 @@
             if (need === 'any') { ok = any > 0; }
             if (e.tagName === 'BUTTON') { e.disabled = !ok; } else { e.classList.toggle('unavailable', !ok); }
         });
-        $('[data-cmd="tool-select"]').classList.toggle('active', state.tool === 'select');
-        $('[data-cmd="tool-link"]').classList.toggle('active', state.tool === 'link');
-        $('[data-cmd="snap"]').classList.toggle('active', state.snap);
-        $('[data-cmd="zone"]').classList.toggle('active', state.placing);
+        // the Add panel repeats some tools of the toolbars
+        function on(cmd, yes) {
+            $$('[data-cmd="' + cmd + '"]').forEach(function (b) {
+                b.classList.toggle('active', yes);
+                if (b.closest('#palette')) { b.setAttribute('aria-pressed', yes ? 'true' : 'false'); }
+            });
+        }
+        on('tool-select', state.tool === 'select');
+        on('tool-link', state.tool === 'link');
+        on('snap', state.snap);
+        on('zone', !!state.placing);
         $('[data-cmd="paste"]').disabled = !hasClip();
-        $('[data-cmd="text-mode"]').classList.toggle('active', state.textMode);
+        on('text-mode', state.textMode);
         var spread = $('[data-cmd="spread"]');
         spread.title = t('Move overlapping nodes apart (:n overlapping now)', { n: state.overlaps.size });
         spread.classList.toggle('warn', state.overlaps.size > 0);
@@ -1651,10 +1673,26 @@
         send(ops, []);
     }
 
+    /** The map point in the middle of the view */
+    function viewCentre() {
+        return { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
+    }
+
     /** A map note at a point of the map, or in the middle of the view */
     function addNote(at) {
-        var c = at || { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
+        var c = at || viewCentre();
         addNode({ note: true, text: t('Note'), x: Math.max(0, snap(c.x)), y: Math.max(0, snap(c.y)) });
+    }
+
+    /** A node in the middle of the view (the Add panel), from a template or with an icon */
+    function addNodeHere(opts) {
+        var c = viewCentre(), m = state.model && state.model.map;
+        var x = snap(c.x), y = snap(c.y);
+        if (m) {
+            x = Math.min(Math.max(20, x), Math.max(20, m.width - 20));
+            y = Math.min(Math.max(20, y), Math.max(20, m.height - 20));
+        }
+        addNode(Object.assign({ x: x, y: y, template: 'DEFAULT' }, opts || {}));
     }
 
     /** Where a new zone centred on a map point goes */
@@ -2264,37 +2302,12 @@
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
             m.background ? row(t('Background size'), sizing) : null,
-            propsButton('general', t('Map properties…')),
-            h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) }),
-            h('h3', { text: t('Shortcuts') }),
-            help([
-                [t('Click, Shift+click'), t('select, add to selection')],
-                [t('Drag on empty space'), t('select an area')],
-                [t('Alt+click'), t('one item of a group')],
-                [t('Ctrl+click empty space'), t('new node')],
-                ['Ctrl+A', t('select everything, zones and legends included')],
-                ['Esc', t('cancel the drag, close the menu, or select nothing')],
-                [t('Enter in a field'), t('apply the change')],
-                [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
-                [t('Alt while dragging'), t('no snapping to the other objects')],
-                [t('Ctrl+drag'), t('duplicate the selected nodes')],
-                [t('Double-click a link'), t('add a bend point there')],
-                ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')],
-                [t('Ctrl+D / Delete'), t('duplicate / delete')],
-                ['Ctrl+G / Ctrl+Shift+G', t('group / ungroup')],
-                ['Ctrl+C / Ctrl+X / Ctrl+V', t('copy / cut / paste, also into another map')],
-                [t('Right-click, Shift+F10'), t('menu of actions')],
-                ['L / V', t('link tool / select tool')],
-                [t('Wheel, Space+drag'), t('zoom, move the view')],
-                ['F / 0', t('fit / actual size')]
+            h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) })
+        ].concat(window.WMEditor.mapSections ? window.WMEditor.mapSections() : []).concat([
+            h('button', { type: 'button', 'class': 'shortcuts-hint', onclick: openShortcuts }, [
+                t('Every keyboard shortcut'), ' ', h('kbd', { text: '?' })
             ])
-        ].filter(Boolean);
-    }
-
-    function help(lines) {
-        return h('div', {}, lines.map(function (l) {
-            return h('p', { 'class': 'help' }, [h('kbd', { text: l[0] }), ' ' + l[1]]);
-        }));
+        ]).filter(Boolean);
     }
 
     function iconOptions() {
@@ -2567,20 +2580,11 @@
             out.push(row(t('Position'), h('div', { 'class': 'pair' }, [x, y])));
         }
         out.push(h('p', { 'class': 'help', text: t('Drag it on the map, or use the arrow keys. It lines up with the other objects while dragged.') }));
-        if (single && single.kind === 'legend') {
-            out.push(h('p', { 'class': 'help', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth.') }));
-        }
-        if (single && single.kind !== 'widthlegend') {
-            out.push(propsButton(single.kind === 'legend' ? 'legend' : single.kind === 'title' ? 'title' : 'timestamp', t('Text, font and colours…')));
+        // the text, font and colours of the legend, title or timestamp (editor-mapprops.js)
+        if (single && single.kind !== 'widthlegend' && window.WMEditor.mapSection) {
+            out.push(window.WMEditor.mapSection(single.kind === 'legend' ? 'legend' : single.kind === 'title' ? 'title' : 'timestamp', true));
         }
         return out;
-    }
-
-    /** Opens the Map properties dialog (editor-mapprops.js) at a section */
-    function propsButton(section, text) {
-        return h('button', { type: 'button', 'class': 'props-open', text: text, onclick: function () {
-            if (window.WMEditor.openMapProperties) { window.WMEditor.openMapProperties(section); }
-        } });
     }
 
     function zonePanel(zones) {
@@ -3805,18 +3809,76 @@
         'zoom-in': function () { zoomAt(1.25); },
         'zoom-out': function () { zoomAt(0.8); },
         'zoom-reset': zoomReset,
-        'zoom-fit': zoomFit
+        'zoom-fit': zoomFit,
+        'add-node': function () { addNodeHere(); },
+        'shortcuts': openShortcuts
     };
 
     document.addEventListener('click', function (evt) {
-        var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd]');
-        if (b && state.textMode && b.dataset.cmd !== 'text-mode') {
+        var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd], #palette button[data-cmd], #editor-menu button[data-cmd]');
+        if (b && state.textMode && b.dataset.cmd !== 'text-mode' && b.dataset.cmd !== 'shortcuts') {
             return;
+        }
+        if (b && b.closest('#editor-menu')) {
+            try { $('#editor-menu').hidePopover(); } catch (e) { /* no popover support */ }
         }
         if (b && commands[b.dataset.cmd]) {
             commands[b.dataset.cmd]();
         }
     });
+
+    // ------------------------------------------------------------------
+    // Keyboard shortcuts (? or the ⋯ menu)
+
+    function shortcutGroups() {
+        return [
+            [t('Select'), [
+                [t('Click, Shift+click'), t('select, add to selection')],
+                [t('Drag on empty space'), t('select an area')],
+                [t('Alt+click'), t('one item of a group')],
+                ['Ctrl+A', t('select everything, zones and legends included')],
+                ['Ctrl+F', t('select by criteria')],
+                ['Esc', t('cancel the drag, close the menu, or select nothing')]
+            ]],
+            [t('Add and change'), [
+                [t('Ctrl+click empty space'), t('new node')],
+                ['L / V', t('link tool / select tool')],
+                [t('Double-click a link'), t('add a bend point there')],
+                [t('Enter in a field'), t('apply the change')],
+                [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
+                [t('Alt while dragging'), t('no snapping to the other objects')],
+                [t('Ctrl+drag'), t('duplicate the selected nodes')],
+                [t('Ctrl+D / Delete'), t('duplicate / delete')],
+                ['Ctrl+C / Ctrl+X / Ctrl+V', t('copy / cut / paste, also into another map')],
+                ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')]
+            ]],
+            [t('Arrange'), [
+                ['Ctrl+G / Ctrl+Shift+G', t('group / ungroup')],
+                ['Ctrl+L', t('lock or unlock')],
+                ['Ctrl+] / Ctrl+[', t('bring to front / send to back')],
+                [t('Right-click, Shift+F10'), t('menu of actions')]
+            ]],
+            [t('View'), [
+                [t('Wheel, Space+drag'), t('zoom, move the view')],
+                ['+ / -', t('zoom in / zoom out')],
+                ['F / 0', t('fit / actual size')],
+                ['G', t('snap to the grid')],
+                ['?', t('this list')]
+            ]]
+        ];
+    }
+
+    function openShortcuts() {
+        var dlg = $('#shortcuts-dialog');
+        if (!dlg || dlg.open) { return; }
+        var body = $('.shortcuts-body', dlg);
+        body.replaceChildren.apply(body, shortcutGroups().map(function (g) {
+            return h('section', {}, [h('h4', { text: g[0] }), h('dl', {}, g[1].reduce(function (out, l) {
+                return out.concat([h('dt', {}, [h('kbd', { text: l[0] })]), h('dd', { text: l[1] })]);
+            }, []))]);
+        }));
+        dlg.showModal();
+    }
 
     function nudge(dx, dy) {
         var objects = selectedObjects();
@@ -3916,6 +3978,7 @@
         if (ctrl && k === ']') { zorder('front'); evt.preventDefault(); return; }
         if (ctrl && k === '[') { zorder('back'); evt.preventDefault(); return; }
         if (ctrl) { return; }
+        if (k === '?') { openShortcuts(); evt.preventDefault(); return; }
 
         var step = evt.shiftKey ? 10 : 1;
         switch (k) {
@@ -3972,7 +4035,7 @@
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
-        selected: selected, fontName: fontName
+        selected: selected, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector
     };
     document.dispatchEvent(new CustomEvent('wm-editor-ready'));
 })();
