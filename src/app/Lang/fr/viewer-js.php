@@ -16,6 +16,9 @@ return [
     'No node matches “:q”' => 'Aucun nœud ne correspond à « :q »',
     'Click to open its page in a new tab' => 'Cliquer pour ouvrir sa page dans un nouvel onglet',
     'Tap again to open its page in a new tab' => 'Toucher à nouveau pour ouvrir sa page dans un nouvel onglet',
+    '1 link' => '1 lien',
+    ':n links' => ':n liens',
+    'Go to :node' => 'Aller à :node',
 
     // maplist.js
     ':shown of :total maps' => ':shown sur :total cartes',

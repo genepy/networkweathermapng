@@ -44,4 +44,11 @@ return [
     'Time of the frame shown' => 'Heure de l’image affichée',
     'Playback speed' => 'Vitesse de lecture',
     'Live' => 'Direct',
+
+    // Card of the focused node
+    'Selected node' => 'Nœud sélectionné',
+    'Zoom onto this node' => 'Zoomer sur ce nœud',
+    'Close (Esc)' => 'Fermer (Échap)',
+    'No links on this node.' => 'Aucun lien sur ce nœud.',
+    'Open its page' => 'Ouvrir sa page',
 ];

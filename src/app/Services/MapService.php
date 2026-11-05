@@ -648,7 +648,8 @@ class MapService
 
     /**
      * What the last data render found: the most loaded link, and per item
-     * what the viewer shows on hover or opens on click. With the map id,
+     * what the viewer shows on hover or opens on click (a link also names
+     * the nodes at its ends, A and B). With the map id,
      * links read from a data source get the traffic graph of
      * /map/{id}/link/{linkId}/graph when they have no OVERLIBGRAPH.
      */
@@ -678,6 +679,9 @@ class MapService
             $item = [
                 'kind' => 'link',
                 'name' => (string) $link->name,
+                // its ends, for the node card of the viewer
+                'a' => (string) $link->a->name,
+                'b' => (string) $link->b->name,
                 'in' => is_numeric($link->bandwidth_in ?? null) ? (float) $link->bandwidth_in : null,
                 'out' => is_numeric($link->bandwidth_out ?? null) ? (float) $link->bandwidth_out : null,
                 'inpct' => round($in, 2),

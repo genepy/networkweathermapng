@@ -3,7 +3,7 @@
 Reference: https://stats.nine-ix.net/ (screenshots shared by the user on
 2026-11-03, dark and light theme, zoomed Paris view; site visited the same
 day, version 1.8.11). Status: tasks 1 (Night theme), 2 (pill labels), 3
-(badge nodes) and 7 (link flow) done, tasks 4, 5, 6 and 8 to do, listed in [ROADMAP.md](../ROADMAP.md). Ideas only: copy no code, logo
+(badge nodes), 7 (link flow) and 8 (site focus, without the basemap parts) done, tasks 4, 5 and 6 to do, listed in [ROADMAP.md](../ROADMAP.md). Ideas only: copy no code, logo
 or artwork; credit the idea in THIRD-PARTY-NOTICES.md ("Ideas from other
 projects") when a piece ships.
 

@@ -71,6 +71,18 @@
     .wmv-svg g.wmv-found { animation: none; filter: drop-shadow(0 0 5px var(--wm-accent)); }
 }
 
+/* Node focus: the node, its links and its neighbours stay, the rest dims */
+.wmv-svg g.wm-link,
+.wmv-svg g.wm-node { transition: opacity 0.25s var(--wm-ease); }
+.wmv-svg.wmv-focusing g.wm-link:not(.wmv-near),
+.wmv-svg.wmv-focusing g.wm-node:not(.wmv-near):not(.wmv-focus) { opacity: 0.25; }
+.wmv-svg g.wmv-focus { filter: drop-shadow(0 0 4px var(--wm-accent)) drop-shadow(0 0 1px var(--wm-accent)); }
+.wmv-svg .wm-node { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+    .wmv-svg g.wm-link,
+    .wmv-svg g.wm-node { transition: none; }
+}
+
 /* Level of detail: bandwidth labels unreadable when zoomed out */
 .wmv-lod-far .wmv-svg .wm-bwlabel-in,
 .wmv-lod-far .wmv-svg .wm-bwlabel-out { display: none; }
@@ -97,7 +109,8 @@
 /* Floating surfaces: bar, zoom, state */
 .wmv-bar,
 .wmv-zoombar,
-.wmv-status {
+.wmv-status,
+.wmv-card {
     position: absolute;
     z-index: 4;
     background: color-mix(in srgb, var(--wm-surface) 92%, transparent);
@@ -338,6 +351,93 @@
     pointer-events: none;
 }
 
+.wmv-minimap-mark {
+    position: absolute;
+    border: 2px solid var(--wm-warning-mark);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--map-bg);
+    pointer-events: none;
+}
+.wmv-minimap-mark[hidden] { display: none; }
+
+/* Card of the focused node: top right, under the bar */
+.wmv-card {
+    right: var(--wm-space-3);
+    top: 68px;
+    width: 300px;
+    max-height: calc(100% - 68px - 76px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--wm-space-2);
+    padding: var(--wm-space-3);
+    border-radius: var(--wm-radius-card);
+    font-size: var(--wm-text-sm);
+}
+.wmv-card[hidden] { display: none; }
+.wmv-card-head { display: flex; align-items: flex-start; gap: 2px; }
+.wmv-card-names { flex: 1; min-width: 0; }
+.wmv-card-title {
+    margin: 0;
+    font-size: var(--wm-text-md);
+    font-weight: 600;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+.wmv-card-sub,
+.wmv-card-count,
+.wmv-card-none { margin: 0; color: var(--wm-text-muted); }
+.wmv-card-sub { font-family: var(--wm-font-mono); overflow-wrap: anywhere; }
+.wmv-card-none[hidden],
+.wmv-card-sub[hidden] { display: none; }
+.wmv-card-links {
+    list-style: none;
+    margin: 0 calc(-1 * var(--wm-space-2));
+    padding: 0;
+    overflow-y: auto;
+    min-height: 0;
+}
+.wmv-card-links button {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: var(--wm-space-2);
+    width: 100%;
+    padding: 6px var(--wm-space-2);
+    border: 0;
+    border-radius: var(--wm-radius-control);
+    background: none;
+    color: var(--wm-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.wmv-card-links button:hover:not(:disabled) { background: var(--wm-hover); }
+.wmv-card-links button:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: -2px; }
+.wmv-card-links button:disabled { cursor: default; }
+.wmv-card-to { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wmv-card-via {
+    grid-column: 1;
+    color: var(--wm-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wmv-card-load {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--wm-success-soft);
+    color: var(--wm-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.wmv-card-load:empty { display: none; }
+.wmv-card-load[data-level="warn"] { background: var(--wm-warning-soft); color: var(--wm-warning-text); }
+.wmv-card-load[data-level="crit"] { background: var(--wm-danger-soft); color: var(--wm-danger-text); }
+.wmv-card-open { align-self: flex-start; }
+.wmv-card-open[hidden] { display: none; }
+
 /* The page around: the "Last updated" line is in the state */
 .map-view-page.svg-view .map-meta { display: none; }
 
@@ -395,6 +495,16 @@ body.wmv-noc {
     .wmv-edit { padding: 0 var(--wm-space-3); }
     .wmv-message { top: 104px; }
     .wmv-status { left: var(--wm-space-2); bottom: var(--wm-space-2); max-width: calc(100% - 84px); }
+    /* the card becomes a sheet over the bottom of the map */
+    .wmv-card {
+        left: var(--wm-space-2);
+        right: var(--wm-space-2);
+        top: auto;
+        bottom: var(--wm-space-2);
+        width: auto;
+        max-height: 45%;
+        z-index: 5;
+    }
     .wmv-status-when,
     .wmv-legend { display: none !important; }
     .wmv-status > span + span { margin-left: 0; padding-left: 0; border-left: 0; }
