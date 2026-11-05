@@ -190,7 +190,16 @@
         } else {
             // On the page, never enlarge a small map; in fullscreen, fill the screen
             centreOn(S.w / 2, S.h / 2, isFullscreen() ? fitZ() : Math.min(1, fitZ()));
+            besidePanel();
         }
+    }
+
+    /** Move the map right, as far as the window allows, so the open side panel does not cover it */
+    function besidePanel() {
+        if (!panel || panel.hidden || vpSize().w <= 640) return;
+        const room = panel.offsetLeft + panel.offsetWidth + 8 - S.tx;
+        const spare = vpSize().w - (S.tx + S.w * S.z);
+        if (room > 0) S.tx += Math.max(0, Math.min(room, spare));
     }
 
     function userMoved() {
@@ -742,6 +751,7 @@
     });
     viewport.addEventListener('mouseleave', function () {
         if (!touch) hidePanel();
+        markRow(null);
     });
 
     viewport.addEventListener('click', function (e) {
@@ -1077,7 +1087,8 @@
         const stats = sec.querySelector('.wmv-total-stats');
         const frames = (P.totals || []).filter(function (f) { return f[1] !== null || f[2] !== null; });
         if (frames.length < 2) {
-            graph.hidden = true;
+            // an <svg> has no hidden property: set the attribute
+            graph.setAttribute('hidden', '');
             stats.hidden = true;
             return;
         }
@@ -1109,25 +1120,26 @@
         graph.replaceChildren.apply(graph, parts);
         const hours = Math.max(1, Math.round((t1 - t0) / 3600));
         graph.setAttribute('aria-label', fmt('Total traffic over the last :hours h, IN above the line and OUT below', {hours: hours}));
-        graph.hidden = false;
+        graph.removeAttribute('hidden');
         const peakIn = Math.max.apply(null, ins), peakOut = Math.max.apply(null, outs);
-        stats.replaceChildren(
-            statLine(t('Peak'), peakIn, peakOut),
-            statLine(t('95th percentile'), percentile(ins, 0.95), percentile(outs, 0.95)),
-            Object.assign(document.createElement('span'), {className: 'wmv-total-span', textContent: fmt('Last :hours h', {hours: hours})})
-        );
+        stats.replaceChildren.apply(stats, []
+            .concat(statLine(t('Peak'), peakIn, peakOut))
+            .concat(statLine(t('95th percentile'), percentile(ins, 0.95), percentile(outs, 0.95)))
+            .concat([cell('wmv-total-span', fmt('Last :hours h', {hours: hours}))]));
         stats.hidden = false;
     }
 
+    function cell(cls, text, title) {
+        const c = document.createElement('span');
+        c.className = cls;
+        c.textContent = text;
+        if (title) c.title = title;
+        return c;
+    }
+
+    /** One row of the grid under IN and OUT: its label, then the IN and OUT values */
     function statLine(label, vin, vout) {
-        const row = document.createElement('span');
-        row.className = 'wmv-total-stat';
-        const k = document.createElement('span');
-        k.textContent = label;
-        const v = document.createElement('span');
-        v.textContent = t('IN') + ' ' + rate(vin) + ' · ' + t('OUT') + ' ' + rate(vout);
-        row.append(k, v);
-        return row;
+        return [cell('wmv-total-key', label), cell('', rate(vin), t('IN')), cell('', rate(vout), t('OUT'))];
     }
 
     function H_on() {
@@ -1499,6 +1511,7 @@
         lastVp = vpSize();
         if (!S.touched) {
             centreOn(S.w / 2, S.h / 2, isFullscreen() ? fitZ() : Math.min(1, fitZ()));
+            besidePanel();
         } else {
             centreOn(c.x, c.y, S.z);
         }
