@@ -40,4 +40,8 @@ return [
     'Peak' => 'Pic',
     '95th percentile' => '95e centile',
     'Last :hours h' => 'Dernières :hours h',
+    // clusters of close sites and the city inset (on a basemap)
+    ':n nodes close together: :names' => ':n nœuds rapprochés : :names',
+    ':n nodes at the same place' => ':n nœuds au même endroit',
+    ':n nodes' => ':n nœuds',
 ];

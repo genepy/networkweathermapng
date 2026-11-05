@@ -145,6 +145,7 @@
         <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
             <div class="wmv-basemap" hidden></div>
             <div class="wmv-stage"></div>
+            <div class="wmv-clusters"></div>
             <div class="wmv-message" role="status"><?= e__('Loading the map…') ?></div>
         </div>
 
@@ -264,6 +265,12 @@
             <ul class="wmv-card-links"></ul>
             <p class="wmv-card-none" hidden><?= e__('No links on this node.') ?></p>
             <a class="wm-btn wmv-card-open" target="_blank" rel="noopener" hidden><?= icon('external-link') ?><span><?= e__('Open its page') ?></span></a>
+        </aside>
+
+        <!-- the city of the hovered site, on a map with a basemap (viewer.js) -->
+        <aside class="wmv-inset wmv-fades" hidden aria-hidden="true">
+            <header class="wmv-inset-head"><span class="wmv-inset-title"></span><span class="wmv-inset-count"></span></header>
+            <div class="wmv-inset-map"></div>
         </aside>
 
         <div class="wmv-minimap wmv-fades" hidden aria-hidden="true">

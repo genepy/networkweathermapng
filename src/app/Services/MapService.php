@@ -704,6 +704,7 @@ class MapService
             $items['L' . $link->id] = $item + $urls;
         }
 
+        $geoMap = \WeatherMapGeo::frame($wmap) !== null;
         foreach ($wmap->nodes as $node) {
             if (is_null($node->x) || $node->name === 'DEFAULT') {
                 continue;
@@ -713,6 +714,11 @@ class MapService
             if ($site !== '') {
                 // the group of the node in the viewer's site list
                 $urls['site'] = $site;
+            }
+            $geo = $geoMap ? \WeatherMapGeo::nodePoint($node) : null;
+            if ($geo !== null) {
+                // its point on the basemap: the viewer merges close sites and shows their city
+                $urls['geo'] = $geo;
             }
             if ($urls) {
                 $items['N' . $node->id] = ['kind' => 'node', 'name' => (string) $node->name] + $urls;

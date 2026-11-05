@@ -119,10 +119,34 @@ contributors (ODbL), credited by the style.
 
 ## Left for later
 
-- The rest of task 8 that needs the basemap: the city inset on hover and
-  the merging of close sites into one badge.
-- Constant-size markers at deep zoom levels.
+- ~~The rest of task 8 that needs the basemap~~: done, see *Viewer: clusters
+  and city inset* below.
+- Constant-width links at deep zoom levels (located nodes keep their size,
+  links still grow with the zoom).
 - Picking the frame by dragging the web map, and a place search (needs a
   geocoding service).
 - Drawing the tiles into the PNG on the server (offline renders).
 - An admin page for the allowed tile servers (only `BASEMAP_SERVERS` now).
+
+## Viewer: clusters and city inset
+
+Nine IX style, task 8, part 2. Only in the viewer, only for maps with a
+basemap; the summary gives each located node its point (`geo: [lat, lon]`).
+
+- Located nodes keep, past 100 %, the size they have at 100 %: a CSS scale
+  of `1 / zoom` around their point (`--wmv-geo-k`). Zooming in thus pulls
+  close sites apart instead of growing them together.
+- Two located nodes closer on the screen than 32 pixels (or than 80 % of the
+  smaller one) merge; the focused node never does. The cluster is an HTML
+  badge over the map with the number of nodes, its ring coloured by the load
+  of their busiest link. A click zooms so they fit and the closest two
+  split; nodes on the same point cannot split and are listed in a small menu
+  (a click focuses one).
+- The city inset is a second, small MapLibre map (made on the first hover),
+  framed on the hovered nodes (zoom 11 at most) with every located node as a
+  dot and every link between two located nodes as a line of its colour.
+  Hovering a node shows its whole site (`SET site`); hovering a cluster or a
+  site row shows those nodes. Leaving them goes back, after a moment, to the
+  focused node's city, or hides the inset. It sits under the bar on the
+  right, beside the node card, and is left out on phones.
+- Deep in a basemap, bandwidth labels larger than 40 pixels are hidden.

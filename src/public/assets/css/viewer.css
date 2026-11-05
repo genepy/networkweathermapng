@@ -68,6 +68,124 @@
 }
 .wmv-on-basemap .wmv-stage rect.wm-bg { fill-opacity: 0; }
 
+/* Located nodes (SET geo) keep their size at 100 % when zooming in (viewer.js sets the scale) */
+.wmv-svg g.wmv-geo { transform: scale(var(--wmv-geo-k, 1)); }
+/* a node merged into a cluster: its badge stands for it */
+.wmv-svg g.wmv-clustered { opacity: 0 !important; pointer-events: none; }
+
+/* Clusters of close sites: a round badge with their number */
+.wmv-clusters {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+}
+.wmv-cluster {
+    --wmv-cluster-ring: var(--wm-success);
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    min-height: 0;
+    margin: -18px 0 0 -18px;
+    padding: 0;
+    border: 3px solid var(--wmv-cluster-ring);
+    border-radius: 50%;
+    background: var(--wm-surface);
+    color: var(--wm-text);
+    font: 600 var(--wm-text-sm) / 1 var(--wm-font);
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--wmv-cluster-ring) 30%, transparent), var(--wm-shadow-2);
+    cursor: zoom-in;
+    pointer-events: auto;
+    transition: transform 0.15s var(--wm-ease);
+}
+.wmv-cluster[data-level="none"] { --wmv-cluster-ring: var(--wm-text-muted); }
+.wmv-cluster[data-level="warn"] { --wmv-cluster-ring: var(--wm-warning); }
+.wmv-cluster[data-level="crit"] { --wmv-cluster-ring: var(--wm-danger); }
+.wmv-cluster:hover,
+.wmv-cluster:focus-visible,
+.wmv-cluster.wmv-cluster-hl { transform: scale(1.15); }
+.wmv-cluster.wmv-cluster-hl { box-shadow: 0 0 0 4px var(--wm-warning-mark), var(--wm-shadow-2); }
+.wmv-cluster:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+    .wmv-cluster { transition: none; }
+}
+
+/* The nodes of a cluster that cannot split any more */
+.wmv-cluster-menu {
+    position: absolute;
+    z-index: 2;
+    min-width: 200px;
+    max-width: 280px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: var(--wm-space-2);
+    transform: translateX(-50%);
+    background: var(--wm-surface);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-card);
+    box-shadow: var(--wm-shadow-2);
+    color: var(--wm-text);
+    font-size: var(--wm-text-sm);
+    pointer-events: auto;
+}
+.wmv-cluster-menu-title { margin: 0 0 4px; padding: 0 var(--wm-space-2); color: var(--wm-text-muted); }
+.wmv-cluster-menu ul { list-style: none; margin: 0; padding: 0; }
+.wmv-cluster-menu button {
+    display: flex;
+    align-items: center;
+    gap: var(--wm-space-2);
+    width: 100%;
+    min-height: 0;
+    padding: 6px var(--wm-space-2);
+    border: 0;
+    border-radius: var(--wm-radius-control);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.wmv-cluster-menu button:hover { background: var(--wm-hover); }
+.wmv-cluster-menu .wmv-site-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* City inset: the city of the hovered site, top right */
+.wmv-inset {
+    position: absolute;
+    z-index: 3;
+    right: var(--wm-space-3);
+    top: 68px;
+    width: 260px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--wm-surface) 92%, transparent);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-card);
+    box-shadow: var(--wm-shadow-2);
+    color: var(--wm-text);
+    pointer-events: none;
+}
+.wmv-inset[hidden] { display: none; }
+/* beside the card of the focused node */
+.wmv-card:not([hidden]) ~ .wmv-inset { right: calc(var(--wm-space-3) + 300px + var(--wm-space-2)); }
+.wmv-inset-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--wm-space-2);
+    padding: 6px var(--wm-space-3);
+    font-size: var(--wm-text-sm);
+    font-weight: 600;
+}
+.wmv-inset-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wmv-inset-count { color: var(--wm-text-muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.wmv-inset-map { position: relative; height: 170px; border-top: 1px solid var(--wm-border); }
+@media (max-width: 1000px) {
+    .wmv-card:not([hidden]) ~ .wmv-inset { display: none; }
+}
+@media (max-width: 640px) {
+    .wmv-inset { display: none !important; }
+}
+
 /* Items */
 .wmv-svg .wmv-hoverable,
 .wmv-svg .wmv-clickable { cursor: pointer; }
@@ -102,6 +220,9 @@
 /* Level of detail: bandwidth labels unreadable when zoomed out */
 .wmv-lod-far .wmv-svg .wm-bwlabel-in,
 .wmv-lod-far .wmv-svg .wm-bwlabel-out { display: none; }
+/* ...and too big when zoomed deep into a basemap */
+.wmv-lod-near .wmv-svg .wm-bwlabel-in,
+.wmv-lod-near .wmv-svg .wm-bwlabel-out { display: none; }
 
 /* Messages, under the floating bar */
 .wmv-message {
