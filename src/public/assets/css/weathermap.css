@@ -566,3 +566,104 @@ button.btn {
 .bulk-bar .bulk-count { font-weight: 600; margin-right: 8px; }
 .bulk-bar select { padding: 4px; font: inherit; border-radius: 4px; border: 1px solid var(--field-border); background: var(--input-bg); color: inherit; }
 .data-table .col-check { width: 32px; text-align: center; }
+
+/* ------------------------------------------------------------------
+   Hover card of a link (WM.hover in weathermap.js): speed badge,
+   "A ↔ B", IN and OUT now, then the traffic of a day, a week or a
+   month with IN above the middle line and OUT below it */
+.wm-hovercard {
+    --wm-hc-in: var(--wm-success);
+    --wm-hc-out: var(--wm-accent);
+    position: fixed;
+    z-index: 9999;
+    min-width: min(300px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+    padding: 10px 12px 10px;
+    background: color-mix(in srgb, var(--wm-surface) 94%, transparent);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    color: var(--wm-text);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-bar);
+    box-shadow: var(--wm-shadow-2);
+    font: 12.5px/1.35 var(--wm-font);
+    pointer-events: none;
+}
+.wm-hovercard[hidden] { display: none; }
+/* a card with a period switch can be reached by the pointer */
+.wm-hovercard.wm-hc-wide { pointer-events: auto; }
+.wm-hc-head { display: flex; align-items: center; gap: 8px; }
+.wm-hc-speed {
+    flex: none;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--wm-text);
+    color: var(--wm-surface);
+    font-weight: 700;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+.wm-hc-title { font-weight: 650; font-size: 14px; overflow-wrap: anywhere; }
+.wm-hc-arrow { color: var(--wm-text-muted); font-weight: 400; }
+.wm-hc-sub { margin-top: 2px; color: var(--wm-text-muted); overflow-wrap: anywhere; }
+.wm-hc-now { margin-top: 8px; display: grid; gap: 3px; }
+.wm-hc-rate { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.wm-hc-rate b { min-width: 9.5em; font-weight: 600; }
+.wm-hc-k { display: inline-block; min-width: 2.6em; font-weight: 700; font-size: 11px; letter-spacing: 0.04em; }
+.wm-hc-k.wm-hc-in { color: var(--wm-hc-in); }
+.wm-hc-k.wm-hc-out { color: var(--wm-hc-out); }
+.wm-hc-bar { flex: 1; min-width: 50px; height: 5px; border-radius: 3px; background: var(--wm-surface-2); overflow: hidden; }
+.wm-hc-bar > span { display: block; height: 100%; border-radius: 3px; }
+.wm-hc-bar > .wm-hc-in { background: var(--wm-hc-in); }
+.wm-hc-bar > .wm-hc-out { background: var(--wm-hc-out); }
+.wm-hc-pct { min-width: 3.2em; text-align: right; color: var(--wm-text-muted); }
+.wm-hc-traffic { margin-top: 10px; }
+.wm-hc-ranges {
+    display: inline-flex;
+    padding: 2px;
+    gap: 2px;
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-surface-2);
+}
+.wm-hc-ranges button {
+    border: 0;
+    margin: 0;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--wm-text-muted);
+    font: inherit;
+    cursor: pointer;
+}
+.wm-hc-ranges button:hover { color: var(--wm-text); background: var(--wm-hover); }
+.wm-hc-ranges button[aria-pressed="true"] { background: var(--wm-surface); color: var(--wm-text); font-weight: 600; box-shadow: var(--wm-shadow-1); }
+.wm-hc-ranges button:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
+.wm-hc-plot { margin-top: 6px; }
+.wm-hc-plot.wm-hc-wait {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--wm-text-muted);
+    border-radius: 6px;
+    background: var(--wm-surface-2);
+}
+.wm-hc-error { color: var(--wm-danger); }
+.wm-hc-chart { display: block; max-width: 100%; height: auto; }
+.wm-hc-grid { stroke: var(--wm-border); stroke-width: 1; }
+.wm-hc-zero { stroke: var(--wm-text-muted); stroke-width: 1; opacity: 0.6; }
+.wm-hc-area-in { fill: var(--wm-hc-in); opacity: 0.28; }
+.wm-hc-area-out { fill: var(--wm-hc-out); opacity: 0.28; }
+.wm-hc-line-in, .wm-hc-line-out { fill: none; stroke-width: 1.5; stroke-linejoin: round; }
+.wm-hc-line-in { stroke: var(--wm-hc-in); }
+.wm-hc-line-out { stroke: var(--wm-hc-out); }
+.wm-hc-axis { fill: var(--wm-text-muted); font-size: 10.5px; font-family: var(--wm-font); }
+.wm-hc-axis-in { fill: var(--wm-hc-in); font-weight: 700; }
+.wm-hc-axis-out { fill: var(--wm-hc-out); font-weight: 700; }
+.wm-hc-stats { margin-top: 4px; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.wm-hc-stat { display: flex; gap: 12px; flex-wrap: wrap; color: var(--wm-text-muted); }
+.wm-hc-stat b { color: var(--wm-text); font-weight: 600; }
+.wm-hc-picture { display: block; width: 100%; height: auto; margin-top: 8px; border-radius: 4px; }
+.wm-hc-hint { margin-top: 8px; color: var(--wm-text-muted); }

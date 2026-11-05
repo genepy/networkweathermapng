@@ -684,6 +684,8 @@ class MapService
                 // its ends, for the node card of the viewer
                 'a' => (string) $link->a->name,
                 'b' => (string) $link->b->name,
+                // and how the map shows them, for the title of the hover card
+                'labels' => [self::nodeLabel($wmap, $link->a), self::nodeLabel($wmap, $link->b)],
                 'in' => is_numeric($link->bandwidth_in ?? null) ? (float) $link->bandwidth_in : null,
                 'out' => is_numeric($link->bandwidth_out ?? null) ? (float) $link->bandwidth_out : null,
                 'inpct' => round($in, 2),
@@ -697,9 +699,16 @@ class MapService
                 // left out of the total traffic of the viewer's side panel
                 $item['total'] = false;
             }
+            $speed = self::linkSpeed($link);
+            if ($speed !== null) {
+                // the speed badge of the hover card: [in, out] in bit/s
+                $item['speed'] = $speed;
+            }
             $urls = self::itemUrls($wmap, $link);
             if (!isset($urls['graph']) && $mapId !== null && self::hasTrafficHistory($link)) {
                 $urls['graph'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/graph';
+                // the IN/OUT series the hover card draws for a day, a week or a month
+                $urls['traffic'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/traffic';
             }
             $items['L' . $link->id] = $item + $urls;
         }
@@ -737,6 +746,30 @@ class MapService
             'basemap' => Basemap::of($wmap),
             'items' => $items,
         ];
+    }
+
+    /**
+     * The BANDWIDTH of a link in bit/s, [in, out], once the data render
+     * resolved it (BANDWIDTH auto takes the interface speed). Null when it
+     * is not a positive number.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    public static function linkSpeed(\WeatherMapLink $link): ?array
+    {
+        $in = $link->max_bandwidth_in ?? null;
+        $out = $link->max_bandwidth_out ?? null;
+        if (!is_numeric($in) || !is_numeric($out) || (float) $in <= 0 || (float) $out <= 0) {
+            return null;
+        }
+        return [(float) $in, (float) $out];
+    }
+
+    /** The label a node shows (tokens filled in, on one line), its name when it has none */
+    public static function nodeLabel(\WeatherMap $wmap, \WeatherMapNode $node): string
+    {
+        $label = trim((string) preg_replace('/\s+/u', ' ', str_replace('\\n', ' ', (string) $wmap->ProcessString((string) ($node->label ?? ''), $node))));
+        return $label !== '' ? $label : (string) $node->name;
     }
 
     /** SET site <name> on a node (or its template): the site it belongs to, '' for none */

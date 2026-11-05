@@ -302,7 +302,7 @@
 </div>
 
 <script>
-window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['API request failed', 'Invalid data source', 'Failed to load', 'Loading…', 'Link bandwidth (24h)', 'IN', 'OUT']) + \App\Core\I18n::section('viewer-js')) ?>);
+window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::forScript(['API request failed', 'Invalid data source', 'Failed to load', 'Loading…', 'IN', 'OUT']) + \App\Core\I18n::section('viewer-js')) ?>);
 </script>
 
 <?php if ($isSvg): ?>

@@ -1011,6 +1011,28 @@ class ZabbixClient implements DataSourceClientInterface
 
     private function getHistorySeries(string $itemId, int $valueType, int $timeFrom): array
     {
+        // a week or a month: Zabbix's hourly trends, far lighter than every
+        // value, and kept longer than the history
+        if ($timeFrom < time() - 2 * 86400 && in_array($valueType, [0, 3], true)) {
+            try {
+                $trends = $this->apiRequest('trend.get', [
+                    'output' => ['clock', 'value_avg'],
+                    'itemids' => [$itemId],
+                    'time_from' => $timeFrom,
+                ]);
+            } catch (\Exception $e) {
+                $trends = null;   // an older server or a refused call: the history then
+            }
+            if (is_array($trends) && $trends) {
+                $series = [];
+                foreach ($trends as $row) {
+                    $series[] = ['t' => (int) ($row['clock'] ?? 0), 'v' => (float) ($row['value_avg'] ?? 0)];
+                }
+                usort($series, static fn (array $a, array $b) => $a['t'] <=> $b['t']);
+                return $series;
+            }
+        }
+
         $history = $this->getHistoryTypeFromValueType($valueType);
 
         $params = [

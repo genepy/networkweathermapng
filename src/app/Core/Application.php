@@ -84,6 +84,7 @@ class Application
         $this->router->get('/map/{id}/thumb', 'MapController@thumbnail');
         $this->router->get('/map/{id}/version', 'MapController@version');
         $this->router->get('/map/{id}/link/{linkId}/graph', 'MapController@linkGraph');
+        $this->router->get('/map/{id}/link/{linkId}/traffic', 'MapController@linkTraffic');
         $this->router->get('/map/{id}/svg', 'MapController@svg');
         $this->router->get('/map/{id}/status', 'MapController@status');
         $this->router->get('/map/{id}/history', 'MapController@history');
