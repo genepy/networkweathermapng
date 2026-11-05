@@ -141,6 +141,7 @@ CONF);
         $items = $status['items'];
         $ab = array_values(array_filter($items, fn ($i) => $i['name'] === 'a-b'))[0];
         $this->assertSame('https://nms.example/port/a-b', $ab['url']);
+        $this->assertSame(['a', 'b'], [$ab['a'], $ab['b']], 'a link names its ends, for the node card');
         $this->assertStringContainsString('"sourceId":1', $ab['ds']);
         $this->assertEqualsWithDelta(30.0, $ab['inpct'], 0.01);
         $this->assertEqualsWithDelta(30000000.0, $ab['in'], 1);

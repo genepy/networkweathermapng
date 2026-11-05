@@ -9,7 +9,11 @@
  * is when the map does not fit. In fullscreen the controls fade out after
  * a few seconds without movement. Zoom and position live in the URL hash
  * (#z=2&x=..&y=.., x/y the map point at the centre), so a shared link opens
- * on the same view. The saved map is never changed.
+ * on the same view. Clicking a node (or finding it) zooms onto it and
+ * pins its card: its links with their load, the nodes at their other end,
+ * its page; the rest of the map dims and the minimap frames it (#n=<node>
+ * in the hash). Hovering a node frames it in the minimap too. The saved
+ * map is never changed.
  */
 (function () {
     'use strict';
@@ -35,6 +39,8 @@
     const statusBox = root.querySelector('.wmv-status');
     const badge = root.querySelector('.wmv-badge');
     const fsButton = root.querySelector('[data-act="fullscreen"]');
+    const card = root.querySelector('.wmv-card');
+    const minimapMark = minimap.querySelector('.wmv-minimap-mark');
 
     const mapId = root.dataset.mapId;
     // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
@@ -60,6 +66,9 @@
         touched: false,          // the user moved the view (or the URL said where)
         version: null,
         minimapUrl: null,
+        focus: null,             // name of the node whose card is pinned
+        focusZoom: false,        // zoom onto it when the map comes (#n= without a view)
+        ends: {},                // link id -> {a, b} node names (kept across frames)
         loading: false,
         again: false
     };
@@ -146,6 +155,7 @@
                 const c = viewCentre();
                 hash = '#z=' + (Math.round(S.z * 1000) / 1000) + '&x=' + Math.round(c.x) + '&y=' + Math.round(c.y);
             }
+            if (S.focus !== null) hash += (hash ? '&' : '#') + 'n=' + encodeURIComponent(S.focus);
             history.replaceState(null, '', base + hash);
             const exit = root.querySelector('[data-act="exit"]');
             if (exit) exit.href = root.dataset.normalUrl + hash;
@@ -157,7 +167,12 @@
         const z = parseFloat(p.get('z') || '');
         const x = parseFloat(p.get('x') || '');
         const y = parseFloat(p.get('y') || '');
-        if (!isFinite(z) || !isFinite(x) || !isFinite(y) || z <= 0) return null;
+        if (p.get('n') && S.focus === null) S.focus = p.get('n');
+        if (!isFinite(z) || !isFinite(x) || !isFinite(y) || z <= 0) {
+            // a link to a node without a view: zoom onto it once it is drawn
+            S.focusZoom = S.focus !== null;
+            return null;
+        }
         return {z: z, x: x, y: y};
     }
 
@@ -257,6 +272,10 @@
         svg.classList.add('wmv-svg');
 
         S.items = items || {};
+        Object.keys(S.items).forEach(function (id) {
+            const d = S.items[id];
+            if (d && d.kind === 'link' && typeof d.a === 'string' && typeof d.b === 'string') S.ends[id] = {a: d.a, b: d.b};
+        });
         let font = 0;
         svg.querySelectorAll('text.wm-bwlabel-in, text.wm-bwlabel-out').forEach(function (n) {
             const f = parseFloat(n.getAttribute('font-size'));
@@ -274,6 +293,7 @@
         fillNodeList(svg);
         updateMinimapImage(text);
         setupFlow(svg);
+        refocus();
     }
 
     // ---- Traffic flow (SET link_flow 1) ----
@@ -716,10 +736,24 @@
             }
             if (!link) hidePanel();
         }
+        const node = e.target && e.target.closest ? e.target.closest('g.wm-node') : null;
+        if (node && stage.contains(node)) {
+            // its page is one click away, in its card
+            focusNode(node, true);
+            return;
+        }
         if (it && it.data && it.data.url) {
             window.open(it.data.url, '_blank', 'noopener');
+            return;
         }
+        if (!it && S.focus !== null) unfocus();
     }, true);
+
+    // Hovering a node frames it in the minimap
+    viewport.addEventListener('mouseover', function (e) {
+        const node = e.target && e.target.closest ? e.target.closest('g.wm-node') : null;
+        markMinimap(node && stage.contains(node) ? node : focusedNode());
+    });
 
     // ------------------------------------------------------------------
     // Find a node
@@ -774,19 +808,220 @@
             setTimeout(function () { showMessage(''); }, 2500);
             return;
         }
-        let box;
-        try { box = g.getBBox(); } catch (e) { return; }
-        const vp = vpSize();
-        let z = Math.max(S.z, 1.5);
-        if (box.width > 0 && box.height > 0) {
-            z = Math.min(z, 0.5 * vp.w / box.width, 0.5 * vp.h / box.height);
-        }
-        animateTo(z, box.x + box.width / 2, box.y + box.height / 2);
-        S.touched = true;
-        saveHash();
+        focusNode(g, true);
         S.el.querySelectorAll('.wmv-found').forEach(function (n) { n.classList.remove('wmv-found'); });
         g.classList.add('wmv-found');
         setTimeout(function () { g.classList.remove('wmv-found'); }, 2400);
+    }
+
+    // ------------------------------------------------------------------
+    // Node focus: zoom onto a node and pin its card
+
+    function nodeByName(name) {
+        if (!S.el || !S.el.querySelector || name === null) return null;
+        return S.el.querySelector('g.wm-node[data-name="' + CSS.escape(name) + '"]');
+    }
+
+    function focusedNode() {
+        return S.focus === null ? null : nodeByName(S.focus);
+    }
+
+    function labelOf(g) {
+        const hit = nodeEntries(S.el).find(function (n) { return n.g === g; });
+        return hit ? hit.label : g.getAttribute('data-name');
+    }
+
+    /** The links of a node, each with the node at its other end */
+    function linksOf(name) {
+        const out = [];
+        Object.keys(S.ends).forEach(function (id) {
+            const e = S.ends[id];
+            if (e.a !== name && e.b !== name) return;
+            out.push({id: id, other: e.a === name ? e.b : e.a, data: S.items[id] || null});
+        });
+        return out;
+    }
+
+    /** The map point to centre on, so the node sits in the part of the view the card leaves free */
+    function focusCentre(box, z) {
+        const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+        const vp = vpSize();
+        if (!card || card.hidden) return {x: cx, y: cy};
+        // a sheet at the bottom on a phone, a card on the right elsewhere
+        if (vp.w <= 640) return {x: cx, y: cy + (card.offsetHeight + 8) / 2 / z};
+        return {x: cx + (card.offsetWidth + 16) / 2 / z, y: cy};
+    }
+
+    function focusNode(g, zoom) {
+        S.focus = g.getAttribute('data-name');
+        markFocus();
+        fillCard(g);
+        markMinimap(g);
+        if (zoom) {
+            let box;
+            try { box = g.getBBox(); } catch (e) { box = null; }
+            if (box) {
+                const vp = vpSize();
+                let z = Math.max(S.z, 2);
+                if (box.width > 0 && box.height > 0) {
+                    z = Math.min(z, 0.4 * vp.w / box.width, 0.4 * vp.h / box.height);
+                }
+                z = clampZ(z);
+                const c = focusCentre(box, z);
+                animateTo(z, c.x, c.y);
+                S.touched = true;
+            }
+        }
+        saveHash();
+    }
+
+    function unfocus() {
+        if (S.focus === null) return;
+        S.focus = null;
+        markFocus();
+        if (card) card.hidden = true;
+        markMinimap(null);
+        saveHash();
+    }
+
+    /** After a reload of the map: the same node again, with fresh numbers */
+    function refocus() {
+        if (S.focus === null) return;
+        const g = focusedNode();
+        if (!g) {
+            // the node is gone from the map
+            unfocus();
+            return;
+        }
+        if (S.focusZoom) {
+            S.focusZoom = false;
+            focusNode(g, true);
+            return;
+        }
+        markFocus();
+        fillCard(g);
+        markMinimap(g);
+    }
+
+    /** The focused node, its links and their other ends stand out, the rest dims */
+    function markFocus() {
+        if (!S.el || !S.el.querySelectorAll) return;
+        S.el.querySelectorAll('.wmv-focus, .wmv-near').forEach(function (n) {
+            n.classList.remove('wmv-focus', 'wmv-near');
+        });
+        const g = focusedNode();
+        S.el.classList.toggle('wmv-focusing', !!g);
+        if (!g) return;
+        g.classList.add('wmv-focus');
+        linksOf(S.focus).forEach(function (l) {
+            S.el.querySelectorAll('g.wm-link[data-id="' + CSS.escape(l.id) + '"]').forEach(function (n) { n.classList.add('wmv-near'); });
+            const other = nodeByName(l.other);
+            if (other && other !== g) other.classList.add('wmv-near');
+        });
+    }
+
+    function pct(v) {
+        return typeof v === 'number' ? (Math.round(v * 10) / 10) + ' %' : '–';
+    }
+
+    function rate(v) {
+        return typeof v === 'number' && window.WM && WM.formatBps ? WM.formatBps(v, 1) : '–';
+    }
+
+    function loadOf(d) {
+        return d ? Math.max(d.inpct || 0, d.outpct || 0) : -1;
+    }
+
+    function fillCard(g) {
+        if (!card) return;
+        const name = g.getAttribute('data-name');
+        const label = labelOf(g);
+        card.querySelector('.wmv-card-title').textContent = label;
+        const sub = card.querySelector('.wmv-card-sub');
+        sub.textContent = name !== label ? name : '';
+        sub.hidden = name === label;
+
+        // the busiest first
+        const links = linksOf(name).sort(function (a, b) { return loadOf(b.data) - loadOf(a.data); });
+        card.querySelector('.wmv-card-count').textContent = links.length === 1 ? t('1 link') : fmt(':n links', {n: links.length});
+        const list = card.querySelector('.wmv-card-links');
+        list.replaceChildren.apply(list, links.map(function (l) {
+            const li = document.createElement('li');
+            const b = document.createElement('button');
+            b.type = 'button';
+            const other = nodeByName(l.other);
+            b.disabled = !other || other === g;
+            const to = document.createElement('span');
+            to.className = 'wmv-card-to';
+            to.textContent = other ? labelOf(other) : l.other;
+            const via = document.createElement('span');
+            via.className = 'wmv-card-via';
+            via.textContent = l.data ? l.data.name : '';
+            const load = document.createElement('span');
+            load.className = 'wmv-card-load';
+            if (l.data) {
+                const max = loadOf(l.data);
+                load.dataset.level = max >= 80 ? 'crit' : (max >= 50 ? 'warn' : 'ok');
+                load.textContent = t('IN') + ' ' + pct(l.data.inpct) + ' · ' + t('OUT') + ' ' + pct(l.data.outpct);
+                load.title = t('IN') + ' ' + rate(l.data.in) + ' · ' + t('OUT') + ' ' + rate(l.data.out);
+            }
+            b.append(to, via, load);
+            if (!b.disabled) {
+                b.title = fmt('Go to :node', {node: to.textContent});
+                b.addEventListener('click', function () { focusNode(other, true); });
+                b.addEventListener('mouseenter', function () { markMinimap(other); });
+                b.addEventListener('mouseleave', function () { markMinimap(focusedNode()); });
+            }
+            li.appendChild(b);
+            return li;
+        }));
+        card.querySelector('.wmv-card-none').hidden = links.length > 0;
+
+        const it = S.items[g.getAttribute('data-id')];
+        const open = card.querySelector('.wmv-card-open');
+        if (it && it.url) {
+            open.href = it.url;
+            open.hidden = false;
+        } else {
+            open.hidden = true;
+            open.removeAttribute('href');
+        }
+        card.hidden = false;
+    }
+
+    // A link to another node of the same map (#n=<node>) typed or followed on this page
+    window.addEventListener('hashchange', function () {
+        const n = new URLSearchParams(location.hash.replace(/^#/, '')).get('n');
+        const g = n ? nodeByName(n) : null;
+        if (g) focusNode(g, true);
+        else if (!n) unfocus();
+    });
+
+    if (card) {
+        card.querySelector('[data-act="unfocus"]').addEventListener('click', unfocus);
+        card.querySelector('[data-act="zoom-focus"]').addEventListener('click', function () {
+            const g = focusedNode();
+            if (g) focusNode(g, true);
+        });
+    }
+
+    /** A ring on the minimap where the node is */
+    function markMinimap(g) {
+        if (!minimapMark) return;
+        let box = null;
+        if (g && S.w) {
+            try { box = g.getBBox(); } catch (e) { box = null; }
+        }
+        if (!box) {
+            minimapMark.hidden = true;
+            return;
+        }
+        const k = minimapScale();
+        const r = Math.max(5, Math.max(box.width, box.height) * k / 2 + 3);
+        minimapMark.style.left = ((box.x + box.width / 2) * k - r) + 'px';
+        minimapMark.style.top = ((box.y + box.height / 2) * k - r) + 'px';
+        minimapMark.style.width = minimapMark.style.height = (2 * r) + 'px';
+        minimapMark.hidden = false;
     }
 
     findForm.addEventListener('submit', function (e) {
@@ -846,6 +1081,10 @@
             case 'Escape':
                 if (root.querySelector('.wmv-more[open]')) {
                     closeMenus();
+                    break;
+                }
+                if (S.focus !== null) {
+                    unfocus();
                     break;
                 }
                 if (standalone) {

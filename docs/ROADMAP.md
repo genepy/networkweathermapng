@@ -39,9 +39,8 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 | Item | Notes |
 |------|-------|
 | Nine IX style, task 4: richer hover card | Study: [docs/studies/nine-ix-style.md](studies/nine-ix-style.md). Speed badge, "A ↔ B" title, IN above / OUT below graph, 1 day / 1 week / 1 month |
-| Nine IX style, task 5: viewer side panels | Site list (optional site field), total traffic, legend in a floating card |
-| Nine IX style, task 6: geographic basemap | Tiles under the map, nodes by latitude/longitude. A design note first: it changes the map format |
-| Nine IX style, task 8: site focus and zoom | Click a node to zoom onto it and pin its card; hover frames it in the minimap or the site list |
+| Nine IX style, task 5: viewer side panels | Site list (optional site field), total traffic, legend in a floating card. Hovering a node highlights it in the site list, a site of the list frames it in the minimap (`markMinimap` in viewer.js, #69) |
+| Nine IX style, task 6: geographic basemap | Tiles under the map, nodes by latitude/longitude. A design note first: it changes the map format. With it, the rest of task 8: city inset on hover, close sites merged into one badge |
 | UI redesign, step 5: Map settings panel | Every setting of a map in one panel; name and title are already kept together since step 3 (a title edit renames the map): ask which one to keep on maps where they still differ. Drag and drop to reorder the thumbnails (`list_order`) is left for this step or later |
 | UI redesign, step 6: Settings | Side navigation, pages as panels, data sources in a drawer with a test on the row |
 | UI redesign, step 7: command palette | `Ctrl+K` on the home page, the viewer and the settings |
@@ -60,6 +59,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #69 | Nine IX style, task 8: site focus and zoom: clicking a node (or finding it) zooms onto it and pins its card (its links busiest first with IN/OUT load, the node at the other end, one click away; *Open its page* for a node with a URL), the rest of the map dims, the minimap rings the node (also on hover); `#n=<node>` in the address, Esc or a click on the map closes the card. Link items of the map summary name their ends (`a`, `b`) |
 | #68 | Nine IX style, task 7: link flow animation: `SET link_flow 1` makes small glowing comets run along each link in the viewer, from where the traffic leaves to the arrow head, faster on busier links; switch *Traffic flow* in Map properties > Link colours; none under `prefers-reduced-motion`, paused while the tab is hidden; the SVG only carries invisible paths, so the editor, the PNG and a downloaded SVG stay still |
 | #67 | UI redesign, step 4: map viewer: the map fills the page with floating controls (bar with *Find a node*, *Live* / *Last 24 h*, one fullscreen with the browser's Fullscreen API keeping the zoom, ⚙ *Map settings*, ⋯ *Open as PNG* / *Copy kiosk link* / *Download PNG*, *Edit*), zoom at the bottom right, state and colour legend at the bottom left (`scale` in the map summary), controls that fade out in fullscreen; kiosk with a progress bar, floating controls that fade out, arrows, Space and `F` |
 | #66 | UI redesign, step 3: one Maps page: thumbnails and list (remembered), filter chips (*All*, *Favourites*, each group, *Over 80 %*), *Edit* and a ⋯ menu on hover (settings, duplicate, move, hide, preview, .conf, delete), bulk actions in the list, inactive maps greyed for editors; `/editor` redirects to `/`; *Favourites* in the phone bottom bar; a title edit in the editor renames the map (`MapService::followTitle`) |

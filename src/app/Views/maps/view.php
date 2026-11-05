@@ -221,9 +221,25 @@
             <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" title="<?= e__('Fit the map to the window (0)') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
         </div>
 
+        <aside class="wmv-card wmv-fades" hidden aria-label="<?= e__('Selected node') ?>">
+            <header class="wmv-card-head">
+                <div class="wmv-card-names">
+                    <h2 class="wmv-card-title"></h2>
+                    <p class="wmv-card-sub" hidden></p>
+                </div>
+                <button type="button" class="wmv-icon-btn" data-act="zoom-focus" title="<?= e__('Zoom onto this node') ?>" aria-label="<?= e__('Zoom onto this node') ?>"><?= icon('locate') ?></button>
+                <button type="button" class="wmv-icon-btn" data-act="unfocus" aria-keyshortcuts="Escape" title="<?= e__('Close (Esc)') ?>" aria-label="<?= e__('Close') ?>"><?= icon('x') ?></button>
+            </header>
+            <p class="wmv-card-count"></p>
+            <ul class="wmv-card-links"></ul>
+            <p class="wmv-card-none" hidden><?= e__('No links on this node.') ?></p>
+            <a class="wm-btn wmv-card-open" target="_blank" rel="noopener" hidden><?= icon('external-link') ?><span><?= e__('Open its page') ?></span></a>
+        </aside>
+
         <div class="wmv-minimap wmv-fades" hidden aria-hidden="true">
             <img alt="">
             <div class="wmv-minimap-view"></div>
+            <div class="wmv-minimap-mark" hidden></div>
         </div>
     </div>
     <?php else: ?>
