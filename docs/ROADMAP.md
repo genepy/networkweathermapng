@@ -36,9 +36,27 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 ## Not started
 
+Editor and viewer feedback of 2026-11-06, in order. Every point is in
+[studies/feedback-2026-11-06.md](studies/feedback-2026-11-06.md), with
+the open question P8.
+
 | Item | Notes |
 |------|-------|
-| (none) | |
+| F1. Editor quick fixes | *Saving…* pushes the top bar right; *Show the legend* label one step late; grid invisible on dark backgrounds, faint on light; pixelated shape choices (box, rounded box, circle) in the node panel. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P5, P6, P11, P14 |
+| F2. Admin pages polish | *Compare old and new* / *Convert again* at the top of the import review page; *Cancel* / *Save* at the top of Kiosk mode; tighter table rows and spacing; *Maps & rendering* stored in the app instead of `.env`. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P39-P42 |
+| F3. Map items in the editor | Add the *Link speed* legend (`SET width_legend`, no editor control yet) from the Add panel; Delete removes a selected legend, link speed or timestamp, with undo. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P4, P7 |
+| F4. Link labels in the editor | *Untangle* in the selection bar, limited to the selection, and the same for nodes; untangle leaves overlaps (better algorithm); labels on/off per link and in Link defaults; drag a label with the mouse; links without arrow heads, arrow on the pill label (Nine IX). [feedback-2026-11-06](studies/feedback-2026-11-06.md) P1-P3, P20, P23, P24 |
+| F5. Link ends and hover highlight | Link ends always hidden under their node; back to a straight segment after right angles; link glow only on hover; every element outlined with a soft glow on hover (editor and viewer). [feedback-2026-11-06](studies/feedback-2026-11-06.md) P17, P26, P31, P35 |
+| F6. Editor navigation and shortcuts | `Ctrl` + drag on the background pans (duplicate moves to `Alt` + drag, proposal to confirm); keyboard shortcuts page in the user profile (rebind, conflicts, reset). [feedback-2026-11-06](studies/feedback-2026-11-06.md) P9, P25 |
+| F7. SVG everywhere in viewer and kiosk | Preview and kiosk drawn as SVG, PNG only for download; merge View and Preview; kiosk link keeps the background; *Download as SVG*; collapse/expand all sites in the side panel; popups close on an outside click. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P29, P33, P34, P36-P38 |
+| F8. Boxes on the map | Movable boxes on the map, in the `.conf`, shown in live, kiosk, PNG and SVG: total traffic, traffic legend (Nine-style gradient bar), free formatted box (like Nine's Points of presence), link speed, updated at. After F7. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P30, P32 |
+| F9. Map settings and colour picker in the editor | *Map settings* in the editor's right panel instead of another page; a colour picker in the app's style. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P13, P18 |
+| F10. Themes and load gradient | More coherent map themes in the library; a gradient link load scale like Nine IX. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P19, P28 |
+| F11. Fonts | Modern open-source default font that follows curved links; every shipped font for nodes, legends, zones; map-wide font with confirmation, per-object override kept. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P16, P27 |
+| F12. Zone shapes and labels | Rounded corners and other shapes for zones; move a zone's label with the mouse. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P15 |
+| F13. Savepoints and timestamped history | VS Code Timeline style list of saved versions and named savepoints, preview and restore (builds on `ConfigHistory`). [feedback-2026-11-06](studies/feedback-2026-11-06.md) P12 |
+| F14. Focus areas | Highlight parts of a map, also in kiosk mode, saved in the `.conf`. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P22 |
+| F15. Geographic maps in the editor | Zoom in the editor like the viewer; cluster modes (nearby, none, author-defined groups); per-site size that stays proportional with zoom and matches the viewer. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P10 |
 
 ## Stale branches
 
