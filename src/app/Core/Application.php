@@ -137,17 +137,8 @@ class Application
         $this->router->get('/editor/backgrounds', 'SvgEditorController@backgroundList');
         $this->router->post('/editor/backgrounds', 'SvgEditorController@addBackgrounds');
         $this->router->post('/editor/backgrounds/delete', 'SvgEditorController@deleteBackground');
-        $this->router->get('/editor/classic/{id}', 'EditorController@edit');
-        $this->router->get('/editor/draw/{id}', 'EditorController@draw');
-        $this->router->get('/editor/area/{id}', 'EditorController@getAreaData');
-        $this->router->get('/editor/mapjs/{id}', 'EditorController@getMapJS');
-        $this->router->get('/editor/mapdata/{id}', 'EditorController@getMapData');
-        $this->router->get('/editor/load_area_data', 'EditorController@loadAreaData');
-        $this->router->get('/editor/load_map_javascript', 'EditorController@loadMapJavascript');
-        $this->router->get('/editor/config/{id}', 'EditorController@config');
-        $this->router->post('/editor/action/{id}', 'EditorController@action');
-        $this->router->post('/editor/save/{id}', 'EditorController@save');
-        $this->router->get('/editor/preview/{id}', 'EditorController@preview');
+        // the address of the classic editor (removed), kept for bookmarks
+        $this->router->get('/editor/classic/{id}', 'SvgEditorController@edit');
         
         // API endpoints
         $this->router->get('/api/maps', 'ApiController@maps');

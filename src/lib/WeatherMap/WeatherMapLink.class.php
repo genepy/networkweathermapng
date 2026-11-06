@@ -938,7 +938,8 @@ class WeatherMapLink extends WeatherMapItem {
 			if ($this->max_bandwidth_in != $dd->max_bandwidth_in || $this->max_bandwidth_out != $dd->max_bandwidth_out
 				|| $this->max_bandwidth_in_cfg != $dd->max_bandwidth_in_cfg || $this->max_bandwidth_out_cfg != $dd->max_bandwidth_out_cfg
 				|| $this->name == 'DEFAULT') {
-				if ($this->max_bandwidth_in == $this->max_bandwidth_out) {
+				// the configured values: the editor changes them, not the numbers read from them
+				if ((string) $this->max_bandwidth_in_cfg === (string) $this->max_bandwidth_out_cfg) {
 					$output .= TAB . 'BANDWIDTH ' . $this->max_bandwidth_in_cfg . EOL;
 				} else {
 					$output .= TAB . 'BANDWIDTH ' . $this->max_bandwidth_in_cfg . ' ' . $this->max_bandwidth_out_cfg . EOL;

@@ -34,7 +34,6 @@ Every file below keeps (or was given) the MIT header of its authors.
 | `src/lib/WeatherMap/WMVector.class.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/geometry.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/ds-common.php` | Cacti plugin, after Howard Jones | See the git history |
-| `src/lib/WeatherMap/editor.inc.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/lib/datasources/WeatherMapDataSource_static.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/DataSources/WeatherMapDataSource_static.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/lib/datasources/WeatherMapDataSource_rrd.php` | Cacti plugin, after Howard Jones | rrdtool path from `RRDTOOL_PATH`, Cacti poller table only inside Cacti |

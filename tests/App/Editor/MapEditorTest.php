@@ -61,6 +61,47 @@ final class MapEditorTest extends TestCase
         $this->assertEquals(700, $map->nodes['lyon']->zorder);
     }
 
+    public function testLinkAndNodeDataOfTheClassicEditor(): void
+    {
+        $this->editor->apply([
+            ['op' => 'set_link', 'names' => ['core-paris'], 'props' => [
+                'bandwidth' => '1G', 'infourl' => 'https://noc.example/paris',
+                'hover_url' => "https://graphs.example/a.png\n  /graphs/b.png",
+            ]],
+            ['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bandwidth_out' => '100M']],
+            ['op' => 'set_node', 'names' => ['paris'], 'props' => ['hover_url' => 'https://graphs.example/node.png']],
+        ]);
+
+        $map = $this->editor->load();
+        $link = $map->links['core-paris'];
+        $this->assertSame('1G', $link->max_bandwidth_in_cfg);
+        $this->assertSame('100M', $link->max_bandwidth_out_cfg);
+        $this->assertSame('https://noc.example/paris', $link->infourl[IN]);
+        $this->assertSame(['https://graphs.example/a.png', '/graphs/b.png'], $link->overliburl[IN]);
+        $this->assertSame($link->overliburl[IN], $link->overliburl[OUT]);
+        $this->assertSame(['https://graphs.example/node.png'], $map->nodes['paris']->overliburl[IN]);
+        $this->assertStringContainsString('OVERLIBGRAPH https://graphs.example/a.png /graphs/b.png', (string) file_get_contents($this->file));
+
+        $model = $this->drawnModel();
+        $links = array_column($model['links'], null, 'name');
+        $this->assertSame('100M', $links['core-paris']['bandwidth_out']);
+        $this->assertSame('https://noc.example/paris', $links['core-paris']['infourl']);
+        $this->assertSame('https://graphs.example/a.png /graphs/b.png', $links['core-paris']['hover_url']);
+        $nodes = array_column($model['nodes'], null, 'name');
+        $this->assertSame('https://graphs.example/node.png', $nodes['paris']['hover_url']);
+
+        // cleared, the link takes its template's empty value again
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['hover_url' => '']]]);
+        $this->assertSame([], $this->editor->load()->links['core-paris']->overliburl[IN]);
+
+        try {
+            $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['hover_url' => 'javascript:alert(1)']]]);
+            $this->fail('accepted a javascript: address');
+        } catch (InvalidArgumentException) {
+            $this->assertSame(['https://graphs.example/node.png'], $this->editor->load()->nodes['paris']->overliburl[IN]);
+        }
+    }
+
     public function testCommentsCanFollowTheCurve(): void
     {
         $this->editor->apply([['op' => 'set_link', 'names' => ['paris-backup'], 'props' => ['commentcurve' => '1']]]);

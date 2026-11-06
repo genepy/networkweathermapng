@@ -69,7 +69,6 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <button type="button" role="menuitem" data-pref="theme" aria-label="<?= e__('Theme') ?>"
                 data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><?= icon('sun-moon', 'i') ?><span class="theme-label"></span></button>
         <a role="menuitem" href="/map/<?= $mapId ?>" target="_blank" rel="noopener"><?= icon('external-link', 'i') ?><span><?= e__('Open the map in a new tab') ?></span></a>
-        <a role="menuitem" href="/editor/classic/<?= $mapId ?>" title="<?= e__('The previous editor') ?>"><svg class="i" aria-hidden="true"><use href="#i-classic"/></svg><span><?= e__('Classic editor') ?></span></a>
     </div>
 
     <div id="toolbars-menu" popover>

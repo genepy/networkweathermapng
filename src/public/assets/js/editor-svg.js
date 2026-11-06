@@ -2001,6 +2001,64 @@
         return hits * 1e6 + len + (points.length - 2) * 25;
     }
 
+    /**
+     * Tidy the ends of links, as the classic editor did: when the boxes of
+     * the two nodes face each other, the link starts and ends on the facing
+     * sides at the same height (or the same x), so it runs straight; links
+     * between the same two nodes share that span evenly. Otherwise the ends
+     * go back to the centres, parallel links set 15 px apart.
+     */
+    function tidyEnds(links) {
+        var pairs = {};
+        links.filter(function (l) { return !l.locked; }).forEach(function (l) {
+            var k = [l.a, l.b].sort().join('\u0000');
+            (pairs[k] = pairs[k] || []).push(l);
+        });
+        var props = {};
+        Object.keys(pairs).forEach(function (k) {
+            var group = pairs[k], total = group.length;
+            group.forEach(function (l, i) {
+                var ends = tidyOffsets(state.nodes.get(l.a), state.nodes.get(l.b), i + 1, total);
+                if (ends) { props[l.name] = ends; }
+            });
+        });
+        var ops = Object.keys(props).map(function (name) {
+            return { op: 'set_link', names: [name], props: { a_offset: props[name][0], b_offset: props[name][1] } };
+        });
+        if (ops.length) { send(ops); }
+    }
+
+    function tidyOffsets(a, b, n, total) {
+        if (!a || !b) { return null; }
+        var ba = a.box || [a.x - 20, a.y - 20, a.x + 20, a.y + 20];
+        var bb = b.box || [b.x - 20, b.y - 20, b.x + 20, b.y + 20];
+        var xOverlap = ba[0] <= bb[2] && bb[0] <= ba[2];
+        var yOverlap = ba[1] <= bb[3] && bb[1] <= ba[3];
+        var ax = 0, ay = 0, bx = 0, by = 0, lo, hi, at;
+
+        if (!xOverlap && yOverlap) {
+            // side by side: leave from the facing sides, at one height
+            if (ba[2] < bb[0]) { ax = ba[2] - a.x; bx = bb[0] - b.x; } else { ax = ba[0] - a.x; bx = bb[2] - b.x; }
+            lo = Math.max(ba[1], bb[1]); hi = Math.min(ba[3], bb[3]);
+            at = lo + n * (hi - lo) / (total + 1);
+            ay = at - a.y; by = at - b.y;
+        } else if (!yOverlap && xOverlap) {
+            // one above the other
+            if (ba[3] < bb[1]) { ay = ba[3] - a.y; by = bb[1] - b.y; } else { ay = ba[1] - a.y; by = bb[3] - b.y; }
+            lo = Math.max(ba[0], bb[0]); hi = Math.min(ba[2], bb[2]);
+            at = lo + n * (hi - lo) / (total + 1);
+            ax = at - a.x; bx = at - b.x;
+        } else if (!xOverlap && !yOverlap) {
+            // diagonal: centre to centre, parallel links side by side
+            var dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+            var shift = 15 * (n - 1 - (total - 1) / 2);
+            ax = bx = -dy / len * shift;
+            ay = by = dx / len * shift;
+        }
+        function off(x, y) { x = Math.round(x); y = Math.round(y); return x || y ? x + ':' + y : 'C'; }
+        return [off(ax, ay), off(bx, by)];
+    }
+
     function autoRoute() {
         var links = selected('link');
         if (!links.length) {
@@ -2298,7 +2356,7 @@
                 h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection, disabled: !nodes.length && !links.length && !zones.length })
             ]));
         }
-        inspector.replaceChildren.apply(inspector, parts);
+        inspector.replaceChildren.apply(inspector, parts.filter(Boolean));
     }
 
     // Enter in a field applies it and leaves it, so the panel is rebuilt
@@ -2469,6 +2527,7 @@
             h('h3', { text: t('Data') }),
             row(t('Target'), field(nodes, 'target', 'node')),
             row(t('Info URL'), field(nodes, 'infourl', 'node')),
+            row(t('Hover graph'), field(nodes, 'hover_url', 'node', { placeholder: t('Picture address') })),
             row(t('Site'), field(nodes, 'site', 'node', { list: 'site-options', placeholder: t('none') })),
             siteOptions(),
             row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true })),
@@ -2689,6 +2748,16 @@
         }));
     }
 
+    /** The out bandwidth of a link, empty while it is the same as the in one */
+    function bandwidthOutField(link) {
+        var differs = link.bandwidth_out !== link.bandwidth_in;
+        var input = h('input', { name: 'bandwidth_out', value: differs ? link.bandwidth_out : '', placeholder: t('Same'), list: 'bw-options' });
+        input.addEventListener('change', function () {
+            send([{ op: 'set_link', names: [link.name], props: { bandwidth_out: input.value.trim() || link.bandwidth_in } }]);
+        });
+        return input;
+    }
+
     function linkPanel(links) {
         var single = links.length === 1 ? links[0] : null;
         var out = [h('h2', { text: single ? t('Link :name', { name: single.name }) : t(':n links', { n: links.length }) })];
@@ -2699,12 +2768,15 @@
 
         out.push(
             row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
-            row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
+            row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: single && single.bandwidth_out !== single.bandwidth_in ? 'bandwidth_in' : 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
+            single ? row(t('Out, if different'), bandwidthOutField(single)) : null,
             h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) { return h('option', { value: v }); })),
             h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
             row(t('Total traffic'), field(links, 'traffic_total', 'link', { options: [['1', t('Counted')], ['0', t('Left out')]] })),
+            row(t('Info URL'), field(links, 'infourl', 'link')),
+            row(t('Hover graph'), field(links, 'hover_url', 'link', { placeholder: t('Picture address') })),
             h('h3', { text: t('Shape') }),
             row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
             row(t('Right angles'), h('div', { 'class': 'pair' }, [
@@ -2723,13 +2795,14 @@
         if (single) {
             out.push(
                 row(t('Ends'), h('div', { 'class': 'pair' }, [anchorPicker(single, 'a'), anchorPicker(single, 'b')])),
-                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it, or double-click the link to add one. Double-click a point to remove it. Drag a bandwidth label along the link to move it.') }),
-                h('div', { 'class': 'actions' }, [
-                    h('button', { type: 'button', text: t('Straighten'), disabled: !single.via.length, onclick: function () { send([{ op: 'set_link', names: [single.name], props: { via: [] } }]); } }),
-                    h('button', { type: 'button', text: t('Auto-route'), onclick: autoRoute })
-                ])
+                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it, or double-click the link to add one. Double-click a point to remove it. Drag a bandwidth label along the link to move it.') })
             );
         }
+        out.push(h('div', { 'class': 'actions' }, [
+            single ? h('button', { type: 'button', text: t('Straighten'), disabled: !single.via.length, onclick: function () { send([{ op: 'set_link', names: [single.name], props: { via: [] } }]); } }) : null,
+            h('button', { type: 'button', text: t('Auto-route'), onclick: autoRoute }),
+            h('button', { type: 'button', text: t('Tidy ends'), title: t('Start and end the link on the facing sides of its nodes, so it runs straight; links between the same nodes are spread apart'), onclick: function () { tidyEnds(links); } })
+        ]));
 
         out.push(h('h3', { text: t('Comments') }));
         if (single) {
@@ -4071,7 +4144,7 @@
         tgt.form.requestSubmit(ok);
     });
 
-    // Other people (or the classic editor) may change the map: reload when
+    // Other people (or the text editor) may change the map: reload when
     // the file changes and nothing is being dragged.
     setInterval(function () {
         if (state.drag || state.nudge || state.textMode || document.hidden) { return; }

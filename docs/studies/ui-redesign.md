@@ -95,4 +95,6 @@ positions in the zoomed editor).
     (`editor/visual.php`, `editor/edit.php`, `EditorController`,
     `/editor/classic/{id}`), port it to the SVG editor or report it, then
     remove the views, routes, scripts, unused strings and the link from the
-    SVG editor.
+    SVG editor. Done: the link's info URL, the hover graph of nodes and links, the
+    out bandwidth and *Tidy* were the only things missing from the SVG
+    editor; they were ported, nothing was left to report.

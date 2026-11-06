@@ -316,8 +316,8 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 - **Top bar**: back to the maps, the map name, whether the last change is
   saved (*Saving…*, *Saved*, *Not saved*), undo and redo; in the middle the
   `Ctrl+K` search (see below); on the right *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
-  *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab,
-  the classic editor) and *View*, which opens the map view.
+  *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab)
+  and *View*, which opens the map view.
 - **Keyboard shortcuts**: `?` (or ⋯ › *Keyboard shortcuts*) lists them all.
 - **Contextual bar**: while something is selected, a small bar floats over
   it with what applies: *Align and space evenly* (a menu), *Group* or
@@ -357,8 +357,15 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   on a selected link, drag the red points to bend it (as many as needed),
   double-click one to remove it, and click a square around a node to attach
   that end to a side (`NODES a:N b:E`).
-  *Auto-route* bends links around the nodes in their way; *Untangle labels*
-  moves bandwidth labels that overlap (`BWLABELPOS`).
+  *Auto-route* bends links around the nodes in their way; *Tidy ends* starts
+  and ends the selected links on the facing sides of their nodes, so they run
+  straight, and spreads the links between the same two nodes
+  (`NODES a:24:0 b:-24:0`); *Untangle labels* moves bandwidth labels that
+  overlap (`BWLABELPOS`).
+- **Link data**: *Bandwidth* sets both directions; *Out, if different* sets
+  the outbound one alone (`BANDWIDTH 1G 100M`). *Info URL* is the page a
+  click opens (`INFOURL`) and *Hover graph* the picture shown on hover
+  (`OVERLIBGRAPH`, addresses separated by spaces); a node has both too.
 - **Labels**: drag a bandwidth label of the selected link along it
   (`BWLABELPOS`), or the label of a selected node with an icon away from the
   icon (`LABELOFFSET`). *Label position* in the node panel puts the label
@@ -451,12 +458,13 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 - **Undo**: Ctrl+Z and Ctrl+Shift+Z, kept on disk under
   `DATA_ROOT/history/<map id>`, so they survive a reload. Each step keeps a
   fingerprint of the file it left: if the map was saved outside the history
-  since then (text editor of the classic editor, rename, a copy on disk),
+  since then (rename, a copy on disk),
   that undo or redo is refused instead of overwriting the change, and the
   button says why. An undo sent from a tab that has not seen the latest save
   of another tab or user is refused too, and the map is reloaded.
 
-The previous editor is still available at `/editor/classic/<map id>`.
+The classic editor was removed: its address, `/editor/classic/<map id>`,
+opens this editor.
 
 ### Icons
 
