@@ -67,6 +67,8 @@
     const MAX_Z = 10;
     // on a basemap, zoom in further: 64 is six web map zoom levels
     const MAX_Z_BASEMAP = 64;
+    // above this size on the screen, the SVG covers only what is in view
+    const MAX_SVG_PX = 4096;
 
     const S = {
         z: 1, tx: 0, ty: 0,      // screen = t + z * map
@@ -82,7 +84,8 @@
         ends: {},                // link id -> {a, b} node names (kept across frames)
         sites: {},               // node name -> its site (SET site), for the hover card
         loading: false,
-        again: false
+        again: false,
+        playOnLoad: false        // open the playback once the map is drawn (#play)
     };
 
     // the geographic basemap under the map (basemap.js), when the map has one
@@ -155,10 +158,23 @@
         if (!S.el) return;
         keepInView();
         // Resizing the SVG (rather than scaling it with a transform) keeps
-        // it sharp at every zoom
-        S.el.style.width = (S.w * S.z) + 'px';
-        S.el.style.height = (S.h * S.z) + 'px';
-        stage.style.transform = 'translate(' + S.tx + 'px,' + S.ty + 'px)';
+        // it sharp at every zoom. The SVG only covers the part of the map
+        // on the screen (its viewBox): deep in a zoom, an element tens of
+        // thousands of pixels wide goes past what the graphics card draws
+        // in one piece, and seams flicker across the view. A smaller map
+        // stays whole, so that moving it does not draw it again.
+        let x0 = 0, y0 = 0, x1 = S.w, y1 = S.h;
+        if (S.el instanceof SVGSVGElement && Math.max(S.w, S.h) * S.z > MAX_SVG_PX) {
+            const vp = vpSize();
+            x0 = Math.max(0, Math.floor(-S.tx / S.z));
+            y0 = Math.max(0, Math.floor(-S.ty / S.z));
+            x1 = Math.max(x0 + 1, Math.min(S.w, Math.ceil((vp.w - S.tx) / S.z)));
+            y1 = Math.max(y0 + 1, Math.min(S.h, Math.ceil((vp.h - S.ty) / S.z)));
+        }
+        if (S.el instanceof SVGSVGElement) S.el.setAttribute('viewBox', x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0));
+        S.el.style.width = ((x1 - x0) * S.z) + 'px';
+        S.el.style.height = ((y1 - y0) * S.z) + 'px';
+        stage.style.transform = 'translate(' + (S.tx + x0 * S.z) + 'px,' + (S.ty + y0 * S.z) + 'px)';
         zoomLabel.textContent = Math.round(S.z * 100) + ' %';
         if (B.inst) B.inst.sync(S.z, S.tx, S.ty, S.w, S.h);
         updateGeo();
@@ -192,6 +208,7 @@
         const x = parseFloat(p.get('x') || '');
         const y = parseFloat(p.get('y') || '');
         if (p.get('n') && S.focus === null) S.focus = p.get('n');
+        if (p.has('play')) S.playOnLoad = true;
         if (!isFinite(z) || !isFinite(x) || !isFinite(y) || z <= 0) {
             // a link to a node without a view: zoom onto it once it is drawn
             S.focusZoom = S.focus !== null;
@@ -332,9 +349,92 @@
         fillNodeList(svg);
         updateMinimapImage(text);
         setupFlow(svg);
+        setupLinks(svg);
         setupGeo();
         refocus();
         fillSites();
+    }
+
+    // ---- Link width deep in a basemap ----
+    // Located nodes keep their size at 100 % when zooming in (see below);
+    // the links do the same, or a few zoom levels down they would cover
+    // the city with huge arrows. Each arrow of the SVG carries its spine,
+    // its half width, the half width and the length of its head
+    // (data-spine, data-w, data-aw, data-as): it is drawn again from them
+    // at 1 / zoom of its width. Its outline stays one pixel wide.
+    const L = {arrows: [], k: 1};
+
+    function setupLinks(svg) {
+        L.arrows = [];
+        L.k = 1;
+        svg.querySelectorAll('polygon[data-spine]').forEach(function (el) {
+            const nums = (el.getAttribute('data-spine').match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/g) || []).map(Number);
+            const pts = [];
+            for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+            const w = parseFloat(el.getAttribute('data-w'));
+            if (pts.length < 2 || !(w > 0)) return;
+            L.arrows.push({
+                el: el, pts: pts, points: el.getAttribute('points'), w: w,
+                aw: parseFloat(el.getAttribute('data-aw')) || w,
+                as: parseFloat(el.getAttribute('data-as')) || 0
+            });
+        });
+    }
+
+    /** The outline of an arrow along pts: body of half width w, head of half width aw and length as */
+    function arrowOutline(pts, w, aw, as) {
+        const d = [0];
+        for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+        const len = d[d.length - 1];
+        if (len <= 0) return null;
+        as = Math.min(as, len / 1.2);
+        const at = len - as;
+        // the spine up to where the head starts
+        const body = [pts[0]];
+        let i = 1;
+        while (i < pts.length - 1 && d[i] < at) body.push(pts[i++]);
+        const a = pts[i - 1], b = pts[i];
+        const f = d[i] > d[i - 1] ? (at - d[i - 1]) / (d[i] - d[i - 1]) : 0;
+        const base = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+        if (Math.hypot(base[0] - body[body.length - 1][0], base[1] - body[body.length - 1][1]) > 0.01 || body.length < 2) body.push(base);
+        if (body.length < 2) return null;
+        function normal(p, q) {
+            const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+            return [(q[1] - p[1]) / l, -(q[0] - p[0]) / l];
+        }
+        const left = [], right = [];
+        for (let j = 0; j < body.length; j++) {
+            const n1 = normal(body[Math.max(0, j - 1)], body[Math.max(1, j)]);
+            const n2 = normal(body[Math.min(j, body.length - 2)], body[Math.min(j + 1, body.length - 1)]);
+            let nx = n1[0] + n2[0], ny = n1[1] + n2[1];
+            const nl = Math.hypot(nx, ny);
+            if (nl < 1e-6) { nx = n1[0]; ny = n1[1]; } else { nx /= nl; ny /= nl; }
+            // a mitred corner, not too long on a sharp turn
+            const m = w / Math.max(0.25, nx * n1[0] + ny * n1[1]);
+            const p = body[j];
+            left.push([p[0] + nx * m, p[1] + ny * m]);
+            right.push([p[0] - nx * m, p[1] - ny * m]);
+        }
+        const tip = pts[pts.length - 1];
+        const hn = normal(base, tip);
+        const out = left.concat([
+            [base[0] + hn[0] * aw, base[1] + hn[1] * aw],
+            tip,
+            [base[0] - hn[0] * aw, base[1] - hn[1] * aw]
+        ], right.reverse());
+        return out.map(function (p) { return p[0].toFixed(3) + ',' + p[1].toFixed(3); }).join(' ');
+    }
+
+    /** Draw the arrows at k times their width (1: as the SVG has them) */
+    function thinLinks(k) {
+        k = Math.round(k * 1000) / 1000;
+        if (k === L.k) return;
+        L.k = k;
+        root.classList.toggle('wmv-links-thin', k < 1);
+        L.arrows.forEach(function (a) {
+            const pts = k < 1 ? arrowOutline(a.pts, a.w * k, a.aw * k, a.as * k) : null;
+            a.el.setAttribute('points', pts || a.points);
+        });
     }
 
     // ---- Traffic flow (SET link_flow 1) ----
@@ -425,7 +525,8 @@
         F.dots.forEach(function (dot) {
             const d = ((t * dot.speed / dot.len + dot.phase) % 1) * dot.len;
             const p = flowAt(dot, d);
-            dot.el.setAttribute('transform', 'translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ') rotate(' + p[2].toFixed(1) + ')');
+            dot.el.setAttribute('transform', 'translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ') rotate(' + p[2].toFixed(1) + ')'
+                + (L.k < 1 ? ' scale(' + L.k + ')' : ''));
             // fade in out of the node, fade out at the arrow head
             dot.el.setAttribute('opacity', Math.max(0, Math.min(1, d / 14, (dot.len - d) / 14)).toFixed(2));
         });
@@ -485,6 +586,11 @@
                 showState(data.status);
                 if (data.version) S.version = data.version;
                 showMessage('');
+                // #play (the link of the map settings): straight to the recorded hours
+                if (S.playOnLoad) {
+                    S.playOnLoad = false;
+                    if (H.button && !H.on) openHistory();
+                }
             })
             .catch(function () {
                 if (!S.el) fallbackToPng();
@@ -671,6 +777,7 @@
         if (!S.el || !S.el.style) return;
         const on = geoOn();
         S.el.style.setProperty('--wmv-geo-k', on && S.z > 1 ? String(1 / S.z) : '1');
+        thinLinks(on && S.z > 1 ? 1 / S.z : 1);
         // deep in a basemap, the bandwidth labels would cover the city: they go
         root.classList.toggle('wmv-lod-near', on && S.labelFont > 0 && S.labelFont * S.z > LABEL_MAX_PX);
         if (!on) {
@@ -2305,6 +2412,13 @@
             e.stopImmediatePropagation();
         }, true);
     }
+
+    // the link of the map settings drawer, on this very page
+    window.addEventListener('hashchange', function () {
+        if (!/(^#|&)play(&|=|$)/.test(location.hash)) return;
+        history.replaceState(null, '', location.pathname + location.search);
+        if (H.button && !H.on && S.el) openHistory();
+    });
 
     load();
     setInterval(function () { if (!document.hidden && !H.on) load(); }, refreshMs);

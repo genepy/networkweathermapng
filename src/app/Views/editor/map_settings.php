@@ -141,7 +141,9 @@ $names = static fn (array $list): string => $h(implode(', ', $list));
                 </label>
             </div>
             <?php if ($s['recorded']): ?>
-            <p class="text-muted ms-note"><?= e__(':n images kept. Switching recording off deletes them.', ['n' => $s['frames']]) ?></p>
+            <p class="text-muted ms-note"><?= e__(':n images kept. Switching recording off deletes them.', ['n' => $s['frames']]) ?>
+                <?php if ($s['frames'] > 0): ?><a href="/map/<?= $id ?>#play"><?= e__('Play them back') ?></a><?php endif; ?></p>
+            <p class="text-muted ms-note"><?= e__('In the viewer of the map, the Live / Last :hours h switch next to the search plays the recording back (key H).', ['hours' => $s['retention']]) ?></p>
             <?php endif; ?>
             <?php else: ?>
             <p class="ms-note"><?= e__('Recording is switched off for the whole application.') ?>

@@ -389,6 +389,47 @@ final class SvgRenderTest extends TestCase
         $this->assertStringNotContainsString('wm-flow', \WeatherMapSvg::render($this->load($file)));
     }
 
+    /** Each link arrow carries its spine and sizes, for the viewer to draw it thinner deep in a basemap */
+    public function testLinkArrowsCarryTheirShape(): void
+    {
+        $conf = "WIDTH 400\nHEIGHT 300\nNODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 50\nNODE c\n\tPOSITION 50 150\nNODE d\n\tPOSITION 350 150\n"
+            . "NODE e\n\tPOSITION 50 250\nNODE f\n\tPOSITION 350 250\n"
+            . "LINK ab\n\tNODES a b\n\tWIDTH 4\n\tTARGET static:300M:100M\n"
+            . "LINK cd\n\tNODES c d\n\tWIDTH 4\n\tLINKSTYLE oneway\n\tTARGET static:900M:100M\n"
+            . "LINK ef\n\tNODES e f\n\tWIDTH 4\n\tVIA 200 200\n\tVIASTYLE curved\n\tTARGET static:900M:100M\n";
+        $file = TESTS_OUTPUT . '/shape.conf';
+        file_put_contents($file, $conf);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($this->load($file))));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $shapes = [];
+        foreach ($xpath->query('//s:g[@data-kind="link"]/s:polygon[@class="wm-arrow"]') as $p) {
+            $this->assertInstanceOf(\DOMElement::class, $p);
+            $g = $p->parentNode;
+            $this->assertInstanceOf(\DOMElement::class, $g);
+            $this->assertTrue($p->hasAttribute('data-spine'), 'every link arrow has its spine');
+            $shapes[$g->getAttribute('data-name')][] = $p;
+        }
+        $this->assertSame(['ab', 'cd', 'ef'], array_keys($shapes));
+        $this->assertCount(2, $shapes['ab']);
+        $this->assertCount(1, $shapes['cd'], 'a one-way link has one arrow');
+
+        $out = $shapes['ab'][0];
+        $this->assertStringStartsWith('50,50 ', $out->getAttribute('data-spine'));
+        $this->assertStringEndsWith(' 200,50', $out->getAttribute('data-spine'), 'OUT runs to the split point');
+        $this->assertSame('4', $out->getAttribute('data-w'));
+        $this->assertGreaterThan(4, (float) $out->getAttribute('data-aw'));
+        $this->assertGreaterThan(0, (float) $out->getAttribute('data-as'));
+        $this->assertStringStartsWith('350,50 ', $shapes['ab'][1]->getAttribute('data-spine'));
+        $this->assertStringEndsWith(' 350,150', $shapes['cd'][0]->getAttribute('data-spine'), 'a one-way link runs to its end');
+        $this->assertGreaterThan(3, count(explode(' ', $shapes['ef'][0]->getAttribute('data-spine'))), 'a curved link keeps its curve');
+
+        // the legend and other polygons have none
+        $this->assertSame(0, $xpath->query('//s:polygon[@data-spine][not(ancestor::s:g[@data-kind="link"])]')->length);
+    }
+
     /** SET background_sizing: natural size (image), fit keeping the ratio, or stretch, in the PNG and the SVG */
     public function testBackgroundSizing(): void
     {

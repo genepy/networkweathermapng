@@ -347,6 +347,8 @@ return [
     'Record this map' => 'Enregistrer cette carte',
     'An image every :interval min, kept :hours h, to play the map back from its viewer.' => 'Une image toutes les :interval min, gardée :hours h, pour rejouer la carte depuis sa visionneuse.',
     ':n images kept. Switching recording off deletes them.' => ':n images gardées. Arrêter l’enregistrement les supprime.',
+    'Play them back' => 'Les rejouer',
+    'In the viewer of the map, the Live / Last :hours h switch next to the search plays the recording back (key H).' => 'Dans la vue de la carte, le bouton Direct / Dernières :hours h à côté de la recherche rejoue l’enregistrement (touche H).',
     'Recording is switched off for the whole application.' => 'L’enregistrement est désactivé pour toute l’application.',
     'An administrator can switch it on.' => 'Un administrateur peut l’activer.',
     'Sign-in is switched off: everybody who opens the application sees this map.' => 'La connexion est désactivée : toute personne qui ouvre l’application voit cette carte.',
