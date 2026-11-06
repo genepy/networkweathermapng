@@ -7,13 +7,13 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-11-05.
+Last updated: 2026-11-06.
 
 ## In progress
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| UI redesign, step 9: editor, part 2 | `claude/project-thread-9jn4et` | Floating contextual bar by default, palette in the editor, movable toolbars as an option |
 
 ## Paused
 
@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| UI redesign, step 9: editor, part 2 | Floating contextual bar by default, palette in the editor, movable toolbars as an option (decision) |
 | UI redesign, step 10: hover card with uPlot | The card and its IN/OUT graph are drawn in the browser since Nine IX task 4 (plain SVG); what is left: values under the pointer (crosshair), zoom on a period, the same graph in the node card |
 | UI redesign, step 11: remove the classic editor | List what only the classic editor can do, port it to the SVG editor or report it, then remove its views, routes, scripts, strings and link (decision) |
 
