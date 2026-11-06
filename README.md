@@ -67,6 +67,28 @@ point there; the images shipped with the application are copied in at
 start, without replacing yours). Uploads, a migration zip included, are
 limited to 64 MB.
 
+### Demo maps
+
+Three demo maps show what a map can do, with traffic from fixed values (the
+static data source, `TARGET static:<in>:<out>`), so they draw without Zabbix
+or Observium:
+
+| Map | What it shows |
+|-----|---------------|
+| *France sites* | A geographic basemap with nodes placed by latitude and longitude; several sites in Paris, Lyon, Marseille and Toulouse merge into numbered clusters until you zoom in, with the city inset on hover; round badge nodes, pill labels, traffic flow, pulsing saturated links, sites in the side panel |
+| *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, link widths by speed, comments along curved links |
+| *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing links, long-haul links that curve with their comments, a speed legend |
+
+Add them to a "Demo maps" group with:
+
+```bash
+docker compose exec weathermap php bin/demo-maps.php      # or: php src/bin/demo-maps.php
+```
+
+Maps that already have the name of a demo are left as they are, so running it
+again changes nothing. The testbed adds them too. Their files are in
+`src/examples/maps`: open one in the editor to see how a feature is set up.
+
 ### Test deployment with Observium
 
 `deploy/testbed` runs Observium, Weathermap and a few simulated SNMP devices
@@ -628,6 +650,7 @@ networkweathermapng/
 │   └── supervisor/
 ├── src/
 │   ├── public/            # Web root
+│   ├── examples/maps/     # Demo maps (bin/demo-maps.php)
 │   ├── app/               # Application code
 │   │   ├── Core/          # Core framework
 │   │   ├── Controllers/   # HTTP controllers

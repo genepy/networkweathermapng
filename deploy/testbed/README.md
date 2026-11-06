@@ -25,7 +25,8 @@ On a Linux machine with Docker and the Compose plugin
 The first run builds the images (Observium is downloaded from observium.org;
 on a Raspberry Pi 4 the Weathermap image takes a while to compile), creates
 passwords in `~/.config/weathermap-testbed/env`, starts everything and adds
-to Weathermap the Observium data source and a map named **Testbed**. Running
+to Weathermap the Observium data source, a map named **Testbed** and the
+demo maps of `src/examples/maps` (group *Demo maps*). Running
 it again updates the containers and keeps all data.
 
 | URL | Login |

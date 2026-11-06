@@ -13,7 +13,7 @@ Last updated: 2026-11-06.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| Demo maps that showcase the features | `claude/project-thread-356ptr` | Three maps in `src/examples/maps` (France sites on a basemap, datacenter leaf/spine fabric, ISP backbone with transit and peering) drawn from static values; `bin/demo-maps.php` and the testbed seed add them to a *Demo maps* group. Left: checks in the viewer, PR review |
 
 ## Paused
 
