@@ -41,8 +41,6 @@ return [
     'Fit to window (F)' => 'Ajuster à la fenêtre (F)',
     'Fit' => 'Ajuster',
     'Open the published map' => 'Ouvrir la carte publiée',
-    'The previous editor' => 'L’éditeur précédent',
-    'Classic editor' => 'Éditeur classique',
     'Add' => 'Ajouter',
     'Your layers' => 'Vos calques',
     'Add to a layer' => 'Ajouter à un calque',
@@ -113,6 +111,7 @@ return [
     'Invalid data source' => 'Source de données invalide',
     'Invalid anchor: :value' => 'Ancrage invalide : :value',
     'Invalid bandwidth: :value' => 'Bande passante invalide : :value',
+    'Invalid address: :value' => 'Adresse invalide : :value',
     'Invalid colour: :value' => 'Couleur invalide : :value',
     'Invalid icon: :value' => 'Icône invalide : :value',
     'A name is required' => 'Un nom est obligatoire',
@@ -170,7 +169,7 @@ return [
     'A zone named :name already exists' => 'Une zone nommée :name existe déjà',
     'Invalid value for :key: :value' => 'Valeur invalide pour :key : :value',
 
-    // Toolbars, icon library, Map properties and classic editor
+    // Toolbars, icon library and Map properties
     'No file' => 'Aucun fichier',
     'the upload failed' => 'l’envoi a échoué',
     'Invalid font: :value' => 'Police invalide : :value',
@@ -232,8 +231,6 @@ return [
     'An existing theme or a new one' => 'Un thème existant ou un nouveau',
     'Files' => 'Fichiers',
     'PNG, GIF or JPEG up to 1024 px, or SVG (cleaned, and drawn as a 64 px PNG for the PNG map). 2 MB at most per file.' => 'PNG, GIF ou JPEG jusqu’à 1024 px, ou SVG (nettoyé, et dessiné en PNG de 64 px pour la carte PNG). 2 Mo au plus par fichier.',
-    'Open this map in the new SVG editor' => 'Ouvrir cette carte dans le nouvel éditeur SVG',
-    'New editor' => 'Nouvel éditeur',
     'Unknown alignment: :value' => 'Alignement inconnu : :value',
     'Unknown label position: :value' => 'Position d’étiquette inconnue : :value',
     'Note' => 'Note',

@@ -447,6 +447,9 @@ class MapEditor
                 } elseif ($key === 'infourl') {
                     $node->infourl[IN] = $this->text($value);
                     $node->infourl[OUT] = $node->infourl[IN];
+                } elseif ($key === 'hover_url') {
+                    $node->overliburl[IN] = $this->urls((string) $value);
+                    $node->overliburl[OUT] = $node->overliburl[IN];
                 } elseif ($key === 'note_text') {
                     $this->setNoteText($node, (string) $value);
                 } elseif ($key === 'note_align') {
@@ -581,6 +584,9 @@ class MapEditor
                 } elseif ($key === 'infourl') {
                     $link->infourl[IN] = $this->text($value);
                     $link->infourl[OUT] = $link->infourl[IN];
+                } elseif ($key === 'hover_url') {
+                    $link->overliburl[IN] = $this->urls((string) $value);
+                    $link->overliburl[OUT] = $link->overliburl[IN];
                 } elseif ($key === 'via') {
                     $this->setVias($link, (array) $value);
                 } elseif ($key === 'traffic_total') {
@@ -1458,6 +1464,7 @@ class MapEditor
                 'labeloutlinecolour' => self::colourOut($node->labeloutlinecolour),
                 'target' => self::targetsOut($node->targets),
                 'infourl' => (string) ($node->infourl[IN] ?? ''),
+                'hover_url' => implode(' ', (array) ($node->overliburl[IN] ?? [])),
                 'group' => (string) ($node->hints['editor_group'] ?? ''),
                 'locked' => !empty($node->hints['editor_lock']),
                 'layer' => (string) ($node->hints['editor_layer'] ?? ''),
@@ -1513,6 +1520,8 @@ class MapEditor
                 'datasource' => (string) ($link->hints['datasource'] ?? ''),
                 'comment_in' => (string) ($link->comments[IN] ?? ''),
                 'comment_out' => (string) ($link->comments[OUT] ?? ''),
+                'infourl' => (string) ($link->infourl[IN] ?? ''),
+                'hover_url' => implode(' ', (array) ($link->overliburl[IN] ?? [])),
                 'commentcurve' => (string) $link->commentcurve === '1' ? '1' : '0',
                 'bwstyle' => self::bwStyle($link),
                 'traffic_total' => \App\Services\MapService::countsInTotal($link) ? '1' : '0',
@@ -1712,6 +1721,23 @@ class MapEditor
             return $value;
         }
         throw new InvalidArgumentException(__('Invalid anchor: :value', ['value' => $value]));
+    }
+
+    /**
+     * The pictures shown on hover (OVERLIBGRAPH): addresses separated by
+     * spaces, each one a web address or a local path.
+     *
+     * @return list<string>
+     */
+    private function urls(string $value): array
+    {
+        $urls = preg_split('/\s+/', $this->text($value), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        foreach ($urls as $url) {
+            if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $url) && !preg_match('#^https?://#i', $url)) {
+                throw new InvalidArgumentException(__('Invalid address: :value', ['value' => $url]));
+            }
+        }
+        return array_values($urls);
     }
 
     private function bandwidth(string $value): string

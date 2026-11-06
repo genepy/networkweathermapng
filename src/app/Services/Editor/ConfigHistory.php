@@ -7,9 +7,8 @@
  * lives on disk, so it survives a page reload.
  *
  * Each step also remembers a fingerprint of the file it left behind. If the
- * file was saved by something else since then (the text editor of the
- * classic editor, a rename, a copy on disk), the step is refused instead of
- * overwriting that work.
+ * file was saved by something else since then (a rename, a copy on disk),
+ * the step is refused instead of overwriting that work.
  */
 
 declare(strict_types=1);

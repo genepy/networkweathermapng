@@ -67,15 +67,6 @@ return [
     'View' => 'Voir',
 
     // Editor / API messages
-    'Invalid map ID' => 'Identifiant de carte invalide',
-    'Edit map: :name' => 'Modifier la carte : :name',
-    'Configuration not found' => 'Configuration introuvable',
-    'Unknown action: :action' => 'Action inconnue : :action',
-    'Node not found' => 'Nœud introuvable',
-    'Failed to create link - invalid nodes' => 'Impossible de créer le lien : nœuds invalides',
-    'Configuration saved successfully' => 'Configuration enregistrée',
-    'Failed to save configuration' => "Impossible d'enregistrer la configuration",
-    'Failed to render map' => 'Impossible de générer la carte',
     'Data source ID required' => 'Identifiant de source de données requis',
     'Data source ID and host ID required' => "Identifiants de source de données et d'équipement requis",
     'Selection required' => 'Sélection requise',

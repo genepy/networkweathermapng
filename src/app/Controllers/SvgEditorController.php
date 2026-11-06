@@ -509,6 +509,5 @@ class SvgEditorController extends BaseController
     private function loadEngine(): void
     {
         require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
-        require_once $this->config->getLibPath() . '/WeatherMap/editor.inc.php';
     }
 }
