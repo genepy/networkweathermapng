@@ -312,6 +312,32 @@ CONF);
         $this->assertNull($this->maps->fontFile(9999, 20), 'no such map');
     }
 
+    /**
+     * The shipped maps name icons and fonts from the web root (fonts/...).
+     * PHP-FPM does not run in that folder: the render goes there, and the
+     * engine warnings never reach the standard error.
+     */
+    public function testRenderFindsRelativeFontsFromAnyFolder(): void
+    {
+        $id = $this->maps->createMap(['name' => 'Relative fonts']);
+        $this->maps->saveMapConfig($id, "WIDTH 200\nHEIGHT 100\nFONTDEFINE 100 fonts/FiraSans-Regular.ttf 9\n"
+            . "NODE a\n\tPOSITION 50 50\n\tLABEL a\n\tLABELFONT 100\n");
+        $cwd = (string) getcwd();
+        chdir('/');
+        try {
+            $result = $this->maps->renderMap($id, true, true);
+            $this->assertSame('/', getcwd(), 'the working folder comes back');
+            $this->assertSame(dirname(TESTS_ROOT) . '/src/public/fonts/FiraSans-Regular.ttf', $this->maps->fontFile($id, 100));
+        } finally {
+            chdir($cwd);
+        }
+        $this->assertIsArray($result);
+        $this->assertArrayNotHasKey('error', $result);
+        $svg = (string) file_get_contents($this->maps->viewerPaths($this->maps->getMap($id) ?? [])['svg']);
+        $this->assertStringContainsString('wmfont100', $svg, 'the font was found');
+        $this->assertArrayNotHasKey('weathermap_warnings', $GLOBALS, 'the collector is put back');
+    }
+
     public function testFavourites(): void
     {
         $one = $this->createMap();

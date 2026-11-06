@@ -524,69 +524,107 @@ class MapService
             }
         }
         
-        // Load WeatherMap library
-        require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
-        
-        try {
-            $wmap = new \WeatherMap();
-            $wmap->context = 'standalone';
-            
-            // Read the config
-            error_log("MapService::renderMap reading config from: $configPath");
-            $wmap->ReadConfig($configPath);
-            error_log("MapService::renderMap config read successfully");
-            
-            // Read data from data sources
-            if ($readData) {
-                $wmap->ReadData();
-            }
-            
-            // Write the image
-            error_log("MapService::renderMap writing image to: $imagePath");
-            error_log("MapService::renderMap writing thumbnail to: $thumbPath");
-            // The SVG is collected during the same drawing pass as the PNG
-            $collector = new \WeatherMapSvg($wmap, [
-                'font_url' => static fn ($n) => '/map/' . $id . '/font/' . (int) $n,
-            ]);
-            $previous = \WeatherMapSvg::$active;
-            \WeatherMapSvg::$active = $collector;
+        return $this->engine(function () use ($id, $readData, $configPath, $imagePath, $thumbPath, $htmlPath, $svgPath, $statusPath): array {
             try {
-                // The timestamp drawn on the map is in the map's time zone
-                TimezoneService::using(
-                    TimezoneService::fromConfig($this->db, $this->config)->forMap($id),
-                    static fn () => $wmap->DrawMap($imagePath, $thumbPath)
-                );
-            } finally {
-                \WeatherMapSvg::$active = $previous;
-            }
-            error_log("MapService::renderMap image and thumbnail written successfully");
-            self::writeAtomic($svgPath, (string) $collector->toSvg());
-
-            if ($readData) {
-                $summary = self::summarize($wmap, $id);
-                self::writeAtomic($statusPath, (string) json_encode($summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            }
+                $wmap = new \WeatherMap();
+                $wmap->context = 'standalone';
             
-            // Generate HTML imagemap
-            if (method_exists($wmap, 'MakeHTML')) {
-                $htmlContent = $wmap->MakeHTML();
-                if ($htmlContent) {
-                    file_put_contents($htmlPath, $htmlContent);
+                // Read the config
+                error_log("MapService::renderMap reading config from: $configPath");
+                $wmap->ReadConfig($configPath);
+                error_log("MapService::renderMap config read successfully");
+            
+                // Read data from data sources
+                if ($readData) {
+                    $wmap->ReadData();
                 }
-            }
             
-            // Update last render time in database
-            if ($readData) {
-                $this->db->update('maps', ['last_run' => date('Y-m-d H:i:s')], 'id = ?', [$id]);
-            }
+                // Write the image
+                error_log("MapService::renderMap writing image to: $imagePath");
+                error_log("MapService::renderMap writing thumbnail to: $thumbPath");
+                // The SVG is collected during the same drawing pass as the PNG
+                $collector = new \WeatherMapSvg($wmap, [
+                    'font_url' => static fn ($n) => '/map/' . $id . '/font/' . (int) $n,
+                ]);
+                $previous = \WeatherMapSvg::$active;
+                \WeatherMapSvg::$active = $collector;
+                try {
+                    // The timestamp drawn on the map is in the map's time zone
+                    TimezoneService::using(
+                        TimezoneService::fromConfig($this->db, $this->config)->forMap($id),
+                        static fn () => $wmap->DrawMap($imagePath, $thumbPath)
+                    );
+                } finally {
+                    \WeatherMapSvg::$active = $previous;
+                }
+                error_log("MapService::renderMap image and thumbnail written successfully");
+                self::writeAtomic($svgPath, (string) $collector->toSvg());
+
+                if ($readData) {
+                    $summary = self::summarize($wmap, $id);
+                    self::writeAtomic($statusPath, (string) json_encode($summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                }
             
-            return [
-                'image' => $imagePath,
-                'html' => file_exists($htmlPath) ? $htmlPath : null,
-                'cached' => false
-            ];
-        } catch (\Exception $e) {
-            return ['error' => $e->getMessage()];
+                // Generate HTML imagemap
+                if (method_exists($wmap, 'MakeHTML')) {
+                    $htmlContent = $wmap->MakeHTML();
+                    if ($htmlContent) {
+                        file_put_contents($htmlPath, $htmlContent);
+                    }
+                }
+            
+                // Update last render time in database
+                if ($readData) {
+                    $this->db->update('maps', ['last_run' => date('Y-m-d H:i:s')], 'id = ?', [$id]);
+                }
+            
+                return [
+                    'image' => $imagePath,
+                    'html' => file_exists($htmlPath) ? $htmlPath : null,
+                    'cached' => false
+                ];
+            } catch (\Exception $e) {
+                return ['error' => $e->getMessage()];
+            }
+        });
+    }
+
+    /**
+     * Run the map engine: from the web root, where the maps find their
+     * icons and fonts (objects/..., fonts/...) whatever the working folder
+     * of the PHP process, and with its warnings logged rather than written
+     * to the standard error, which PHP-FPM can send to the browser in the
+     * middle of a picture.
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    public function engine(callable $fn): mixed
+    {
+        require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
+        $cwd = getcwd();
+        $public = $this->config->getPublicPath();
+        if (is_dir($public)) {
+            chdir($public);
+        }
+        $previous = $GLOBALS['weathermap_warnings'] ?? null;
+        $GLOBALS['weathermap_warnings'] = [];
+        try {
+            return $fn();
+        } finally {
+            $warnings = array_unique((array) $GLOBALS['weathermap_warnings']);
+            unset($GLOBALS['weathermap_warnings']);
+            if ($cwd !== false) {
+                chdir($cwd);
+            }
+            if (is_array($previous)) {
+                // an outer caller collects them
+                $GLOBALS['weathermap_warnings'] = array_merge($previous, $warnings);
+            } elseif ($warnings) {
+                error_log('WeatherMap: ' . implode(' | ', array_slice($warnings, 0, 20))
+                    . (count($warnings) > 20 ? ' (' . count($warnings) . ' warnings)' : ''));
+            }
         }
     }
 
@@ -1040,21 +1078,23 @@ class MapService
             return null;
         }
 
-        require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
-        $wmap = new \WeatherMap();
-        $wmap->context = 'viewer';
-        ob_start();
-        try {
-            $wmap->ReadConfig($configPath);
-        } finally {
-            ob_end_clean();
-        }
+        return $this->engine(static function () use ($configPath, $n): ?string {
+            $wmap = new \WeatherMap();
+            $wmap->context = 'viewer';
+            ob_start();
+            try {
+                $wmap->ReadConfig($configPath);
+            } finally {
+                ob_end_clean();
+            }
 
-        $font = $wmap->fonts[$n] ?? null;
-        if (!$font || $font->type !== 'truetype' || !is_readable($font->file)) {
-            return null;
-        }
-        return (string) $font->file;
+            $font = $wmap->fonts[$n] ?? null;
+            if (!$font || $font->type !== 'truetype' || !is_readable($font->file)) {
+                return null;
+            }
+            // absolute, as it is read once back in the folder of the request
+            return (string) (realpath($font->file) ?: $font->file);
+        });
     }
 
     /**

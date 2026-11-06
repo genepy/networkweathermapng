@@ -159,23 +159,26 @@ class MapController extends BaseController
                 ob_start();
                 require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
 
-                $wmap = new \WeatherMap();
-                // context='editor' forces SortedImagemap to include ALL areas, even those with no href/infourl.
-                // This is required for preview tooltips to work on links that are monitored but have no click action.
-                $wmap->context = 'editor';
-                $wmap->ReadConfig($mapFile);
+                $zone = $this->timezones()->forMap($mapId);
+                $mapHtml = (string) $this->mapService->engine(static function () use ($mapFile, $mapId, $zone) {
+                    $wmap = new \WeatherMap();
+                    // context='editor' forces SortedImagemap to include ALL areas, even those with no href/infourl.
+                    // This is required for preview tooltips to work on links that are monitored but have no click action.
+                    $wmap->context = 'editor';
+                    $wmap->ReadConfig($mapFile);
 
-                // We want Hover URL (OVERLIBGRAPH) to be available in the generated <area> tags for preview.
-                // WeatherMap only emits overlib-related attributes (e.g. data-hover) when HTMLSTYLE is 'overlib'.
-                // Force it for preview generation without changing the user's config file.
-                $wmap->htmlstyle = 'overlib';
+                    // We want Hover URL (OVERLIBGRAPH) to be available in the generated <area> tags for preview.
+                    // WeatherMap only emits overlib-related attributes (e.g. data-hover) when HTMLSTYLE is 'overlib'.
+                    // Force it for preview generation without changing the user's config file.
+                    $wmap->htmlstyle = 'overlib';
 
-                // DrawMap('null') populates imagemap regions without writing an image file.
-                TimezoneService::using($this->timezones()->forMap($mapId), static fn () => $wmap->DrawMap('null'));
+                    // DrawMap('null') populates imagemap regions without writing an image file.
+                    TimezoneService::using($zone, static fn () => $wmap->DrawMap('null'));
 
-                // MakeHTML uses imageuri when provided.
-                $wmap->imageuri = '/map/' . $mapId . '/image?t=' . time();
-                $mapHtml = $wmap->MakeHTML('weathermap_imap');
+                    // MakeHTML uses imageuri when provided.
+                    $wmap->imageuri = '/map/' . $mapId . '/image?t=' . time();
+                    return $wmap->MakeHTML('weathermap_imap');
+                });
                 ob_end_clean();
 
                 // Ensure hover works consistently.
