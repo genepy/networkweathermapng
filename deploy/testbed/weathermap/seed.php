@@ -1,7 +1,8 @@
 <?php
 /**
- * Testbed seed: adds the Observium data source and a demo map of the
- * simulated devices. Safe to run again: the source is updated, an existing
+ * Testbed seed: adds the Observium data source, a demo map of the
+ * simulated devices and the demo maps shipped with the application
+ * (examples/maps). Safe to run again: the source is updated, an existing
  * map is left as it is.
  *
  *   php seed.php   (in the weathermap container, as www-data)
@@ -20,6 +21,8 @@ require APP_ROOT . '/vendor/autoload.php';
 use App\Core\Config;
 use App\Core\Database;
 use App\Services\DataSourceService;
+use App\Services\DemoMaps;
+use App\Services\GroupService;
 use App\Services\MapService;
 
 const SOURCE_NAME = 'Observium (testbed)';
@@ -70,13 +73,17 @@ $maps = new MapService($database, $config);
 $names = array_column($maps->getAllMaps(), 'name');
 if (in_array(MAP_NAME, $names, true)) {
     echo "Map already there: " . MAP_NAME . "\n";
-    exit(0);
+} else {
+    $id = $maps->createMap(['name' => MAP_NAME, 'width' => 900, 'height' => 560]);
+    $content = (string) $maps->getMapConfig($id);
+    $content = substr($content, 0, (int) strpos($content, '# Add your nodes and links below'));
+    $content = str_replace('KEYPOS DEFAULT 10 10', 'KEYPOS DEFAULT 10 40', $content);
+    $content .= (string) file_get_contents(__DIR__ . '/demo-map.conf');
+    $maps->saveMapConfig($id, $content);
+    echo "Map added: " . MAP_NAME . "\n";
 }
 
-$id = $maps->createMap(['name' => MAP_NAME, 'width' => 900, 'height' => 560]);
-$content = (string) $maps->getMapConfig($id);
-$content = substr($content, 0, (int) strpos($content, '# Add your nodes and links below'));
-$content = str_replace('KEYPOS DEFAULT 10 10', 'KEYPOS DEFAULT 10 40', $content);
-$content .= (string) file_get_contents(__DIR__ . '/demo-map.conf');
-$maps->saveMapConfig($id, $content);
-echo "Map added: " . MAP_NAME . "\n";
+// the demo maps of examples/maps, drawn from static values
+foreach ((new DemoMaps($maps, new GroupService($database)))->install() as $name => $added) {
+    echo ($added ? 'Map added: ' : 'Map already there: ') . $name . "\n";
+}
