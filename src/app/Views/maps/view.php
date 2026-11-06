@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
     <script>window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode((object) \App\Core\I18n::section('ui-js'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>);</script>
     <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
-    <script src="<?= asset('/assets/js/weathermap.js') ?>" defer></script>
+    <script src="<?= asset('/assets/js/weathermap.js') ?>" data-uplot="<?= asset('/assets/vendor/uplot/uPlot.iife.min.js') ?>" data-uplot-css="<?= asset('/assets/vendor/uplot/uPlot.min.css') ?>" defer></script>
 </head>
 <body class="wmv-noc">
 <?php else: ?>
@@ -264,6 +264,11 @@
             <p class="wmv-card-count"></p>
             <ul class="wmv-card-links"></ul>
             <p class="wmv-card-none" hidden><?= e__('No links on this node.') ?></p>
+            <!-- the traffic of one of its links, drawn by WM.trafficPanel (weathermap.js) -->
+            <section class="wmv-card-traffic" hidden>
+                <label class="wmv-card-tpick"><span><?= e__('Traffic graph') ?></span><select></select></label>
+                <div class="wmv-card-plot"></div>
+            </section>
             <a class="wm-btn wmv-card-open" target="_blank" rel="noopener" hidden><?= icon('external-link') ?><span><?= e__('Open its page') ?></span></a>
         </aside>
 

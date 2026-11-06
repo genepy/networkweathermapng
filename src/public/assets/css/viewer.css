@@ -572,6 +572,38 @@
 .wmv-card-load:empty { display: none; }
 .wmv-card-load[data-level="warn"] { background: var(--wm-warning-soft); color: var(--wm-warning-text); }
 .wmv-card-load[data-level="crit"] { background: var(--wm-danger-soft); color: var(--wm-danger-text); }
+/* the traffic graph of one of the node's links (WM.trafficPanel) */
+.wmv-card-traffic {
+    flex: none;
+    padding-top: var(--wm-space-2);
+    border-top: 1px solid var(--wm-border);
+}
+.wmv-card-traffic[hidden] { display: none; }
+/* with a graph, the whole card scrolls rather than the list alone (a sheet on a phone is short) */
+.wmv-card:has(.wmv-card-traffic:not([hidden])) { overflow-y: auto; overscroll-behavior: contain; }
+.wmv-card:has(.wmv-card-traffic:not([hidden])) .wmv-card-links { flex: none; overflow: visible; }
+.wmv-card-tpick { display: grid; gap: 2px; margin-bottom: 6px; color: var(--wm-text-muted); }
+.wmv-card-tpick select {
+    width: 100%;
+    min-width: 0;
+    padding: 4px 6px;
+    border: 1px solid var(--wm-field-border);
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-surface);
+    color: var(--wm-text);
+    font: inherit;
+}
+.wmv-card-tpick select:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
+.wmv-card-plot .wm-hc-ranges { display: flex; }
+.wmv-card-plot .wm-hc-ranges button { flex: 1; }
+/* narrow card: the time on its own line, the peak and average in columns */
+.wmv-card-plot .wm-hc-when { flex-basis: 100%; }
+.wmv-card-plot .wm-hc-stat {
+    display: grid;
+    grid-template-columns: max-content 1fr 1fr;
+    gap: 0 8px;
+}
+.wmv-card-plot .wm-hc-stat > span:not(.wm-hc-k) { display: flex; flex-direction: column; }
 .wmv-card-open { align-self: flex-start; }
 .wmv-card-open[hidden] { display: none; }
 

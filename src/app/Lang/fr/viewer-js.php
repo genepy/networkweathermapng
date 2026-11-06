@@ -53,4 +53,9 @@ return [
     'Average' => 'Moyenne',
     'No traffic recorded for this period' => 'Aucun trafic enregistré sur cette période',
     'IN above, OUT below' => 'ENTRANT au-dessus, SORTANT en dessous',
+    'Drag across the graph to zoom in' => 'Faites glisser sur le graphe pour zoomer',
+    'Reset zoom' => 'Annuler le zoom',
+    'Reset zoom (double-click)' => 'Annuler le zoom (double-clic)',
+    // node card: the traffic of one of its links
+    'To :node' => 'Vers :node',
 ];

@@ -1745,6 +1745,7 @@
         S.focus = null;
         markFocus();
         if (card) card.hidden = true;
+        clearCardTraffic();
         markMinimap(null);
         markCurrentRow();
         saveHash();
@@ -1848,6 +1849,7 @@
             return li;
         }));
         card.querySelector('.wmv-card-none').hidden = links.length > 0;
+        fillCardTraffic(name, links);
 
         const it = S.items[g.getAttribute('data-id')];
         const open = card.querySelector('.wmv-card-open');
@@ -1859,6 +1861,56 @@
             open.removeAttribute('href');
         }
         card.hidden = false;
+    }
+
+    /**
+     * The traffic graph of the node card: one of its links that has a
+     * history (the busiest first), picked in the list above the graph. The
+     * graph stays as it is when the map refreshes with the same node.
+     */
+    const cardTraffic = {panel: null, key: null};
+
+    function fillCardTraffic(name, links) {
+        const box = card.querySelector('.wmv-card-traffic');
+        if (!box) return;
+        const select = box.querySelector('select');
+        const withTraffic = links.filter(function (l) { return l.data && l.data.traffic; });
+        if (!withTraffic.length || !(window.WM && WM.trafficPanel)) {
+            clearCardTraffic();
+            return;
+        }
+        const ids = withTraffic.map(function (l) { return l.id; }).join(',');
+        const keep = cardTraffic.key && cardTraffic.key.name === name && cardTraffic.key.ids === ids;
+        if (!keep) {
+            select.replaceChildren.apply(select, withTraffic.map(function (l) {
+                const o = document.createElement('option');
+                const other = nodeByName(l.other);
+                o.value = l.id;
+                o.textContent = fmt('To :node', {node: other ? labelOf(other) : l.other}) + (l.data.name ? ' · ' + l.data.name : '');
+                return o;
+            }));
+            select.value = withTraffic[0].id;
+            cardTraffic.key = {name: name, ids: ids};
+        }
+        box.hidden = false;
+        if (!cardTraffic.panel) {
+            cardTraffic.panel = WM.trafficPanel(box.querySelector('.wmv-card-plot'));
+            select.addEventListener('change', drawCardTraffic);
+        }
+        if (!keep) drawCardTraffic();
+    }
+
+    function drawCardTraffic() {
+        const select = card.querySelector('.wmv-card-traffic select');
+        const d = S.items[select.value];
+        if (cardTraffic.panel && d && d.traffic) cardTraffic.panel.show({info: {traffic: d.traffic}, selection: null});
+    }
+
+    function clearCardTraffic() {
+        const box = card ? card.querySelector('.wmv-card-traffic') : null;
+        if (box) box.hidden = true;
+        if (cardTraffic.panel) cardTraffic.panel.clear();
+        cardTraffic.key = null;
     }
 
     // A link to another node of the same map (#n=<node>) typed or followed on this page
