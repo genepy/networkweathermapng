@@ -13,7 +13,7 @@ Last updated: 2026-11-06.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| Demo maps that showcase the features | `claude/project-thread-356ptr` | Three maps in `src/examples/maps` (France sites on a basemap, datacenter leaf/spine fabric, ISP backbone with transit and peering) drawn from static values; `bin/demo-maps.php` and the testbed seed add them to a *Demo maps* group. Left: checks in the viewer, PR review |
+| (none) | | |
 
 ## Paused
 
@@ -50,6 +50,7 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | PR | Item |
 |----|------|
+| #81 | Demo maps: three maps in `src/examples/maps` drawn from static values (*France sites* on a basemap with several sites per city, clusters and city inset, badges; *Datacenter fabric* leaf/spine with vector icons and zones; *ISP backbone* with transit and peering in the Night theme colours). `bin/demo-maps.php` (`App\Services\DemoMaps`) and the testbed seed add them once to a *Demo maps* group; test `DemoMapsTest` |
 | #80 | UI redesign, step 11: the classic editor is removed (`EditorController`, `editor/visual.php`, `editor/edit.php`, `editor.css`, `editor.inc.php`, its routes, its strings and its entry in the editor's ⋯ menu); `/editor/classic/{id}` opens the SVG editor, for bookmarks. What only it could do moved to the SVG editor: a link's *Info URL* (`INFOURL`), a *Hover graph* on nodes and links (`OVERLIBGRAPH`, addresses separated by spaces, `http(s)` or local paths), a separate out bandwidth (*Out, if different*, `BANDWIDTH 1G 100M`) and *Tidy ends* (the link starts and ends on the facing sides of its nodes, links between the same two nodes spread apart) |
 | #79 | UI redesign, step 10: the traffic graph of the hover card is drawn with uPlot 1.6.32 (`assets/vendor/uplot`, loaded the first time a graph is drawn, from the `data-uplot` attributes of the `weathermap.js` tag; the plain SVG graph stays as a fallback): the pointer on it shows the time and the IN and OUT values, dragging across it zooms on a part of the period (peak and average follow), double-click or *Reset zoom* goes back; colours follow the theme (redrawn when it changes). The node card shows the same graph for one of its links that has a history (busiest first, picked in a list). `WM.trafficPanel(box, {width, changed})` in weathermap.js; test `TrafficChartAssetsTest` |
 | #78 | UI redesign, step 9: editor, part 2: no permanent toolbar by default; a bar floats over the selection with what applies to it (*Align and space evenly* menu, *Group* / *Ungroup*, *Lock* / *Unlock*, *Front*, *Back*, *Link* the two selected nodes or from the selected one, *Duplicate*, *Delete*, ⋯ for the menu of actions), a small rail top left of the drawing (*Select*, *Link*, *Grid*) and the zoom bottom right next to the overview map. The movable toolbars stay available: ⋯ › *Toolbars and panels* › *Movable toolbars* (`mode` in `localStorage wm-editor-layout`). The `Ctrl+K` search is in the editor's top bar: the items of the map (Enter selects and zooms onto one), every editor command that applies now with its shortcut (selection first), then the application-wide results. `WMPalette.register(source)` lets a page add its own sections (`editor-palette.js`); the bar is `editor-selbar.js` |
