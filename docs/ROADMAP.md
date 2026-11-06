@@ -13,7 +13,7 @@ Last updated: 2026-11-06.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| UI redesign, step 10: hover card with uPlot | `claude/project-thread-f0oot9` | uPlot graph in the link hover card and the node card: values under the pointer, drag to zoom on a period |
 
 ## Paused
 
@@ -38,7 +38,6 @@ phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 
 | Item | Notes |
 |------|-------|
-| UI redesign, step 10: hover card with uPlot | The card and its IN/OUT graph are drawn in the browser since Nine IX task 4 (plain SVG); what is left: values under the pointer (crosshair), zoom on a period, the same graph in the node card |
 | UI redesign, step 11: remove the classic editor | List what only the classic editor can do, port it to the SVG editor or report it, then remove its views, routes, scripts, strings and link (decision) |
 
 ## Stale branches
