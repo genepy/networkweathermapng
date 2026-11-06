@@ -62,4 +62,5 @@ return [
     'IN' => 'ENTRANT',
     'OUT' => 'SORTANT',
     'Link load' => 'Charge des liens',
+    'Traffic graph' => 'Graphe du trafic',
 ];

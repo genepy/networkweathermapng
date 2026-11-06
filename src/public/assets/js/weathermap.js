@@ -334,11 +334,14 @@
         </svg>`;
     }
 
-    /** Peak and average of the period, under the graph */
-    function wmTrafficStats(data) {
+    /** Peak and average of the period (or of the part from `min` to `max` seconds), under the graph */
+    function wmTrafficStats(data, min, max) {
         const unit = wmUnit(data.units);
-        const stat = function (pts) {
-            if (!pts || !pts.length) return null;
+        const lo = isFinite(min) ? min : -Infinity;
+        const hi = isFinite(max) ? max : Infinity;
+        const stat = function (all) {
+            const pts = (all || []).filter(p => p[0] >= lo && p[0] <= hi);
+            if (!pts.length) return null;
             let peak = 0, sum = 0;
             pts.forEach(p => { sum += p[1]; if (p[1] > peak) peak = p[1]; });
             return {peak: peak, avg: sum / pts.length};
@@ -369,6 +372,431 @@
     }
 
     /**
+     * uPlot (assets/vendor/uplot), loaded the first time a graph is drawn.
+     * Its address comes from the data-uplot attributes of this script's tag.
+     */
+    const WM_SCRIPT = document.currentScript;
+    let wmUplotPromise = null;
+
+    function wmLoadUplot() {
+        if (window.uPlot) return Promise.resolve(window.uPlot);
+        if (wmUplotPromise) return wmUplotPromise;
+        const js = WM_SCRIPT && WM_SCRIPT.getAttribute('data-uplot');
+        if (!js) return Promise.reject(new Error('uPlot is not available'));
+        wmUplotPromise = new Promise(function (resolve, reject) {
+            const css = WM_SCRIPT.getAttribute('data-uplot-css');
+            if (css && !document.querySelector('link[data-uplot]')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = css;
+                link.setAttribute('data-uplot', '');
+                document.head.appendChild(link);
+            }
+            const s = document.createElement('script');
+            s.src = js;
+            s.async = true;
+            s.onload = function () {
+                if (window.uPlot) resolve(window.uPlot);
+                else reject(new Error('uPlot is not available'));
+            };
+            s.onerror = function () {
+                wmUplotPromise = null;
+                reject(new Error('uPlot is not available'));
+            };
+            document.head.appendChild(s);
+        });
+        return wmUplotPromise;
+    }
+
+    /** Median step between the points of a series, times 5: a longer step is a gap */
+    function wmGapOf(points) {
+        if (points.length <= 2) return Infinity;
+        const steps = [];
+        for (let i = 1; i < points.length; i++) steps.push(points[i][0] - points[i - 1][0]);
+        steps.sort((a, b) => a - b);
+        return steps[Math.floor(steps.length / 2)] * 5;
+    }
+
+    /**
+     * The series as uPlot wants them: [times, IN, -OUT] on one time line.
+     * IN and OUT points a little apart (polled a few seconds apart) share a
+     * time; a series without a point at a time keeps its previous value,
+     * and a gap in a series (no point for 5 usual steps) is a null, where
+     * uPlot breaks the line.
+     */
+    function wmAlign(data) {
+        const series = [data.in, data.out].map(function (pts) {
+            return (pts || []).map(p => [Number(p[0]), Number(p[1])])
+                .filter(p => isFinite(p[0]) && isFinite(p[1]))
+                .sort((a, b) => a[0] - b[0]);
+        });
+        const gaps = series.map(wmGapOf);
+        const median = series.map(g => wmGapOf(g) / 5).filter(isFinite);
+        const tol = median.length ? Math.min.apply(null, median) / 2 : 0;
+
+        const all = [];
+        series.forEach(function (pts, k) {
+            pts.forEach(p => all.push([p[0], k + 1, (k ? -1 : 1) * Math.max(0, p[1])]));
+        });
+        all.sort((a, b) => a[0] - b[0]);
+        let rows = [];
+        all.forEach(function (p) {
+            const r = rows[rows.length - 1];
+            if (r && p[0] - r[0] <= tol && r[p[1]] === undefined) {
+                r[p[1]] = p[2];
+            } else {
+                const n = [p[0], undefined, undefined];
+                n[p[1]] = p[2];
+                rows.push(n);
+            }
+        });
+
+        // fill the holes: the previous value, or null over a gap
+        const breaks = [];
+        [1, 2].forEach(function (k) {
+            let last = -1;
+            rows.forEach(function (r, i) {
+                if (r[k] === undefined) return;
+                if (last >= 0) {
+                    const gap = r[0] - rows[last][0] > gaps[k - 1];
+                    for (let m = last + 1; m < i; m++) rows[m][k] = gap ? null : rows[last][k];
+                    if (gap && i === last + 1) breaks.push([rows[last][0] + 1, k]);
+                }
+                last = i;
+            });
+            rows.forEach(function (r) { if (r[k] === undefined) r[k] = null; });
+        });
+        if (breaks.length) {
+            breaks.forEach(function (b) {
+                const n = [b[0], undefined, undefined];
+                n[b[1]] = null;
+                rows.push(n);
+            });
+            rows.sort((a, b) => a[0] - b[0]);
+            // the other series keeps its line through a break of this one
+            [1, 2].forEach(function (k) {
+                rows.forEach(function (r, i) {
+                    if (r[k] === undefined) r[k] = i > 0 ? rows[i - 1][k] : null;
+                });
+            });
+        }
+        return [rows.map(r => r[0]), rows.map(r => r[1]), rows.map(r => r[2])];
+    }
+
+    /** A colour of the theme as rgba() with this opacity (canvas has no color-mix) */
+    function wmAlpha(color, alpha) {
+        const c = document.createElement('canvas').getContext('2d');
+        if (!c) return color;
+        c.fillStyle = '#000';
+        c.fillStyle = color;
+        const v = String(c.fillStyle);
+        let m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(v);
+        if (m) return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`;
+        m = /^rgba?\(([^,]+),([^,]+),([^,)]+)/.exec(v);
+        if (m) return `rgba(${m[1].trim()}, ${m[2].trim()}, ${m[3].trim()}, ${alpha})`;
+        return color;
+    }
+
+    /** A time label for a span of `seconds`: hours, then days, then dates */
+    function wmSpanLabel(sec, seconds, tz) {
+        const range = seconds <= 1.5 * 86400 ? 'day' : seconds <= 10 * 86400 ? 'week' : 'month';
+        return wmTimeLabel(sec, range, tz);
+    }
+
+    /** A full date and time, for the value under the pointer */
+    function wmFullTime(sec, tz) {
+        const opts = {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'};
+        const lang = document.documentElement.lang || undefined;
+        try {
+            return new Intl.DateTimeFormat(lang, tz ? Object.assign({timeZone: tz}, opts) : opts).format(new Date(sec * 1000));
+        } catch (e) {
+            return new Intl.DateTimeFormat(lang, opts).format(new Date(sec * 1000));
+        }
+    }
+
+    /**
+     * The traffic graph drawn with uPlot in `plot`: IN above the middle line,
+     * OUT below it. Under the pointer, `readout` shows the time and both
+     * values; dragging across the graph zooms on that period (double-click
+     * or *Reset zoom* goes back), and `stats` gives the peak and average of
+     * the period shown. Returns the uPlot instance.
+     */
+    function wmChart(U, plot, data, parts) {
+        const cs = getComputedStyle(plot);
+        const css = function (name, fallback) { return cs.getPropertyValue(name).trim() || fallback; };
+        const cIn = css('--wm-hc-in', '#1f8a4c');
+        const cOut = css('--wm-hc-out', '#2563eb');
+        const muted = css('--wm-text-muted', '#666');
+        const grid = css('--wm-border', '#ddd');
+        // uPlot scales the size for the screen density: a whole number of px
+        const font = '11px ' + css('--wm-font', 'sans-serif');
+        const unit = wmUnit(data.units);
+        const tz = data.tz || '';
+        const from = Number(data.from);
+        const to = Number(data.to) > from ? Number(data.to) : from + 1;
+        const aligned = wmAlign(data);
+
+        const value = function (v) {
+            return v === null || v === undefined ? '–' : wmFormatNum(Math.abs(v)) + ' ' + unit;
+        };
+        const zoomed = function (u) {
+            return u.scales.x.min > from + 1 || u.scales.x.max < to - 1;
+        };
+        const idle = function (u) {
+            if (!zoomed(u)) {
+                parts.readout.innerHTML = `<span class="wm-hc-tip">${wmEsc(t('Drag across the graph to zoom in'))}</span>`;
+                return;
+            }
+            parts.readout.innerHTML = `<span>${wmEsc(wmFullTime(u.scales.x.min, tz))} – ${wmEsc(wmFullTime(u.scales.x.max, tz))}</span>`
+                + `<button type="button" class="wm-hc-reset" data-act="reset-zoom" title="${wmEsc(t('Reset zoom (double-click)'))}">${wmEsc(t('Reset zoom'))}</button>`;
+        };
+
+        let tzDate;
+        if (tz) {
+            try {
+                new Intl.DateTimeFormat('en', {timeZone: tz});
+                tzDate = ts => U.tzDate(new Date(ts * 1000), tz);
+            } catch (e) { tzDate = undefined; }
+        }
+
+        const opts = {
+            width: parts.width(),
+            height: 150,
+            legend: {show: false},
+            cursor: {
+                y: false,
+                drag: {x: true, y: false, setScale: true},
+                points: {size: 7},
+                // our own double-click: back to the whole period
+                bind: {dblclick: function () { return function () { return null; }; }}
+            },
+            scales: {
+                x: {time: true, min: from, max: to},
+                y: {
+                    // the same scale above and below the middle line
+                    range: function (u, min, max) {
+                        const m = Math.max(Math.abs(min || 0), Math.abs(max || 0)) || 1;
+                        return [-m * 1.08, m * 1.08];
+                    }
+                }
+            },
+            series: [
+                {},
+                {label: t('IN'), stroke: cIn, fill: wmAlpha(cIn, 0.28), width: 1.5, fillTo: 0, points: {show: false}},
+                {label: t('OUT'), stroke: cOut, fill: wmAlpha(cOut, 0.28), width: 1.5, fillTo: 0, points: {show: false}}
+            ],
+            axes: [
+                {
+                    stroke: muted, font: font, space: 70, size: 24,
+                    grid: {stroke: grid, width: 1}, ticks: {stroke: grid, width: 1, size: 4},
+                    values: function (u, splits) {
+                        const span = u.scales.x.max - u.scales.x.min;
+                        return splits.map(s => wmSpanLabel(s, span, tz));
+                    }
+                },
+                {
+                    stroke: muted, font: font, space: 28, size: 52,
+                    grid: {stroke: grid, width: 1}, ticks: {show: false},
+                    // 500M rather than 500.00M
+                    values: function (u, splits) { return splits.map(s => wmFormatNum(Math.abs(s)).replace(/\.?0+(?=[KMGT]?$)/, '')); }
+                }
+            ],
+            hooks: {
+                draw: [function (u) {
+                    // the middle line: IN above, OUT below
+                    const ctx = u.ctx;
+                    const y = Math.round(u.valToPos(0, 'y', true)) + 0.5;
+                    ctx.save();
+                    ctx.strokeStyle = muted;
+                    ctx.globalAlpha = 0.7;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(u.bbox.left, y);
+                    ctx.lineTo(u.bbox.left + u.bbox.width, y);
+                    ctx.stroke();
+                    ctx.restore();
+                }],
+                setCursor: [function (u) {
+                    const i = u.cursor.idx;
+                    if (i === null || i === undefined) {
+                        idle(u);
+                        return;
+                    }
+                    parts.readout.innerHTML = `<span class="wm-hc-when">${wmEsc(wmFullTime(u.data[0][i], tz))}</span>`
+                        + `<span><span class="wm-hc-k wm-hc-in">${wmEsc(t('IN'))}</span><b>${wmEsc(value(u.data[1][i]))}</b></span>`
+                        + `<span><span class="wm-hc-k wm-hc-out">${wmEsc(t('OUT'))}</span><b>${wmEsc(value(u.data[2][i]))}</b></span>`;
+                }],
+                setScale: [function (u, key) {
+                    if (key !== 'x') return;
+                    parts.stats.innerHTML = wmTrafficStats(data, u.scales.x.min, u.scales.x.max);
+                    if (u.cursor.idx === null || u.cursor.idx === undefined) idle(u);
+                }]
+            }
+        };
+        if (tzDate) opts.tzDate = tzDate;
+
+        const u = new U(opts, aligned, plot);
+        u.over.addEventListener('dblclick', function () { u.setScale('x', {min: from, max: to}); });
+        u.wmReset = function () { u.setScale('x', {min: from, max: to}); };
+        idle(u);
+        return u;
+    }
+
+    /** Every traffic panel on the page, redrawn when the theme changes */
+    const wmPanels = new Set();
+
+    (function watchTheme() {
+        const redraw = function () { wmPanels.forEach(p => p.redraw()); };
+        new MutationObserver(redraw).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+        if (window.matchMedia) {
+            const mq = window.matchMedia('(prefers-color-scheme: dark)');
+            if (mq.addEventListener) mq.addEventListener('change', redraw);
+        }
+    })();
+
+    function wmRangeButtons(range) {
+        return `<div class="wm-hc-ranges" role="group" aria-label="${wmEsc(t('Traffic period'))}">`
+            + WM_RANGES.map(r => `<button type="button" data-range="${r[0]}" aria-pressed="${r[0] === range ? 'true' : 'false'}">${wmEsc(wmRangeText(r[0]))}</button>`).join('')
+            + '</div>';
+    }
+
+    /**
+     * The traffic part of a card in `box`: the period switch (1 day, 1 week,
+     * 1 month, remembered in the browser), the graph and its peak and
+     * average. options: {width: function giving the graph width in pixels
+     * (else the graph follows the width of the box), changed: called when
+     * the content changed size}. show({info, selection}) draws the traffic
+     * of a link (see wmLoadTraffic), clear() empties the box.
+     */
+    function wmTrafficPanel(box, options) {
+        const o = options || {};
+        let src = null;
+        let range = wmSavedRange();
+        let chart = null;
+        let data = null;
+        let seq = 0;
+        let resize = null;
+
+        box.classList.add('wm-traffic');
+        box.addEventListener('click', function (e) {
+            const b = e.target.closest ? e.target.closest('[data-range], [data-act="reset-zoom"]') : null;
+            if (!b || !src) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (b.hasAttribute('data-act')) {
+                if (chart) chart.wmReset();
+                return;
+            }
+            const r = b.getAttribute('data-range');
+            if (r === range) return;
+            range = r;
+            wmSaveRange(r);
+            draw();
+        });
+
+        function width(plot) {
+            return Math.max(200, Math.round(o.width ? o.width() : (plot.clientWidth || 260)));
+        }
+
+        function destroy() {
+            if (resize) {
+                resize.disconnect();
+                resize = null;
+            }
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+        }
+
+        function changed() {
+            if (o.changed) o.changed();
+        }
+
+        /** Draws `data` in the box: uPlot, or the plain SVG graph if it cannot load */
+        async function mount(token) {
+            destroy();
+            const empty = !(data.in && data.in.length) && !(data.out && data.out.length);
+            if (empty) {
+                box.innerHTML = wmRangeButtons(range) + `<div class="wm-hc-plot wm-hc-wait">${wmEsc(t('No traffic recorded for this period'))}</div>`;
+                changed();
+                return;
+            }
+            box.innerHTML = wmRangeButtons(range)
+                + `<div class="wm-hc-plot" role="img" aria-label="${wmEsc(t('IN above, OUT below'))}"></div>`
+                + '<div class="wm-hc-readout" aria-live="off"></div>'
+                + `<div class="wm-hc-stats">${wmTrafficStats(data)}</div>`;
+            const plot = box.querySelector('.wm-hc-plot');
+            let U = null;
+            try { U = await wmLoadUplot(); } catch (e) { U = null; }
+            if (token !== seq) return;
+            if (!U) {
+                box.querySelector('.wm-hc-readout').remove();
+                plot.innerHTML = wmTrafficSvg(data, range, width(plot));
+                changed();
+                return;
+            }
+            chart = wmChart(U, plot, data, {
+                width: () => width(plot),
+                readout: box.querySelector('.wm-hc-readout'),
+                stats: box.querySelector('.wm-hc-stats')
+            });
+            if (!o.width && window.ResizeObserver) {
+                let last = width(plot);
+                resize = new ResizeObserver(function () {
+                    const w = width(plot);
+                    if (chart && w !== last) {
+                        last = w;
+                        chart.setSize({width: w, height: 150});
+                    }
+                });
+                resize.observe(plot);
+            }
+            changed();
+        }
+
+        async function draw() {
+            const token = ++seq;
+            destroy();
+            data = null;
+            box.innerHTML = wmRangeButtons(range) + `<div class="wm-hc-plot wm-hc-wait">${wmEsc(t('Loading…'))}</div>`;
+            changed();
+            try {
+                const d = await wmLoadTraffic(src.info, src.selection, range);
+                if (token !== seq) return;
+                data = d;
+                await mount(token);
+            } catch (err) {
+                if (token !== seq) return;
+                box.innerHTML = wmRangeButtons(range) + `<div class="wm-hc-plot wm-hc-wait wm-hc-error">${wmEsc(String(err.message || err))}</div>`;
+                changed();
+            }
+        }
+
+        const panel = {
+            show: function (source) {
+                src = source;
+                range = wmSavedRange();
+                wmPanels.add(panel);
+                draw();
+            },
+            /** Draws the same data again (theme change) */
+            redraw: function () {
+                if (src && data) mount(++seq);
+            },
+            clear: function () {
+                seq++;
+                destroy();
+                src = null;
+                data = null;
+                wmPanels.delete(panel);
+                box.innerHTML = '';
+            }
+        };
+        return panel;
+    }
+
+    /**
      * The hover card of a link: its speed, "A ↔ B", its sites, IN and OUT
      * now, then the traffic of the last day, week or month (IN above, OUT
      * below) when the map can read its history, or the OVERLIBGRAPH picture.
@@ -390,7 +818,8 @@
         let over = false;
         let leaveTimer = 0;
         let lastPos = null;
-        let current = null;      // {info, selection, range}
+        let current = null;      // {info, selection} when the card has a traffic graph
+        let traffic = null;      // its wmTrafficPanel
 
         function panel() {
             if (!hover) {
@@ -407,17 +836,6 @@
                 hover.addEventListener('mouseleave', function () {
                     over = false;
                     wmHover.hide();
-                });
-                hover.addEventListener('click', function (e) {
-                    const b = e.target.closest ? e.target.closest('[data-range]') : null;
-                    if (!b || !current) return;
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const range = b.getAttribute('data-range');
-                    if (range === current.range) return;
-                    wmSaveRange(range);
-                    current.range = range;
-                    drawTraffic();
                 });
                 document.addEventListener('keydown', function (e) {
                     if (visible && e.key === 'Escape') wmHover.hide();
@@ -466,34 +884,6 @@
                 + (sub.length ? `<div class="wm-hc-sub">${sub.join(' · ')}</div>` : '');
         }
 
-        function rangeButtons(range) {
-            return `<div class="wm-hc-ranges" role="group" aria-label="${wmEsc(t('Traffic period'))}">`
-                + WM_RANGES.map(r => `<button type="button" data-range="${r[0]}" aria-pressed="${r[0] === range ? 'true' : 'false'}">${wmEsc(wmRangeText(r[0]))}</button>`).join('')
-                + '</div>';
-        }
-
-        /** Fills the graph part of the card for the period picked */
-        async function drawTraffic() {
-            const c = current;
-            const el = panel();
-            const box = el.querySelector('.wm-hc-traffic');
-            if (!c || !box) return;
-            box.innerHTML = rangeButtons(c.range) + `<div class="wm-hc-plot wm-hc-wait">${wmEsc(t('Loading…'))}</div>`;
-            const width = Math.min(520, window.innerWidth - 50);
-            try {
-                const data = await wmLoadTraffic(c.info, c.selection, c.range);
-                if (current !== c || !visible) return;
-                const empty = !(data.in && data.in.length) && !(data.out && data.out.length);
-                box.innerHTML = rangeButtons(c.range) + (empty
-                    ? `<div class="wm-hc-plot wm-hc-wait">${wmEsc(t('No traffic recorded for this period'))}</div>`
-                    : `<div class="wm-hc-plot">${wmTrafficSvg(data, c.range, width)}</div><div class="wm-hc-stats">${wmTrafficStats(data)}</div>`);
-            } catch (err) {
-                if (current !== c || !visible) return;
-                box.innerHTML = rangeButtons(c.range) + `<div class="wm-hc-plot wm-hc-wait wm-hc-error">${wmEsc(String(err.message || err))}</div>`;
-            }
-            keepInside();
-        }
-
         return {
             move: function(e) {
                 const el = panel();
@@ -539,11 +929,22 @@
                 const hint = info.hint ? `<div class="wm-hc-hint">${wmEsc(info.hint)}</div>` : '';
                 el.style.width = '';
 
+                if (traffic) {
+                    traffic.clear();
+                    traffic = null;
+                }
                 if (series) {
-                    current = {info: info, selection: selection, range: wmSavedRange()};
+                    current = {info: info, selection: selection};
                     el.innerHTML = top + (now ? `<div class="wm-hc-now">${now}</div>` : '') + '<div class="wm-hc-traffic"></div>' + hint;
                     if (e) this.move(e);
-                    drawTraffic();
+                    // a fixed width, so the values under the pointer do not widen the card
+                    const graphWidth = Math.min(520, window.innerWidth - 50);
+                    el.style.width = (graphWidth + 26) + 'px';
+                    traffic = wmTrafficPanel(el.querySelector('.wm-hc-traffic'), {
+                        width: () => graphWidth,
+                        changed: keepInside
+                    });
+                    traffic.show(current);
                     return;
                 }
 
@@ -582,6 +983,10 @@
                 visible = false;
                 lastKey = null;
                 current = null;
+                if (traffic) {
+                    traffic.clear();
+                    traffic = null;
+                }
                 over = false;
                 following = true;
                 if (hover) {
@@ -613,5 +1018,6 @@
     
     // Expose to global scope
     WM.hover = wmHover;
+    WM.trafficPanel = wmTrafficPanel;
     window.WM = WM;
 })();

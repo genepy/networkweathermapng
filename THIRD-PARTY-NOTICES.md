@@ -94,6 +94,7 @@ code.
 | Files | Authors | License | Link |
 |---|---|---|---|
 | `src/public/assets/vendor/maplibre-gl/` (`maplibre-gl-csp.js`, `maplibre-gl-csp-worker.js`, `maplibre-gl.css`), MapLibre GL JS 5.24.0, the CSP build from the npm package, unchanged but for the source map comment | MapLibre contributors; portions from Mapbox GL JS, Mapbox, Inc. (BSD-3) | BSD-3-Clause, text in `src/public/assets/vendor/maplibre-gl/LICENSE.txt` | https://maplibre.org |
+| `src/public/assets/vendor/uplot/` (`uPlot.iife.min.js`, `uPlot.min.css`), uPlot 1.6.32, from the npm package, unchanged; draws the traffic graphs of the hover card and the node card | Leon Sorokin | MIT, text in `src/public/assets/vendor/uplot/LICENSE.txt` | https://github.com/leeoniya/uPlot |
 
 ## PHP packages (Composer)
 

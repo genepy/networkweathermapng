@@ -47,7 +47,7 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
     <link rel="stylesheet" href="<?= asset('/assets/css/ui.css') ?>">
     <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/map-settings.js') ?>" defer></script>
-    <script src="<?= asset('/assets/js/weathermap.js') ?>" defer></script>
+    <script src="<?= asset('/assets/js/weathermap.js') ?>" data-uplot="<?= asset('/assets/vendor/uplot/uPlot.iife.min.js') ?>" data-uplot-css="<?= asset('/assets/vendor/uplot/uPlot.min.css') ?>" defer></script>
     <?php if ($showNav): ?>
     <script src="<?= asset('/assets/js/palette.js') ?>" defer></script>
     <?php endif; ?>
