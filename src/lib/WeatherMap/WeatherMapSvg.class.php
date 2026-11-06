@@ -22,6 +22,8 @@ class WeatherMapSvg {
 	var $owner = null;
 	/** What the shapes being drawn are for, such as "bwlabel-in" */
 	var $role = null;
+	// the geometry of the link arrow being drawn (see linkShape)
+	var $shape = null;
 	/** Whether a saturated link was drawn: the pulse style is then added */
 	var $hasHot = false;
 	var $options = array();
@@ -280,6 +282,40 @@ class WeatherMapSvg {
 	}
 
 	/**
+	 * Record how the next link arrow is built, so the viewer can draw it
+	 * again thinner: deep in a basemap, a link keeps the width it has at
+	 * 100 % instead of growing with the zoom. $points is the spine of the
+	 * link ([x, y, distance] points), the arrow runs from distance $from
+	 * to its tip at $to; $width and $arrowwidth are half widths, $arrowsize
+	 * the length of the head. Called with null alone, it forgets the shape.
+	 */
+	static function linkShape($image, $points = null, $from = 0, $to = 0, $width = 0, $arrowwidth = 0, $arrowsize = 0) {
+		$svg = self::$active;
+		if (!$svg) {
+			return;
+		}
+		$svg->shape = null;
+		if ($image === null || !$svg->accepts($image) || !is_array($points) || count($points) < 2 || !isset($points[0][2])) {
+			return;
+		}
+		$spine = self::spine($points, $from, $to);
+		if (count($spine) < 2) {
+			return;
+		}
+		$flat = array();
+		foreach ($spine as $p) {
+			$flat[] = $p[0];
+			$flat[] = $p[1];
+		}
+		$svg->shape = array(
+			'spine' => $svg->shift($flat),
+			'w'     => (float) $width,
+			'aw'    => (float) $arrowwidth,
+			'as'    => (float) $arrowsize,
+		);
+	}
+
+	/**
 	 * @param array|null $box x, y, width, height of the picture on the canvas
 	 *                        (WeatherMap::background_box), null for its natural place
 	 */
@@ -304,6 +340,7 @@ class WeatherMapSvg {
 			'owner'  => $this->owner,
 			'role'   => $this->role,
 			'points' => $points,
+			'shape'  => $this->shape,
 			'fill'   => $filled ? $rgba : null,
 			'stroke' => $filled ? null : $rgba,
 		);
@@ -521,9 +558,10 @@ class WeatherMapSvg {
 				for ($i = 0; $i + 1 < count($item['points']); $i += 2) {
 					$pts[] = self::num($item['points'][$i]) . ',' . self::num($item['points'][$i + 1]);
 				}
-				return sprintf('<polygon%s points="%s"%s%s/>', self::roleClass($item), implode(' ', $pts),
+				return sprintf('<polygon%s points="%s"%s%s%s/>', self::roleClass($item), implode(' ', $pts),
 					$item['fill'] ? self::paint('fill', $item['fill']) : ' fill="none"',
-					$item['stroke'] ? self::paint('stroke', $item['stroke']) : '');
+					$item['stroke'] ? self::paint('stroke', $item['stroke']) : '',
+					self::shapeData(isset($item['shape']) ? $item['shape'] : null));
 
 			case 'flow':
 				$d = array();
@@ -731,6 +769,19 @@ class WeatherMapSvg {
 		}
 
 		return $faces === '' ? '' : "<defs><style>\n" . $faces . "</style></defs>";
+	}
+
+	/** The data attributes the viewer redraws a link arrow from, '' for any other polygon */
+	static function shapeData($shape) {
+		if (!$shape) {
+			return '';
+		}
+		$pts = array();
+		for ($i = 0; $i + 1 < count($shape['spine']); $i += 2) {
+			$pts[] = self::num($shape['spine'][$i]) . ',' . self::num($shape['spine'][$i + 1]);
+		}
+		return sprintf(' data-spine="%s" data-w="%s" data-aw="%s" data-as="%s"', implode(' ', $pts),
+			self::num($shape['w']), self::num($shape['aw']), self::num($shape['as']));
 	}
 
 	static function roleClass($item) {

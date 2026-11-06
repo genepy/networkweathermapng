@@ -1257,6 +1257,8 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 				$finalpoints[$i] = round($finalpoints[$i]);
 			}
 
+			WeatherMapSvg::linkShape($image, $curvepoints, $dir == OUT ? 0 : $totaldistance, $halfway, $widths[$dir], $arrowwidth[$dir], $arrowsize[$dir]);
+
 			if (!is_null($fillcolours[$dir])) {
 				wimagefilledpolygon($image, $finalpoints, count($finalpoints) / 2, $arrowsettings[4]);
 			} else {
@@ -1274,6 +1276,8 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 			} else {
 				wm_debug("Not drawing $linkname ($dir) outline because there is no outline colour");
 			}
+
+			WeatherMapSvg::linkShape(null);
 	    }
 	}
 }
@@ -1414,6 +1418,8 @@ function draw_curve($image, &$curvepoints, $widths, $outlinecolour, $fillcolours
 			$arrayindex = 0;
 		}
 
+		WeatherMapSvg::linkShape($image, $curvepoints, $dir == OUT ? 0 : $totaldistance, $halfway, $widths[$dir], $arrowwidth[$dir], $arrowsize[$dir]);
+
 		if (!is_null($fillcolours[$arrayindex])) {
 			wimagefilledpolygon($image, $there_points, count($there_points) / 2, $arrowsettings[$dir][4]);
 		} else {
@@ -1431,6 +1437,8 @@ function draw_curve($image, &$curvepoints, $widths, $outlinecolour, $fillcolours
 		} else {
 			wm_debug("Not drawing $linkname ($dir) outline because there is no outline colour");
 		}
+
+		WeatherMapSvg::linkShape(null);
 	}
 }
 

@@ -220,9 +220,15 @@
 /* Level of detail: bandwidth labels unreadable when zoomed out */
 .wmv-lod-far .wmv-svg .wm-bwlabel-in,
 .wmv-lod-far .wmv-svg .wm-bwlabel-out { display: none; }
-/* ...and too big when zoomed deep into a basemap */
+/* ...and too big when zoomed deep into a basemap, like the link comments */
 .wmv-lod-near .wmv-svg .wm-bwlabel-in,
-.wmv-lod-near .wmv-svg .wm-bwlabel-out { display: none; }
+.wmv-lod-near .wmv-svg .wm-bwlabel-out,
+.wmv-lod-near .wmv-svg .wm-link .wm-comment { display: none; }
+
+/* Deep in a basemap the links keep their width at 100 % (viewer.js draws
+   them again): their outline stays one pixel and the glow stays soft */
+.wmv-links-thin .wmv-svg polygon[data-spine] { vector-effect: non-scaling-stroke; }
+.wmv-links-thin .wmv-svg .wm-link:not(.wm-hot) .wm-arrow { filter: none; }
 
 /* Messages, under the floating bar */
 .wmv-message {
