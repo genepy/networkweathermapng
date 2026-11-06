@@ -282,10 +282,6 @@ class WeatherMapSvg {
 	}
 
 	/**
-	 * @param array|null $box x, y, width, height of the picture on the canvas
-	 *                        (WeatherMap::background_box), null for its natural place
-	 */
-	/**
 	 * Record how the next link arrow is built, so the viewer can draw it
 	 * again thinner: deep in a basemap, a link keeps the width it has at
 	 * 100 % instead of growing with the zoom. $points is the spine of the
@@ -319,6 +315,10 @@ class WeatherMapSvg {
 		);
 	}
 
+	/**
+	 * @param array|null $box x, y, width, height of the picture on the canvas
+	 *                        (WeatherMap::background_box), null for its natural place
+	 */
 	function background($colour, $file, $box = null) {
 		$this->items[] = array('type' => 'background', 'fill' => $colour, 'href' => $file != '' ? self::dataUri($file) : null, 'box' => $box);
 	}

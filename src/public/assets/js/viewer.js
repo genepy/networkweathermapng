@@ -367,6 +367,7 @@
     function setupLinks(svg) {
         L.arrows = [];
         L.k = 1;
+        root.classList.remove('wmv-links-thin');
         svg.querySelectorAll('polygon[data-spine]').forEach(function (el) {
             const nums = (el.getAttribute('data-spine').match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/g) || []).map(Number);
             const pts = [];
@@ -590,6 +591,8 @@
                 if (S.playOnLoad) {
                     S.playOnLoad = false;
                     if (H.button && !H.on) openHistory();
+                    // a reload does not start it again
+                    saveHash();
                 }
             })
             .catch(function () {
