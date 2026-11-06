@@ -364,8 +364,8 @@
         stage.setAttribute('viewBox', [state.view.x, state.view.y, w, hh].join(' '));
         syncBasemap();
         var zoom = Math.round(state.zoom * 100);
-        $('#zoom-value').textContent = zoom + '%';
-        $('#zoom-level').title = t('Zoom of the editor view: :p%. Click for actual size (0)', { p: zoom });
+        $$('.zoom-value').forEach(function (v) { v.textContent = zoom + '%'; });
+        $$('[data-cmd="zoom-reset"]').forEach(function (b) { b.title = t('Zoom of the editor view: :p%. Click for actual size (0)', { p: zoom }); });
         if (state.model) {
             var s = 12 / state.zoom;
             resizeHandle.setAttribute('x', state.model.map.width - s / 2);
@@ -569,6 +569,8 @@
 
     function renderOverlay() {
         overlay.replaceChildren();
+        // the contextual bar (editor-selbar.js) follows the selection
+        document.dispatchEvent(new CustomEvent('wm-editor-overlay'));
         var drag = state.drag;
         var moved = drag && drag.type === 'move' && drag.started ? drag.moved : null;
 
@@ -834,7 +836,7 @@
         function on(cmd, yes) {
             $$('[data-cmd="' + cmd + '"]').forEach(function (b) {
                 b.classList.toggle('active', yes);
-                if (b.closest('#palette')) { b.setAttribute('aria-pressed', yes ? 'true' : 'false'); }
+                if (b.closest('#palette, #tool-rail')) { b.setAttribute('aria-pressed', yes ? 'true' : 'false'); }
             });
         }
         on('tool-select', state.tool === 'select');
@@ -1749,6 +1751,52 @@
             return;
         }
         send([{ op: 'clone', nodes: nodes.map(function (n) { return n.name; }), dx: 20, dy: 20 }], createdKeys);
+    }
+
+    /** [x1, y1, x2, y2] around everything selected, on the map, or null */
+    function selectionBox() {
+        var boxes = [];
+        state.selection.forEach(function (k) {
+            var p = parseKey(k), item = itemOf(p.kind, p.name);
+            if (!item) { return; }
+            if (p.kind === 'link') {
+                if (!state.nodes.get(item.a) || !state.nodes.get(item.b)) { return; }
+                var pts = linkPath(item);
+                boxes.push([
+                    Math.min.apply(null, pts.map(function (q) { return q[0]; })), Math.min.apply(null, pts.map(function (q) { return q[1]; })),
+                    Math.max.apply(null, pts.map(function (q) { return q[0]; })), Math.max.apply(null, pts.map(function (q) { return q[1]; }))
+                ]);
+            } else if (p.kind === 'zone' || item.box) {
+                boxes.push(boxOf1(p.kind, item));
+            }
+        });
+        return boxes.length ? unionBox(boxes) : null;
+    }
+
+    /** A map point in pixels of the canvas */
+    function toCanvas(x, y) {
+        return { x: (x - state.view.x) * state.zoom, y: (y - state.view.y) * state.zoom };
+    }
+
+    /** Link the two selected nodes, or draw a link from the selected one */
+    function linkSelection() {
+        var nodes = selected('node');
+        if (nodes.length === 2) {
+            addLink(nodes[0].name, nodes[1].name);
+            return;
+        }
+        setTool('link');
+        if (nodes.length === 1) {
+            state.linkFrom = nodes[0].name;
+            renderOverlay();
+        }
+    }
+
+    /** The menu of actions under a button (the ⋯ of the contextual bar) */
+    function openMenuAt(button) {
+        var r = button.getBoundingClientRect(), b = selectionBox();
+        var at = b ? { x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2 } : viewCentre();
+        openMenu(r.left, r.bottom + 4, at);
     }
 
     /** The keys of what the server just created, to select it */
@@ -3811,11 +3859,18 @@
         'zoom-reset': zoomReset,
         'zoom-fit': zoomFit,
         'add-node': function () { addNodeHere(); },
-        'shortcuts': openShortcuts
+        'shortcuts': openShortcuts,
+        'delete': deleteSelection,
+        'duplicate': duplicateSelection,
+        'select-all': selectAll,
+        'link-selection': linkSelection,
+        'add-layer': askLayer,
+        'right-angles': function () { rightAngles(selected('link'), 'z'); },
+        'selection-menu': function (button) { openMenuAt(button && button.getBoundingClientRect ? button : canvas); }
     };
 
     document.addEventListener('click', function (evt) {
-        var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd], #palette button[data-cmd], #editor-menu button[data-cmd]');
+        var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd], #palette button[data-cmd], #editor-menu button[data-cmd], #selbar button[data-cmd], #tool-rail button[data-cmd], #zoom-group button[data-cmd]');
         if (b && state.textMode && b.dataset.cmd !== 'text-mode' && b.dataset.cmd !== 'shortcuts') {
             return;
         }
@@ -3823,7 +3878,8 @@
             try { $('#editor-menu').hidePopover(); } catch (e) { /* no popover support */ }
         }
         if (b && commands[b.dataset.cmd]) {
-            commands[b.dataset.cmd]();
+            // the ⋯ of the contextual bar opens the menu under itself
+            commands[b.dataset.cmd](b.dataset.cmd === 'selection-menu' ? b : undefined);
         }
     });
 
@@ -4035,7 +4091,16 @@
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
-        selected: selected, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector
+        selected: selected, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector,
+        // for the contextual bar and the command palette (editor-selbar.js, editor-palette.js)
+        selectionBox: selectionBox, toCanvas: toCanvas, hasClip: hasClip, menuOpen: menuOpen,
+        alignCount: function () { return alignUnits(selectedObjects()).length; },
+        select: function (keys) { state.selection = new Set(keys); refresh(); },
+        zoomTo: function (box) {
+            var m = 80;
+            state.zoom = Math.max(state.zoom, Math.min(2, canvas.clientWidth / (box[2] - box[0] + m * 2), canvas.clientHeight / (box[3] - box[1] + m * 2)));
+            centerOn((box[0] + box[2]) / 2, (box[1] + box[3]) / 2);
+        }
     };
     document.dispatchEvent(new CustomEvent('wm-editor-ready'));
 })();

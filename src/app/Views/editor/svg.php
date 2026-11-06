@@ -33,6 +33,14 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <span class="tb-sep" aria-hidden="true"></span>
         <?= $btn('undo', 'undo', __('Undo'), __('Undo (Ctrl+Z)'), 'disabled') ?>
         <?= $btn('redo', 'redo', __('Redo'), __('Redo (Ctrl+Shift+Z)'), 'disabled') ?>
+        <span class="appbar-centre">
+            <button type="button" class="app-search" data-palette-open aria-keyshortcuts="Control+K Meta+K"
+                    title="<?= e__('Search commands, nodes and maps (Ctrl+K)') ?>" aria-label="<?= e__('Search commands, nodes and maps') ?>">
+                <?= icon('search') ?>
+                <span class="app-search-text"><?= e__('Commands, nodes, maps…') ?></span>
+                <kbd class="app-search-key">Ctrl K</kbd>
+            </button>
+        </span>
         <span class="appbar-right">
             <span class="tb-layers">
                 <?= $btn('layers', 'layers', __('Layers'), __('Hide layers while editing (not saved in the map)'), 'aria-expanded="false" aria-controls="layers-panel"') ?>
@@ -65,12 +73,19 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     </div>
 
     <div id="toolbars-menu" popover>
+        <h3><?= e__('Layout') ?></h3>
+        <label><input type="radio" name="mode" value="contextual"> <?= e__('A bar next to the selection') ?></label>
+        <label><input type="radio" name="mode" value="toolbars"> <?= e__('Movable toolbars') ?></label>
+        <p class="hint mode-hint"><?= e__('The bar next to the selection shows what applies to it. Every command is also in the Ctrl+K search, the right-click menu and the keyboard shortcuts.') ?></p>
+        <div class="toolbars-only">
         <h3><?= e__('Toolbars') ?></h3>
         <div id="toolbars-list"></div>
+        </div>
         <h3><?= e__('Panels') ?></h3>
         <label><input type="checkbox" name="panel-palette"> <?= e__('Add panel (nodes and icons)') ?></label>
         <label><input type="checkbox" name="panel-inspector"> <?= e__('Properties panel') ?></label>
         <label><input type="checkbox" name="panel-minimap"> <?= e__('Overview map') ?></label>
+        <div class="toolbars-only">
         <h3><?= e__('Buttons') ?></h3>
         <label><?= e__('Size') ?>
             <select name="size">
@@ -87,6 +102,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             </select>
         </label>
         <p class="hint"><?= e__('Drag a toolbar by its handle to the top, a side or the bottom, or drop it on the map to make it float. A floating toolbar can be resized from its corner.') ?></p>
+        </div>
         <button type="button" id="toolbars-reset"><?= e__('Reset the layout') ?></button>
     </div>
 
@@ -128,7 +144,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <div class="toolbar" data-toolbar="view" aria-label="<?= e__('View') ?>" role="toolbar">
             <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid (G)')) ?>
             <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out (-)')) ?>
-            <button type="button" data-cmd="zoom-reset" id="zoom-level" title="<?= e__('Actual size (0)') ?>" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-tag"><?= e__('Zoom') ?></span> <span id="zoom-value">100%</span></button>
+            <button type="button" data-cmd="zoom-reset" id="zoom-level" title="<?= e__('Actual size (0)') ?>" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-tag"><?= e__('Zoom') ?></span> <span id="zoom-value" class="zoom-value">100%</span></button>
             <?= $btn('zoom-in', 'zoom-in', __('Zoom in'), __('Zoom in (+)')) ?>
             <?= $btn('zoom-fit', 'fit', __('Fit'), __('Fit to window (F)')) ?>
         </div>
@@ -184,6 +200,40 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
                 <use href="#map"/>
                 <rect id="minimap-view"/>
             </svg>
+        </div>
+        <div id="tool-rail" role="toolbar" aria-orientation="vertical" aria-label="<?= e__('Tools') ?>">
+            <?= $btn('tool-select', 'select', __('Select'), __('Select and move (V)'), 'class="active" aria-pressed="true"') ?>
+            <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes (L)'), 'aria-pressed="false"') ?>
+            <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid (G)'), 'aria-pressed="false"') ?>
+        </div>
+        <div id="zoom-group" role="toolbar" aria-label="<?= e__('Zoom') ?>">
+            <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out (-)')) ?>
+            <button type="button" data-cmd="zoom-reset" class="zoom-level" title="<?= e__('Actual size (0)') ?>" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-value">100%</span></button>
+            <?= $btn('zoom-in', 'zoom-in', __('Zoom in'), __('Zoom in (+)')) ?>
+            <?= $btn('zoom-fit', 'fit', __('Fit'), __('Fit to window (F)')) ?>
+        </div>
+        <div id="selbar" role="toolbar" aria-label="<?= e__('Selection') ?>" hidden>
+            <button type="button" class="sb-align" popovertarget="selbar-align" data-needs="objects2" title="<?= e__('Align and space evenly') ?>" aria-label="<?= e__('Align and space evenly') ?>" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-align-left"/></svg><?= icon('chevron-down', 'i caret') ?></button>
+            <?= $btn('group', 'group', __('Group'), __('Group (Ctrl+G)'), 'data-needs="any"') ?>
+            <?= $btn('ungroup', 'ungroup', __('Ungroup'), __('Ungroup (Ctrl+Shift+G)'), 'data-needs="any"') ?>
+            <?= $btn('lock', 'lock', __('Lock'), __('Lock or unlock position (Ctrl+L)'), 'data-needs="any"') ?>
+            <?= $btn('front', 'front', __('Front'), __('Bring to front (Ctrl+])'), 'data-needs="any"') ?>
+            <?= $btn('back', 'send-back', __('Back'), __('Send to back (Ctrl+[)'), 'data-needs="any"') ?>
+            <span class="sb-sep" aria-hidden="true"></span>
+            <?= $btn('link-selection', 'link', __('Link'), __('Link the two selected nodes, or draw a link from the selected node (L)'), 'data-needs="nodes1"') ?>
+            <?= $btn('duplicate', 'copy', __('Duplicate'), __('Duplicate (Ctrl+D)'), 'data-needs="nodes1"') ?>
+            <?= $btn('delete', 'trash', __('Delete'), __('Delete (Del)'), 'class="danger" data-needs="any"') ?>
+            <button type="button" data-cmd="selection-menu" title="<?= e__('More actions (Shift+F10)') ?>" aria-label="<?= e__('More actions') ?>" aria-haspopup="menu"><?= icon('ellipsis', 'i') ?></button>
+        </div>
+        <div id="selbar-align" popover role="menu" aria-label="<?= e__('Align and space evenly') ?>">
+            <?= $btn('align-left', 'align-left', __('Left'), __('Align left edges'), 'role="menuitem"') ?>
+            <?= $btn('align-hcenter', 'align-hcenter', __('Centre'), __('Align centres vertically'), 'role="menuitem"') ?>
+            <?= $btn('align-right', 'align-right', __('Right'), __('Align right edges'), 'role="menuitem"') ?>
+            <?= $btn('align-top', 'align-top', __('Top'), __('Align top edges'), 'role="menuitem"') ?>
+            <?= $btn('align-vcenter', 'align-vcenter', __('Middle'), __('Align centres horizontally'), 'role="menuitem"') ?>
+            <?= $btn('align-bottom', 'align-bottom', __('Bottom'), __('Align bottom edges'), 'role="menuitem"') ?>
+            <?= $btn('distribute-h', 'distribute-h', __('Space across'), __('Space evenly, left to right'), 'role="menuitem" data-needs="objects3"') ?>
+            <?= $btn('distribute-v', 'distribute-v', __('Space down'), __('Space evenly, top to bottom'), 'role="menuitem" data-needs="objects3"') ?>
         </div>
         <div id="toast" hidden></div>
     </main>
@@ -348,5 +398,8 @@ window.WM_EDITOR = {
 <script src="<?= asset('/assets/js/editor-backgrounds.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-toolbars.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-mapprops.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-selbar.js') ?>"></script>
+<script src="<?= asset('/assets/js/palette.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-palette.js') ?>"></script>
 </body>
 </html>

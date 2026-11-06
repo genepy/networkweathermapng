@@ -13,6 +13,14 @@
  * The index comes from GET /palette (CommandPalette on the server), fetched
  * once per page the first time the palette opens (or the pointer reaches
  * the button). Texts come from window.WM_T (the ui-js catalogue).
+ *
+ * A page adds its own entries with WMPalette.register(source) (the SVG
+ * editor does, editor-palette.js): source.kind names the section,
+ * source.title is its heading and source.entries() returns entries like
+ * { icon, label, context, keys, shortcut, run } (an icon starting with
+ * "#" is a symbol of the page). They come before the maps, also when the
+ * index cannot be loaded. source.mapId hides the server's nodes of that
+ * map (the page lists them itself) and its own Edit command.
  */
 (function () {
     'use strict';
@@ -37,6 +45,8 @@
     var results = [];
     var active = -1;
     var opener = null;
+    var sources = [];
+    var EMPTY = { maps: [], nodes: [], groups: [], settings: [], can: { edit: false, account: false } };
 
     function norm(s) {
         return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -54,7 +64,7 @@
         svg.setAttribute('aria-hidden', 'true');
         svg.setAttribute('focusable', 'false');
         var use = document.createElementNS(ns, 'use');
-        use.setAttribute('href', sprite() + '#' + name);
+        use.setAttribute('href', name.charAt(0) === '#' ? name : sprite() + '#' + name);
         svg.appendChild(use);
         return svg;
     }
@@ -82,8 +92,23 @@
     // Entries
 
     function currentMapId() {
-        var v = document.getElementById('wmv');
+        var v = document.getElementById('wmv') || document.querySelector('[data-map-id]');
         return v ? parseInt(v.getAttribute('data-map-id') || '0', 10) : 0;
+    }
+
+    /** The map whose nodes and Edit command a registered source replaces */
+    function ownMap() {
+        var id = 0;
+        sources.forEach(function (src) { if (src.mapId) { id = src.mapId; } });
+        return id;
+    }
+
+    /** The sections of the registered sources, ranked for the words typed */
+    function ownSections(words, whole) {
+        return sources.map(function (src) {
+            var entries = (src.entries() || []).map(function (e) { e.kind = src.kind; return e; });
+            return [src.kind, words.length ? ranked(entries, words, whole, src.limit || LIMITS.commands) : entries.slice(0, src.first !== undefined ? src.first : entries.length)];
+        });
     }
 
     function mapSettings(id) {
@@ -109,10 +134,12 @@
     /** Commands for one map: edit it, open its settings */
     function mapCommands(map, d) {
         if (!d.can.edit) { return []; }
-        return [
-            { kind: 'commands', icon: 'pencil', label: t('Edit “:name”', { name: map.name }), keys: 'edit ' + map.name, href: '/editor/edit/' + map.id },
-            { kind: 'commands', icon: 'settings', label: t('Map settings for “:name”', { name: map.name }), keys: 'settings ' + map.name, run: function () { mapSettings(map.id); } }
-        ];
+        var out = [];
+        if (map.id !== ownMap()) {
+            out.push({ kind: 'commands', icon: 'pencil', label: t('Edit “:name”', { name: map.name }), keys: 'edit ' + map.name, href: '/editor/edit/' + map.id });
+        }
+        out.push({ kind: 'commands', icon: 'settings', label: t('Map settings for “:name”', { name: map.name }), keys: 'settings ' + map.name, run: function () { mapSettings(map.id); } });
+        return out;
     }
 
     function generalCommands(d) {
@@ -181,11 +208,11 @@
     }
 
     function search(query) {
-        var d = data;
+        var d = data || EMPTY;
         var whole = norm(query).trim().replace(/\s+/g, ' ');
         var words = whole ? whole.split(' ') : [];
         var maps = d.maps.map(mapEntry);
-        var sections = [];
+        var sections = ownSections(words, whole);
 
         if (!words.length) {
             // nothing typed: the current map's commands, favourites and the first maps, the commands
@@ -202,7 +229,8 @@
         var foundMaps = ranked(maps, words, whole, LIMITS.maps);
         var byId = {};
         d.maps.forEach(function (m) { byId[m.id] = m; });
-        var nodes = d.nodes.map(function (n) {
+        var own = ownMap();
+        var nodes = d.nodes.filter(function (n) { return n.map !== own; }).map(function (n) {
             var map = byId[n.map];
             return {
                 kind: 'nodes', icon: 'rectangle-horizontal', label: n.label, strict: true,
@@ -230,7 +258,9 @@
     // Drawing
 
     function title(kind) {
-        return { maps: t('Maps'), nodes: t('Nodes'), settings: t('Settings'), commands: t('Commands') }[kind];
+        var own = null;
+        sources.forEach(function (src) { if (src.kind === kind) { own = src.title; } });
+        return own || { maps: t('Maps'), nodes: t('Nodes'), settings: t('Settings'), commands: t('Commands') }[kind];
     }
 
     function message(text) {
@@ -245,7 +275,7 @@
     }
 
     function draw() {
-        if (!data) { return; }
+        if (!data && !sources.length) { return; }
         var sections = search(input.value);
         var nodes = [];
         results = [];
@@ -289,6 +319,12 @@
                 }
                 var end = document.createElement('span');
                 end.className = 'pal-end';
+                if (e.shortcut) {
+                    var keys = document.createElement('kbd');
+                    keys.className = 'pal-keys';
+                    keys.textContent = isMac ? e.shortcut.replace(/Ctrl\+/g, '⌘').replace(/Shift\+/g, '⇧') : e.shortcut;
+                    end.appendChild(keys);
+                }
                 if (e.badge) {
                     var badge = document.createElement('span');
                     badge.className = 'pal-badge' + (e.level ? ' pal-load-' + e.level : '');
@@ -368,8 +404,9 @@
         var foot = { move: t('Move'), enter: t('Enter'), open: t('Open'), close: t('Close') };
         dialog.querySelectorAll('[data-t]').forEach(function (s) { s.textContent = foot[s.getAttribute('data-t')]; });
         input = dialog.querySelector('.pal-input');
-        input.placeholder = t('Search maps, nodes, commands');
-        input.setAttribute('aria-label', t('Search maps, nodes, commands'));
+        var hint = sources.length && sources[0].placeholder ? sources[0].placeholder : t('Search maps, nodes, commands');
+        input.placeholder = hint;
+        input.setAttribute('aria-label', hint);
         list = dialog.querySelector('.pal-list');
         status = dialog.querySelector('[role="status"]');
         document.body.appendChild(dialog);
@@ -425,6 +462,12 @@
             draw();
             return;
         }
+        if (sources.length) {
+            // the page's own entries first, the maps when they arrive
+            draw();
+            load().then(function () { if (d.open) { draw(); } }).catch(function () { /* the page's entries only */ });
+            return;
+        }
         message(t('Loading…'));
         load().then(function () { if (d.open) { draw(); } })
             .catch(function () { if (d.open) { message(t('The search could not be loaded')); } });
@@ -466,5 +509,9 @@
         ready();
     }
 
-    window.WMPalette = { open: open, close: function () { close(true); } };
+    window.WMPalette = {
+        open: open,
+        close: function () { close(true); },
+        register: function (source) { sources.push(source); }
+    };
 })();

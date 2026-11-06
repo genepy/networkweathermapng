@@ -617,3 +617,79 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
     .tb-view { padding: 0 8px; margin-left: 2px; }
     .tb-title { flex: 1 1 auto; font-size: 14px; }
 }
+
+/* Step 9: by default no permanent toolbar. A bar next to the selection,
+   a small tool rail and the zoom float over the map; the movable toolbars
+   come back with Toolbars and panels › Movable toolbars. */
+.appbar-centre { flex: 1 1 auto; display: flex; justify-content: center; min-width: 0; padding: 0 8px; }
+#appbar .app-search {
+    flex: 0 1 420px; min-width: 0; height: 34px; gap: 8px; padding: 0 6px 0 10px;
+    color: var(--muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--wm-radius-bar, 10px);
+}
+#appbar .app-search:hover { background: var(--panel-2); border-color: var(--field-border); color: var(--text); }
+#appbar .app-search .icon { width: 16px; height: 16px; }
+#appbar .app-search-text { overflow: hidden; text-overflow: ellipsis; }
+
+#app[data-mode="contextual"] .dock { display: none; }
+#app[data-mode="contextual"] #toolbars-menu .toolbars-only { display: none; }
+#app[data-mode="toolbars"] #tool-rail, #app[data-mode="toolbars"] #zoom-group, #app[data-mode="toolbars"] #selbar { display: none; }
+#app.text-mode #tool-rail, #app.text-mode #zoom-group, #app.text-mode #selbar { display: none; }
+#toolbars-menu .mode-hint { margin: 2px 0 6px; }
+
+#tool-rail, #zoom-group, #selbar {
+    position: absolute; z-index: 12;
+    display: flex; align-items: center; gap: 2px; padding: 4px;
+    background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--wm-radius-bar, 10px);
+    box-shadow: var(--wm-shadow-2, 0 6px 18px var(--paper-shadow));
+}
+#tool-rail { top: 10px; left: 10px; flex-direction: column; }
+#zoom-group { right: 220px; bottom: 10px; }
+#app.no-minimap #zoom-group { right: 10px; }
+#selbar { z-index: 14; max-width: calc(100% - 16px); flex-wrap: wrap; }
+#zoom-group { max-width: calc(100% - 20px); flex-wrap: wrap; justify-content: center; }
+#selbar[hidden] { display: none; }
+#tool-rail button, #zoom-group button, #selbar button, #selbar-align button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 32px; min-width: 32px; padding: 0 6px;
+    background: transparent; color: var(--text);
+    border: 1px solid transparent; border-radius: var(--wm-radius-control, 6px);
+    font: inherit; cursor: pointer; white-space: nowrap;
+}
+#tool-rail svg.i, #zoom-group svg.i, #selbar svg.i, #selbar-align svg.i { width: 18px; height: 18px; }
+#tool-rail button:hover, #zoom-group button:hover, #selbar button:hover:not(:disabled), #selbar-align button:hover:not(:disabled) { background: var(--accent-soft); }
+#tool-rail button:focus-visible, #zoom-group button:focus-visible, #selbar button:focus-visible, #selbar-align button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#tool-rail button.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+#tool-rail .lbl, #zoom-group .lbl, #selbar .lbl { display: none !important; }
+#selbar button[hidden] { display: none; }
+#selbar button:disabled, #selbar-align button:disabled { color: var(--disabled); cursor: default; }
+#selbar button.danger { color: var(--danger); }
+#selbar button.danger:hover { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+#selbar .sb-align { gap: 0; padding: 0 2px 0 6px; }
+#selbar .sb-align svg.caret { width: 14px; height: 14px; color: var(--muted); }
+#selbar .sb-sep { flex: 0 0 1px; align-self: stretch; margin: 4px 3px; background: var(--border); }
+#selbar .sb-sep[hidden] { display: none; }
+#zoom-group .zoom-level { min-width: 56px; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+#selbar-align {
+    position: fixed; inset: auto; margin: 0;
+    padding: 4px; min-width: 200px; color: var(--text); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 18px var(--paper-shadow);
+}
+#selbar-align:popover-open { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+#selbar-align button { justify-content: flex-start; width: 100%; padding: 0 8px; }
+#selbar-align .lbl { display: inline !important; }
+
+/* the Ctrl+K palette in the editor: not styled like the editor's dialogs */
+dialog.wm-palette { min-width: 0; border-radius: var(--wm-radius-card, 14px); }
+dialog.wm-palette input.pal-input { width: auto; margin: 0; padding: 4px 0; border: 0; background: transparent; }
+.wm-palette .pal-keys { visibility: visible; }
+
+@media (max-width: 860px) {
+    .appbar-centre { flex: 0 0 auto; padding: 0 2px; }
+    #appbar .app-search { flex: 0 0 auto; width: 34px; padding: 0; justify-content: center; border-color: transparent; background: transparent; }
+}
+@media (max-width: 600px) {
+    #zoom-group { right: 10px; bottom: 150px; }
+    #app.no-minimap #zoom-group { bottom: 10px; }
+}
