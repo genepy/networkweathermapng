@@ -267,4 +267,18 @@ return [
     'Click to add in the middle of the view, or drag a node or an icon onto the map.' => 'Cliquer pour ajouter au milieu de la vue, ou glisser un nœud ou une icône sur la carte.',
     'Backgrounds' => 'Fonds',
     'Search, add or remove…' => 'Chercher, ajouter ou supprimer…',
+    // Contextual bar and Ctrl+K palette (step 9)
+    'Search commands, nodes and maps (Ctrl+K)' => 'Chercher des commandes, des nœuds et des cartes (Ctrl+K)',
+    'Search commands, nodes and maps' => 'Chercher des commandes, des nœuds et des cartes',
+    'Commands, nodes, maps…' => 'Commandes, nœuds, cartes…',
+    'Layout' => 'Disposition',
+    'A bar next to the selection' => 'Une barre près de la sélection',
+    'Movable toolbars' => 'Barres d’outils déplaçables',
+    'The bar next to the selection shows what applies to it. Every command is also in the Ctrl+K search, the right-click menu and the keyboard shortcuts.' => 'La barre près de la sélection montre ce qui s’y applique. Chaque commande est aussi dans la recherche Ctrl+K, le menu du clic droit et les raccourcis clavier.',
+    'Selection' => 'Sélection',
+    'Align and space evenly' => 'Aligner et répartir',
+    'Link the two selected nodes, or draw a link from the selected node (L)' => 'Relier les deux nœuds sélectionnés, ou tracer un lien depuis le nœud sélectionné (L)',
+    'Duplicate (Ctrl+D)' => 'Dupliquer (Ctrl+D)',
+    'Delete (Del)' => 'Supprimer (Suppr)',
+    'More actions (Shift+F10)' => 'Plus d’actions (Maj+F10)',
 ];

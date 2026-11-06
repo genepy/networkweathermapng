@@ -1,8 +1,10 @@
 /**
- * Layout of the SVG editor: toolbars that can be docked at the top, on a
- * side or at the bottom, or float over the map; shown or hidden; with
- * small, medium or large buttons, with or without labels. The side panels
- * can be hidden and resized. The layout is kept in this browser only.
+ * Layout of the SVG editor. By default a bar appears next to the selection
+ * (editor-selbar.js), with a small tool rail and the zoom on the map. The
+ * movable toolbars remain as an option: docked at the top, on a side or at
+ * the bottom, or floating over the map; shown or hidden; with small, medium
+ * or large buttons, with or without labels. The side panels can be hidden
+ * and resized. The layout is kept in this browser only.
  */
 (function () {
     'use strict';
@@ -29,9 +31,10 @@
     };
 
     var PANEL_SIZES = { palette: [140, 420], inspector: [220, 560] };
+    var MODES = ['contextual', 'toolbars'];
 
     function defaults() {
-        var out = { version: VERSION, size: 'm', labels: 'auto', panels: { palette: true, inspector: true, minimap: true }, widths: {}, bars: {} };
+        var out = { version: VERSION, mode: 'contextual', size: 'm', labels: 'auto', panels: { palette: true, inspector: true, minimap: true }, widths: {}, bars: {} };
         ORDER.forEach(function (id, i) { out.bars[id] = { dock: 'top', order: i, hidden: false }; });
         return out;
     }
@@ -41,6 +44,7 @@
         try {
             var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
             if (saved && saved.version === VERSION) {
+                if (MODES.indexOf(saved.mode) >= 0) { d.mode = saved.mode; }
                 ['size', 'labels'].forEach(function (k) { if (typeof saved[k] === 'string') { d[k] = saved[k]; } });
                 Object.keys(d.panels).forEach(function (k) { if (saved.panels && typeof saved.panels[k] === 'boolean') { d.panels[k] = saved.panels[k]; } });
                 Object.keys(PANEL_SIZES).forEach(function (k) { if (saved.widths && +saved.widths[k] > 0) { d.widths[k] = +saved.widths[k]; } });
@@ -60,6 +64,8 @@
     // Applying the layout
 
     function apply() {
+        var contextual = layout.mode === 'contextual';
+        app.dataset.mode = layout.mode;
         app.dataset.size = layout.size;
         app.dataset.labels = layout.labels;
         app.classList.toggle('no-palette', !layout.panels.palette);
@@ -73,7 +79,7 @@
             var bar = bars[id], conf = layout.bars[id];
             var dock = conf.dock === 'float' ? canvas : (docks[conf.dock] || docks.top);
             if (bar.parentNode !== dock || dock === canvas) { dock.appendChild(bar); }
-            bar.hidden = !!conf.hidden;
+            bar.hidden = contextual || !!conf.hidden;
             bar.classList.toggle('floating', conf.dock === 'float');
             if (conf.dock === 'float') {
                 bar.style.left = Math.max(0, conf.x || 0) + 'px';
@@ -244,6 +250,7 @@
             var box = menu.querySelector('input[name="panel-' + k + '"]');
             if (box) { box.checked = layout.panels[k]; }
         });
+        Array.prototype.forEach.call(menu.querySelectorAll('input[name="mode"]'), function (r) { r.checked = r.value === layout.mode; });
         menu.querySelector('select[name="size"]').value = layout.size;
         menu.querySelector('select[name="labels"]').value = layout.labels;
     }
@@ -252,9 +259,11 @@
         var el = evt.target;
         if (el.name && el.name.indexOf('panel-') === 0) { layout.panels[el.name.slice(6)] = el.checked; }
         else if (el.name === 'size' || el.name === 'labels') { layout[el.name] = el.value; }
+        else if (el.name === 'mode' && MODES.indexOf(el.value) >= 0) { layout.mode = el.value; }
         else { return; }
         save();
         apply();
+        document.dispatchEvent(new CustomEvent('wm-editor-layout'));
     });
 
     document.getElementById('toolbars-reset').addEventListener('click', function () {
@@ -308,5 +317,14 @@
 
     apply();
 
-    window.WMEditor.layout = { get: function () { return layout; }, apply: apply };
+    /** contextual (the bar next to the selection) or toolbars (the movable ones) */
+    function setMode(mode) {
+        if (MODES.indexOf(mode) < 0 || layout.mode === mode) { return; }
+        layout.mode = mode;
+        save();
+        apply();
+        document.dispatchEvent(new CustomEvent('wm-editor-layout'));
+    }
+
+    window.WMEditor.layout = { get: function () { return layout; }, apply: apply, setMode: setMode };
 })();

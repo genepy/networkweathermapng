@@ -314,11 +314,25 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 `.conf` file.
 
 - **Top bar**: back to the maps, the map name, whether the last change is
-  saved (*Saving…*, *Saved*, *Not saved*), undo and redo; on the right
-  *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
+  saved (*Saving…*, *Saved*, *Not saved*), undo and redo; in the middle the
+  `Ctrl+K` search (see below); on the right *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
   *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab,
   the classic editor) and *View*, which opens the map view.
 - **Keyboard shortcuts**: `?` (or ⋯ › *Keyboard shortcuts*) lists them all.
+- **Contextual bar**: while something is selected, a small bar floats over
+  it with what applies: *Align and space evenly* (a menu), *Group* or
+  *Ungroup*, *Lock*, *Front*, *Back*, *Link* (the two selected nodes, or
+  from the selected one), *Duplicate*, *Delete* and ⋯ (the menu of actions,
+  also on a right-click or Shift+F10). A small rail at the top left of the
+  drawing holds *Select* (V), *Link* (L) and *Grid* (G); the zoom sits at the
+  bottom right next to the overview map. The movable toolbars of earlier
+  versions come back with ⋯ › *Toolbars and panels* › *Movable toolbars*
+  (remembered in the browser); the contextual bar is not shown then.
+- **Search** (`Ctrl+K`, `⌘K` on a Mac, or the search box of the top bar):
+  every editor command that applies now, with its shortcut (the ones for
+  the selection first), the nodes, links and zones of the map (Enter
+  selects one and zooms onto it), then the maps, nodes of other maps and
+  Settings pages of the application-wide palette.
 
 - **Select**: click, Shift+click to add, drag on empty space for an area,
   Ctrl+A for everything (zones, legends, timestamps and title included), or
@@ -551,8 +565,8 @@ left; without JavaScript the same forms are pages of their own.
 ## Command palette
 
 `Ctrl+K` (`⌘K` on a Mac), or the search box of the top bar, opens one search
-for everything, on every page of the application (the editor gets its own in
-a later step):
+for everything, on every page of the application (in the editor it also
+lists the editor's commands and the items of the map, see *Map editor*):
 
 - **Maps** you can see, with their current load (hidden maps for editors).
 - **Nodes** of every map, by label or name: opens the map zoomed onto the
