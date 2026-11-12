@@ -374,10 +374,12 @@
             for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
             const w = parseFloat(el.getAttribute('data-w'));
             if (pts.length < 2 || !(w > 0)) return;
+            const cut = (el.getAttribute('data-cut') || '').split(' ').map(Number);
             L.arrows.push({
                 el: el, pts: pts, points: el.getAttribute('points'), w: w,
                 aw: parseFloat(el.getAttribute('data-aw')) || w,
-                as: parseFloat(el.getAttribute('data-as')) || 0
+                as: parseFloat(el.getAttribute('data-as')) || 0,
+                cut: [cut[0] > 0 ? cut[0] : 0, cut[1] > 0 ? cut[1] : 0]
             });
         });
     }
@@ -426,6 +428,24 @@
         return out.map(function (p) { return p[0].toFixed(3) + ',' + p[1].toFixed(3); }).join(' ');
     }
 
+    /**
+     * The engine stops each link where its end is just hidden under its
+     * node (data-cut: the length cut at the start and at the tip). A
+     * thinner link drawn under a node shrunk as much ends that much closer
+     * to the centre, or it would show between the node and its old edge.
+     */
+    function reachNodes(pts, cut, k) {
+        if (!(cut[0] > 0) && !(cut[1] > 0)) return pts;
+        function stretch(p, q, d) {
+            const l = Math.hypot(p[0] - q[0], p[1] - q[1]);
+            return l > 0 ? [p[0] + (p[0] - q[0]) / l * d, p[1] + (p[1] - q[1]) / l * d] : p;
+        }
+        const out = pts.slice();
+        if (cut[0] > 0) out[0] = stretch(pts[0], pts[1], cut[0] * (1 - k));
+        if (cut[1] > 0) out[out.length - 1] = stretch(pts[pts.length - 1], pts[pts.length - 2], cut[1] * (1 - k));
+        return out;
+    }
+
     /** Draw the arrows at k times their width (1: as the SVG has them) */
     function thinLinks(k) {
         k = Math.round(k * 1000) / 1000;
@@ -433,7 +453,7 @@
         L.k = k;
         root.classList.toggle('wmv-links-thin', k < 1);
         L.arrows.forEach(function (a) {
-            const pts = k < 1 ? arrowOutline(a.pts, a.w * k, a.aw * k, a.as * k) : null;
+            const pts = k < 1 ? arrowOutline(reachNodes(a.pts, a.cut, k), a.w * k, a.aw * k, a.as * k) : null;
             a.el.setAttribute('points', pts || a.points);
         });
     }

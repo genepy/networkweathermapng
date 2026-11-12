@@ -312,6 +312,9 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #map g[data-kind="link"] .wm-bwlabel-in, #map g[data-kind="link"] .wm-bwlabel-out { cursor: move; }
 #map g[data-kind="link"].locked .wm-bwlabel-in, #map g[data-kind="link"].locked .wm-bwlabel-out { cursor: pointer; }
 #map g.dimmed { opacity: .25; }
+/* every item under the pointer shows its outline with a small soft glow (as in the viewer) */
+#map { --wm-hover-glow: color-mix(in srgb, var(--accent) 80%, transparent); }
+#map g.hover { filter: drop-shadow(0 0 1px var(--wm-hover-glow)) drop-shadow(0 0 3px var(--wm-hover-glow)); }
 #map g.copy-ghost { opacity: .6; pointer-events: none; }
 #grid-layer { display: none; }
 #stage.snap #grid-layer { display: inline; }

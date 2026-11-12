@@ -98,6 +98,9 @@ class WeatherMapNode extends WeatherMapItem {
 	var $template;
 	var $polar;
 	var $boundingboxes=array();
+	/** The icon box and the label box (when it has a background), for cover_shapes() */
+	var $iconcover = null;
+	var $labelcover = null;
 
 	// PHP 8.1. QA
 	var $aiconfillcolour;
@@ -235,6 +238,9 @@ class WeatherMapNode extends WeatherMapItem {
 		if (is_null($this->y)) {
 			return;
 		}
+
+		$this->iconcover = null;
+		$this->labelcover = null;
 
 		// apparently, some versions of the gd extension will crash
 		// if we continue...
@@ -649,6 +655,7 @@ class WeatherMapNode extends WeatherMapItem {
 
 				// $map->imap->addArea("Rectangle", "NODE:" . $this->name . ':0', '', array($icon_x1, $icon_y1, $icon_x2, $icon_y2));
 				$map->nodes[$this->name]->boundingboxes[] = array($icon_x1, $icon_y1, $icon_x2, $icon_y2);
+				$this->iconcover = array($icon_x1, $icon_y1, $icon_x2, $icon_y2);
 			}
 		}
 
@@ -713,6 +720,10 @@ class WeatherMapNode extends WeatherMapItem {
 		if ($this->label != '' && $this->badge === null) {
 			// $map->imap->addArea("Rectangle", "NODE:" . $this->name .':1', '', array($label_x1, $label_y1, $label_x2, $label_y2));
 			$map->nodes[$this->name]->boundingboxes[] = array($label_x1, $label_y1, $label_x2, $label_y2);
+			// a label without a background does not hide a link end
+			if ($col->is_real()) {
+				$this->labelcover = array($label_x1, $label_y1, $label_x2, $label_y2);
+			}
 		}
 
 		// work out the bounding box of the whole thing
@@ -888,6 +899,30 @@ class WeatherMapNode extends WeatherMapItem {
 
 		# $this->image = $node_im;
 		$map->nodes[$this->name]->image = $node_im;
+	}
+
+	/**
+	 * What the node covers on the map once drawn, so a link can end under
+	 * it: its disc for a badge (circle, cx, cy, r), otherwise its icon and
+	 * label boxes (rect, x1, y1, x2, y2; a label only with a background).
+	 * Empty before pre_render.
+	 */
+	function cover_shapes() {
+		if ($this->badge !== null) {
+			return array(array('circle', $this->x, $this->y, $this->badge['r']));
+		}
+		$boxes = array();
+		if ($this->iconcover !== null) {
+			$boxes[] = $this->iconcover;
+		}
+		if ($this->labelcover !== null) {
+			$boxes[] = $this->labelcover;
+		}
+		$out = array();
+		foreach ($boxes as $b) {
+			$out[] = array('rect', min($b[0], $b[2]), min($b[1], $b[3]), max($b[0], $b[2]), max($b[1], $b[3]));
+		}
+		return $out;
 	}
 
 	/** SET node_style badge (our hint; DEFAULT passes it on to every node) */

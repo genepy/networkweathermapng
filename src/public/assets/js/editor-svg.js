@@ -1382,11 +1382,30 @@
     stage.addEventListener('pointermove', function (evt) {
         if (state.model) { state.mouse = toMap(evt); }
         if (state.placing) { renderOverlay(); }
+        hoverItem(state.drag && state.drag.started ? null : itemAt(evt));
     });
     stage.addEventListener('pointerleave', function () {
         state.mouse = null;
         if (state.placing) { renderOverlay(); }
+        hoverItem(null);
     });
+
+    /**
+     * The item under the pointer shows its outline with a small soft glow
+     * (class hover, see editor-svg.css): nodes, links, zones (by their
+     * edge, as they are picked), legends, the timestamp and the title.
+     */
+    var hovered = '';
+    function hoverItem(it) {
+        var k = it ? key(it.kind, it.name) : '';
+        if (k === hovered && (!k || $('#map g.hover'))) { return; }
+        hovered = k;
+        $$('#map g.hover').forEach(function (g) { g.classList.toggle('hover', false); });
+        if (!it) { return; }
+        $$('#map g[data-kind]').forEach(function (g) {
+            if (g.dataset.kind === it.kind && g.dataset.name === it.name) { g.classList.add('hover'); }
+        });
+    }
 
     /**
      * Show the moved objects at their new place, before the server draws
@@ -2230,6 +2249,11 @@
         links.filter(function (l) { return !l.locked; }).forEach(function (l) {
             var ends = linkEnds(l), a = ends[0], b = ends[1], vias;
             var dx = b[0] - a[0], dy = b[1] - a[1];
+            if (how === 'straight') {
+                // back to one straight segment: no bend points left
+                if (l.via.length) { ops.push({ op: 'set_link', names: [l.name], props: { via: [] } }); }
+                return;
+            }
             if (Math.abs(dx) < 1 || Math.abs(dy) < 1) {
                 vias = [];
             } else if (how === 'hv') {
@@ -2247,10 +2271,39 @@
             ops.push({ op: 'set_link', names: [l.name], props: { via: vias, viastyle: 'angled' } });
         });
         if (!ops.length) {
+            if (how === 'straight' && links.some(function (l) { return !l.locked; })) {
+                toast(t('These links are already straight.'));
+                return;
+            }
             toast(t('These links are locked. Unlock them to route them.'));
             return;
         }
         send(ops);
+    }
+
+    /**
+     * The segment of a link (between two of its key points: an end or a
+     * bend point) nearest to a map point, with the bend points it would
+     * lose to become straight. Null when the link has no bend point.
+     */
+    function segmentAt(link, p) {
+        if (!link || !link.via.length || !p) { return null; }
+        var points = linkPath(link), curve = curveOf(points, link.viastyle !== 'angled', 16), best = null, dist = Infinity;
+        for (var i = 0; i + 1 < curve.length; i++) {
+            var d = distToSegment(p, [curve[i].x, curve[i].y], [curve[i + 1].x, curve[i + 1].y]);
+            if (d < dist) { dist = d; best = curve[i].span; }
+        }
+        if (best === null) { return null; }
+        // key point k is via k - 1; the segment runs from key point best to best + 1
+        var drop = [best - 1, best].filter(function (v) { return v >= 0 && v < link.via.length; });
+        return { link: link, drop: drop };
+    }
+
+    /** Make one segment of a link straight: the bend points at its two ends go */
+    function straightenSegment(seg) {
+        if (!seg || seg.link.locked) { return; }
+        var via = seg.link.via.filter(function (v, i) { return seg.drop.indexOf(i) < 0; });
+        send([{ op: 'set_link', names: [seg.link.name], props: { via: via.map(function (v) { return [v[0], v[1]]; }) } }]);
     }
 
     // ------------------------------------------------------------------
@@ -3074,7 +3127,8 @@
             row(t('Hover graph'), field(links, 'hover_url', 'link', { placeholder: t('Picture address') })),
             h('h3', { text: t('Shape') }),
             row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
-            row(t('Right angles'), h('div', { 'class': 'pair' }, [
+            row(t('Route'), h('div', { 'class': 'pair' }, [
+                ['straight', '─', t('Straight: no bend points')],
                 ['hv', '┐', t('Across, then up or down')],
                 ['vh', '└', t('Up or down, then across')],
                 ['z', '┘┌', t('Two turns, half way')]
@@ -3903,6 +3957,8 @@
         var all = nodes.concat(links, zones), objects = alignUnits(selectedObjects()).length;
         var locked = all.length && all.every(function (i) { return i.locked; });
         var grouped = all.some(function (i) { return i.group; });
+        // a link with bends, right-clicked alone: one of its segments can be made straight
+        var segment = links.length === 1 && !nodes.length && !zones.length ? segmentAt(links[0], at) : null;
         var entries = [
             { label: t('Cut'), kbd: 'Ctrl+X', run: function () { copySelection(true); }, off: !nodes.length },
             { label: t('Copy'), kbd: 'Ctrl+C', run: function () { copySelection(false); }, off: !nodes.length },
@@ -3932,6 +3988,8 @@
             { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
             { label: t('Add a note here'), run: function () { addNote(at); } },
             { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
+            { label: t('Make straight'), run: function () { rightAngles(links, 'straight'); }, off: !links.some(function (l) { return l.via.length; }) },
+            { label: t('Make this segment straight'), run: function () { straightenSegment(segment); }, off: !segment || segment.link.locked },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
             { label: links.length ? t('Move overlapping labels of the selection apart') : t('Move overlapping link labels apart'), run: untangle, off: !state.links.size },
             { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });

@@ -3666,19 +3666,29 @@ class WeatherMap extends WeatherMapBase {
 
 // 		$allitems = array_merge($this->links, $this->nodes);
 
+		// links first: in a layer, they are drawn under the nodes
 		$allitems = array();
-		foreach ($this->nodes as $node) {
-			$allitems[] = $node;
-		}
-
 		foreach ($this->links as $link) {
 			$allitems[] = $link;
+		}
+
+		foreach ($this->nodes as $node) {
+			$allitems[] = $node;
 		}
 
 		# foreach ($allitems as &$item)
 		foreach ($allitems as $ky => $vl) {
 			$item = &$allitems[$ky];
 			$z    = $item->zorder;
+
+			// a link is never drawn over the nodes it joins, so its ends stay hidden under them
+			if ($item->my_type() == 'LINK') {
+				foreach (array($item->a, $item->b) as $end) {
+					if (is_object($end) && isset($this->nodes[$end->name]) && $this->nodes[$end->name]->zorder < $z) {
+						$z = $this->nodes[$end->name]->zorder;
+					}
+				}
+			}
 
 			if (!isset($this->seen_zlayers[$z]) || !is_array($this->seen_zlayers[$z])) {
 				$this->seen_zlayers[$z] = array();

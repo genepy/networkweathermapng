@@ -956,6 +956,97 @@ function arrow_is_flat(&$map, $linkname) {
 	return $map !== null && isset($map->links[$linkname]) && $map->links[$linkname]->arrowstyle == 'flat';
 }
 
+/** Whether a point is inside one of the shapes of WeatherMapNode::cover_shapes() */
+function point_in_shapes($x, $y, $shapes, $slack = 0.5) {
+	foreach ($shapes as $s) {
+		if ($s[0] == 'circle') {
+			if (($x - $s[1]) * ($x - $s[1]) + ($y - $s[2]) * ($y - $s[2]) <= ($s[3] + $slack) * ($s[3] + $slack)) {
+				return true;
+			}
+		} elseif ($x >= $s[1] - $slack && $x <= $s[3] + $slack && $y >= $s[2] - $slack && $y <= $s[4] + $slack) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * How far along a link spine ([x, y, distance] points, starting at the
+ * node) the link may start so that its square end, $halfwidth on either
+ * side of the spine, is still hidden under the node ($shapes, from
+ * WeatherMapNode::cover_shapes). 0 when the end is not under the node
+ * (an end moved off it, or a link wider than the node); never more than
+ * $max.
+ */
+function link_end_cut($points, $shapes, $halfwidth, $max) {
+	$n = count($points);
+	if ($n < 2 || !$shapes || $max <= 0) {
+		return 0;
+	}
+	$best = -1;
+	$i = 0;
+	for ($s = 0; $s <= $max; $s += 1) {
+		while ($i < $n - 2 && $points[$i + 1][2] < $s) {
+			$i++;
+		}
+		$a = $points[$i];
+		$b = $points[$i + 1];
+		$span = $b[2] - $a[2];
+		if ($span <= 0) {
+			break;
+		}
+		$f = ($s - $a[2]) / $span;
+		$x = $a[0] + ($b[0] - $a[0]) * $f;
+		$y = $a[1] + ($b[1] - $a[1]) * $f;
+		$nx = -($b[1] - $a[1]) / $span;
+		$ny = ($b[0] - $a[0]) / $span;
+		if (!point_in_shapes($x + $nx * $halfwidth, $y + $ny * $halfwidth, $shapes)
+			|| !point_in_shapes($x - $nx * $halfwidth, $y - $ny * $halfwidth, $shapes)) {
+			break;
+		}
+		$best = $s;
+	}
+	return max(0, $best);
+}
+
+/** The part of a spine ([x, y, distance] points) between two distances, its distances counted from $from */
+function spine_cut($points, $from, $to) {
+	$n = count($points);
+	$at = function ($d) use ($points, $n) {
+		for ($i = 1; $i < $n; $i++) {
+			if ($points[$i][2] >= $d) {
+				$a = $points[$i - 1];
+				$b = $points[$i];
+				$span = $b[2] - $a[2];
+				$f = $span > 0 ? ($d - $a[2]) / $span : 0;
+				return array($a[0] + ($b[0] - $a[0]) * $f, $a[1] + ($b[1] - $a[1]) * $f, $d);
+			}
+		}
+		return $points[$n - 1];
+	};
+	$out = array($at($from));
+	foreach ($points as $p) {
+		if ($p[2] > $from + 0.01 && $p[2] < $to - 0.01) {
+			$out[] = $p;
+		}
+	}
+	$out[] = $at($to);
+	foreach ($out as $k => $p) {
+		$out[$k] = array($p[0], $p[1], $p[2] - $from);
+	}
+	return $out;
+}
+
+/** The same spine seen from its other end */
+function spine_reverse($points) {
+	$total = $points[count($points) - 1][2];
+	$out = array();
+	for ($i = count($points) - 1; $i >= 0; $i--) {
+		$out[] = array($points[$i][0], $points[$i][1], $total - $points[$i][2]);
+	}
+	return $out;
+}
+
 function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolours, $linkname, &$map, $q2_percent = 50, $unidirectional = false) {
 	$totaldistance = $curvepoints[count($curvepoints)-1][DISTANCE];
 

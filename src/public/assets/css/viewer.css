@@ -191,8 +191,11 @@
 .wmv-svg .wmv-clickable { cursor: pointer; }
 .wmv-dragging .wmv-svg .wmv-hoverable,
 .wmv-dragging .wmv-svg .wmv-clickable { cursor: grabbing; }
-.wmv-svg .wmv-hoverable:hover polygon:not(.wm-bwlabel-in):not(.wm-bwlabel-out) {
-    filter: brightness(1.15) drop-shadow(0 0 2px rgba(0, 0, 0, 0.45));
+/* Every item of the map (node, link, zone, legend, note...) shows its
+   outline with the same small soft glow under the pointer (as in the editor) */
+.wmv-svg { --wm-hover-glow: color-mix(in srgb, var(--wm-accent) 80%, transparent); }
+.wmv-svg g[data-kind]:hover:not(.wmv-focus):not(.wmv-found) {
+    filter: drop-shadow(0 0 1px var(--wm-hover-glow)) drop-shadow(0 0 3px var(--wm-hover-glow));
 }
 .wmv-svg g.wmv-found {
     animation: wmv-found 0.6s ease-in-out 4 alternate;

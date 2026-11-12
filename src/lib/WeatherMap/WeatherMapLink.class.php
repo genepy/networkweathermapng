@@ -454,6 +454,43 @@ class WeatherMapLink extends WeatherMapItem {
 		return $this->width;
 	}
 
+	/**
+	 * The part of the spine to draw so that each end of the link is hidden
+	 * under its node: the spine, the split position in % of that part and
+	 * the length cut at each end (OUT at node A, IN at node B). For a
+	 * one-way link, the tip of the arrow stops at the edge of node B.
+	 */
+	function hidden_ends(&$map, $points, $halfwidth, $oneway) {
+		$none = array($points, $this->splitpos, array(OUT => 0, IN => 0));
+		if (!is_array($points) || count($points) < 2 || !isset($points[0][2])) {
+			return $none;
+		}
+		$total = $points[count($points) - 1][2];
+		$split = $oneway ? $total : $total * max(0, min(100, (float) $this->splitpos)) / 100;
+		// the arrows keep some length of their own
+		$keep = min(4, $total / 4);
+
+		$node_a = isset($map->nodes[$this->a->name]) ? $map->nodes[$this->a->name] : null;
+		$node_b = isset($map->nodes[$this->b->name]) ? $map->nodes[$this->b->name] : null;
+		// the outline is one pixel outside the half width
+		$edge = (float) $halfwidth + 1;
+
+		$cut_a = $node_a ? link_end_cut($points, $node_a->cover_shapes(), $edge, $split - $keep) : 0;
+		// the tip of a one-way arrow is a point
+		$cut_b = $node_b ? link_end_cut(spine_reverse($points), $node_b->cover_shapes(), $oneway ? 0 : $edge, $oneway ? $total - $cut_a - 2 * $keep : $total - $split - $keep) : 0;
+
+		if ($cut_a <= 0 && $cut_b <= 0) {
+			return $none;
+		}
+		$length = $total - $cut_a - $cut_b;
+		if ($length < 2) {
+			return $none;
+		}
+		$splitpos = $oneway ? $this->splitpos : 100 * ($split - $cut_a) / $length;
+
+		return array(spine_cut($points, $cut_a, $total - $cut_b), $splitpos, array(OUT => $cut_a, IN => $cut_b));
+	}
+
 	function Draw($image, &$map) {
 		// Get the positions of the end-points
 		$x1 = $map->nodes[$this->a->name]->x;
@@ -562,29 +599,35 @@ class WeatherMapLink extends WeatherMapItem {
 			$link_out_width = (($link_out_width * $this->outpercent * 1.5 + 0.1) / 100) + 1;
 		}
 
+		$oneway = ($this->linkstyle == 'oneway');
+
 		// If there are no vias, treat this as a 2-point angled link, not curved
-		if (sizeof($this->vialist) == 0 || $this->viastyle == 'angled') {
-			// Calculate the spine points - the actual not a curve really, but we
-			// need to create the array, and calculate the distance bits, otherwise
-			// things like bwlabels won't know where to go.
+		$straight = (sizeof($this->vialist) == 0 || $this->viastyle == 'angled');
 
-			$this->curvepoints = calc_straight($xpoints, $ypoints);
+		// Calculate the spine points (for a straight link, not a curve
+		// really, but labels and comments need the distances along it).
+		// It runs from the centre of a node to the centre of the other.
+		$this->curvepoints = $straight ? calc_straight($xpoints, $ypoints) : calc_curve($xpoints, $ypoints);
 
-			// then draw the "curve" itself
-			draw_straight($image, $this->curvepoints,
+		// The link is drawn under its nodes and stops where its square end
+		// is still hidden under each of them, so no corner sticks out
+		// around a round badge or a small icon. The arrows still meet at
+		// the same place.
+		list($drawpoints, $splitpos, $cuts) = $this->hidden_ends($map, $this->curvepoints, max($link_in_width, $link_out_width), $oneway);
+
+		WeatherMapSvg::$cuts = $cuts;
+		if ($straight) {
+			draw_straight($image, $drawpoints,
 				array($link_in_width, $link_out_width), $outline_colour, array($gd_in_colour, $gd_out_colour),
-				$this->name, $map, $this->splitpos, ($this->linkstyle == 'oneway' ? true:false)
+				$this->name, $map, $splitpos, $oneway
 			);
-		} elseif ($this->viastyle == 'curved') {
-			// Calculate the spine points - the actual curve
-			$this->curvepoints = calc_curve($xpoints, $ypoints);
-
-			// then draw the curve itself
-			draw_curve($image, $this->curvepoints,
+		} else {
+			draw_curve($image, $drawpoints,
 				array($link_in_width, $link_out_width), $outline_colour, array($gd_in_colour, $gd_out_colour),
-				$this->name, $map, $this->splitpos, ($this->linkstyle == 'oneway' ? true:false)
+				$this->name, $map, $splitpos, $oneway
 			);
 		}
+		WeatherMapSvg::$cuts = null;
 
 		// SET link_flow 1: the paths the viewer moves its dots along
 		$svg = WeatherMapSvg::$active;
