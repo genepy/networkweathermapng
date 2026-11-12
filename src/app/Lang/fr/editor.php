@@ -281,4 +281,12 @@ return [
     'Saving…' => 'Enregistrement…',
     'Saved' => 'Enregistré',
     'Not saved' => 'Non enregistré',
+    // map items in the Add panel
+    'The title cannot be hidden: it shows the map name.' => 'Le titre ne peut pas être masqué : il affiche le nom de la carte.',
+    'Map items' => 'Éléments de la carte',
+    'Show the legend of the link colours by load, in the middle of the view' => 'Afficher la légende des couleurs des liens selon leur charge, au milieu de la vue',
+    'Show the legend of the link widths by speed, in the middle of the view' => 'Afficher la légende des épaisseurs des liens selon leur débit, au milieu de la vue',
+    'Link speed' => 'Débit des liens',
+    'Show the time the map was drawn, in the middle of the view' => 'Afficher l’heure à laquelle la carte a été dessinée, au milieu de la vue',
+    'Timestamp' => 'Horodatage',
 ];

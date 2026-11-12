@@ -210,6 +210,9 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .add-tile.active { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
 .add-tile kbd { font: inherit; font-size: 11px; font-weight: normal; color: var(--muted); border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; }
 .add-tile.active kbd { color: inherit; border-color: currentColor; }
+/* map items: icon above a short label, three to a row when the panel is wide enough */
+.add-items { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+.add-items .add-tile { flex-direction: column; gap: 2px; padding: 6px 2px; font-size: 12px; line-height: 1.2; text-align: center; }
 #palette-backgrounds { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 4px; }
 .pb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 4px; padding: 4px 0; }
 .pb-tile { padding: 2px; border: 1px solid var(--border); border-radius: 4px; background: #f4f6f9; cursor: pointer; aspect-ratio: 16 / 10; overflow: hidden; }

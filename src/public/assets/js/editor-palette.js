@@ -33,7 +33,7 @@
         var nodes = ed.selected('node').length, links = ed.selected('link').length, zones = ed.selected('zone').length;
         var items = ed.selected('node').concat(ed.selected('link'), ed.selected('zone'));
         return {
-            nodes: nodes, links: links, any: state.selection.size, items: items.length,
+            nodes: nodes, links: links, any: state.selection.size, items: items.length, furniture: ed.deletableFurniture(),
             objects: ed.alignCount(),
             grouped: items.some(function (i) { return i.group; }),
             locked: items.length > 0 && items.every(function (i) { return i.locked; }),
@@ -69,12 +69,15 @@
             { icon: '#i-copy', label: t('Duplicate'), shortcut: 'Ctrl+D', keys: 'clone', when: c.nodes > 0, sel: true, run: cmd('duplicate') },
             { icon: '#i-cut', label: t('Cut'), shortcut: 'Ctrl+X', when: c.nodes > 0, sel: true, run: cmd('cut') },
             { icon: '#i-copy', label: t('Copy'), shortcut: 'Ctrl+C', when: c.nodes > 0, sel: true, run: cmd('copy') },
-            { icon: '#i-trash', label: t('Delete'), shortcut: t('Del'), keys: 'remove', when: c.items > 0, sel: true, run: cmd('delete') },
+            { icon: '#i-trash', label: t('Delete'), shortcut: t('Del'), keys: 'remove', when: c.items > 0 || c.furniture > 0, sel: true, run: cmd('delete') },
             // adding
             { icon: 'rectangle-horizontal', label: t('Add a node'), keys: 'new insert', when: editing, run: cmd('add-node') },
             { icon: '#i-note', label: t('Add a note'), keys: 'new text', when: editing, run: cmd('note') },
             { icon: '#i-zone', label: t('Add a zone'), keys: 'new site rectangle', when: editing && c.nodes === 0, run: cmd('zone') },
             { icon: '#i-link', label: t('Draw a link'), shortcut: 'L', keys: 'link tool new', when: editing, run: cmd('tool-link') },
+            { icon: '#i-legend-load', label: t('Add the link load legend'), keys: 'new key colours scale', when: editing, run: cmd('add-load-legend') },
+            { icon: '#i-legend-speed', label: t('Add the link speed legend'), keys: 'new key width bandwidth', when: editing, run: cmd('add-speed-legend') },
+            { icon: 'clock', label: t('Add the timestamp'), keys: 'new time date updated', when: editing, run: cmd('add-timestamp') },
             { icon: '#i-paste', label: t('Paste'), shortcut: 'Ctrl+V', when: editing && ed.hasClip(), run: cmd('paste') },
             // selecting
             { icon: '#i-select', label: t('Select all'), shortcut: 'Ctrl+A', keys: 'everything', when: editing, run: cmd('select-all') },

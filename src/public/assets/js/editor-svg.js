@@ -1684,13 +1684,45 @@
         nodes = nodes.filter(function (n) { return !n.locked; });
         links = links.filter(function (l) { return !l.locked; });
         var zones = selected('zone'), ops = [];
+        var furniture = selectedFurniture().filter(function (f) { return f.kind !== 'title'; });
+        if (selectedFurniture().some(function (f) { return f.kind === 'title'; })) {
+            toast(t('The title is not deleted: it shows the map name.'), true);
+        }
         if (nodes.length || links.length) {
             ops.push({ op: 'delete', nodes: nodes.map(function (n) { return n.name; }), links: links.map(function (l) { return l.name; }) });
         }
         if (zones.length) {
             ops.push({ op: 'delete_zones', names: zones.map(function (z) { return z.name; }) });
         }
+        if (furniture.length) {
+            // legends and timestamps stay in the .conf, hidden; the map panel or the Add panel shows them again
+            ops.push({ op: 'hide_furniture', keys: furniture.map(function (f) { return key(f.kind, f.name); }) });
+        }
         send(ops, []);
+    }
+
+    /** Legends and timestamps that Delete can take off the map (not the title) */
+    function deletableFurniture() {
+        return selectedFurniture().filter(function (f) { return f.kind !== 'title'; }).length;
+    }
+
+    /**
+     * The Add panel's map items: the link load legend, the link speed
+     * legend and the timestamp. Shown in the middle of the view when hidden,
+     * then selected; selected only when already on the map.
+     */
+    function addFurniture(k) {
+        if (!state.model) { return; }
+        if (state.furniture.has(k)) {
+            state.selection = new Set([k]);
+            refresh();
+            toast(t('It is already on the map: it is now selected.'));
+            return;
+        }
+        var c = viewCentre(), m = state.model.map || {};
+        var x = Math.max(10, Math.min(snap(c.x), (m.width || 200) - 150));
+        var y = Math.max(20, Math.min(snap(c.y), (m.height || 200) - 40));
+        send([{ op: 'show_furniture', keys: [k], at: [x, y] }], [k]);
     }
 
     /** The map point in the middle of the view */
@@ -2371,7 +2403,7 @@
             if (furniture.length) { parts = parts.concat(furniturePanel(furniture)); }
             parts.push(h('div', { 'class': 'actions' }, [
                 h('button', { type: 'button', text: t('Duplicate'), title: 'Ctrl+D', onclick: duplicateSelection, disabled: !nodes.length }),
-                h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection, disabled: !nodes.length && !links.length && !zones.length })
+                h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection, disabled: !nodes.length && !links.length && !zones.length && !deletableFurniture() })
             ]));
         }
         inspector.replaceChildren.apply(inspector, parts.filter(Boolean));
@@ -2683,10 +2715,10 @@
     }
 
     function furnitureName(f) {
-        if (f.kind === 'legend') { return t('Legend :name', { name: f.name }); }
+        if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Link load legend') : t('Legend :name', { name: f.name }); }
         if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Timestamp'); }
         if (f.kind === 'title') { return t('Title'); }
-        return t('Link width legend');
+        return t('Link speed legend');
     }
 
     /** Legends, timestamps and title: where they are */
@@ -2706,8 +2738,9 @@
         }
         out.push(h('p', { 'class': 'help', text: t('Drag it on the map, or use the arrow keys. It lines up with the other objects while dragged.') }));
         // the text, font and colours of the legend, title or timestamp (editor-mapprops.js)
-        if (single && single.kind !== 'widthlegend' && window.WMEditor.mapSection) {
-            out.push(window.WMEditor.mapSection(single.kind === 'legend' ? 'legend' : single.kind === 'title' ? 'title' : 'timestamp', true));
+        var section = single && { legend: 'legend', title: 'title', timestamp: 'timestamp', widthlegend: 'widthlegend' }[single.kind];
+        if (section && window.WMEditor.mapSection) {
+            out.push(window.WMEditor.mapSection(section, true));
         }
         return out;
     }
@@ -3624,7 +3657,7 @@
             { label: t('Copy'), kbd: 'Ctrl+C', run: function () { copySelection(false); }, off: !nodes.length },
             { label: t('Paste'), kbd: 'Ctrl+V', run: function () { paste(at); }, off: !hasClip() },
             { label: t('Duplicate'), kbd: 'Ctrl+D', run: duplicateSelection, off: !nodes.length },
-            { label: t('Delete'), kbd: t('Del'), run: deleteSelection, off: !any, danger: true }
+            { label: t('Delete'), kbd: t('Del'), run: deleteSelection, off: !any && !deletableFurniture(), danger: true }
         ];
         if (all.length) {
             entries.push('-',
@@ -3950,6 +3983,9 @@
         'zoom-reset': zoomReset,
         'zoom-fit': zoomFit,
         'add-node': function () { addNodeHere(); },
+        'add-load-legend': function () { addFurniture('legend:DEFAULT'); },
+        'add-speed-legend': function () { addFurniture('widthlegend:'); },
+        'add-timestamp': function () { addFurniture('timestamp:'); },
         'shortcuts': openShortcuts,
         'delete': deleteSelection,
         'duplicate': duplicateSelection,
@@ -4182,7 +4218,7 @@
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
-        selected: selected, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector,
+        selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector,
         // for the contextual bar and the command palette (editor-selbar.js, editor-palette.js)
         selectionBox: selectionBox, toCanvas: toCanvas, hasClip: hasClip, menuOpen: menuOpen,
         alignCount: function () { return alignUnits(selectedObjects()).length; },

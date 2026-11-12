@@ -15,6 +15,8 @@
         <symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3l14 8-6 2-3 6z"/></symbol>
         <symbol id="i-link" viewBox="0 0 24 24"><circle cx="5" cy="17" r="2.5"/><circle cx="19" cy="7" r="2.5"/><path d="M7 15.5l10-7"/></symbol>
         <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v4h4M8 11h8M8 14h8M8 17h5"/></symbol>
+        <symbol id="i-legend-load" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h2M7 13h2M7 17h2M12 9h5M12 13h5M12 17h3"/></symbol>
+        <symbol id="i-legend-speed" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8.5h10"/><path d="M7 12.5h10" stroke-width="2.5"/><path d="M7 16.5h10" stroke-width="3.5"/></symbol>
         <symbol id="i-zone" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1" stroke-dasharray="3 2"/><path d="M6 9h6"/></symbol>
         <symbol id="i-align-left" viewBox="0 0 24 24"><path d="M4 3v18"/><rect x="8" y="6" width="12" height="4"/><rect x="8" y="14" width="7" height="4"/></symbol>
         <symbol id="i-align-hcenter" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="5" y="6" width="14" height="4"/><rect x="8" y="14" width="8" height="4"/></symbol>

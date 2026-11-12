@@ -47,7 +47,8 @@
         ['lock', 'front', 'back'].forEach(function (c) { show(bar.querySelector('[data-cmd="' + c + '"]'), items.length > 0); });
         show(bar.querySelector('[data-cmd="link-selection"]'), nodes >= 1 && nodes <= 2);
         show(bar.querySelector('[data-cmd="duplicate"]'), nodes >= 1);
-        show(bar.querySelector('[data-cmd="delete"]'), items.length > 0);
+        // legends and timestamps too: Delete hides them
+        show(bar.querySelector('[data-cmd="delete"]'), items.length > 0 || ed.deletableFurniture() > 0);
 
         var lock = bar.querySelector('[data-cmd="lock"]');
         var label = locked ? t('Unlock') : t('Lock');

@@ -162,6 +162,12 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <button type="button" class="add-tile" data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes (L)') ?>"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg><span><?= e__('Link') ?></span><kbd>L</kbd></button>
         </div>
         <p class="hint"><?= e__('Click to add in the middle of the view, or drag a node or an icon onto the map.') ?></p>
+        <h3><?= e__('Map items') ?></h3>
+        <div class="add-tiles add-items">
+            <button type="button" class="add-tile" data-cmd="add-load-legend" title="<?= e__('Show the legend of the link colours by load, in the middle of the view') ?>"><svg class="i" aria-hidden="true"><use href="#i-legend-load"/></svg><span><?= e__('Link load') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-speed-legend" title="<?= e__('Show the legend of the link widths by speed, in the middle of the view') ?>"><svg class="i" aria-hidden="true"><use href="#i-legend-speed"/></svg><span><?= e__('Link speed') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-timestamp" title="<?= e__('Show the time the map was drawn, in the middle of the view') ?>"><?= icon('clock', 'i') ?><span><?= e__('Timestamp') ?></span></button>
+        </div>
         <div id="palette-templates"></div>
         <div class="palette-head">
             <h3><?= e__('Icons') ?></h3>
