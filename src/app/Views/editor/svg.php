@@ -29,7 +29,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     <header id="appbar">
         <a class="tb-back" href="/" title="<?= e__('Back to the map list') ?>" aria-label="<?= e__('Back to the map list') ?>"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></a>
         <span class="tb-title" title="<?= $e($map['name']) ?>"><?= $e($map['name']) ?></span>
-        <span id="save-state" role="status" aria-live="polite" data-state="loading"><?= icon('circle-check', 'i') ?><span><?= e__('Loading…') ?></span></span>
+        <span id="save-state" role="status" aria-live="polite" data-state="loading"><?= icon('circle-check', 'i') ?><span class="save-label"><span class="save-text"><?= e__('Loading…') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Loading…') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Saving…') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Saved') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Not saved') ?></span></span></span>
         <span class="tb-sep" aria-hidden="true"></span>
         <?= $btn('undo', 'undo', __('Undo'), __('Undo (Ctrl+Z)'), 'disabled') ?>
         <?= $btn('redo', 'redo', __('Redo'), __('Redo (Ctrl+Shift+Z)'), 'disabled') ?>
@@ -185,7 +185,8 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <svg id="stage" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                    <path d="M10 0H0V10" fill="none" stroke="#0002" stroke-width="0.5"/>
+                    <path class="grid-halo" d="M10 0H0V10" fill="none"/>
+                    <path class="grid-line" d="M10 0H0V10" fill="none"/>
                 </pattern>
             </defs>
             <rect id="paper" x="0" y="0" width="0" height="0"/>

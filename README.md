@@ -336,7 +336,8 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 `.conf` file.
 
 - **Top bar**: back to the maps, the map name, whether the last change is
-  saved (*Saving…*, *Saved*, *Not saved*), undo and redo; in the middle the
+  saved (*Saving…*, *Saved*, *Not saved*, in a fixed width so the bar does
+  not move), undo and redo; in the middle the
   `Ctrl+K` search (see below); on the right *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
   *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab)
   and *View*, which opens the map view.
@@ -365,7 +366,9 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   Nodes, zones, legends (`KEYPOS`), timestamps (`TIMEPOS`) and the title
   (`TITLEPOS`) move alike. While dragging, pink guides show the edges and
   centres the selection lines up with, and it snaps to them (hold Alt not
-  to). *Grid* (G) snaps to 10 px. Links whose two ends move keep their shape.
+  to). *Grid* (G) snaps to 10 px; its lines are light on a dark background
+  colour, dark on a light one, and dark with a light halo over a picture or
+  a basemap. Links whose two ends move keep their shape.
   A zone moves alone: group it with its nodes to move them together.
   Hold Ctrl (Cmd on a Mac) while dragging to drop a copy of the selected
   nodes, and of the links between them, instead of moving them.

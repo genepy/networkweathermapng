@@ -13,7 +13,7 @@ Last updated: 2026-11-12.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| F1. Editor quick fixes | `claude/project-thread-4tpv2u` | *Saving…* width, legend label, grid contrast, SVG shape choices. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P5, P6, P11, P14 |
+| (none) | | |
 
 ## Paused
 
@@ -67,6 +67,7 @@ the open question P8.
 
 | PR | Item |
 |----|------|
+| #85 | F1. Editor quick fixes: the save state of the top bar keeps one width (every label laid out hidden in the same cell); the folded row of a Map properties section (*Legend* Shown / Hidden...) follows a change at once; the snap grid is light on a dark background colour, dark on a light one, dark with a light halo over a picture or basemap (`data-grid-tone` on `#stage`); the engine shapes in the icon picker (*(none)*, *Box*, *Rounded box*, *Circle*) are drawn in inline SVG. Test `EditorSaveStateTest` |
 | #83 | Map pictures (PNG, preview, thumbnails) render from the web root, so `fonts/` and `objects/` paths resolve under PHP-FPM, and the engine warnings are logged instead of written to the standard error, which broke the picture of the demo maps |
 | #82 | Viewer: deep in a basemap, links keep their width at 100 % (arrows carry `data-spine`, the viewer redraws them), the SVG covers only the view past 4096 px (flickering seams), *Play them back* link in Map settings > Recording |
 | #81 | Demo maps: three maps in `src/examples/maps` drawn from static values (*France sites* on a basemap with several sites per city, clusters and city inset, badges; *Datacenter fabric* leaf/spine with vector icons and zones; *ISP backbone* with transit and peering in the Night theme colours). `bin/demo-maps.php` (`App\Services\DemoMaps`) and the testbed seed add them once to a *Demo maps* group; test `DemoMapsTest` |

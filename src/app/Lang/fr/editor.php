@@ -278,4 +278,7 @@ return [
     'Duplicate (Ctrl+D)' => 'Dupliquer (Ctrl+D)',
     'Delete (Del)' => 'Supprimer (Suppr)',
     'More actions (Shift+F10)' => 'Plus d’actions (Maj+F10)',
+    'Saving…' => 'Enregistrement…',
+    'Saved' => 'Enregistré',
+    'Not saved' => 'Non enregistré',
 ];
