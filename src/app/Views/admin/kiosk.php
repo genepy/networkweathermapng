@@ -8,6 +8,8 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
         <h1><?= e__('Kiosk mode') ?></h1>
         <div class="set-head-actions">
             <a href="/cycle?fullscreen=1" class="wm-btn"><?= icon('tv') ?><?= e__('Open kiosk mode') ?></a>
+            <button type="reset" class="wm-btn"><?= e__('Cancel') ?></button>
+            <button type="submit" class="wm-btn wm-btn-primary"><?= e__('Save') ?></button>
         </div>
     </header>
     <div class="set-body">

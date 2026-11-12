@@ -10,6 +10,9 @@ namespace App\Core;
 class Config
 {
     private array $config = [];
+
+    /** values from the environment (or the defaults) that a setting stored in the app replaced */
+    private array $base = [];
     
     public function __construct()
     {
@@ -81,6 +84,27 @@ class Config
         $this->config[$key] = $value;
     }
     
+    /**
+     * Replaces a value with one stored in the application (Settings), and
+     * keeps the environment's value as the default shown next to it.
+     */
+    public function override(string $key, mixed $value): void
+    {
+        if (!array_key_exists($key, $this->base)) {
+            $this->base[$key] = $this->config[$key] ?? null;
+        }
+        $this->config[$key] = $value;
+    }
+
+    /** The value from the environment (or the built-in default), before any override. */
+    public function base(string $key, mixed $default = null): mixed
+    {
+        if (array_key_exists($key, $this->base)) {
+            return $this->base[$key] ?? $default;
+        }
+        return $this->config[$key] ?? $default;
+    }
+
     public function all(): array
     {
         return $this->config;

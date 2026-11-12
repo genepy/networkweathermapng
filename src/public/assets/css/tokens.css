@@ -66,6 +66,14 @@
     --wm-space-5: 24px;
     --wm-space-6: 32px;
 
+    /* Density of the admin pages: table rows, form fields, panel padding.
+       Tighter with a mouse; a finger gets the larger values (see below). */
+    --wm-row-pad-y: 7px;
+    --wm-cell-pad-x: 12px;
+    --wm-field-gap: 14px;
+    --wm-panel-pad: 20px;
+    --wm-panel-head-pad-y: 12px;
+
     /* Radii */
     --wm-radius-control: 6px;
     --wm-radius-bar: 10px;
@@ -176,6 +184,11 @@
 
 @media (prefers-reduced-motion: reduce) {
     :root { --wm-duration: 0ms; }
+}
+
+/* touch screens keep rows and fields easy to hit */
+@media (pointer: coarse) {
+    :root { --wm-row-pad-y: 11px; --wm-field-gap: 18px; }
 }
 
 /* Icons of the shared sprite (/assets/icons/ui.svg): stroke icons that take

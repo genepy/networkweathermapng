@@ -37,6 +37,8 @@ class Application
         
         // Initialize database
         $this->database = new Database($this->config);
+        // Maps & rendering settings stored in the app replace the .env values
+        \App\Services\RenderingSettings::fromDatabase($this->database, $this->config);
         $this->encryptStoredSecrets();
         
         // Register routes
@@ -181,6 +183,7 @@ class Application
         $this->router->post('/admin/users/edit/{id}', 'AdminController@editUser');
         $this->router->post('/admin/users/delete/{id}', 'AdminController@deleteUser');
         $this->router->get('/admin/settings', 'AdminController@settings');
+        $this->router->post('/admin/settings', 'AdminController@settings');
         $this->router->get('/admin/kiosk', 'AdminController@kiosk');
         $this->router->post('/admin/kiosk', 'AdminController@kiosk');
         $this->router->get('/admin/recording', 'AdminController@recording');

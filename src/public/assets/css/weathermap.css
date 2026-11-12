@@ -507,7 +507,7 @@ button.btn {
 }
 
 /* Migration */
-.migration-page .panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px 18px; margin-bottom: 16px; }
+.migration-page .panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px 16px; margin-bottom: 12px; }
 .migration-page .panel h2 { font-size: 16px; margin: 0 0 10px; }
 .migration-page .summary { display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .migration-page .warn { color: var(--warning-text); }

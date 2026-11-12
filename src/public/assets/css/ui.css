@@ -580,7 +580,7 @@
 
 /* Settings (step 6): side navigation in groups, each page a panel; the
    forms of data sources, users and groups open in the drawer */
-.settings-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--wm-space-6); align-items: start; max-width: 1200px; margin: 0 auto; }
+.settings-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--wm-space-5); align-items: start; max-width: 1200px; margin: 0 auto; }
 .settings-nav { position: sticky; top: var(--wm-space-4); padding-top: var(--wm-space-2); }
 .settings-nav-group + .settings-nav-group { margin-top: var(--wm-space-5); }
 .settings-nav-title { margin: 0 0 var(--wm-space-1); padding: 0 var(--wm-space-3); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--wm-text-muted); }
@@ -594,20 +594,22 @@
 .settings-count { margin-left: auto; color: var(--wm-text-muted); font-size: var(--wm-text-sm); font-weight: 400; font-variant-numeric: tabular-nums; }
 
 .set-panel { display: block; min-width: 0; background: var(--wm-surface); border: 1px solid var(--wm-border); border-radius: var(--wm-radius-card); box-shadow: var(--wm-shadow-1); }
-.set-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--wm-space-3); padding: var(--wm-space-4) var(--wm-space-5); border-bottom: 1px solid var(--wm-border); }
+.set-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--wm-space-3); padding: var(--wm-panel-head-pad-y) var(--wm-panel-pad); border-bottom: 1px solid var(--wm-border); }
 .set-head h1, .set-head h2 { display: flex; align-items: center; flex-wrap: wrap; gap: var(--wm-space-3); margin: 0; font-size: var(--wm-text-xl); font-weight: 600; }
 .set-head-actions { display: flex; gap: var(--wm-space-2); margin-left: auto; }
 .set-head .ms-close { margin-left: auto; }
 .set-head-actions .icon, .set-foot .icon, .set-col-actions .icon { width: 16px; height: 16px; }
 .set-badge { padding: 2px 10px; border-radius: 999px; background: var(--wm-accent-soft); color: var(--wm-text); font-size: var(--wm-text-sm); font-weight: 600; }
-.set-body { padding: var(--wm-space-5); }
+.set-body { padding: var(--wm-panel-pad); }
 .set-body > :first-child { margin-top: 0; }
 .set-body > :last-child { margin-bottom: 0; }
-.set-foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--wm-space-2); padding: var(--wm-space-4) var(--wm-space-5); border-top: 1px solid var(--wm-border); }
+.set-foot { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--wm-space-2); padding: var(--wm-panel-head-pad-y) var(--wm-panel-pad); border-top: 1px solid var(--wm-border); }
+/* Cancel / Save of a settings form stay in sight on a long page */
+form.set-panel > .set-foot { position: sticky; bottom: 0; z-index: 5; background: var(--wm-surface); border-radius: 0 0 var(--wm-radius-card) var(--wm-radius-card); }
 .set-foot .set-danger { margin-right: auto; border-color: transparent; background: none; color: var(--wm-danger-text); padding: 0 var(--wm-space-2); }
 .set-foot .set-danger:hover { background: var(--wm-danger-soft); }
 .set-help { margin: var(--wm-space-3) 0 0; color: var(--wm-text-muted); font-size: var(--wm-text-sm); line-height: 1.5; }
-.set-body-tail { margin: 0; padding: var(--wm-space-3) var(--wm-space-5) var(--wm-space-4); border-top: 1px solid var(--wm-border); }
+.set-body-tail { margin: 0; padding: var(--wm-space-3) var(--wm-panel-pad); border-top: 1px solid var(--wm-border); }
 .set-empty { text-align: center; color: var(--wm-text-muted); }
 .set-empty .icon { width: 32px; height: 32px; }
 .set-empty p { margin: var(--wm-space-2) 0 0; }
@@ -615,10 +617,14 @@
 .set-panel .form-card { max-width: 640px; padding: 0; border: 0; background: none; }
 .set-panel .data-table-container { overflow-x: auto; }
 .set-panel > .data-table-container .data-table th:first-child,
-.set-panel > .data-table-container .data-table td:first-child { padding-left: var(--wm-space-5); }
+.set-panel > .data-table-container .data-table td:first-child { padding-left: var(--wm-panel-pad); }
 .set-panel > .data-table-container .data-table th:last-child,
-.set-panel > .data-table-container .data-table td:last-child { padding-right: var(--wm-space-5); }
-.set-panel .empty-state { margin: var(--wm-space-4) var(--wm-space-5); }
+.set-panel > .data-table-container .data-table td:last-child { padding-right: var(--wm-panel-pad); }
+/* admin tables: tighter rows (density tokens) */
+.settings-main .data-table th, .settings-main .data-table td,
+.migration-page .data-table th, .migration-page .data-table td { padding: var(--wm-row-pad-y) var(--wm-cell-pad-x); }
+.settings-main .data-table th { font-size: 12px; letter-spacing: 0.02em; }
+.set-panel .empty-state { margin: var(--wm-space-4) var(--wm-panel-pad); }
 .set-col-actions { width: 1%; white-space: nowrap; text-align: right; }
 .set-row-name { font-weight: 600; color: var(--wm-text); }
 .set-values { display: grid; gap: var(--wm-space-3); margin: 0 0 var(--wm-space-4); }
@@ -628,15 +634,15 @@
 .set-values code { font-family: var(--wm-font-mono); font-size: var(--wm-text-sm); color: var(--wm-text-muted); }
 
 /* forms of the Settings pages */
-.set-form .form-group { margin-bottom: var(--wm-space-5); }
+.set-form .form-group { margin-bottom: var(--wm-field-gap); }
 .set-form .form-group > label:not(.ms-switch):not(.checkbox-label) { display: block; margin-bottom: var(--wm-space-1); font-weight: 500; }
 .set-form .form-group input:not([type="checkbox"]):not([type="radio"]),
 .set-form .form-group select,
-.set-form .form-group textarea { width: 100%; max-width: none; padding: 8px 10px; font: inherit; color: var(--wm-text); background: var(--wm-input-bg); border: 1px solid var(--wm-field-border); border-radius: var(--wm-radius-control); }
+.set-form .form-group textarea { width: 100%; max-width: none; padding: 6px 10px; font: inherit; color: var(--wm-text); background: var(--wm-input-bg); border: 1px solid var(--wm-field-border); border-radius: var(--wm-radius-control); }
 .set-form .form-group input:focus, .set-form .form-group select:focus { outline: 2px solid var(--wm-focus); outline-offset: 0; }
 .set-form .form-group input:disabled { opacity: 0.7; cursor: not-allowed; }
 .set-form .form-group small { display: block; margin-top: var(--wm-space-1); color: var(--wm-text-muted); font-size: var(--wm-text-sm); line-height: 1.45; }
-.set-form fieldset { margin: 0 0 var(--wm-space-5); padding: var(--wm-space-4); border: 1px solid var(--wm-border); border-radius: var(--wm-radius-control); }
+.set-form fieldset { margin: 0 0 var(--wm-field-gap); padding: var(--wm-space-3) var(--wm-space-4); border: 1px solid var(--wm-border); border-radius: var(--wm-radius-control); }
 .set-form legend { padding: 0 var(--wm-space-2); font-weight: 600; }
 .set-checklist-items { display: grid; gap: var(--wm-space-2); max-height: 220px; overflow-y: auto; }
 .set-checklist .checkbox-label { margin: 0; }
@@ -653,7 +659,7 @@
 
 /* data sources: one row per source, Test on the row */
 .ds-list { list-style: none; margin: 0; padding: 0; }
-.ds-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--wm-space-1) var(--wm-space-3); padding: var(--wm-space-4) var(--wm-space-5); border-bottom: 1px solid var(--wm-border); }
+.ds-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: var(--wm-space-1) var(--wm-space-3); padding: calc(var(--wm-row-pad-y) + 3px) var(--wm-panel-pad); border-bottom: 1px solid var(--wm-border); }
 .ds-row:last-child { border-bottom: 0; }
 .ds-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--wm-field-border); }
 .ds-dot.is-connected { background: var(--wm-success); }
@@ -688,6 +694,7 @@
 }
 @media (max-width: 640px) {
     .set-head, .set-body, .set-foot, .ds-row, .set-body-tail { padding-left: var(--wm-space-4); padding-right: var(--wm-space-4); }
+    form.set-panel > .set-foot { bottom: calc(57px + env(safe-area-inset-bottom)); }
     .set-panel > .data-table-container .data-table th:first-child,
     .set-panel > .data-table-container .data-table td:first-child { padding-left: var(--wm-space-4); }
     .set-col-wide, .set-col-actions { display: none; }
