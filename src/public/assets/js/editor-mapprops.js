@@ -423,7 +423,10 @@
                     field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
                     field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
                         ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
-                    ]))
+                    ])),
+                    field(t('Arrow heads'), choice('link_arrowstyle', p.link_arrowstyle, [
+                        ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
+                    ]), t('With no arrow heads, pill labels still show which way the traffic goes.'))
                 ];
             case 'scale':
                 return scalePane(m.scale).concat([

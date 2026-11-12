@@ -289,4 +289,6 @@ return [
     'Link speed' => 'Débit des liens',
     'Show the time the map was drawn, in the middle of the view' => 'Afficher l’heure à laquelle la carte a été dessinée, au milieu de la vue',
     'Timestamp' => 'Horodatage',
+    'Move the overlapping bandwidth labels of the selected links apart' => 'Écarter les étiquettes de débit superposées des liens sélectionnés',
+    'Move the selected nodes that overlap apart' => 'Écarter les nœuds sélectionnés qui se superposent',
 ];

@@ -2956,7 +2956,7 @@ class WeatherMap extends WeatherMapBase {
 					array('(LINK|GLOBAL)', "/^\s*HEIGHT\s+(\d+)\s*$/i", array('height'=>1)),
 					array('LINK', "/^\s*WIDTH\s+(\d+\.\d+)\s*$/i", array('width'=>1)),
 					array('LINK', "/^\s*WIDTH\s+(auto)\s*$/i", array('width'=>'#auto')),
-					array('LINK', '/^\s*ARROWSTYLE\s+(classic|compact)\s*$/i', array('arrowstyle'=>1)),
+					array('LINK', '/^\s*ARROWSTYLE\s+(classic|compact|flat)\s*$/i', array('arrowstyle'=>1)),
 					array('LINK', '/^\s*VIASTYLE\s+(curved|angled)\s*$/i', array('viastyle'=>1)),
 					array('LINK', '/^\s*INCOMMENT\s+(.*)\s*$/i', array('comments[IN]'=>1)),
 					array('LINK', '/^\s*OUTCOMMENT\s+(.*)\s*$/i', array('comments[OUT]'=>1)),

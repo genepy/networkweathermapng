@@ -641,6 +641,16 @@ class WeatherMapLink extends WeatherMapItem {
 		$q3_x -= $ndx_in;
 		$q3_y -= $ndy_in;
 
+		// SET bwlabel_offset_out / bwlabel_offset_in: pixels across the
+		// link, to the left of A to B when positive, so labels of links
+		// that run side by side can be moved off each other
+		$shift_out = (float) $this->get_hint('bwlabel_offset_out');
+		$shift_in = (float) $this->get_hint('bwlabel_offset_in');
+		$q1_x += $shift_out * cos($rad_out);
+		$q1_y -= $shift_out * sin($rad_out);
+		$q3_x += $shift_in * cos($rad_in);
+		$q3_y -= $shift_in * sin($rad_in);
+
 		# imageline($image, $q1_x+20*cos(deg2rad($q1_angle)),$q1_y-20*sin(deg2rad($q1_angle)), $q1_x-20*cos(deg2rad($q1_angle)), $q1_y+20*sin(deg2rad($q1_angle)), $this->owner->selected );
 		# imageline($image, $q3_x+20*cos(deg2rad($q3_angle)),$q3_y-20*sin(deg2rad($q3_angle)), $q3_x-20*cos(deg2rad($q3_angle)), $q3_y+20*sin(deg2rad($q3_angle)), $this->owner->selected );
 

@@ -47,6 +47,9 @@
         ['lock', 'front', 'back'].forEach(function (c) { show(bar.querySelector('[data-cmd="' + c + '"]'), items.length > 0); });
         show(bar.querySelector('[data-cmd="link-selection"]'), nodes >= 1 && nodes <= 2);
         show(bar.querySelector('[data-cmd="duplicate"]'), nodes >= 1);
+        // tidy up the selection: labels of the selected links, nodes on top of each other
+        show(bar.querySelector('[data-cmd="untangle"]'), ed.selected('link').length > 0);
+        show(bar.querySelector('[data-cmd="spread"]'), ed.selected('node').some(function (n) { return state.overlaps.has(n.name); }));
         // legends and timestamps too: Delete hides them
         show(bar.querySelector('[data-cmd="delete"]'), items.length > 0 || ed.deletableFurniture() > 0);
 

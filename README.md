@@ -386,13 +386,26 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   and ends the selected links on the facing sides of their nodes, so they run
   straight, and spreads the links between the same two nodes
   (`NODES a:24:0 b:-24:0`); *Untangle labels* moves bandwidth labels that
-  overlap (`BWLABELPOS`).
+  overlap another label or a node, as they are drawn (`BWLABELPOS`, and a
+  few pixels to one side with `SET bwlabel_offset_in` / `bwlabel_offset_out`):
+  only the labels of the selected links when links are selected (button in
+  the selection bar, the right-click menu or Ctrl+K), every label otherwise.
+  Each label slides along its own half of the link or steps aside; several
+  passes let the labels make room for each other, and the labels that found
+  no free place are named. *Spread apart* in the selection bar does the same
+  for the selected nodes that overlap.
 - **Link data**: *Bandwidth* sets both directions; *Out, if different* sets
   the outbound one alone (`BANDWIDTH 1G 100M`). *Info URL* is the page a
   click opens (`INFOURL`) and *Hover graph* the picture shown on hover
   (`OVERLIBGRAPH`, addresses separated by spaces); a node has both too.
-- **Labels**: drag a bandwidth label of the selected link along it
-  (`BWLABELPOS`), or the label of a selected node with an icon away from the
+- **Labels**: drag a bandwidth label with the mouse, no need to select the
+  link first (the pointer turns into a move cursor over it): along the link
+  (`BWLABELPOS`) or up to 60 px to one side (`SET bwlabel_offset_in N`,
+  `SET bwlabel_offset_out N`, positive to the left going from A to B).
+  *Labels* in the link panel shows the load in %, the traffic, the raw
+  value or no label for the selected links (`BWLABEL percent`, `bits`,
+  `unformatted`, `none`), and *Label* in *Link defaults* for every link.
+  Or drag the label of a selected node with an icon away from the
   icon (`LABELOFFSET`). *Label position* in the node panel puts the label
   above, at the top, in the centre, at the bottom or below the icon in one
   click, for every selected node (`SET editor_label_position N`, `N60`, `C`,
@@ -456,6 +469,11 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   link with a small arrow toward where the traffic goes (`pill`), in the
   PNG and the SVG. The built-in fonts cannot turn in the PNG: pick a
   TrueType font for labels on links that are not level.
+- **Links without arrow heads**: *Arrow heads* in the link panel (or in
+  *Link defaults* for every link) draws the classic heads, small ones
+  (`ARROWSTYLE compact`) or none (`ARROWSTYLE flat`): each half of the link
+  ends square in the middle. With pill labels, the arrow on the label still
+  shows which way the traffic goes, as on the Nine IX maps.
 - **Badge nodes**: *Look* in the node panel draws the selected nodes as
   round badges (`SET node_style badge`): their icon, or the initials of
   their label, on a disc in the label background colour with a ring in the
