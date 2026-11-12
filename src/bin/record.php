@@ -46,6 +46,7 @@ chdir(PUBLIC_ROOT);
 $once = in_array('--once', $argv, true);
 $config = new Config();
 $database = new Database($config);
+\App\Services\RenderingSettings::fromDatabase($database, $config);
 $maps = new MapService($database, $config);
 $recording = new RecordingService($database, $config);
 

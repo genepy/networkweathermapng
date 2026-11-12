@@ -22,13 +22,16 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
 <div class="admin-container migration-page">
     <div class="page-header">
         <?= breadcrumb([[__('Settings'), '/admin'], [__('Import maps'), '/admin/migration'], [$meta['name']]]) ?>
-        <?php if ($map): ?>
         <div class="page-actions">
+            <?php if ($map): ?>
             <a href="/editor/edit/<?= (int) $map['id'] ?>" class="btn"><?= e__('Edit map') ?></a>
             <a href="/admin/migration/<?= $meta['id'] ?>/rollback" data-method="post" class="btn"
                data-confirm="<?= e__('Put the uploaded file back in place of the converted map?') ?>"><?= e__('Restore original') ?></a>
+            <?php endif; ?>
+            <?php /* the same buttons as at the bottom of the form: the page can be very long */ ?>
+            <button type="submit" form="migration-form" name="action" value="compare" class="btn"><?= e__('Compare old and new') ?></button>
+            <button type="submit" form="migration-form" name="action" value="apply" class="btn btn-primary"><?= $map ? e__('Convert again') : e__('Create the map') ?></button>
         </div>
-        <?php endif; ?>
     </div>
 
     <section class="panel summary">
@@ -63,7 +66,7 @@ $missing = count(array_filter($report['images'], fn ($i) => $i['status'] === 'mi
     </section>
     <?php endif; ?>
 
-    <form method="post" action="/admin/migration/<?= $meta['id'] ?>" class="migration-form">
+    <form method="post" action="/admin/migration/<?= $meta['id'] ?>" class="migration-form" id="migration-form">
         <section class="panel">
             <h2><?= e__('Map') ?></h2>
             <div class="form-row">

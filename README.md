@@ -114,8 +114,8 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `AUTH_ENABLED` | Enable authentication | `true` |
 | `ADMIN_USER` | Default admin username | `admin` |
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
-| `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`) | `png` |
-| `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds | `300` |
+| `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`), until one is chosen in Settings > Maps & rendering | `png` |
+| `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds (10 to 86400), until one is chosen in Settings > Maps & rendering | `300` |
 | `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the user menu | browser language |
 
 ### Data sources (Zabbix and more)
@@ -575,8 +575,9 @@ with a counter next to the pages that list things:
 
 - *Monitoring*: **Data sources** (one row per source with its state, *Test*
   on the row, ⋯ to edit or delete), **Import maps**.
-- *Display*: **Maps & rendering** (image format and refresh interval, read
-  from `.env`), **Kiosk**, **Recording**, **Time zone**.
+- *Display*: **Maps & rendering** (image format and refresh interval, saved
+  in the app; `.env` gives the defaults), **Kiosk**, **Recording**,
+  **Time zone**.
 - *Access*: **Users**, **Groups**.
 - *System*: **Database check**.
 

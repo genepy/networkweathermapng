@@ -10,6 +10,7 @@ namespace App\Controllers;
 use App\Services\GroupService;
 use App\Services\KioskService;
 use App\Services\RecordingService;
+use App\Services\RenderingSettings;
 use App\Services\TimezoneService;
 use App\Services\DataSourceService;
 
@@ -415,18 +416,31 @@ class AdminController extends BaseController
     }
     
     /**
-     * Maps & rendering: the image format and the refresh
-     * interval, read from the environment (.env), shown read only.
+     * Maps & rendering: the image format and the refresh interval of the
+     * maps, stored in the app; the environment (.env) gives the defaults.
      */
     public function settings(array $params): void
     {
         $this->requireAdmin();
 
+        $rendering = new RenderingSettings($this->database, $this->config);
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $invalid = $rendering->save([
+                'MAP_OUTPUT_FORMAT' => $_POST['format'] ?? '',
+                'MAP_REFRESH_INTERVAL' => $_POST['refresh'] ?? '',
+            ]);
+            if ($invalid) {
+                $this->flash('error', __('Some values are not valid and were not saved.'));
+            } else {
+                $this->flash('success', __('Maps & rendering settings saved'));
+            }
+            $this->redirect('/admin/settings');
+            return;
+        }
+
         $this->renderSettings('admin/settings', [
-            'values' => [
-                'MAP_OUTPUT_FORMAT' => (string) $this->config->get('MAP_OUTPUT_FORMAT', 'png'),
-                'MAP_REFRESH_INTERVAL' => (string) $this->config->get('MAP_REFRESH_INTERVAL', '300'),
-            ],
+            'settings' => $rendering->describe(),
             'title' => __('Maps & rendering'),
         ]);
     }

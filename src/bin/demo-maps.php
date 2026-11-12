@@ -38,6 +38,7 @@ use App\Services\MapService;
 
 $config = new Config();
 $database = new Database($config);
+\App\Services\RenderingSettings::fromDatabase($database, $config);
 $demos = new DemoMaps(new MapService($database, $config), new GroupService($database));
 
 if (in_array('--list', $argv, true)) {
