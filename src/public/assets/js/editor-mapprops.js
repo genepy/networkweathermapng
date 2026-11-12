@@ -139,8 +139,8 @@
     }
 
     var SECTIONS = [
-        ['general', t('General')], ['title', t('Title')], ['legend', t('Legend')], ['scale', t('Link colours')],
-        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
+        ['general', t('General')], ['title', t('Title')], ['legend', t('Link load legend')], ['scale', t('Link colours')],
+        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
     ];
 
     /**
@@ -395,6 +395,7 @@
                 ];
             case 'timestamp':
                 return [
+                    check('stamp_shown', p.stamp_shown, t('Show the timestamp on the map')),
                     field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
                         t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
                     field(t('Style'), choice('stamp_style', p.stamp_style, [
@@ -402,6 +403,13 @@
                     ])),
                     field(t('Font'), fontSelect('time_font', p.time_font)),
                     field(t('Colour'), colour('time_colour', p.time_colour, false))
+                ];
+            case 'widthlegend':
+                return [
+                    h('p', { 'class': 'mapprops-explain', text: t('The link speed legend shows how wide a link is drawn for each bandwidth, for links whose width is auto (Link defaults).') }),
+                    check('width_legend_shown', p.width_legend_shown, t('Show the link speed legend on the map')),
+                    field(t('Legend text'), h('input', { name: 'width_legend_title', value: p.width_legend_title, autocomplete: 'off' })),
+                    h('span', { 'class': 'hint', text: t('It uses the font and the colours of the link load legend.') })
                 ];
             case 'links':
                 return [
@@ -444,7 +452,8 @@
             case 'title': return ed.fontName(p.title_font);
             case 'legend': return p.key_shown ? t('Shown') : t('Hidden');
             case 'scale': return t(':n steps', { n: (m.scale || []).length });
-            case 'timestamp': return p.stamp_text;
+            case 'timestamp': return p.stamp_shown === false ? t('Hidden') : p.stamp_text;
+            case 'widthlegend': return p.width_legend_shown ? t('Shown') : t('Hidden');
             case 'links': return p.link_bandwidth;
             case 'basemap':
                 if (!p.basemap) { return t('None'); }
@@ -455,8 +464,8 @@
     }
 
     var SECTIONS = [
-        ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Legend')], ['scale', t('Link colours')],
-        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
+        ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Link load legend')], ['scale', t('Link colours')],
+        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
     ];
 
     function loadFolds() {

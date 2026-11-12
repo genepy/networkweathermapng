@@ -2554,6 +2554,11 @@ class WeatherMap extends WeatherMapBase {
 				break;
 		}
 
+		// a negative position hides the timestamp (the editor keeps its place as -x - 1, -y - 1)
+		if (($pos_x < 0) || ($pos_y < 0)) {
+			return;
+		}
+
 		list($boxwidth, $boxheight)=$this->myimagestringsize($font, $stamp);
 
 		$x = $this->width - $boxwidth;

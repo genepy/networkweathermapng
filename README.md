@@ -168,7 +168,7 @@ LINK router1-switch1
 | `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 10 px for 200G, 12 px for 400G, 15 px for 800G |
 | `SET link_width_table 1G:2 10G:4 100G:9` | The map's own speed → width table for `WIDTH auto` |
 | `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium, or Zabbix for links picked in the editor: the `net.if.speed[...]` item of the SNMP templates, or the sysfs speed of the Linux agent); an aggregated link adds up its members. Falls back to 1G when unknown |
-| `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge) |
+| `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge); no hint, no legend |
 | `SET width_legend_title Speed` | Title of that legend (default `Link speed`) |
 | `KEYSTYLE DEFAULT modern 240` | Legend as a rounded card with a colour bar 240 px long and the 0 to 100% marks under it (other styles: `classic`, `horizontal`, `vertical`, `inverted`, `tags`) |
 | `SET timestamp_style pill` | Draws the timestamps on a rounded label in the legend colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`) |
@@ -402,15 +402,29 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   *Link* (L). Below them come the node templates of the map, the icon
   library (themes that fold, a search; click an icon to add a node with it,
   or drag it) and *Backgrounds* (click one to set the background of the map,
-  one undo step). Ctrl+click on an empty spot also adds a node.
+  one undo step). Ctrl+click on an empty spot also adds a node. *Map items*
+  puts the *Link load* legend (`KEYPOS`), the *Link speed* legend
+  (`SET width_legend`) or the *Timestamp* (`TIMEPOS`) in the middle of the
+  view, or selects it when it is already on the map.
+- **Delete**: Delete (or Backspace, the *Delete* button of the selection
+  bar, of the right panel or of the context menu) removes the selection. A
+  legend or a timestamp is hidden rather than removed: it stays in the
+  `.conf` at a negative position (`KEYPOS DEFAULT -681 -21`,
+  `TIMEPOS -11 -491 ...`, kept as -x - 1, -y - 1 so it comes back where it
+  was) and the link speed legend loses its `SET width_legend`. Ctrl+Z
+  undoes it; the *Add* panel or the box of its section in the map panel
+  shows it again. The title stays: it shows the map name.
 - **Edit**: the right panel changes every selected item at once.
 - **Map properties**: with nothing selected, the right panel shows the map:
   name, size, background, then sections that fold, each with its value on
-  its row (*Background colour and theme*, *Title*, *Legend*, *Link colours*,
-  *Timestamp*, *Link defaults*, *Basemap*, *Fonts*). A field is saved when
+  its row (*Background colour and theme*, *Title*, *Link load legend*,
+  *Link colours*, *Link speed legend*, *Timestamp*, *Link defaults*,
+  *Basemap*, *Fonts*). *Link load legend*, *Link speed legend* and
+  *Timestamp* each have a box that shows or hides the item on the map. A field is saved when
   it changes, as one step Ctrl+Z undoes; the colour scale is saved with its
   *Apply the colours* button. The browser remembers which sections are
-  open. A selected legend, title or timestamp shows its own section. The
+  open. A selected legend, title, timestamp or link speed legend shows its
+  own section. The
   width of all the links of a map is set in *Link defaults* (a number of
   pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).
 - **Link colours**: the *Link colours* section of *Map properties* edits the

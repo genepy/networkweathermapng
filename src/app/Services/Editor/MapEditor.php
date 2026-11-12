@@ -142,6 +142,8 @@ class MapEditor
 
             $created = match ($op['op']) {
                 'move' => $this->move($map, $op),
+                'show_furniture' => $this->showFurniture($map, $op),
+                'hide_furniture' => $this->hideFurniture($map, (array) ($op['keys'] ?? [])),
                 'set_node' => $this->setNodes($map, $op),
                 'set_link' => $this->setLinks($map, $op),
                 'rename_node' => $this->renameNode($map, (string) ($op['name'] ?? ''), (string) ($op['to'] ?? '')),
@@ -270,6 +272,97 @@ class MapEditor
         }
 
         throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
+    }
+
+    /**
+     * {op: show_furniture, keys: [...], at?: [x, y]} - put legends,
+     * timestamps or the width legend back on the map: at `at` (the position
+     * their keyword takes, as for move) or where they were before.
+     */
+    private function showFurniture(\WeatherMap $map, array $op): void
+    {
+        $at = isset($op['at']) ? $this->point($op['at']) : null;
+        foreach ((array) ($op['keys'] ?? []) as $key) {
+            $this->setFurnitureShown($map, (string) $key, true);
+            if ($at !== null) {
+                $this->moveFurniture($map, (string) $key, $at);
+            }
+        }
+    }
+
+    /**
+     * {op: hide_furniture, keys: [...]} - the Delete of the editor for
+     * legends, timestamps and the width legend: they stay in the .conf,
+     * hidden (a negative position, or no SET width_legend).
+     */
+    private function hideFurniture(\WeatherMap $map, array $keys): void
+    {
+        foreach ($keys as $key) {
+            $this->setFurnitureShown($map, (string) $key, false);
+        }
+    }
+
+    /**
+     * Show or hide a piece of furniture by its key ("legend:DEFAULT",
+     * "timestamp:", "timestamp:MIN", "timestamp:MAX", "widthlegend:").
+     * Legends and timestamps keep their place while hidden as (-x - 1,
+     * -y - 1), so showing them puts them back where they were.
+     */
+    private function setFurnitureShown(\WeatherMap $map, string $key, bool $shown): void
+    {
+        [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
+
+        switch ($kind) {
+            case 'legend':
+                if (!isset($map->keyx[$name]) && !isset($map->colours[$name])) {
+                    throw new InvalidArgumentException(__('Unknown legend: :name', ['name' => $name]));
+                }
+                [$map->keyx[$name], $map->keyy[$name]] = self::legendPosition($shown, $map->keyx[$name] ?? -1, $map->keyy[$name] ?? -1);
+                $map->keytext[$name] ??= 'Traffic Load';
+                $map->keystyle[$name] ??= 'classic';
+                $map->keysize[$name] ??= 400;
+                return;
+
+            case 'timestamp':
+                $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
+                if ($prefix === null) {
+                    throw new InvalidArgumentException(__('Unknown timestamp: :name', ['name' => $name]));
+                }
+                [$x, $y] = [(int) $map->{$prefix . 'timex'}, (int) $map->{$prefix . 'timey'}];
+                $hidden = $x < 0 || $y < 0;
+                if ($shown && $hidden) {
+                    [$x, $y] = [$x < 0 ? -$x - 1 : $x, $y < 0 ? -$y - 1 : $y];
+                    if ($x > $map->width || $y > $map->height) {
+                        // never placed (the -10000 of MINTIMEPOS and MAXTIMEPOS): bottom left
+                        [$x, $y] = $prefix === '' ? [0, 0] : [10, max(1, $map->height - ($prefix === 'min' ? 24 : 8))];
+                    }
+                } elseif (!$shown && !$hidden) {
+                    [$x, $y] = [-$x - 1, -$y - 1];
+                }
+                $map->{$prefix . 'timex'} = $x;
+                $map->{$prefix . 'timey'} = $y;
+                return;
+
+            case 'widthlegend':
+                if (!$shown) {
+                    unset($map->hints['width_legend']);
+                } elseif (!self::widthLegendShown($map)) {
+                    // bottom left corner (negative counts from the far edge)
+                    $map->add_hint('width_legend', '10 -10');
+                }
+                return;
+
+            case 'title':
+                throw new InvalidArgumentException(__('The title cannot be hidden: it shows the map name.'));
+        }
+
+        throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
+    }
+
+    /** SET width_legend holds a position, so the engine draws the legend */
+    private static function widthLegendShown(\WeatherMap $map): bool
+    {
+        return (bool) preg_match('/^-?\d+[\s,]+-?\d+$/', trim((string) $map->get_hint('width_legend')));
     }
 
     /** {op: add_zone, x, y, width?, height?, label?, name?} */
@@ -1138,6 +1231,18 @@ class MapEditor
                     $map->keyy['DEFAULT'] ?? -1
                 );
                 $map->keytext['DEFAULT'] ??= 'Traffic Load';
+            } elseif ($key === 'stamp_shown') {
+                $this->setFurnitureShown($map, 'timestamp:', (bool) $value);
+            } elseif ($key === 'width_legend_shown') {
+                $this->setFurnitureShown($map, 'widthlegend:', (bool) $value);
+            } elseif ($key === 'width_legend_title') {
+                // drawn as "Link speed" when not set
+                $title = $this->text($value);
+                if ($title === '' || $title === 'Link speed') {
+                    unset($map->hints['width_legend_title']);
+                } else {
+                    $map->add_hint('width_legend_title', $title);
+                }
             } elseif ($key === 'stamp_text') {
                 $map->stamptext = $this->text($value);
             } elseif ($key === 'stamp_style') {
@@ -1372,7 +1477,10 @@ class MapEditor
             'key_text_colour' => $colour('KEYTEXT'),
             'key_bg_colour' => $colour('KEYBG'),
             'key_outline_colour' => $colour('KEYOUTLINE'),
+            'stamp_shown' => (int) $map->timex >= 0 && (int) $map->timey >= 0,
             'stamp_text' => (string) $map->stamptext,
+            'width_legend_shown' => self::widthLegendShown($map),
+            'width_legend_title' => (string) ($map->get_hint('width_legend_title') ?: 'Link speed'),
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
             'link_glow' => (string) $map->get_hint('link_glow') === '1',

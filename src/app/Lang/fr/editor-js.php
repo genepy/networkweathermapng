@@ -263,7 +263,6 @@ return [
     'Oldest data time' => 'Heure des données les plus anciennes',
     'Newest data time' => 'Heure des données les plus récentes',
     'Timestamp' => 'Horodatage',
-    'Link width legend' => 'Légende des épaisseurs de lien',
     ':n map items' => ':n éléments de la carte',
     'Drag it on the map, or use the arrow keys. It lines up with the other objects while dragged.' => 'Faites-le glisser sur la carte, ou utilisez les flèches. Il s’aligne sur les autres objets pendant le glisser.',
 
@@ -284,7 +283,6 @@ return [
     'Icon :name removed' => 'Icône :name retirée',
     ':n icon(s) added' => ':n icône(s) ajoutée(s)',
     'General' => 'Général',
-    'Legend' => 'Légende',
     'Link defaults' => 'Liens par défaut',
     'None' => 'Aucune',
     'Background colour' => 'Couleur de fond',
@@ -494,4 +492,16 @@ return [
     'Use the bar next to the selection' => 'Utiliser la barre près de la sélection',
     'Change the theme' => 'Changer de thème',
     'Keyboard shortcuts' => 'Raccourcis clavier',
+    // map items (legends and timestamp)
+    'Link load legend' => 'Légende de charge des liens',
+    'Link speed legend' => 'Légende de débit des liens',
+    'Show the timestamp on the map' => 'Afficher l’horodatage sur la carte',
+    'The link speed legend shows how wide a link is drawn for each bandwidth, for links whose width is auto (Link defaults).' => 'La légende de débit montre l’épaisseur d’un lien selon sa bande passante, pour les liens dont l’épaisseur est auto (Liens par défaut).',
+    'Show the link speed legend on the map' => 'Afficher la légende de débit sur la carte',
+    'It uses the font and the colours of the link load legend.' => 'Elle reprend la police et les couleurs de la légende de charge.',
+    'Add the link load legend' => 'Ajouter la légende de charge des liens',
+    'Add the link speed legend' => 'Ajouter la légende de débit des liens',
+    'Add the timestamp' => 'Ajouter l’horodatage',
+    'The title is not deleted: it shows the map name.' => 'Le titre n’est pas supprimé : il affiche le nom de la carte.',
+    'It is already on the map: it is now selected.' => 'Il est déjà sur la carte : il est maintenant sélectionné.',
 ];

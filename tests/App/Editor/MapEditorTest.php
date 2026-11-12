@@ -880,6 +880,74 @@ final class MapEditorTest extends TestCase
         $this->assertEquals([10, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
     }
 
+    public function testDeleteHidesLegendsAndTimestampAndShowPutsThemBack(): void
+    {
+        $this->editor->apply([['op' => 'move', 'furniture' => ['widthlegend:' => [30, 300], 'timestamp:' => [20, 470]]]]);
+        $this->assertContains('widthlegend', array_column($this->drawnModel()['furniture'], 'kind'));
+
+        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['legend:DEFAULT', 'timestamp:', 'widthlegend:']]]);
+        $model = $this->drawnModel();
+        $this->assertSame(['title'], array_column($model['furniture'], 'kind'), 'only the title is still drawn');
+        $props = $model['map']['props'];
+        $this->assertFalse($props['key_shown']);
+        $this->assertFalse($props['stamp_shown']);
+        $this->assertFalse($props['width_legend_shown']);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringContainsString('TIMEPOS -21 -471 ', $conf, 'kept in the .conf, hidden');
+        $this->assertStringNotContainsString('width_legend ', $conf);
+
+        // shown again where they were, the width legend in the bottom left corner
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['legend:DEFAULT', 'timestamp:', 'widthlegend:']]]);
+        $map = $this->editor->load();
+        $this->assertEquals([680, 20], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
+        $this->assertEquals([20, 470], [$map->timex, $map->timey]);
+        $this->assertSame('10 -10', $map->get_hint('width_legend'));
+
+        // or at a given place (the Add panel)
+        $this->editor->apply([
+            ['op' => 'hide_furniture', 'keys' => ['widthlegend:', 'timestamp:']],
+            ['op' => 'show_furniture', 'keys' => ['widthlegend:'], 'at' => [200, 150]],
+            ['op' => 'set_map', 'props' => ['stamp_shown' => true]],
+        ]);
+        $map = $this->editor->load();
+        $this->assertSame('200 150', $map->get_hint('width_legend'));
+        $this->assertEquals([20, 470], [$map->timex, $map->timey]);
+    }
+
+    public function testATimestampAtTheDefaultCornerComesBackThere(): void
+    {
+        file_put_contents($this->file, preg_replace('/^TIMEPOS .*$/m', '', (string) file_get_contents($this->file)));
+        $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_shown' => false]]]);
+        $map = $this->editor->load();
+        $this->assertEquals([-1, -1], [$map->timex, $map->timey]);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_shown' => true]]]);
+        $map = $this->editor->load();
+        $this->assertEquals([0, 0], [$map->timex, $map->timey]);
+        $this->assertStringNotContainsString('TIMEPOS', (string) file_get_contents($this->file));
+    }
+
+    public function testTheWidthLegendTitleAndTheTitleCannotBeHidden(): void
+    {
+        $this->editor->apply([['op' => 'set_map', 'props' => ['width_legend_shown' => true, 'width_legend_title' => 'Capacity']]]);
+        $props = $this->drawnModel()['map']['props'];
+        $this->assertTrue($props['width_legend_shown']);
+        $this->assertSame('Capacity', $props['width_legend_title']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['width_legend_title' => '']]]);
+        $this->assertSame('Link speed', $this->drawnModel()['map']['props']['width_legend_title']);
+        $this->assertStringNotContainsString('width_legend_title', (string) file_get_contents($this->file));
+
+        foreach (['title:', 'legend:NOPE', 'timestamp:LATER', 'clock:'] as $key) {
+            try {
+                $this->editor->apply([['op' => 'hide_furniture', 'keys' => [$key]]]);
+                $this->fail('accepted ' . $key);
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
     public function testAnEmptyTemplateIsKeptOnSave(): void
     {
         $conf = (string) file_get_contents($this->file);
