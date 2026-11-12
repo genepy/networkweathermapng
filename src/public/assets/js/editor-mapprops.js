@@ -469,6 +469,19 @@
         try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch (e) { /* this page only */ }
     }
 
+    /**
+     * Writes the folded row of a section from `props` (the saved ones when
+     * left out). The panel is not rebuilt while one of its fields has the
+     * focus, so the row is kept in step here: at once with the new value,
+     * then with what the server saved.
+     */
+    function showSummary(box, props) {
+        var m = ed.state.model && ed.state.model.map;
+        var out = box.querySelector('.map-sec-value');
+        if (!m || !out) { return; }
+        out.textContent = summary(box.dataset.section, props || m.props || {}, m) || '';
+    }
+
     /** Saves a named field of a section when it changes */
     function listen(box) {
         box.addEventListener('change', function (evt) {
@@ -483,7 +496,9 @@
             }
             var props = {};
             props[name] = value;
-            sendProps(props);
+            var m = ed.state.model && ed.state.model.map;
+            showSummary(box, Object.assign({}, m && m.props, props));
+            sendProps(props).then(function () { showSummary(box); });
         });
     }
 

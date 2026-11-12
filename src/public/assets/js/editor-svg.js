@@ -178,6 +178,7 @@
 
         var w = d.model.map.width, h = d.model.map.height;
         [paper, gridLayer].forEach(function (r) { r.setAttribute('width', w); r.setAttribute('height', h); });
+        stage.setAttribute('data-grid-tone', gridTone(d.model.map));
 
         if (selectKeys) {
             state.selection = new Set(selectKeys);
@@ -196,6 +197,23 @@
         applyCustomLayers();
         refresh();
         document.dispatchEvent(new CustomEvent('wm-editor-render'));
+    }
+
+    /**
+     * How the snap grid is drawn so it shows on the map: light lines on a
+     * dark background colour, dark lines on a light one, and dark lines
+     * with a light halo on a picture or a basemap, whose colours vary.
+     */
+    function gridTone(map) {
+        if (map.background || map.basemap) { return 'mixed'; }
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec((map.props && map.props.bg_colour) || '');
+        if (!m) { return 'light'; }
+        // relative luminance (WCAG), 0 for black and 1 for white
+        var lum = [m[1], m[2], m[3]].map(function (x) {
+            var c = parseInt(x, 16) / 255;
+            return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2] < 0.25 ? 'dark' : 'light';
     }
 
     function pruneSelection() {
@@ -316,7 +334,7 @@
         if (!box) { return; }
         var s = on ? (state.model ? 'saving' : 'loading') : (failed ? 'error' : 'saved');
         box.dataset.state = s;
-        box.querySelector('span').textContent = { loading: t('Loading…'), saving: t('Saving…'), saved: t('Saved'), error: t('Not saved') }[s];
+        box.querySelector('.save-text').textContent = { loading: t('Loading…'), saving: t('Saving…'), saved: t('Saved'), error: t('Not saved') }[s];
         box.title = s === 'error' ? t('The last change could not be saved; the map shows what is saved.') : '';
     }
 

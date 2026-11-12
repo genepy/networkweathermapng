@@ -79,6 +79,11 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .tb-title { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 #save-state { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
 #save-state svg.i { width: 15px; height: 15px; }
+/* every label sits in the same cell, so the widest one sets the width
+   and a new state does not move the rest of the bar */
+#save-state .save-label { display: inline-grid; }
+#save-state .save-label > span { grid-area: 1 / 1; }
+#save-state .save-ghost { visibility: hidden; }
 #save-state[data-state="saved"] { color: var(--ok); }
 #save-state[data-state="error"] { color: var(--danger); }
 #save-state[data-state="saving"] svg.i, #save-state[data-state="loading"] svg.i { visibility: hidden; }
@@ -279,7 +284,12 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .icon-pick-results .palette-icon { cursor: pointer; }
 .icon-pick-results .palette-icon.on, .icon-pick-shape.on { outline: 2px solid var(--accent); outline-offset: 1px; }
 .icon-pick-shapes { display: flex; flex-wrap: wrap; gap: 4px; }
-.icon-pick-shape { flex: 0 0 auto; padding: 2px 6px; cursor: pointer; }
+.icon-pick-shape { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; cursor: pointer; }
+/* the engine's own shapes (box, rounded box, circle), drawn in SVG */
+.icon-pick-glyph { flex: 0 0 auto; width: 18px; height: 18px; }
+.icon-pick-current .icon-pick-glyph { width: 22px; height: 22px; }
+.icon-pick-glyph rect, .icon-pick-glyph circle { fill: color-mix(in srgb, currentColor 14%, transparent); stroke: currentColor; stroke-width: 1.6; }
+.icon-pick-glyph .none { fill: none; stroke-dasharray: 3 2; opacity: 0.6; }
 
 /* Canvas */
 #canvas { grid-area: canvas; position: relative; overflow: hidden; }
@@ -299,6 +309,12 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #map g.copy-ghost { opacity: .6; pointer-events: none; }
 #grid-layer { display: none; }
 #stage.snap #grid-layer { display: inline; }
+/* the grid follows the map background (data-grid-tone, set by editor-svg.js) */
+#grid .grid-line { stroke: #000; stroke-opacity: 0.28; stroke-width: 0.6; }
+#grid .grid-halo { stroke: none; }
+#stage[data-grid-tone="dark"] #grid .grid-line { stroke: #fff; stroke-opacity: 0.3; }
+#stage[data-grid-tone="mixed"] #grid .grid-halo { stroke: #fff; stroke-opacity: 0.45; stroke-width: 1.6; }
+#stage[data-grid-tone="mixed"] #grid .grid-line { stroke-opacity: 0.45; }
 
 #overlay .sel-box { fill: none; stroke: var(--select); stroke-width: 1.5; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .sel-box.grouped { stroke: var(--group); }

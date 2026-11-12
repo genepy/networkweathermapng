@@ -108,6 +108,30 @@
 
     var SHAPES = [['', t('(none)')], ['box', t('Box')], ['rbox', t('Rounded box')], ['round', t('Circle')]];
 
+    /**
+     * A small drawing of a shape the engine draws itself, as inline SVG so
+     * it stays sharp at any size and follows the text colour.
+     */
+    function shapeGlyph(id) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('class', 'icon-pick-glyph');
+        svg.setAttribute('aria-hidden', 'true');
+        var el;
+        if (id === 'round') {
+            el = document.createElementNS(NS, 'circle');
+            el.setAttribute('cx', '12'); el.setAttribute('cy', '12'); el.setAttribute('r', '8');
+        } else {
+            el = document.createElementNS(NS, 'rect');
+            el.setAttribute('x', '3'); el.setAttribute('y', '6'); el.setAttribute('width', '18'); el.setAttribute('height', '12');
+            if (id === 'rbox') { el.setAttribute('rx', '4'); }
+            if (id === '') { el.setAttribute('class', 'none'); }
+        }
+        svg.appendChild(el);
+        return svg;
+    }
+
     function findIcon(path) {
         var found = null;
         state.themes.forEach(function (th) {
@@ -127,7 +151,8 @@
         var shape = SHAPES.filter(function (sh) { return sh[0] === current; })[0];
         var known = current ? findIcon(current) : null;
         var name = current === null ? t('(mixed)') : shape ? shape[1] : known ? known.icon.name : current.split('/').pop();
-        var thumb = known ? h('img', { src: '/' + known.icon.preview, alt: '' }) : h('span', { 'class': 'icon-pick-none', 'aria-hidden': 'true' });
+        var thumb = known ? h('img', { src: '/' + known.icon.preview, alt: '' })
+            : shape ? shapeGlyph(shape[0]) : h('span', { 'class': 'icon-pick-none', 'aria-hidden': 'true' });
         var toggle = h('button', { type: 'button', 'class': 'icon-pick-current', 'aria-expanded': 'false', title: t('Choose an icon') }, [
             thumb, h('span', { text: name })
         ]);
@@ -142,7 +167,9 @@
             var out = [];
             if (!q) {
                 out.push(h('div', { 'class': 'icon-pick-shapes' }, SHAPES.map(function (sh) {
-                    return h('button', { type: 'button', 'class': 'icon-pick-shape' + (sh[0] === current ? ' on' : ''), text: sh[1], onclick: function () { choose(sh[0]); } });
+                    return h('button', { type: 'button', 'class': 'icon-pick-shape' + (sh[0] === current ? ' on' : ''), onclick: function () { choose(sh[0]); } }, [
+                        shapeGlyph(sh[0]), h('span', { text: sh[1] })
+                    ]);
                 })));
             }
             var shown = 0, more = 0;
