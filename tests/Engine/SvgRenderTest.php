@@ -600,6 +600,39 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(48, (int) $map->nodes['b']->width, 'the .svg icon is drawn from its PNG twin');
     }
 
+    /** ARROWSTYLE flat ends a link square; SET bwlabel_offset_* moves a label across it */
+    public function testFlatArrowsAndLabelShift(): void
+    {
+        $base = "WIDTH 400\nHEIGHT 200\n\nLINK DEFAULT\n\tWIDTH 4\n\nNODE a\n\tPOSITION 50 100\n\nNODE b\n\tPOSITION 350 100\n\n"
+            . "LINK a-b\n\tNODES a b\n\tTARGET static:10M:20M\n";
+        $points = function (string $extra) use ($base): array {
+            $file = TESTS_OUTPUT . '/flat-arrows.conf';
+            file_put_contents($file, $base . $extra);
+            $doc = new \DOMDocument();
+            $map = $this->load($file);
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+            $arrow = $xpath->query('//s:g[@data-kind="link"]/s:polygon[@class="wm-arrow"]')->item(0);
+            $this->assertNotNull($arrow);
+            $label = $xpath->query('//s:polygon[contains(@class, "wm-bwlabel-out")]')->item(0);
+            $this->assertNotNull($label);
+            $ys = static function (\DOMElement $el): array {
+                preg_match_all('/(-?[\d.]+)[ ,](-?[\d.]+)/', $el->getAttribute('points'), $m);
+                return array_map('floatval', $m[2]);
+            };
+            return [$ys($arrow), $ys($label)];
+        };
+
+        [$classic, $label] = $points('');
+        [$flat, $shifted] = $points("\tARROWSTYLE flat\n\tSET bwlabel_offset_out 20\n");
+        // a classic head is wider than the link; a flat end is not
+        $this->assertGreaterThan(max($flat), max($classic));
+        $this->assertEqualsWithDelta(4, max($flat) - 100, 1);
+        // positive is to the left of A to B: up on a link running right
+        $this->assertEqualsWithDelta(-20, min($shifted) - min($label), 1);
+    }
+
     private function load(string $file): \WeatherMap
     {
         $map = new \WeatherMap();

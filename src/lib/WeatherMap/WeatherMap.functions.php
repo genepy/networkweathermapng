@@ -936,12 +936,24 @@ function calc_arrowsize($width,&$map,$linkname) {
 			$arrowlengthfactor = $matches[1];
 			$arrowwidthfactor  = $matches[2];
 		}
+
+		// ARROWSTYLE flat: no head, the link ends square. A one-pixel "head"
+		// keeps the direction of the end; the outline is squared off by
+		// the callers (arrow_is_flat).
+		if (arrow_is_flat($map, $linkname)) {
+			return array(1, $width);
+		}
 	}
 
 	$arrowsize  = $width * $arrowlengthfactor;
 	$arrowwidth = $width * $arrowwidthfactor;
 
 	return(array($arrowsize, $arrowwidth));
+}
+
+/** ARROWSTYLE flat: links end square, without an arrow head */
+function arrow_is_flat(&$map, $linkname) {
+	return $map !== null && isset($map->links[$linkname]) && $map->links[$linkname]->arrowstyle == 'flat';
 }
 
 function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolours, $linkname, &$map, $q2_percent = 50, $unidirectional = false) {
@@ -1066,6 +1078,14 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 
 			$ax4 = $pre_mid_x - $arrowwidth[$dir] * $anx;
 			$ay4 = $pre_mid_y - $arrowwidth[$dir] * $any;
+
+			if (arrow_is_flat($map, $linkname)) {
+				// a square end: the corners at the tip, the tip between them
+				$ax2 = $halfway_x + $widths[$dir] * $anx;
+				$ay2 = $halfway_y + $widths[$dir] * $any;
+				$ax4 = $halfway_x - $widths[$dir] * $anx;
+				$ay4 = $halfway_y - $widths[$dir] * $any;
+			}
 
 			# draw_spine($image,$spine[$dir],$map->selected);
 
@@ -1384,14 +1404,18 @@ function draw_curve($image, &$curvepoints, $widths, $outlinecolour, $fillcolours
 		$there_points[] = $pre_mid_x + $direction * $widths[$dir] * $anx;
 		$there_points[] = $pre_mid_y + $direction * $widths[$dir] * $any;
 
-		$there_points[] = $pre_mid_x + $direction * $arrowwidth[$dir] * $anx;
-		$there_points[] = $pre_mid_y + $direction * $arrowwidth[$dir] * $any;
+		// ARROWSTYLE flat squares the end off at the tip
+		$head_x = arrow_is_flat($map, $linkname) ? $halfway_x : $pre_mid_x;
+		$head_y = arrow_is_flat($map, $linkname) ? $halfway_y : $pre_mid_y;
+
+		$there_points[] = $head_x + $direction * $arrowwidth[$dir] * $anx;
+		$there_points[] = $head_y + $direction * $arrowwidth[$dir] * $any;
 
 		$there_points[] = $halfway_x;
 		$there_points[] = $halfway_y;
 
-		$there_points[] = $pre_mid_x - $direction * $arrowwidth[$dir] * $anx;
-		$there_points[] = $pre_mid_y - $direction * $arrowwidth[$dir] * $any;
+		$there_points[] = $head_x - $direction * $arrowwidth[$dir] * $anx;
+		$there_points[] = $head_y - $direction * $arrowwidth[$dir] * $any;
 
 		$there_points[] = $pre_mid_x - $direction * $widths[$dir] * $anx;
 		$there_points[] = $pre_mid_y - $direction * $widths[$dir] * $any;

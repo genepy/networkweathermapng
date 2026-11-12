@@ -308,6 +308,9 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #stage.panning { cursor: grabbing; }
 #paper { fill: #fff; filter: drop-shadow(0 1px 4px var(--paper-shadow)); }
 #map g[data-kind="node"], #map g[data-kind="link"] { cursor: pointer; }
+/* a bandwidth label is dragged straight away, along its link or a little to one side */
+#map g[data-kind="link"] .wm-bwlabel-in, #map g[data-kind="link"] .wm-bwlabel-out { cursor: move; }
+#map g[data-kind="link"].locked .wm-bwlabel-in, #map g[data-kind="link"].locked .wm-bwlabel-out { cursor: pointer; }
 #map g.dimmed { opacity: .25; }
 #map g.copy-ghost { opacity: .6; pointer-events: none; }
 #grid-layer { display: none; }
@@ -352,7 +355,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 
 #toast {
     position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-    background: #222b; color: #fff; padding: 6px 14px; border-radius: 4px; max-width: 80%;
+    background: #222b; color: #fff; padding: 6px 14px; border-radius: 4px; max-width: 80%; z-index: 7;
 }
 #toast.error { background: var(--danger-fill); }
 

@@ -417,6 +417,45 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bwstyle' => 'round']]]);
     }
 
+    /** F4: labels on or off per link, arrow heads, labels moved across their link */
+    public function testLinkLabelsArrowHeadsAndLabelShift(): void
+    {
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => [
+            'labelstyle' => 'none', 'arrowstyle' => 'flat', 'labelshift_in' => 12, 'labelshift_out' => -500,
+        ]]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringContainsString('BWLABEL none', $conf);
+        $this->assertStringContainsString('ARROWSTYLE flat', $conf);
+        $this->assertStringContainsString('SET bwlabel_offset_in 12', $conf);
+        $this->assertStringContainsString('SET bwlabel_offset_out -60', $conf, 'clamped');
+
+        $map = $this->editor->load();
+        $this->assertSame(['', ''], [$map->links['core-paris']->bwlabelformats[IN], $map->links['core-paris']->bwlabelformats[OUT]]);
+        $links = array_column(MapEditor::model($map)['links'], null, 'name');
+        $this->assertSame('none', $links['core-paris']['labelstyle']);
+        $this->assertSame('flat', $links['core-paris']['arrowstyle']);
+        $this->assertSame([12, -60], [$links['core-paris']['labelshift_in'], $links['core-paris']['labelshift_out']]);
+        $this->assertSame('percent', $links['core-lyon']['labelstyle']);
+        $this->assertSame(0, $links['core-lyon']['labelshift_in']);
+
+        // back to the default: the hint goes away
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['labelshift_in' => 0, 'labelstyle' => 'bits']]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringNotContainsString('bwlabel_offset_in', $conf);
+        $this->assertStringContainsString('BWLABEL bits', $conf);
+
+        // Link defaults: links that had the default follow
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_arrowstyle' => 'compact', 'link_labelstyle' => 'none']]]);
+        $map = $this->editor->load();
+        $this->assertSame('compact', $map->links['core-lyon']->arrowstyle);
+        $this->assertSame('flat', $map->links['core-paris']->arrowstyle, 'its own value stays');
+        $this->assertSame('', $map->links['core-lyon']->bwlabelformats[IN]);
+        $this->assertSame('compact', MapEditor::model($map)['map']['props']['link_arrowstyle']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['arrowstyle' => 'round']]]);
+    }
+
     public function testBadgeNodeStyleFollowsItsTemplate(): void
     {
         $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'badge']]]);

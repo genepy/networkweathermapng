@@ -226,6 +226,8 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <?= $btn('front', 'front', __('Front'), __('Bring to front (Ctrl+])'), 'data-needs="any"') ?>
             <?= $btn('back', 'send-back', __('Back'), __('Send to back (Ctrl+[)'), 'data-needs="any"') ?>
             <span class="sb-sep" aria-hidden="true"></span>
+            <?= $btn('untangle', 'untangle', __('Untangle labels'), __('Move the overlapping bandwidth labels of the selected links apart')) ?>
+            <?= $btn('spread', 'spread', __('Spread apart'), __('Move the selected nodes that overlap apart')) ?>
             <?= $btn('link-selection', 'link', __('Link'), __('Link the two selected nodes, or draw a link from the selected node (L)'), 'data-needs="nodes1"') ?>
             <?= $btn('duplicate', 'copy', __('Duplicate'), __('Duplicate (Ctrl+D)'), 'data-needs="nodes1"') ?>
             <?= $btn('delete', 'trash', __('Delete'), __('Delete (Del)'), 'class="danger" data-needs="any"') ?>

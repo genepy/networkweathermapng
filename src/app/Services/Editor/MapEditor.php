@@ -56,7 +56,11 @@ class MapEditor
         'labelstyle' => ['percent', 'bits', 'unformatted', 'none'],
         'commentcurve' => ['0', '1'],
         'bwstyle' => ['classic', 'angled', 'pill'],
+        'arrowstyle' => ['classic', 'compact', 'flat'],
     ];
+
+    /** How far a bandwidth label may be moved across its link, in pixels */
+    private const LABEL_SHIFT_MAX = 60;
 
     /** Zone fields the inspector may change: request key => [property, type] */
     private const ZONE_FIELDS = [
@@ -653,6 +657,9 @@ class MapEditor
                     }
                     $field = $key === 'bwstyle' ? 'labelboxstyle' : $key;
                     $link->$field = $value;
+                    if ($key === 'labelstyle') {
+                        self::labelFormats($link, $value);
+                    }
                 } elseif ($key === 'width') {
                     $link->width = strtolower((string) $value) === 'auto' ? 'auto' : max(1, (int) $value);
                 } elseif ($key === 'bandwidth' || $key === 'bandwidth_in' || $key === 'bandwidth_out') {
@@ -682,6 +689,14 @@ class MapEditor
                     $link->overliburl[OUT] = $link->overliburl[IN];
                 } elseif ($key === 'via') {
                     $this->setVias($link, (array) $value);
+                } elseif ($key === 'labelshift_in' || $key === 'labelshift_out') {
+                    // SET bwlabel_offset_in|out: the label moved across the link
+                    if (!is_numeric($value)) {
+                        throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => (string) $value]));
+                    }
+                    $shift = (int) round(max(-self::LABEL_SHIFT_MAX, min(self::LABEL_SHIFT_MAX, (float) $value)));
+                    $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
+                    $this->setHint($link, $template, 'bwlabel_offset_' . substr($key, 11), (string) $shift, '0');
                 } elseif ($key === 'traffic_total') {
                     // SET traffic_total 0 leaves the link out of the viewer's total traffic
                     if (!in_array((string) $value, ['0', '1'], true)) {
@@ -1285,7 +1300,7 @@ class MapEditor
                 } else {
                     $map->add_hint('background_sizing', $value);
                 }
-            } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont', 'link_bwstyle'], true)) {
+            } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont', 'link_bwstyle', 'link_arrowstyle'], true)) {
                 $this->setLinkDefault($map, $key, $value, $fonts);
             } else {
                 throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
@@ -1393,6 +1408,7 @@ class MapEditor
             'link_labelstyle' => ['labelstyle'],
             'link_bwfont' => ['bwfont'],
             'link_bwstyle' => ['labelboxstyle'],
+            'link_arrowstyle' => ['arrowstyle'],
         };
         $new = match ($key) {
             'link_bandwidth' => $this->bandwidth((string) $value),
@@ -1402,6 +1418,8 @@ class MapEditor
             'link_bwfont' => in_array((int) $value, $fonts, true) ? (int) $value
                 : throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value])),
             'link_bwstyle' => in_array($value, self::LINK_CHOICES['bwstyle'], true) ? $value
+                : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
+            'link_arrowstyle' => in_array($value, self::LINK_CHOICES['arrowstyle'], true) ? $value
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
         };
 
@@ -1414,8 +1432,14 @@ class MapEditor
             );
             foreach ($followers as $link) {
                 $link->$field = $new;
+                if ($field === 'labelstyle') {
+                    self::labelFormats($link, (string) $new);
+                }
             }
             $default->$field = $new;
+            if ($field === 'labelstyle') {
+                self::labelFormats($default, (string) $new);
+            }
         }
     }
 
@@ -1437,6 +1461,19 @@ class MapEditor
             $link = $parent;
         }
         return $value === (string) $map->links['DEFAULT']->$field;
+    }
+
+    /** The label texts BWLABEL $style stands for, as the config reader sets them */
+    private static function labelFormats(object $link, string $style): void
+    {
+        [$in, $out] = match ($style) {
+            'percent' => [FMT_PERC_IN, FMT_PERC_OUT],
+            'bits' => [FMT_BITS_IN, FMT_BITS_OUT],
+            'unformatted' => [FMT_UNFORM_IN, FMT_UNFORM_OUT],
+            default => ['', ''],
+        };
+        $link->bwlabelformats[IN] = $in;
+        $link->bwlabelformats[OUT] = $out;
     }
 
     /** BWSTYLE of a link: classic, angled or pill */
@@ -1493,6 +1530,7 @@ class MapEditor
             'link_labelstyle' => $default ? (string) $default->labelstyle : 'percent',
             'link_bwfont' => $default ? (int) $default->bwfont : 2,
             'link_bwstyle' => $default ? self::bwStyle($default) : 'classic',
+            'link_arrowstyle' => $default ? (string) $default->arrowstyle : 'classic',
             'basemap' => (string) ($map->hints['basemap'] ?? ''),
             'basemap_dark' => (string) ($map->hints['basemap_dark'] ?? ''),
             'basemap_center' => (string) ($map->hints['basemap_center'] ?? ''),
@@ -1632,6 +1670,10 @@ class MapEditor
                 'hover_url' => implode(' ', (array) ($link->overliburl[IN] ?? [])),
                 'commentcurve' => (string) $link->commentcurve === '1' ? '1' : '0',
                 'bwstyle' => self::bwStyle($link),
+                'labelstyle' => (string) $link->labelstyle,
+                'arrowstyle' => (string) $link->arrowstyle,
+                'labelshift_in' => (int) round((float) ($link->hints['bwlabel_offset_in'] ?? 0)),
+                'labelshift_out' => (int) round((float) ($link->hints['bwlabel_offset_out'] ?? 0)),
                 'traffic_total' => \App\Services\MapService::countsInTotal($link) ? '1' : '0',
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),

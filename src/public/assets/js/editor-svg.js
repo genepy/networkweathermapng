@@ -12,6 +12,8 @@
     var SVGNS = 'http://www.w3.org/2000/svg';
     var GRID = 10;
     var ANCHORS = ['NW', 'N', 'NE', 'W', 'C', 'E', 'SW', 'S', 'SE'];
+    // how far a bandwidth label may move across its link (MapEditor::LABEL_SHIFT_MAX)
+    var LABEL_SHIFT_MAX = 60;
     /** Map furniture: drawn by the map itself, placed by KEYPOS, TIMEPOS, TITLEPOS... */
     var FURNITURE = ['legend', 'timestamp', 'title', 'widthlegend'];
     /** Distance, in screen pixels, at which a moved object snaps to a guide */
@@ -828,6 +830,10 @@
         updateToolbar();
         $$('#map g[data-kind]').forEach(function (g) {
             g.classList.toggle('selected', state.selection.has(key(g.dataset.kind, g.dataset.name)));
+            if (g.dataset.kind === 'link') {
+                var gl = state.links.get(g.dataset.name);
+                g.classList.toggle('locked', !!(gl && gl.locked));
+            }
         });
     }
 
@@ -863,9 +869,11 @@
         on('zone', !!state.placing);
         $('[data-cmd="paste"]').disabled = !hasClip();
         on('text-mode', state.textMode);
-        var spread = $('[data-cmd="spread"]');
-        spread.title = t('Move overlapping nodes apart (:n overlapping now)', { n: state.overlaps.size });
-        spread.classList.toggle('warn', state.overlaps.size > 0);
+        $$('[data-cmd="spread"]').forEach(function (spread) {
+            if (spread.closest('#selbar')) { return; }
+            spread.title = t('Move overlapping nodes apart (:n overlapping now)', { n: state.overlaps.size });
+            spread.classList.toggle('warn', state.overlaps.size > 0);
+        });
         stage.classList.toggle('tool-link', state.tool === 'link');
         stage.classList.toggle('snap', state.snap);
     }
@@ -1038,10 +1046,57 @@
         }
 
         if (item.kind === 'link') {
+            // a bandwidth label under the pointer: drag it straight away
+            var labelEl = !evt.shiftKey && !ctrl && labelUnder(evt);
+            if (labelEl) {
+                startLabelDrag(evt, state.links.get(item.name), labelEl.dir, p);
+            }
             return;
         }
         startMove(evt, k, p, unselect);
     });
+
+    /** The bandwidth label of a link under the pointer: {link, dir}, or null */
+    function labelUnder(evt) {
+        var el = evt.target.closest && evt.target.closest('.wm-bwlabel-in, .wm-bwlabel-out');
+        var g = el && el.closest('#map g[data-kind="link"]');
+        if (!g) { return null; }
+        var link = state.links.get(g.dataset.name);
+        if (!link || link.locked || link.spine.length < 2) { return null; }
+        return { link: link, dir: el.classList.contains('wm-bwlabel-in') ? 'in' : 'out' };
+    }
+
+    /** The unit normal of a link spine at pct %, to the left of A to B */
+    function normalAlong(spine, pct) {
+        var a = pointAlong(spine, Math.max(0, pct - 1)), b = pointAlong(spine, Math.min(100, pct + 1));
+        var l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        return [(b[1] - a[1]) / l, -(b[0] - a[0]) / l];
+    }
+
+    /** How far a point is across the spine, along normalAlong at its own place */
+    function acrossSpine(spine, p, pct) {
+        var c = pointAlong(spine, pct), n = normalAlong(spine, pct);
+        return (p.x - c[0]) * n[0] + (p.y - c[1]) * n[1];
+    }
+
+    /**
+     * Drag a bandwidth label: along the link (BWLABELPOS), and a little to
+     * one side (SET bwlabel_offset_in|out), so labels of links side by
+     * side can be moved off each other.
+     */
+    function startLabelDrag(evt, link, dir, p) {
+        var lab = bwLabelBoxes(link).filter(function (l) { return l.dir === dir; })[0];
+        if (!lab || link.locked || link.spine.length < 2) { return false; }
+        var c0 = { x: (lab.rect[0] + lab.rect[2]) / 2, y: (lab.rect[1] + lab.rect[3]) / 2 };
+        var pct0 = projectOnSpine(link.spine, c0).pct;
+        var shift0 = link['labelshift_' + dir] || 0;
+        startDrag(evt, {
+            type: 'bwlabel', link: link.name, dir: dir, w: lab.w, h: lab.h, at: [c0.x, c0.y], pct: null,
+            base: acrossSpine(link.spine, c0, pct0) - shift0, shift0: shift0, shift: shift0,
+            grab: acrossSpine(link.spine, p, projectOnSpine(link.spine, p).pct)
+        });
+        return true;
+    }
 
     /**
      * Drag what is selected: unlocked nodes and zones, legends, timestamps
@@ -1210,9 +1265,7 @@
         var idx = +evt.target.dataset.index;
 
         if (handle === 'bwlabel') {
-            var lab = bwLabelBoxes(link).filter(function (l) { return l.dir === evt.target.dataset.dir; })[0];
-            if (!lab || link.spine.length < 2) { return; }
-            startDrag(evt, { type: 'bwlabel', link: link.name, dir: lab.dir, w: lab.w, h: lab.h, at: [(lab.rect[0] + lab.rect[2]) / 2, (lab.rect[1] + lab.rect[3]) / 2], pct: null });
+            startLabelDrag(evt, link, evt.target.dataset.dir, p);
             return;
         }
 
@@ -1291,7 +1344,12 @@
                 var bl = state.links.get(d.link);
                 var q = projectOnSpine(bl.spine, p);
                 d.pct = Math.max(1, Math.min(99, q.pct));
-                d.at = pointAlong(bl.spine, d.pct);
+                // across the link: a few pixels snap back onto it
+                var shift = d.shift0 + acrossSpine(bl.spine, p, q.pct) - d.grab;
+                shift = Math.max(-LABEL_SHIFT_MAX, Math.min(LABEL_SHIFT_MAX, Math.round(shift)));
+                d.shift = Math.abs(shift) < 4 ? 0 : shift;
+                var cn = normalAlong(bl.spine, d.pct), cp = pointAlong(bl.spine, d.pct);
+                d.at = [cp[0] + cn[0] * (d.base + d.shift), cp[1] + cn[1] * (d.base + d.shift)];
                 break;
 
             case 'lasso':
@@ -1489,7 +1547,9 @@
                 if (bl.linkstyle !== 'oneway') {
                     if (d.dir === 'in') { pos.in = Math.max(pos.in, Math.round(pos.out) + 1); } else { pos.out = Math.min(pos.out, Math.round(pos.in) - 1); }
                 }
-                send([{ op: 'set_link', names: [d.link], props: { labelpos_in: Math.round(pos.in), labelpos_out: Math.round(pos.out) } }]);
+                var labelProps = { labelpos_in: Math.round(pos.in), labelpos_out: Math.round(pos.out) };
+                if (d.shift !== d.shift0) { labelProps['labelshift_' + d.dir] = d.shift; }
+                send([{ op: 'set_link', names: [d.link], props: labelProps }]);
                 return;
 
             case 'lasso':
@@ -2211,10 +2271,6 @@
         return spine[spine.length - 1];
     }
 
-    function overlaps(r, s) {
-        return r[0] < s[2] && s[0] < r[2] && r[1] < s[3] && s[1] < r[3];
-    }
-
     function effectivePos(l) {
         if (l.labelpos_in === 75 && l.labelpos_out === 25) {
             return { in: (l.splitpos + 100) / 2, out: l.splitpos / 2 };
@@ -2222,57 +2278,234 @@
         return { in: l.labelpos_in, out: l.labelpos_out };
     }
 
-    function untangle() {
-        var labels = [];
-        $$('#map g[data-kind="link"]').forEach(function (g) {
-            var l = state.links.get(g.dataset.name);
+    /** The box of a drawn element in map coordinates, or null when it is not drawn */
+    function mapBoxOf(el) {
+        var b;
+        try { b = el.getBBox(); } catch (e) { return null; }
+        if (!b || (!b.width && !b.height)) { return null; }
+        var m = relativeMatrix(el);
+        var xs = [], ys = [];
+        [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].forEach(function (c) {
+            xs.push(m.a * c[0] + m.c * c[1] + m.e);
+            ys.push(m.b * c[0] + m.d * c[1] + m.f);
+        });
+        return [Math.min.apply(null, xs), Math.min.apply(null, ys), Math.max.apply(null, xs), Math.max.apply(null, ys)];
+    }
+
+    /** The transform from an element's own coordinates to the map's */
+    function relativeMatrix(el) {
+        var mapCtm = $('#map').getCTM(), ctm = el.getCTM();
+        if (!mapCtm || !ctm) { return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }; }
+        return mapCtm.inverse().multiply(ctm);
+    }
+
+    /** The four corners of a box of size l x w centred on c, turned to the unit direction d */
+    function quad(c, d, l, w) {
+        var n = [-d[1], d[0]], hl = l / 2, hw = w / 2;
+        return [[-hl, -hw], [hl, -hw], [hl, hw], [-hl, hw]].map(function (k) {
+            return [c[0] + d[0] * k[0] + n[0] * k[1], c[1] + d[1] * k[0] + n[1] * k[1]];
+        });
+    }
+
+    function boxQuad(b) {
+        return [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]];
+    }
+
+    /** Whether two convex shapes (lists of corners) overlap: no axis separates them */
+    function quadsOverlap(p, q) {
+        var shapes = [p, q];
+        for (var s = 0; s < 2; s++) {
+            var poly = shapes[s];
+            for (var i = 0; i < poly.length; i++) {
+                var a = poly[i], b = poly[(i + 1) % poly.length];
+                var ax = b[1] - a[1], ay = a[0] - b[0];
+                var minP = Infinity, maxP = -Infinity, minQ = Infinity, maxQ = -Infinity;
+                p.forEach(function (v) { var d = v[0] * ax + v[1] * ay; minP = Math.min(minP, d); maxP = Math.max(maxP, d); });
+                q.forEach(function (v) { var d = v[0] * ax + v[1] * ay; minQ = Math.min(minQ, d); maxQ = Math.max(maxQ, d); });
+                if (maxP <= minQ + 1e-6 || maxQ <= minP + 1e-6) { return false; }
+            }
+        }
+        return true;
+    }
+
+    /** The direction of a link spine at pct % */
+    function directionAlong(spine, pct) {
+        var n = normalAlong(spine, pct);
+        return [-n[1], n[0]];
+    }
+
+    /**
+     * The bandwidth labels as drawn: for each, its link, its side, its
+     * size along and across the link, where it is now (pct %, shift
+     * across) and the corners of its box.
+     */
+    function drawnLabels() {
+        var out = [];
+        state.links.forEach(function (l) {
+            if (l.spine.length < 2) { return; }
+            var groups = $$('#map g[data-kind="link"]').filter(function (g) { return g.dataset.name === l.name; });
+            var pos = effectivePos(l);
             ['in', 'out'].forEach(function (dir) {
-                var box = g.querySelector('polygon.wm-bwlabel-' + dir) || g.querySelector('text.wm-bwlabel-' + dir);
-                if (!box || !l) { return; }
-                var bb = box.getBBox();
-                labels.push({ link: l, dir: dir, w: bb.width, h: bb.height, rect: [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height] });
+                var els = [];
+                groups.forEach(function (g) { els = els.concat($$('.wm-bwlabel-' + dir, g)); });
+                if (!els.length) { return; }
+                var level = l.bwstyle === 'classic' || !l.bwstyle;
+                var pct = pos[dir];
+                var d = level ? [1, 0] : directionAlong(l.spine, pct);
+                var n = [-d[1], d[0]];
+                var pts = [];
+                els.forEach(function (el) {
+                    if (el.tagName === 'polygon' && el.points && el.points.numberOfItems) {
+                        var m = relativeMatrix(el);
+                        for (var i = 0; i < el.points.numberOfItems; i++) {
+                            var v = el.points.getItem(i);
+                            pts.push([m.a * v.x + m.c * v.y + m.e, m.b * v.x + m.d * v.y + m.f]);
+                        }
+                    } else if (el.tagName === 'text') {
+                        // its own box, turned with the text
+                        var b;
+                        try { b = el.getBBox(); } catch (e) { return; }
+                        var mt = relativeMatrix(el);
+                        [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].forEach(function (c) {
+                            pts.push([mt.a * c[0] + mt.c * c[1] + mt.e, mt.b * c[0] + mt.d * c[1] + mt.f]);
+                        });
+                    }
+                });
+                if (!pts.length) { return; }
+                var minA = Infinity, maxA = -Infinity, minN = Infinity, maxN = -Infinity;
+                pts.forEach(function (v) {
+                    var a = v[0] * d[0] + v[1] * d[1], b = v[0] * n[0] + v[1] * n[1];
+                    minA = Math.min(minA, a); maxA = Math.max(maxA, a); minN = Math.min(minN, b); maxN = Math.max(maxN, b);
+                });
+                var len = maxA - minA, wid = maxN - minN;
+                if (len <= 0 || wid <= 0) { return; }
+                var ca = (minA + maxA) / 2, cn = (minN + maxN) / 2;
+                var c = [d[0] * ca + n[0] * cn, d[1] * ca + n[1] * cn];
+                var shift = l['labelshift_' + dir] || 0;
+                out.push({
+                    link: l, dir: dir, level: level, len: len, wid: wid, pct: pct, shift: shift,
+                    base: acrossSpine(l.spine, { x: c[0], y: c[1] }, pct) - shift,
+                    shape: quad(c, d, len + 2, wid + 2)
+                });
             });
         });
+        return out;
+    }
 
-        var nodeBoxes = state.model.nodes.map(function (n) { return n.box; });
-        var placed = [], changes = {};
+    /** Where a label would be at pct % and shift px across its link */
+    function labelShapeAt(lab, pct, shift) {
+        var spine = lab.link.spine;
+        var p = pointAlong(spine, pct), n = normalAlong(spine, pct);
+        var c = [p[0] + n[0] * (lab.base + shift), p[1] + n[1] * (lab.base + shift)];
+        return quad(c, lab.level ? [1, 0] : directionAlong(spine, pct), lab.len + 2, lab.wid + 2);
+    }
 
-        labels.forEach(function (lab) {
-            var clash = function (r) {
-                return placed.some(function (o) { return overlaps(r, o); }) || nodeBoxes.some(function (b) { return overlaps(r, b); });
-            };
-            if (!clash(lab.rect) || lab.link.locked || lab.link.spine.length < 2) {
-                placed.push(lab.rect);
-                return;
-            }
-            var pos = effectivePos(lab.link);
-            var current = pos[lab.dir];
-            var range = lab.dir === 'in' ? [52, 95] : [5, 48];
-            var options = [];
-            for (var p = range[0]; p <= range[1]; p += 3) { options.push(p); }
-            options.sort(function (x, y) { return Math.abs(x - current) - Math.abs(y - current); });
+    /**
+     * Move bandwidth labels that overlap another label or a node: those
+     * of the selected links when links are selected, otherwise all. Each
+     * label may slide along its own half of the link and move a little to
+     * one side; several passes let a label make room for another. Labels
+     * that find no free place are reported.
+     */
+    function untangle() {
+        var labels = drawnLabels();
+        var chosen = selected('link');
+        var only = chosen.length ? new Set(chosen.map(function (l) { return l.name; })) : null;
 
-            for (var i = 0; i < options.length; i++) {
-                var c = pointAlong(lab.link.spine, options[i]);
-                var r = [c[0] - lab.w / 2, c[1] - lab.h / 2, c[0] + lab.w / 2, c[1] + lab.h / 2];
-                if (!clash(r)) {
-                    placed.push(r);
-                    changes[lab.link.name] = changes[lab.link.name] || effectivePos(lab.link);
-                    changes[lab.link.name][lab.dir] = options[i];
-                    return;
-                }
-            }
-            placed.push(lab.rect);
+        var obstacles = [];
+        $$('#map g[data-kind="node"]').forEach(function (g) {
+            var b = mapBoxOf(g);
+            if (b) { obstacles.push(boxQuad(b)); }
         });
 
-        var ops = Object.keys(changes).map(function (name) {
-            return { op: 'set_link', names: [name], props: { labelpos_in: Math.round(changes[name].in), labelpos_out: Math.round(changes[name].out) } };
+        function clashes(lab, shape) {
+            var count = 0;
+            obstacles.forEach(function (o) { if (quadsOverlap(shape, o)) { count++; } });
+            labels.forEach(function (other) {
+                if (other !== lab && quadsOverlap(shape, other.shape)) { count++; }
+            });
+            return count;
+        }
+
+        var movable = labels.filter(function (lab) {
+            return !lab.link.locked && (!only || only.has(lab.link.name));
         });
-        if (!ops.length) {
-            toast(t('No overlapping labels found.'));
+        if (!movable.length) {
+            toast(only ? t('The selected links have no label to move, or are locked.') : t('No overlapping labels found.'));
             return;
         }
-        send(ops).then(function () { toast(t(':n link label(s) moved. Ctrl+Z to undo.', { n: ops.length })); });
+
+        function candidates(lab) {
+            var l = lab.link, split = l.splitpos || 50, other = effectivePos(l);
+            var lo = 5, hi = 95;
+            if (l.linkstyle !== 'oneway') {
+                if (lab.dir === 'out') { hi = Math.min(split - 2, Math.round(other.in) - 2); } else { lo = Math.max(split + 2, Math.round(other.out) + 2); }
+            }
+            var shifts = [0, lab.shift];
+            [0.7, 1.2].forEach(function (k) {
+                var v = Math.min(LABEL_SHIFT_MAX, Math.round(lab.wid * k));
+                shifts.push(v, -v);
+            });
+            var out = [];
+            for (var p = lo; p <= hi; p += 2) {
+                shifts.forEach(function (sh) { out.push([p, sh]); });
+            }
+            shifts.forEach(function (sh) { out.push([lab.pct, sh]); });
+            return out;
+        }
+
+        var moved = new Set();
+        for (var pass = 0; pass < 6; pass++) {
+            var changed = false;
+            movable.forEach(function (lab) {
+                var now = clashes(lab, lab.shape);
+                if (!now) { return; }
+                var best = null;
+                candidates(lab).forEach(function (c) {
+                    var shape = labelShapeAt(lab, c[0], c[1]);
+                    var n = clashes(lab, shape);
+                    var cost = Math.abs(c[0] - lab.pct) + Math.abs(c[1]) / Math.max(1, lab.wid) * 15 + (c[1] !== lab.shift ? 1 : 0);
+                    if (!best || n < best.n || (n === best.n && cost < best.cost)) { best = { n: n, cost: cost, pct: c[0], shift: c[1], shape: shape }; }
+                });
+                if (best && best.n < now) {
+                    lab.pct = best.pct;
+                    lab.shift = best.shift;
+                    lab.shape = best.shape;
+                    moved.add(lab);
+                    changed = true;
+                }
+            });
+            if (!changed) { break; }
+        }
+
+        var left = movable.filter(function (lab) { return clashes(lab, lab.shape) > 0; });
+        var leftNames = [];
+        left.forEach(function (lab) { if (leftNames.indexOf(lab.link.name) < 0) { leftNames.push(lab.link.name); } });
+        var named = leftNames.slice(0, 4).join(', ') + (leftNames.length > 4 ? '…' : '');
+
+        var byLink = {};
+        moved.forEach(function (lab) {
+            var l = lab.link;
+            var props = byLink[l.name] = byLink[l.name] || (function () {
+                var pos = effectivePos(l);
+                return { labelpos_in: Math.round(pos.in), labelpos_out: Math.round(pos.out) };
+            })();
+            props['labelpos_' + lab.dir] = Math.round(lab.pct);
+            if (lab.shift !== (l['labelshift_' + lab.dir] || 0)) { props['labelshift_' + lab.dir] = lab.shift; }
+        });
+        var ops = Object.keys(byLink).map(function (name) { return { op: 'set_link', names: [name], props: byLink[name] }; });
+
+        if (!ops.length) {
+            toast(left.length
+                ? t('No free place found for :n label(s), on: :links', { n: left.length, links: named })
+                : t('No overlapping labels found.'), left.length > 0);
+            return;
+        }
+        send(ops).then(function () {
+            var msg = t(':n link label(s) moved. Ctrl+Z to undo.', { n: moved.size });
+            if (left.length) { msg += ' ' + t('Still overlapping: :n, on: :links', { n: left.length, links: named }); }
+            toast(msg, left.length > 0);
+        });
     }
 
     // ------------------------------------------------------------------
@@ -2809,6 +3042,17 @@
         return input;
     }
 
+    /** Choices for a select, plus the current value when the map has one of its own (read from the file) */
+    function withCurrent(items, name, options, label) {
+        var known = options.map(function (o) { return o[0]; });
+        var extra = [];
+        items.forEach(function (i) {
+            var v = String(i[name] == null ? '' : i[name]);
+            if (v !== '' && known.indexOf(v) < 0 && extra.indexOf(v) < 0) { extra.push(v); }
+        });
+        return options.concat(extra.map(function (v) { return [v, label + (v === '--' ? '' : ' (' + v + ')')]; }));
+    }
+
     function linkPanel(links) {
         var single = links.length === 1 ? links[0] : null;
         var out = [h('h2', { text: single ? t('Link :name', { name: single.name }) : t(':n links', { n: links.length }) })];
@@ -2838,15 +3082,22 @@
                 return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
             }))),
             row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
-            row(t('Bandwidth labels'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] })),
+            row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: withCurrent(links, 'arrowstyle', [
+                ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
+            ], t('Custom size')) })),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
-            row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }))
+            row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true })),
+            h('h3', { text: t('Bandwidth labels') }),
+            row(t('Labels'), field(links, 'labelstyle', 'link', { options: withCurrent(links, 'labelstyle', [
+                ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
+            ], t('Custom text')) })),
+            row(t('Label box'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] }))
         );
 
         if (single) {
             out.push(
                 row(t('Ends'), h('div', { 'class': 'pair' }, [anchorPicker(single, 'a'), anchorPicker(single, 'b')])),
-                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it, or double-click the link to add one. Double-click a point to remove it. Drag a bandwidth label along the link to move it.') })
+                h('p', { 'class': 'help', text: t('Drag the red points on the link to bend it, or double-click the link to add one. Double-click a point to remove it. Drag a bandwidth label to move it along the link, or a little to one side.') })
             );
         }
         out.push(h('div', { 'class': 'actions' }, [
@@ -3682,6 +3933,7 @@
             { label: t('Add a note here'), run: function () { addNote(at); } },
             { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
+            { label: links.length ? t('Move overlapping labels of the selection apart') : t('Move overlapping link labels apart'), run: untangle, off: !state.links.size },
             { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
         return entries;
     }
