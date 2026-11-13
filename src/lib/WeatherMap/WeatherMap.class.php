@@ -218,6 +218,8 @@ class WeatherMap extends WeatherMapBase {
 	var $nodes = array(); // an array of WeatherMapNodes
 	var $links = array(); // an array of WeatherMapLinks
 	var $zones = array(); // an array of WeatherMapZones, drawn under everything else
+	/** The total traffic over time, [[time, in, out], ...], for the total traffic boxes (see WeatherMapBoxes) */
+	var $box_series = null;
 	var $texts = array(); // an array containing all the extraneous text bits
 
 	var $used_images  = array(); // an array of image filenames referred to (used by editor)
@@ -4389,6 +4391,9 @@ class WeatherMap extends WeatherMapBase {
 					if ($svg) {
 						$svg->begin(null);
 					}
+
+					// SET box_<id> ...: total traffic, legends, text boxes
+					WeatherMapBoxes::drawAll($this, $image);
 				}
 
 				if (is_array($z_items)) {

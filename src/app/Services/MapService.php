@@ -538,6 +538,11 @@ class MapService
                 if ($readData) {
                     $wmap->ReadData();
                 }
+
+                // the graph of the total traffic boxes: the recorded totals of the last day
+                if (\WeatherMapBoxes::wantsSeries($wmap)) {
+                    $wmap->box_series = $this->recordedTotals($id);
+                }
             
                 // Write the image
                 error_log("MapService::renderMap writing image to: $imagePath");
@@ -587,6 +592,27 @@ class MapService
                 return ['error' => $e->getMessage()];
             }
         });
+    }
+
+    /**
+     * The total traffic of a map over the last day, [[time, in, out], ...],
+     * from its recordings (RecordingService::totals keeps them in a cache,
+     * so only new frames are read). Empty without recordings.
+     *
+     * @return list<array{0: int, 1: float|null, 2: float|null}>
+     */
+    public function recordedTotals(int $id, ?int $now = null): array
+    {
+        if (!$this->db instanceof \App\Core\Database) {
+            return [];
+        }
+        $since = ($now ?? time()) - 86400;
+        try {
+            $rows = (new RecordingService($this->db, $this->config))->totals($id, $now);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        return array_values(array_filter($rows, static fn (array $r) => $r[0] >= $since));
     }
 
     /**

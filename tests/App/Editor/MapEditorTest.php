@@ -989,6 +989,70 @@ final class MapEditorTest extends TestCase
         $this->assertEquals([20, 470], [$map->timex, $map->timey]);
     }
 
+    public function testBoxesAreAddedEditedMovedAndDeleted(): void
+    {
+        $result = $this->editor->apply([['op' => 'add_box', 'type' => 'text', 'at' => [200, 150], 'title' => 'Points de présence', 'rows' => 'sites']]);
+        $this->assertSame(['furniture' => ['box:1']], $result['created']);
+        $this->editor->apply([['op' => 'add_box', 'type' => 'legend', 'at' => [-5, 20]]]);
+
+        $map = $this->editor->load();
+        $this->assertSame('text 200 150', $map->get_hint('box_1'));
+        $this->assertSame('Points de présence', $map->get_hint('box_1_title'));
+        $this->assertSame('legend 0 20', $map->get_hint('box_2'), 'placed inside the map');
+
+        $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['text' => "Amsterdam | 68\nParis | 37", 'width' => '220', 'rows' => '']]]);
+        $this->editor->apply([['op' => 'set_box', 'name' => '2', 'props' => ['style' => 'list', 'title' => '']]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringContainsString('SET box_1_text Amsterdam | 68\\nParis | 37', $conf);
+        $this->assertStringContainsString('SET box_1_width 220', $conf);
+        $this->assertStringNotContainsString('box_1_rows', $conf);
+        $this->assertStringContainsString('SET box_2_title -', $conf, 'an empty title is kept as no title');
+
+        $boxes = array_column(array_filter($this->drawnModel()['furniture'], fn ($f) => $f['kind'] === 'box'), null, 'name');
+        $this->assertSame([200, 150], $boxes['1']['pos']);
+        $this->assertSame('text', $boxes['1']['props']['type']);
+        $this->assertSame("Amsterdam | 68\nParis | 37", $boxes['1']['props']['text']);
+        $this->assertSame(['list', ''], [$boxes['2']['props']['style'], $boxes['2']['props']['title']]);
+
+        $this->editor->apply([['op' => 'move', 'furniture' => ['box:1' => [40, 60]]]]);
+        $this->assertSame('text 40 60', $this->editor->load()->get_hint('box_1'));
+
+        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['box:1']]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringNotContainsString('box_1', $conf, 'Delete removes the box and its settings');
+        $this->assertStringContainsString('SET box_2 legend', $conf);
+    }
+
+    public function testSeveralBoxesInOneStepAreAllReturnedAndKeptTogether(): void
+    {
+        $result = $this->editor->apply([
+            ['op' => 'add_box', 'type' => 'speed', 'at' => [10, 10]],
+            ['op' => 'add_box', 'type' => 'updated', 'at' => [10, 100], 'title' => ''],
+        ]);
+        $this->assertSame(['furniture' => ['box:1', 'box:2']], $result['created']);
+        $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['width' => '90']]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertMatchesRegularExpression('/SET box_1 speed 10 10\s+SET box_1_width 90\s+SET box_2 updated 10 100\s+SET box_2_title -/', $conf);
+    }
+
+    public function testBadBoxesAreRefused(): void
+    {
+        $this->editor->apply([['op' => 'add_box', 'type' => 'total', 'at' => [10, 10]]]);
+        foreach ([
+            ['op' => 'add_box', 'type' => 'clock'],
+            ['op' => 'set_box', 'name' => '9', 'props' => ['title' => 'x']],
+            ['op' => 'set_box', 'name' => '1', 'props' => ['style' => 'list']],
+            ['op' => 'set_box', 'name' => '1', 'props' => ['colour' => 'red']],
+        ] as $op) {
+            try {
+                $this->editor->apply([$op]);
+                $this->fail('refused: ' . json_encode($op));
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
     public function testATimestampAtTheDefaultCornerComesBackThere(): void
     {
         file_put_contents($this->file, preg_replace('/^TIMEPOS .*$/m', '', (string) file_get_contents($this->file)));

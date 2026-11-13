@@ -15,7 +15,7 @@
     // how far a bandwidth label may move across its link (MapEditor::LABEL_SHIFT_MAX)
     var LABEL_SHIFT_MAX = 60;
     /** Map furniture: drawn by the map itself, placed by KEYPOS, TIMEPOS, TITLEPOS... */
-    var FURNITURE = ['legend', 'timestamp', 'title', 'widthlegend'];
+    var FURNITURE = ['legend', 'timestamp', 'title', 'widthlegend', 'box'];
     /** Distance, in screen pixels, at which a moved object snaps to a guide */
     var GUIDE_SNAP = 6;
 
@@ -1854,6 +1854,22 @@
         send([{ op: 'show_furniture', keys: [k], at: [x, y] }], [k]);
     }
 
+    /** Default titles of new boxes, written in the .conf in the editor's language */
+    function boxTitle(type) {
+        return { total: t('Total traffic'), legend: t('Traffic'), speed: t('Link speed'), updated: t('Updated at'), text: t('Points of presence') }[type] || '';
+    }
+
+    /** The Add panel's boxes: a new one in the middle of the view, then selected */
+    function addBox(type) {
+        if (!state.model) { return; }
+        var c = viewCentre(), m = state.model.map || {};
+        var x = Math.max(10, Math.min(snap(c.x), (m.width || 200) - 200));
+        var y = Math.max(10, Math.min(snap(c.y), (m.height || 200) - 80));
+        var op = { op: 'add_box', type: type, at: [x, y], title: boxTitle(type) };
+        if (type === 'text') { op.rows = 'sites'; }
+        send([op], function (r) { return (r.created && r.created.furniture) || []; });
+    }
+
     /** The map point in the middle of the view */
     function viewCentre() {
         return { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
@@ -1926,10 +1942,19 @@
 
     function duplicateSelection() {
         var nodes = selected('node');
-        if (!nodes.length) {
+        // boxes are copied with their settings, a little lower and to the right
+        var boxes = selectedFurniture().filter(function (f) { return f.kind === 'box' && f.props; });
+        if (!nodes.length && !boxes.length) {
             return;
         }
-        send([{ op: 'clone', nodes: nodes.map(function (n) { return n.name; }), dx: 20, dy: 20 }], createdKeys);
+        var ops = boxes.map(function (f) {
+            var p = f.props;
+            return { op: 'add_box', type: p.type, at: [f.box[0] + 20, f.box[1] + 20], title: p.title, style: p.style, text: p.text, rows: p.rows, width: p.width || '' };
+        });
+        if (nodes.length) {
+            ops.unshift({ op: 'clone', nodes: nodes.map(function (n) { return n.name; }), dx: 20, dy: 20 });
+        }
+        send(ops, function (r) { return createdKeys(r).concat((r.created && r.created.furniture) || []); });
     }
 
     /** [x1, y1, x2, y2] around everything selected, on the map, or null */
@@ -3054,7 +3079,64 @@
         if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Link load legend') : t('Legend :name', { name: f.name }); }
         if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Timestamp'); }
         if (f.kind === 'title') { return t('Title'); }
+        if (f.kind === 'box') { return boxTypeName(f.props ? f.props.type : ''); }
         return t('Link speed legend');
+    }
+
+    function boxTypeName(type) {
+        return { total: t('Total traffic box'), legend: t('Traffic legend box'), speed: t('Link speed box'), updated: t('Update time box'), text: t('Text box') }[type] || t('Box');
+    }
+
+    /** The fields of one box (SET box_<id>_...): saved when a field is left */
+    function boxFields(f) {
+        var p = f.props || {}, out = [];
+        var save = function (props) { send([{ op: 'set_box', name: f.name, props: props }], [key('box', f.name)]); };
+        var title = h('input', { name: 'box_title', value: p.title || '', placeholder: t('No title') });
+        title.addEventListener('change', function () { save({ title: title.value }); });
+        out.push(row(t('Title'), title));
+
+        var styles = {
+            legend: [['bar', t('Gradient bar')], ['list', t('List of colours')]],
+            total: [['graph', t('Value and graph')], ['plain', t('Value only')]]
+        }[p.type];
+        if (styles) {
+            var style = h('select', { name: 'box_style' }, styles.map(function (o) {
+                return h('option', { value: o[0], text: o[1], selected: p.style === o[0] });
+            }));
+            style.addEventListener('change', function () { save({ style: style.value }); });
+            out.push(row(t('Style'), style));
+        }
+
+        if (p.type === 'text') {
+            var text = h('textarea', { name: 'box_text', rows: 5, 'class': 'note-text' });
+            text.value = p.text || '';
+            // Enter makes a new line here; the text is saved when the field is left
+            text.addEventListener('keydown', function (e) { e.stopPropagation(); });
+            text.addEventListener('change', function () { save({ text: text.value }); });
+            out.push(row(t('Rows'), text, true));
+            out.push(h('p', { 'class': 'help', text: t('One row per line. Put | between a label and its value to show the value on the right.') }));
+            var rows = h('select', { name: 'box_rows' }, [
+                ['', t('None')], ['sites', t('Sites and their node count')], ['sites_load', t('Sites and their busiest link')]
+            ].map(function (o) { return h('option', { value: o[0], text: o[1], selected: (p.rows || '') === o[0] }); }));
+            rows.addEventListener('change', function () { save({ rows: rows.value }); });
+            out.push(row(t('Rows from the map'), rows));
+        }
+
+        var width = h('input', { type: 'number', name: 'box_width', min: 0, max: 2000, value: p.width || '', placeholder: t('Auto') });
+        width.addEventListener('change', function () { save({ width: width.value }); });
+        out.push(row(t('Width'), width));
+
+        if (p.type === 'total') {
+            out.push(h('p', { 'class': 'help', text: t('The sum of the links that count in the total traffic. The graph shows the last 24 hours when the map is recorded.') }));
+        } else if (p.type === 'speed') {
+            out.push(h('p', { 'class': 'help', text: t('The link widths by speed, from the link width table.') }));
+        } else if (p.type === 'updated') {
+            out.push(h('p', { 'class': 'help', text: t('The time of the last data, in the format of the timestamp.') }));
+        } else if (p.type === 'legend') {
+            out.push(h('p', { 'class': 'help', text: t('The colours of the link load scale.') }));
+        }
+        out.push(h('p', { 'class': 'help', text: t('The box takes the colours and font of the legends (Map properties).') }));
+        return out;
     }
 
     /** Legends, timestamps and title: where they are */
@@ -3073,6 +3155,9 @@
             out.push(row(t('Position'), h('div', { 'class': 'pair' }, [x, y])));
         }
         out.push(h('p', { 'class': 'help', text: t('Drag it on the map, or use the arrow keys. It lines up with the other objects while dragged.') }));
+        if (single && single.kind === 'box') {
+            out = out.concat(boxFields(single));
+        }
         // the text, font and colours of the legend, title or timestamp (editor-mapprops.js)
         var section = single && { legend: 'legend', title: 'title', timestamp: 'timestamp', widthlegend: 'widthlegend' }[single.kind];
         if (section && window.WMEditor.mapSection) {
@@ -4375,6 +4460,11 @@
         'add-load-legend': function () { addFurniture('legend:DEFAULT'); },
         'add-speed-legend': function () { addFurniture('widthlegend:'); },
         'add-timestamp': function () { addFurniture('timestamp:'); },
+        'add-box-total': function () { addBox('total'); },
+        'add-box-legend': function () { addBox('legend'); },
+        'add-box-speed': function () { addBox('speed'); },
+        'add-box-updated': function () { addBox('updated'); },
+        'add-box-text': function () { addBox('text'); },
         'shortcuts': openShortcuts,
         'delete': deleteSelection,
         'duplicate': duplicateSelection,

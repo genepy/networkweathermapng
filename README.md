@@ -228,6 +228,35 @@ the SVG. In the SVG editor, the **Note** button (or **Add a note here** in the
 right-click menu) adds one; the inspector edits its text, where Enter starts a
 new line, its alignment and its style.
 
+### Boxes on the map
+
+Boxes are cards placed on the map, in the style of the viewer's side panel,
+drawn in the PNG and the SVG, so the live view, the kiosk and the downloads
+show them. Each box is a set of map hints (engines that do not know them
+skip them):
+
+```
+SET box_1 total 10 10              # type and position: total, legend, speed, updated or text
+SET box_1_style graph              # total: graph (value and the last 24 h) or plain
+SET box_2 legend -10 -10           # negative x or y count from the right or bottom edge
+SET box_2_style bar                # legend: bar (the scale as a bar, 0% to 100%) or list
+SET box_3 text 600 20
+SET box_3_title Points of presence # "-" for no title; each type has a default
+SET box_3_text Amsterdam | 68\nParis | 37   # \n starts a row, "label | value" puts the value on the right
+SET box_3_rows sites               # rows from the map: sites (nodes per site) or sites_load (busiest link)
+SET box_3_width 240                # least width of the content
+SET box_4 speed 10 300             # the link widths by speed (link width table)
+SET box_5 updated 10 460           # the time of the last data
+```
+
+*Total traffic* sums the IN and OUT rates of the links that count in the
+total (not `SET traffic_total 0`); its graph comes from the map's
+recordings and appears when the map is recorded. Boxes take the legend
+colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`, `KEYTEXTCOLOR`) and `KEYFONT`. In
+the editor, the *Boxes* tiles of the *Add* panel add one in the middle of
+the view; it moves like the legends, its panel edits the title, style, rows
+and width, and Delete removes it.
+
 ### Comments along curved links
 
 `INCOMMENT` and `OUTCOMMENT` are drawn straight, along the link where they
@@ -430,7 +459,9 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   one undo step). Ctrl+click on an empty spot also adds a node. *Map items*
   puts the *Link load* legend (`KEYPOS`), the *Link speed* legend
   (`SET width_legend`) or the *Timestamp* (`TIMEPOS`) in the middle of the
-  view, or selects it when it is already on the map.
+  view, or selects it when it is already on the map. *Boxes* adds a box
+  (see [Boxes on the map](#boxes-on-the-map)): *Total traffic*, *Traffic
+  legend*, *Link speed*, *Updated at* or *Text box*.
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection
   bar, of the right panel or of the context menu) removes the selection. A
   legend or a timestamp is hidden rather than removed: it stays in the
