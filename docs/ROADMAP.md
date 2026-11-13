@@ -61,6 +61,11 @@ its screenshots and acceptance criteria.
 | F24 | Tooltips explaining the editor options, e.g. *Shape* > *Arrow* both / one direction (P51) |
 | F25 | Choose which viewer panels show (*Sites*, *Total traffic*, *Link load*, last update) and where (P52) |
 | F26 | Leftovers: Ctrl+Shift+drag adds to the selection (P53), shortcuts on the fullscreen page (P54), *Custom text* label style like #90 (P55) |
+| F27 | Editing the *ISP backbone* and *Datacenter fabric* demo maps fails with "The server sent an unreadable answer" (bug, P59) |
+| F28 | Total traffic graph shown only on the recorded testbed map; show it on every map or say why (bug, P61) |
+| F29 | Total traffic box like Nine IX: link groups, 1 day / 1 week / 1 month, 95th and peak (P57, after F19, see F25) |
+| F30 | City inset in the top right corner with more contrast, like Nine IX (P58) |
+| F31 | Make the basemap choice easy to find from the editor (P60) |
 
 ## Stale branches
 
