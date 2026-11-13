@@ -134,6 +134,7 @@ final class BasemapTest extends TestCase
             'center' => [46.6, 2.4],
             'zoom' => 5.0,
             'attribution' => null,
+            'clusters' => 'nearby',
         ], $b);
         $this->assertNull(Basemap::of($map, ['https://other.example']), 'a server that is not allowed');
 
@@ -251,5 +252,75 @@ final class BasemapTest extends TestCase
         }
         $this->expectException(InvalidArgumentException::class);
         $editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['geo' => 'somewhere']]]);
+    }
+
+    public function testClusterModesAndGroups(): void
+    {
+        $body = "NODE a\n\tPOSITION 100 100\n\tSET geo 48.85 2.35\n\tSET site Paris\n\n"
+            . "NODE b\n\tPOSITION 100 100\n\tSET geo 48.86 2.36\n\tSET site Paris\n\tSET cluster Paris east\n\n"
+            . "NODE c\n\tPOSITION 100 100\n\tSET geo 45.76 4.84\n\n";
+        $map = $this->read($this->mapFile($body));
+        $this->assertSame('nearby', Basemap::clusterMode($map), 'the default');
+        $this->assertSame('Paris', Basemap::clusterOf($map->nodes['a']), 'its site when it has no group');
+        $this->assertSame('Paris east', Basemap::clusterOf($map->nodes['b']));
+        $this->assertSame('', Basemap::clusterOf($map->nodes['c']));
+
+        $map->hints['cluster_mode'] = 'Groups';
+        $this->assertSame('groups', Basemap::clusterMode($map));
+        $this->assertSame('groups', Basemap::of($map, ['https://tiles.openfreemap.org'])['clusters']);
+        $map->hints['cluster_mode'] = 'bogus';
+        $this->assertSame('nearby', Basemap::clusterMode($map));
+
+        $nodes = [];
+        foreach (MapService::summarize($map)['items'] as $item) {
+            if ($item['kind'] === 'node') {
+                $nodes[$item['name']] = $item;
+            }
+        }
+        $this->assertSame('Paris', $nodes['a']['cluster']);
+        $this->assertSame('Paris east', $nodes['b']['cluster']);
+        $this->assertArrayNotHasKey('cluster', $nodes['c'], 'no group, no site');
+    }
+
+    public function testEditorSetsClusterModeGroupAndBadgeSize(): void
+    {
+        $file = $this->dir . '/map.conf';
+        copy(TESTS_ROOT . '/fixtures/maps/basic.conf', $file);
+        $editor = new MapEditor($file);
+        $editor->apply([['op' => 'set_map', 'props' => [
+            'basemap' => 'https://tiles.openfreemap.org/styles/positron',
+            'basemap_center' => '46.6 2.4',
+            'basemap_zoom' => '5',
+            'cluster_mode' => 'groups',
+        ]]]);
+        $editor->apply([['op' => 'set_node', 'names' => ['paris', 'lyon'], 'props' => ['cluster' => '  South   east ', 'badge_size' => 40]]]);
+        $text = (string) file_get_contents($file);
+        $this->assertStringContainsString('SET cluster_mode groups', $text);
+        $this->assertStringContainsString('SET cluster South east', $text);
+        $this->assertStringContainsString('SET badge_size 40', $text);
+
+        $map = $editor->load();
+        $this->assertSame('groups', Basemap::clusterMode($map));
+        $this->assertSame(40, $map->nodes['paris']->badgeSize());
+
+        // back to the defaults: nothing written
+        $editor->apply([['op' => 'set_map', 'props' => ['cluster_mode' => 'nearby']]]);
+        $editor->apply([['op' => 'set_node', 'names' => ['paris', 'lyon'], 'props' => ['cluster' => '', 'badge_size' => 0]]]);
+        $text = (string) file_get_contents($file);
+        $this->assertStringNotContainsString('cluster', $text);
+        $this->assertStringNotContainsString('badge_size', $text);
+
+        foreach ([
+            ['op' => 'set_map', 'props' => ['cluster_mode' => 'sometimes']],
+            ['op' => 'set_node', 'names' => ['paris'], 'props' => ['badge_size' => 5]],
+            ['op' => 'set_node', 'names' => ['paris'], 'props' => ['badge_size' => 500]],
+        ] as $op) {
+            try {
+                $editor->apply([$op]);
+                $this->fail('accepted ' . json_encode($op));
+            } catch (InvalidArgumentException $e) {
+                $this->assertNotSame('', $e->getMessage());
+            }
+        }
     }
 }

@@ -447,6 +447,7 @@ window.WM_EDITOR = {
 <script src="<?= asset('/assets/js/shortcuts.js') ?>"></script>
 <script>window.WM_MAPLIBRE = <?= json_encode(['js' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp.js'), 'worker' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp-worker.js'), 'css' => asset('/assets/vendor/maplibre-gl/maplibre-gl.css')], JSON_UNESCAPED_SLASHES) ?>;</script>
 <script src="<?= asset('/assets/js/basemap.js') ?>"></script>
+<script src="<?= asset('/assets/js/geo-view.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-svg.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-icons.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-backgrounds.js') ?>"></script>

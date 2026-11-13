@@ -829,6 +829,17 @@ class MapEditor
                     // SET site: the group of the node in the viewer's site list
                     $site = trim((string) preg_replace('/\s+/u', ' ', $this->text($value)));
                     $this->setHint($node, $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null, 'site', $site, '');
+                } elseif ($key === 'cluster') {
+                    // SET cluster: the group the node merges with when the map merges only groups
+                    $group = trim((string) preg_replace('/\s+/u', ' ', $this->text($value)));
+                    $this->setHint($node, $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null, 'cluster', $group, '');
+                } elseif ($key === 'badge_size') {
+                    // SET badge_size: the diameter of a round badge in pixels, 0 or '' for its own size
+                    $size = (int) $value;
+                    if ($size !== 0 && ($size < self::BADGE_SIZE_MIN || $size > self::BADGE_SIZE_MAX)) {
+                        throw new InvalidArgumentException(__('The badge size must be between :min and :max pixels', ['min' => self::BADGE_SIZE_MIN, 'max' => self::BADGE_SIZE_MAX]));
+                    }
+                    $this->setHint($node, $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null, 'badge_size', $size === 0 ? '' : (string) $size, '');
                 } elseif ($key === 'labelshift') {
                     // where the label sits from its default place, in pixels; null puts it back
                     $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
@@ -1529,6 +1540,10 @@ class MapEditor
         return $out;
     }
 
+    /** The badge diameters SET badge_size takes, in pixels (as the engine) */
+    public const BADGE_SIZE_MIN = \WeatherMapNode::BADGE_SIZE_MIN;
+    public const BADGE_SIZE_MAX = \WeatherMapNode::BADGE_SIZE_MAX;
+
     private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags', 'modern'];
 
     /** SET basemap...: the geographic basemap; an empty value removes the hint */
@@ -1596,6 +1611,17 @@ class MapEditor
                 unset($ref);
             } elseif (in_array($key, Basemap::HINTS, true)) {
                 $this->setBasemapHint($map, $key, $value);
+            } elseif ($key === 'cluster_mode') {
+                // SET cluster_mode nearby|none|groups; nearby is the default and writes nothing
+                $mode = (string) $value;
+                if (!in_array($mode, Basemap::CLUSTER_MODES, true)) {
+                    throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $mode]));
+                }
+                if ($mode === Basemap::CLUSTER_MODES[0]) {
+                    unset($map->hints['cluster_mode']);
+                } else {
+                    $map->hints['cluster_mode'] = $mode;
+                }
             } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
                 $field = ['title_font' => 'titlefont', 'time_font' => 'timefont', 'key_font' => 'keyfont'][$key];
                 $map->$field = $this->fontNumber($map, $value);
@@ -1927,6 +1953,7 @@ class MapEditor
             'basemap_center' => (string) ($map->hints['basemap_center'] ?? ''),
             'basemap_zoom' => (string) ($map->hints['basemap_zoom'] ?? ''),
             'basemap_attribution' => (string) ($map->hints['basemap_attribution'] ?? ''),
+            'cluster_mode' => Basemap::clusterMode($map),
         ];
     }
 
@@ -1985,6 +2012,10 @@ class MapEditor
                 'site' => \App\Services\MapService::siteOf($node),
                 // its point on the basemap, [lat, lon], or null
                 'geo' => \WeatherMapGeo::nodePoint($node),
+                // SET cluster: its own cluster group ('' when it follows its site)
+                'cluster' => is_scalar($node->hints['cluster'] ?? null) ? trim((string) $node->hints['cluster']) : '',
+                // SET badge_size: the diameter of its badge, 0 for its own size
+                'badge_size' => $node->badgeSize(),
                 'icon' => (string) $node->iconfile,
                 'iconscalew' => (int) $node->iconscalew,
                 'iconscaleh' => (int) $node->iconscaleh,

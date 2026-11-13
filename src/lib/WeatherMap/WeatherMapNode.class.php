@@ -925,6 +925,20 @@ class WeatherMapNode extends WeatherMapItem {
 		return $out;
 	}
 
+	/** The diameters SET badge_size takes, in pixels */
+	const BADGE_SIZE_MIN = 12;
+	const BADGE_SIZE_MAX = 200;
+
+	/** SET badge_size <px>: the diameter of the badge, 0 when it takes the size of its icon or initials */
+	function badgeSize() {
+		$v = isset($this->hints['badge_size']) && is_scalar($this->hints['badge_size']) ? trim((string) $this->hints['badge_size']) : '';
+		if (!is_numeric($v)) {
+			return 0;
+		}
+		$v = (int) round((float) $v);
+		return $v >= self::BADGE_SIZE_MIN ? min($v, self::BADGE_SIZE_MAX) : 0;
+	}
+
 	/** SET node_style badge (our hint; DEFAULT passes it on to every node) */
 	function is_badge() {
 		return isset($this->hints['node_style']) && strtolower(trim((string) $this->hints['node_style'])) === 'badge';
@@ -966,14 +980,35 @@ class WeatherMapNode extends WeatherMapItem {
 
 		$text = '';
 		$tw = $th = 0;
+		$want = $this->badgeSize();
 		if ($inner) {
 			$iw = imagesx($inner);
 			$ih = imagesy($inner);
+			if ($want > 0) {
+				// SET badge_size: the icon fits the disc of that size
+				$fit = max(6, (int) floor(($want - 4) / 1.3));
+				$f = $fit / max($iw, $ih);
+				$nw = max(1, (int) round($iw * $f));
+				$nh = max(1, (int) round($ih * $f));
+				$scaled = imagecreatetruecolor($nw, $nh);
+				imagealphablending($scaled, false);
+				imagesavealpha($scaled, true);
+				imagefill($scaled, 0, 0, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
+				imagecopyresampled($scaled, $inner, 0, 0, 0, 0, $nw, $nh, $iw, $ih);
+				imagealphablending($scaled, true);
+				$inner = $scaled;
+				$resized = true;
+				$iw = $nw;
+				$ih = $nh;
+			}
 			$d = (int) ceil(max($iw, $ih) * 1.3) + 4;
 		} else {
 			$text = self::initials($this->proclabel != '' ? $this->proclabel : $this->name);
 			list($tw, $th) = $map->myimagestringsize($this->labelfont, $text !== '' ? $text : 'M');
 			$d = (int) max(24, ceil(max($tw, $th) * 1.6) + 6);
+		}
+		if ($want > 0) {
+			$d = $want;
 		}
 		$d += $d % 2;
 		$ring_width = $ring ? max(1.5, $d / 16) : 0;
@@ -1012,6 +1047,9 @@ class WeatherMapNode extends WeatherMapItem {
 			imagesavealpha($copy, true);
 			imagecopy($copy, $inner, 0, 0, 0, 0, $iw, $ih);
 			$innerinfo = array('w' => $iw, 'h' => $ih, 'image' => $copy, 'vector' => $vector);
+			if (!empty($resized)) {
+				imagedestroy($inner);
+			}
 		} elseif ($text !== '') {
 			// the baseline, as for a node label: centred in the disc
 			$tx = -$tw / 2;

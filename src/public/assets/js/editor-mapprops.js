@@ -269,6 +269,14 @@
             sendProps({ basemap_center: centre.value, basemap_zoom: zoom.value });
         });
 
+        // SET cluster_mode: how located nodes too close together merge in the live view
+        var clusters = h('select', { name: 'cluster_mode' }, [
+            ['nearby', t('Group nearby nodes')],
+            ['none', t('No grouping')],
+            ['groups', t('Groups I define (Cluster group of the nodes)')]
+        ].map(function (o) { return h('option', { value: o[0], text: o[1], selected: (p.cluster_mode || 'nearby') === o[0] }); }));
+        clusters.addEventListener('change', function () { sendProps({ cluster_mode: clusters.value }); });
+
         var servers = (m.basemap_servers || []).join(', ');
         return [
             h('p', { 'class': 'mapprops-explain', text: t('A web map drawn under the map in the live view and in the editor. The canvas covers the area around its centre point; at 100 %, one pixel of the map is one pixel of the web map at the zoom level below. Nodes with a location (in the node panel) sit on their point; the others keep their position. The PNG image and the downloaded SVG keep the plain background.') }),
@@ -278,7 +286,8 @@
             field(t('Centre (latitude longitude)'), centre),
             field(t('Zoom level'), zoom, t('0 shows the whole world, 5 a country, 11 a city.')),
             fit,
-            field(t('Credit'), credit, t('Shown on the map. Styles carry their own; raster tiles default to OpenStreetMap.'))
+            field(t('Credit'), credit, t('Shown on the map. Styles carry their own; raster tiles default to OpenStreetMap.')),
+            field(t('Clusters'), clusters, t('Located nodes too close to tell apart merge into one badge with their number in the live view; zooming in splits them. With your own groups, only nodes of the same group merge (the Cluster group of a node, or its site).'))
         ];
     }
 
