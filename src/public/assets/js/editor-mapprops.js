@@ -75,10 +75,11 @@
                     return inp;
                 }
                 var none = r.colour === 'none';
-                var pick = h('input', { type: 'color', value: none ? '#ffffff' : r.colour, disabled: none, 'aria-label': t('Colour') });
+                var pick = h('input', { type: 'color', value: none ? '#ffffff' : r.colour, disabled: none, 'aria-label': t('Colour'), 'data-none': '' });
                 pick.addEventListener('input', function () { r.colour = pick.value; r.colour2 = ''; preview(); });
                 var off = h('input', { type: 'checkbox', checked: none, title: t('No colour: links in this step are not drawn') });
                 off.addEventListener('change', function () { r.colour = off.checked ? 'none' : pick.value; pick.disabled = off.checked; preview(); });
+                pick.addEventListener('wm-colour-none', function () { off.checked = true; off.dispatchEvent(new Event('change', { bubbles: true })); });
                 return h('div', { 'class': 'scale-row' }, [
                     num('bottom', t('From (%)')), h('span', { text: '–' }), num('top', t('To (%)')), h('span', { text: '%' }),
                     pick, h('label', { 'class': 'inline' }, [off, ' ' + t('None')]),
@@ -311,9 +312,12 @@
     function colour(name, value, mayBeNone) {
         var input = h('input', { type: 'color', name: name, value: value === 'none' ? '#ffffff' : value });
         if (!mayBeNone) { return input; }
+        input.setAttribute('data-none', '');
         var none = h('input', { type: 'checkbox', name: name + '__none', checked: value === 'none' });
         input.disabled = value === 'none';
         none.addEventListener('change', function () { input.disabled = none.checked; });
+        // None in the colour picker: the box is ticked, and the section saves
+        input.addEventListener('wm-colour-none', function () { none.checked = true; none.dispatchEvent(new Event('change', { bubbles: true })); });
         return h('div', { 'class': 'pair' }, [input, h('label', { 'class': 'inline' }, [none, ' ' + t('None')])]);
     }
 

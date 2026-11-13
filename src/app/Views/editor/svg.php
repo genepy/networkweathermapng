@@ -1,5 +1,5 @@
 <?php
-/** @var array $map @var int $mapId @var array $icons @var array $backgrounds (BackgroundLibrary::all()) @var array $iconThemes */
+/** @var array $map @var int $mapId @var array $icons @var array $backgrounds (BackgroundLibrary::all()) @var array $iconThemes @var array $themeColours (MapThemes::colours()) */
 $e = static fn ($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : '';
 ?>
@@ -62,7 +62,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
 
     <div id="editor-menu" popover role="menu" aria-label="<?= e__('More') ?>">
         <button type="button" role="menuitem" data-cmd="map-properties"><?= icon('sliders-horizontal', 'i') ?><span><?= e__('Map properties') ?></span></button>
-        <a role="menuitem" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span><?= e__('Map settings') ?></span></a>
+        <a role="menuitem" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" data-map-settings title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span><?= e__('Map settings') ?></span></a>
         <button type="button" role="menuitem" popovertarget="toolbars-menu" id="toolbars-button"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span><?= e__('Toolbars and panels') ?></span></button>
         <button type="button" role="menuitem" data-cmd="shortcuts"><?= icon('list', 'i') ?><span><?= e__('Keyboard shortcuts') ?></span><kbd data-keys="editor.shortcuts">?</kbd></button>
         <hr>
@@ -404,10 +404,12 @@ window.WM_EDITOR = {
     icons: <?= json_encode(array_values($icons), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     iconThemes: <?= json_encode($iconThemes, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     backgrounds: <?= json_encode(array_values($backgrounds), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-    fonts: <?= json_encode($fonts, JSON_HEX_TAG | JSON_HEX_AMP) ?>
+    fonts: <?= json_encode($fonts, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+    themeColours: <?= json_encode((object) ($themeColours ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>
 };
 </script>
 <script src="<?= asset('/assets/js/ui.js') ?>"></script>
+<script src="<?= asset('/assets/js/colour-picker.js') ?>"></script>
 <?= $keysScript ?>
 <script src="<?= asset('/assets/js/shortcuts.js') ?>"></script>
 <script>window.WM_MAPLIBRE = <?= json_encode(['js' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp.js'), 'worker' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp-worker.js'), 'css' => asset('/assets/vendor/maplibre-gl/maplibre-gl.css')], JSON_UNESCAPED_SLASHES) ?>;</script>
@@ -417,6 +419,7 @@ window.WM_EDITOR = {
 <script src="<?= asset('/assets/js/editor-backgrounds.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-toolbars.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-mapprops.js') ?>"></script>
+<script src="<?= asset('/assets/js/map-settings.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-selbar.js') ?>"></script>
 <script src="<?= asset('/assets/js/palette.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-palette.js') ?>"></script>

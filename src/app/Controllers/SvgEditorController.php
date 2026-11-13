@@ -14,6 +14,7 @@ use App\Services\Editor\ConfigHistory;
 use App\Services\Editor\ConfigSource;
 use App\Services\Editor\MapClipboard;
 use App\Services\Editor\MapEditor;
+use App\Services\Editor\MapThemes;
 use App\Services\Images\BackgroundLibrary;
 use App\Services\Images\IconLibrary;
 use App\Services\MapService;
@@ -51,6 +52,7 @@ class SvgEditorController extends BaseController
             'iconThemes' => $library->themes(),
             'backgrounds' => $this->backgrounds()->all(),
             'fonts' => MapEditor::shippedFonts(),
+            'themeColours' => MapThemes::colours(),
             'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
     }

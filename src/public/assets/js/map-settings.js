@@ -8,7 +8,9 @@
  *   button of the viewer) open the panel in a drawer on the right instead of
  *   leaving the page: GET <href>&panel=1, saved with fetch; on success the
  *   page reloads and shows the saved message. Any failure to load falls
- *   back to the page itself.
+ *   back to the page itself. In the map editor (window.WMEditor) the page
+ *   does not reload: the drawer closes and the editor redraws the map, whose
+ *   drawn title may follow a new name.
  * - Choosing between a name and a drawn title that differ fills the Name
  *   field with the chosen one.
  */
@@ -90,15 +92,26 @@
         e.preventDefault();
         const button = form.querySelector('button[type="submit"]');
         if (button) button.disabled = true;
+        const editor = window.WMEditor;
+        const body = new FormData(form);
+        // the editor stays on the page: no saved message kept for the next one
+        if (editor) body.append('inline', '1');
         fetch(form.action, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {Accept: 'application/json'},
-            body: new FormData(form)
+            body: body
         }).then(function (r) {
             return r.json().catch(function () { return {success: false}; });
         }).then(function (data) {
             if (!data.success) throw new Error(data.error || t('The settings could not be saved'));
+            if (editor) {
+                const dialog = form.closest('dialog');
+                if (dialog) dialog.close();
+                if (window.WMUI) WMUI.toast(t('Map settings saved'), 'success');
+                editor.run(editor.load);
+                return;
+            }
             // the saved message is waiting for the reloaded page
             window.location.reload();
         }).catch(function (err) {

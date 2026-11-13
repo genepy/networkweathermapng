@@ -553,4 +553,18 @@ return [
     'The time of the last data, in the format of the timestamp.' => 'L’heure des dernières données, au format de l’horodatage.',
     'The colours of the link load scale.' => 'Les couleurs de l’échelle de charge des liens.',
     'The box takes the colours and font of the legends (Map properties).' => 'L’encadré prend les couleurs et la police des légendes (Propriétés de la carte).',
+    // Colour picker (assets/js/colour-picker.js)
+    'Choose a colour' => 'Choisir une couleur',
+    'Saturation and brightness' => 'Saturation et luminosité',
+    'Saturation (left to right) and brightness (bottom to top). Arrow keys move it, Shift for bigger steps.' => 'Saturation (de gauche à droite) et luminosité (de bas en haut). Les flèches la déplacent, Maj pour de plus grands pas.',
+    'Saturation :s %, brightness :v %' => 'Saturation :s %, luminosité :v %',
+    'Hue' => 'Teinte',
+    'Hex code' => 'Code hexadécimal',
+    'Before: click to go back to it' => 'Avant : cliquer pour y revenir',
+    'Theme: :name' => 'Thème : :name',
+    'Night' => 'Nuit',
+    'Basic' => 'De base',
+    'Recent' => 'Récentes',
+    // Map settings in a drawer over the editor (assets/js/map-settings.js)
+    'Map settings saved' => 'Réglages de la carte enregistrés',
 ];
