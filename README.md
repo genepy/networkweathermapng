@@ -452,8 +452,9 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
   *reduce motion* setting the glow stays and the pulse stops. The PNG is not
   changed.
-- **Glow**: another switch of that section draws a soft glow around every link,
-  in its own colour (`SET link_glow 1`), in the live map and the editor.
+- **Glow**: another switch of that section lights up the link under the
+  pointer with a soft glow in its own colour (`SET link_glow 1`), in the live
+  map and the editor. There is no glow at rest.
   The PNG keeps plain links.
 - **Traffic flow**: a third switch of that section makes small glowing comets
   run along the links on the live map (`SET link_flow 1`), each half of a

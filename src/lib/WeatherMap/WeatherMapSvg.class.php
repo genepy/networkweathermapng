@@ -15,6 +15,8 @@
 class WeatherMapSvg {
 	/** @var WeatherMapSvg|null */
 	static $active = null;
+	/** The length cut off each end of the link being drawn, to hide it under its nodes: [OUT => at A, IN => at B] */
+	static $cuts = null;
 
 	var $image = null;
 	var $map = null;
@@ -159,8 +161,9 @@ class WeatherMapSvg {
 	}
 
 	/**
-	 * SET link_glow 1: a soft glow in the colour of each link (the Night
-	 * theme). SVG only: the PNG keeps plain links.
+	 * SET link_glow 1: a soft glow in the colour of a link while the
+	 * pointer is on it (the Night theme). None at rest, so the map stays
+	 * crisp. SVG only: the PNG keeps plain links.
 	 */
 	static function hasGlow($map) {
 		return (string) $map->get_hint('link_glow') === '1';
@@ -176,7 +179,7 @@ class WeatherMapSvg {
 			. '<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>'
 			. '<feComponentTransfer in="blur" result="soft"><feFuncA type="linear" slope="0.8"/></feComponentTransfer>'
 			. '<feMerge><feMergeNode in="soft"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' . "\n"
-			. "<style>\n.wm-map .wm-link:not(.wm-hot) .wm-arrow{filter:url(#wm-glow)}\n</style>";
+			. "<style>\n.wm-map .wm-link:not(.wm-hot):hover .wm-arrow{filter:url(#wm-glow)}\n</style>";
 	}
 
 	/**
@@ -307,11 +310,22 @@ class WeatherMapSvg {
 			$flat[] = $p[0];
 			$flat[] = $p[1];
 		}
+		// the length cut off at the node where the arrow starts, and at
+		// its tip when the tip is at a node (a one-way link)
+		$cut = array(0, 0);
+		if (is_array(self::$cuts)) {
+			$total = $points[count($points) - 1][2];
+			$cut[0] = (float) ($from == 0 ? self::$cuts[OUT] : self::$cuts[IN]);
+			if ($from == 0 && abs($to - $total) < 0.01) {
+				$cut[1] = (float) self::$cuts[IN];
+			}
+		}
 		$svg->shape = array(
 			'spine' => $svg->shift($flat),
 			'w'     => (float) $width,
 			'aw'    => (float) $arrowwidth,
 			'as'    => (float) $arrowsize,
+			'cut'   => $cut,
 		);
 	}
 
@@ -780,8 +794,10 @@ class WeatherMapSvg {
 		for ($i = 0; $i + 1 < count($shape['spine']); $i += 2) {
 			$pts[] = self::num($shape['spine'][$i]) . ',' . self::num($shape['spine'][$i + 1]);
 		}
-		return sprintf(' data-spine="%s" data-w="%s" data-aw="%s" data-as="%s"', implode(' ', $pts),
-			self::num($shape['w']), self::num($shape['aw']), self::num($shape['as']));
+		$cut = isset($shape['cut']) ? $shape['cut'] : array(0, 0);
+		return sprintf(' data-spine="%s" data-w="%s" data-aw="%s" data-as="%s"%s', implode(' ', $pts),
+			self::num($shape['w']), self::num($shape['aw']), self::num($shape['as']),
+			$cut[0] > 0 || $cut[1] > 0 ? sprintf(' data-cut="%s %s"', self::num(round($cut[0], 2)), self::num(round($cut[1], 2))) : '');
 	}
 
 	static function roleClass($item) {

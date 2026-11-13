@@ -334,7 +334,7 @@ final class SvgRenderTest extends TestCase
         return array_map(static fn ($p) => array_map('floatval', explode(',', $p)), preg_split('/\s+/', trim($s)));
     }
 
-    /** SET link_glow 1: a glow filter on the link arrows, but not on saturated links nor in the plain SVG */
+    /** SET link_glow 1: a glow filter on the link arrows under the pointer only, but not on saturated links nor in the plain SVG */
     public function testLinkGlow(): void
     {
         $conf = "WIDTH 400\nHEIGHT 200\nNODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 50\n"
@@ -347,7 +347,7 @@ final class SvgRenderTest extends TestCase
         $doc = new \DOMDocument();
         $this->assertTrue($doc->loadXML($svg));
         $this->assertStringContainsString('<filter id="wm-glow"', $svg);
-        $this->assertStringContainsString('.wm-link:not(.wm-hot) .wm-arrow{filter:url(#wm-glow)}', $svg);
+        $this->assertStringContainsString('.wm-link:not(.wm-hot):hover .wm-arrow{filter:url(#wm-glow)}', $svg);
 
         file_put_contents($file, $conf);
         $plain = $this->load($file);
@@ -631,6 +631,63 @@ final class SvgRenderTest extends TestCase
         $this->assertEqualsWithDelta(4, max($flat) - 100, 1);
         // positive is to the left of A to B: up on a link running right
         $this->assertEqualsWithDelta(-20, min($shifted) - min($label), 1);
+    }
+
+    /** Links stop where their square end is still hidden under the node, are drawn under their nodes, and the arrows still meet half way */
+    public function testLinkEndsHideUnderTheirNodes(): void
+    {
+        $file = TESTS_OUTPUT . '/ends.conf';
+        file_put_contents($file, "WIDTH 400\nHEIGHT 200\nNODE DEFAULT\n\tSET node_style badge\n"
+            . "NODE a\n\tLABEL core\n\tPOSITION 50 100\n\tZORDER 650\nNODE b\n\tLABEL edge\n\tPOSITION 350 100\n"
+            . "NODE c\n\tLABEL plain\n\tPOSITION 200 30\n\tSET node_style box\n\tLABELBGCOLOR none\n"
+            . "LINK ab\n\tNODES a b\n\tWIDTH 9\n\tZORDER 900\n\tBANDWIDTH 1G\n\tTARGET static:300M:100M\n"
+            . "LINK ac\n\tNODES a c\n\tWIDTH 4\n\tLINKSTYLE oneway\n\tBANDWIDTH 1G\n\tTARGET static:300M:100M\n");
+        $map = $this->load($file);
+        $svg = \WeatherMapSvg::render($map);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $r = (float) $xpath->query('//s:g[@data-name="a"]/s:circle')->item(0)->getAttribute('r');
+        $arrows = $xpath->query('//s:g[@data-kind="link"][@data-name="ab"]/s:polygon[@data-spine]');
+        $this->assertSame(2, $arrows->length);
+        foreach ($arrows as $i => $arrow) {
+            $this->assertInstanceOf(\DOMElement::class, $arrow);
+            $spine = self::points($arrow->getAttribute('data-spine'));
+            $centre = $i === 0 ? 50.0 : 350.0;
+            $start = abs($spine[0][0] - $centre);
+            // badge radius 15 (ring included), half width 9 + 1 of outline: sqrt(15² - 10²) = 11
+            $this->assertGreaterThan(8, $start, 'the link starts away from the centre');
+            $this->assertLessThan(15, $start, 'and still under the badge');
+            $cut = explode(' ', $arrow->getAttribute('data-cut'));
+            $this->assertEqualsWithDelta($start, (float) $cut[0], 0.5, 'the viewer knows how much was cut');
+            // every corner of the end is under the badge
+            foreach (self::points($arrow->getAttribute('points')) as $p) {
+                if (abs($p[0] - $centre) < 20) {
+                    $this->assertLessThanOrEqual(15.6, hypot($p[0] - $centre, $p[1] - 100));
+                }
+            }
+            // the arrows still meet at the split point
+            $this->assertEqualsWithDelta(200, end($spine)[0], 0.5);
+        }
+        $this->assertGreaterThan(0, $r);
+
+        // a link with a higher ZORDER than its nodes is still drawn under them
+        $order = [];
+        foreach ($xpath->query('//s:g[@data-kind="link" or @data-kind="node"]') as $g) {
+            $this->assertInstanceOf(\DOMElement::class, $g);
+            $order[] = $g->getAttribute('data-name');
+        }
+        $this->assertLessThan(array_search('a', $order, true), array_search('ab', $order, true));
+        $this->assertLessThan(array_search('b', $order, true), array_search('ab', $order, true));
+
+        // a label without a background hides nothing: the one-way arrow reaches the centre of c
+        $tip = $xpath->query('//s:g[@data-name="ac"]/s:polygon[@data-spine]')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $tip);
+        $spine = self::points($tip->getAttribute('data-spine'));
+        $this->assertEqualsWithDelta(200, end($spine)[0], 0.5);
+        $this->assertEqualsWithDelta(30, end($spine)[1], 0.5);
     }
 
     private function load(string $file): \WeatherMap
