@@ -15,13 +15,22 @@
  *       OPACITY 100
  *       OUTLINEWIDTH 1
  *       OUTLINESTYLE dashed
+ *       SHAPE rounded
+ *       RADIUS 16
+ *       LABELOFFSET 10 -4
  *
+ * SHAPE is rect (the default), rounded (corners of RADIUS pixels) or
+ * ellipse. LABELOFFSET moves the label from its LABELPOS place.
  * Colours may also be "none". Zones are always drawn under every link and
  * node, in the order they appear in the file.
  */
 class WeatherMapZone {
 	const LABEL_POSITIONS = array('NW', 'N', 'NE', 'SW', 'S', 'SE');
 	const PADDING = 4;
+	const SHAPES = array('rect', 'rounded', 'ellipse');
+	const RADIUS_MAX = 500;
+	/** How far LABELOFFSET may move the label, in pixels */
+	const LABEL_OFFSET_MAX = 5000;
 
 	var $name;
 	var $x = 0;
@@ -37,6 +46,11 @@ class WeatherMapZone {
 	var $opacity = 100;
 	var $outlinewidth = 1;
 	var $outlinestyle = 'solid';
+	var $shape = 'rect';
+	/** Corner radius of a rounded zone */
+	var $radius = 12;
+	/** [dx, dy] from the place LABELPOS gives the label */
+	var $labeloffset = array(0, 0);
 	var $configline = 0;
 	var $defined_in = '';
 	/** SET lines of the block, such as the editor's grouping */
@@ -81,6 +95,12 @@ class WeatherMapZone {
 			$this->outlinewidth = min(20, (int) $m[1]);
 		} elseif (preg_match('/^OUTLINESTYLE\s+(solid|dashed)$/i', $line, $m)) {
 			$this->outlinestyle = strtolower($m[1]);
+		} elseif (preg_match('/^SHAPE\s+(rect|rounded|ellipse)$/i', $line, $m)) {
+			$this->shape = strtolower($m[1]);
+		} elseif (preg_match('/^RADIUS\s+(\d+)$/i', $line, $m)) {
+			$this->radius = min(self::RADIUS_MAX, (int) $m[1]);
+		} elseif (preg_match('/^LABELOFFSET\s+([-+]?\d+)\s+([-+]?\d+)$/i', $line, $m)) {
+			$this->labeloffset = array(self::clampOffset((int) $m[1]), self::clampOffset((int) $m[2]));
 		} elseif (preg_match('/^SET\s+(\S+)\s+(.*)$/i', $line, $m)) {
 			$this->hints[$m[1]] = trim($m[2]);
 		} else {
@@ -88,6 +108,10 @@ class WeatherMapZone {
 		}
 
 		return true;
+	}
+
+	static function clampOffset($v) {
+		return max(-self::LABEL_OFFSET_MAX, min(self::LABEL_OFFSET_MAX, (int) $v));
 	}
 
 	private function colourField($keyword) {
@@ -110,6 +134,9 @@ class WeatherMapZone {
 		if ($this->labelpos != $d->labelpos) {
 			$out .= "\tLABELPOS {$this->labelpos}\n";
 		}
+		if ($this->labeloffset[0] || $this->labeloffset[1]) {
+			$out .= sprintf("\tLABELOFFSET %d %d\n", $this->labeloffset[0], $this->labeloffset[1]);
+		}
 
 		foreach (array('fill' => 'FILL', 'outline' => 'OUTLINE', 'labelfont' => 'LABELFONT') as $field => $keyword) {
 			$value = $this->{$field . 'colour'};
@@ -126,6 +153,12 @@ class WeatherMapZone {
 		}
 		if ($this->outlinestyle != $d->outlinestyle) {
 			$out .= "\tOUTLINESTYLE {$this->outlinestyle}\n";
+		}
+		if ($this->shape != $d->shape) {
+			$out .= "\tSHAPE {$this->shape}\n";
+		}
+		if ($this->radius != $d->radius) {
+			$out .= "\tRADIUS {$this->radius}\n";
 		}
 		foreach ($this->hints as $name => $value) {
 			$out .= "\tSET {$name} {$value}\n";
@@ -154,13 +187,17 @@ class WeatherMapZone {
 			$svg->zone($this);
 		}
 
+		if ($this->shape != 'rect') {
+			$this->drawShape($image);
+		}
+
 		// draw straight on the canvas, so the SVG gets one <rect> rather than polygons
-		if ($this->fillcolour !== null && $this->opacity > 0) {
+		if ($this->shape == 'rect' && $this->fillcolour !== null && $this->opacity > 0) {
 			$fill = imagecolorallocatealpha($image, $this->fillcolour[0], $this->fillcolour[1], $this->fillcolour[2], $this->gdAlpha());
 			imagefilledrectangle($image, $x1, $y1, $x2, $y2, $fill);
 		}
 
-		if ($this->outlinecolour !== null && $this->outlinewidth > 0) {
+		if ($this->shape == 'rect' && $this->outlinecolour !== null && $this->outlinewidth > 0) {
 			$outline = imagecolorallocate($image, $this->outlinecolour[0], $this->outlinecolour[1], $this->outlinecolour[2]);
 			$w = $this->outlinewidth;
 			$this->edge($image, $x1, $y1, $x2, $y1 + $w - 1, $outline);
@@ -180,6 +217,104 @@ class WeatherMapZone {
 				$svg->role = null;
 			}
 		}
+	}
+
+	/** The corner radius actually drawn: 0 unless the zone is rounded, at most half a side */
+	function cornerRadius() {
+		if ($this->shape != 'rounded') {
+			return 0;
+		}
+		return max(0, min((float) $this->radius, ($this->width + 1) / 2, ($this->height + 1) / 2));
+	}
+
+	/**
+	 * The outline of a rounded or elliptic zone as a polygon, [x, y, ...],
+	 * moved inwards by $inset pixels. GD draws the pixels of both ends, so
+	 * the shape spans width + 1 by height + 1 pixels, like the rectangle.
+	 */
+	function polygon($inset = 0) {
+		$x1 = $this->x + $inset;
+		$y1 = $this->y + $inset;
+		$x2 = $this->x + $this->width + 1 - $inset;
+		$y2 = $this->y + $this->height + 1 - $inset;
+		$pts = array();
+
+		if ($this->shape == 'ellipse') {
+			$cx = ($x1 + $x2) / 2;
+			$cy = ($y1 + $y2) / 2;
+			$rx = max(0.5, ($x2 - $x1) / 2);
+			$ry = max(0.5, ($y2 - $y1) / 2);
+			$steps = (int) max(24, min(180, ceil(M_PI * ($rx + $ry) / 6)));
+			for ($i = 0; $i < $steps; $i++) {
+				$a = 2 * M_PI * $i / $steps;
+				$pts[] = $cx + $rx * cos($a);
+				$pts[] = $cy + $ry * sin($a);
+			}
+			return $pts;
+		}
+
+		$r = max(0, min($this->cornerRadius() - $inset, ($x2 - $x1) / 2, ($y2 - $y1) / 2));
+		$steps = (int) max(1, min(24, ceil($r / 3)));
+		// corner centres, clockwise from the top left, with their start angle
+		$corners = array(
+			array($x1 + $r, $y1 + $r, M_PI),
+			array($x2 - $r, $y1 + $r, 1.5 * M_PI),
+			array($x2 - $r, $y2 - $r, 0),
+			array($x1 + $r, $y2 - $r, 0.5 * M_PI),
+		);
+		foreach ($corners as $c) {
+			for ($i = 0; $i <= $steps; $i++) {
+				$a = $c[2] + 0.5 * M_PI * $i / $steps;
+				$pts[] = $c[0] + $r * cos($a);
+				$pts[] = $c[1] + $r * sin($a);
+			}
+		}
+		return $pts;
+	}
+
+	/** Fill and outline of a rounded or elliptic zone, as polygons */
+	private function drawShape($image) {
+		if ($this->fillcolour !== null && $this->opacity > 0) {
+			$fill = imagecolorallocatealpha($image, $this->fillcolour[0], $this->fillcolour[1], $this->fillcolour[2], $this->gdAlpha());
+			imagefilledpolygon($image, array_map('intval', array_map('round', $this->polygon())), $fill);
+		}
+
+		if ($this->outlinecolour === null || $this->outlinewidth <= 0) {
+			return;
+		}
+		$outline = imagecolorallocate($image, $this->outlinecolour[0], $this->outlinecolour[1], $this->outlinecolour[2]);
+		// the line sits inside the shape, like the outline of a rectangle
+		$pts = $this->polygon($this->outlinewidth / 2);
+		$pts[] = $pts[0];
+		$pts[] = $pts[1];
+		imagesetthickness($image, $this->outlinewidth);
+		$dash = 6 + 2 * $this->outlinewidth;
+		$walked = 0;
+		for ($i = 0; $i + 3 < count($pts); $i += 2) {
+			$ax = $pts[$i];
+			$ay = $pts[$i + 1];
+			$bx = $pts[$i + 2];
+			$by = $pts[$i + 3];
+			$len = hypot($bx - $ax, $by - $ay);
+			if ($this->outlinestyle != 'dashed') {
+				imageline($image, (int) round($ax), (int) round($ay), (int) round($bx), (int) round($by), $outline);
+				continue;
+			}
+			// dashes run on along the whole outline, across the corners
+			$p = 0;
+			while ($p < $len) {
+				$inDash = fmod($walked + $p, 2 * $dash) < $dash;
+				$next = min($len, $p + ($inDash ? $dash : 2 * $dash) - fmod($walked + $p, 2 * $dash));
+				if ($inDash && $len > 0) {
+					imageline($image,
+						(int) round($ax + ($bx - $ax) * $p / $len), (int) round($ay + ($by - $ay) * $p / $len),
+						(int) round($ax + ($bx - $ax) * $next / $len), (int) round($ay + ($by - $ay) * $next / $len), $outline);
+				}
+				$p = max($next, $p + 0.01);
+			}
+			$walked += $len;
+		}
+		imagesetthickness($image, 1);
 	}
 
 	/** One side of the outline, solid or in dashes. */
@@ -211,19 +346,30 @@ class WeatherMapZone {
 	function labelPosition(&$map) {
 		list($tw, $th) = $map->myimagestringsize($this->labelfont, $this->label);
 		$pad = self::PADDING + $this->outlinewidth;
+		// keep the label off the curve: inside the corner arcs, or inside
+		// the rectangle the ellipse is drawn around
+		$padx = $pad;
+		$pady = $pad;
+		if ($this->shape == 'rounded') {
+			$padx += $this->cornerRadius() * (1 - M_SQRT1_2);
+			$pady = $padx;
+		} elseif ($this->shape == 'ellipse') {
+			$padx += $this->width * (1 - M_SQRT1_2) / 2;
+			$pady += $this->height * (1 - M_SQRT1_2) / 2;
+		}
 
-		$tx = $this->x + $pad;
+		$tx = $this->x + $padx;
 		if ($this->labelpos == 'N' || $this->labelpos == 'S') {
 			$tx = $this->x + ($this->width - $tw) / 2;
 		} elseif ($this->labelpos == 'NE' || $this->labelpos == 'SE') {
-			$tx = $this->x + $this->width - $pad - $tw;
+			$tx = $this->x + $this->width - $padx - $tw;
 		}
 
-		$ty = $this->y + $pad + $th;
+		$ty = $this->y + $pady + $th;
 		if ($this->labelpos[0] == 'S') {
-			$ty = $this->y + $this->height - $pad;
+			$ty = $this->y + $this->height - $pady;
 		}
 
-		return array((int) round($tx), (int) round($ty));
+		return array((int) round($tx) + $this->labeloffset[0], (int) round($ty) + $this->labeloffset[1]);
 	}
 }

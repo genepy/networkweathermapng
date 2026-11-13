@@ -240,6 +240,12 @@ return [
     'Outline style' => 'Style du contour',
     'Solid' => 'Plein',
     'Dashed' => 'Tirets',
+    // Zone shapes and movable zone labels (F12)
+    'Rectangle' => 'Rectangle',
+    'Rounded corners' => 'Coins arrondis',
+    'Ellipse' => 'Ellipse',
+    'Corner radius' => 'Rayon des coins',
+    'Drag the label of the selected zone to move it. Choosing a placement puts it back.' => 'Faites glisser l’étiquette de la zone sélectionnée pour la déplacer. Choisir un emplacement la remet en place.',
     'Placement' => 'Emplacement',
     'Top left' => 'En haut à gauche',
     'Top centre' => 'En haut au centre',
