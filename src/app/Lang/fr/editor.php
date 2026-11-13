@@ -319,4 +319,6 @@ return [
     'Unknown focus area property: :key' => 'Propriété de zone de focus inconnue : :key',
     'A focus area needs a rectangle: x1 y1 x2 y2' => 'Une zone de focus a besoin d’un rectangle : x1 y1 x2 y2',
     'A focus area must be at least 10 pixels wide and high' => 'Une zone de focus doit faire au moins 10 pixels de large et de haut',
+    // F15: geographic maps in the editor
+    'The badge size must be between :min and :max pixels' => 'La taille du badge doit être comprise entre :min et :max pixels',
 ];

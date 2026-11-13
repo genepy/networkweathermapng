@@ -376,6 +376,27 @@ CONF);
     }
 
     /**
+     * F15: the viewer and the editor zoom into a geographic map the same
+     * way, with the shared geo-view.js loaded before each of them.
+     */
+    public function testViewerAndEditorShareTheGeographicZoom(): void
+    {
+        $root = dirname(TESTS_ROOT);
+        foreach (['/src/app/Views/maps/view.php' => 'viewer.js', '/src/app/Views/editor/svg.php' => 'editor-svg.js'] as $page => $script) {
+            $html = (string) file_get_contents($root . $page);
+            $shared = strpos($html, '/assets/js/geo-view.js');
+            $this->assertNotFalse($shared, $page);
+            $this->assertLessThan(strpos($html, '/assets/js/' . $script), $shared, $page);
+        }
+        $geo = (string) file_get_contents($root . '/src/public/assets/js/geo-view.js');
+        $this->assertStringContainsString("MODES = ['nearby', 'none', 'groups']", $geo);
+        $this->assertSame(\App\Services\Basemap::CLUSTER_MODES, ['nearby', 'none', 'groups']);
+        $editor = (string) file_get_contents($root . '/src/public/assets/js/editor-svg.js');
+        $this->assertStringContainsString('window.WMGeo.MAX_ZOOM', $editor);
+        $this->assertStringContainsString('window.WMGeo.thin(geo.arrows, k)', $editor);
+    }
+
+    /**
      * MapLibre's stylesheet comes after viewer.css on the fullscreen page:
      * its .maplibregl-map {position: relative} must not shrink the basemap
      * to nothing (the kiosk link showed the map without its basemap).

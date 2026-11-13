@@ -358,6 +358,46 @@ final class SvgRenderTest extends TestCase
         $this->assertSame('', \WeatherMapNode::initials(''));
     }
 
+    /** SET badge_size: the diameter of the badge, the icon shrunk to fit it, in the SVG and the PNG */
+    public function testBadgeSize(): void
+    {
+        $file = TESTS_OUTPUT . '/badge-size.conf';
+        file_put_contents($file, "WIDTH 400\nHEIGHT 200\nNODE DEFAULT\n\tSET node_style badge\n"
+            . "NODE a\n\tLABEL Paris\n\tPOSITION 50 100\n\tSET badge_size 50\n"
+            . "NODE b\n\tICON objects/net/router.png\n\tPOSITION 200 100\n\tSET badge_size 30\n"
+            . "NODE c\n\tLABEL Lyon\n\tPOSITION 350 100\n\tSET badge_size 3\n");
+        $cwd = getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public');
+        try {
+            $map = $this->load($file);
+            $svg = \WeatherMapSvg::render($map);
+            $map = $this->load($file);
+            $map->DrawMap(TESTS_OUTPUT . '/badge-size.png');
+        } finally {
+            chdir($cwd);
+        }
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        // the outer radius: the disc and half its ring
+        $r = function (string $n) use ($xpath): float {
+            $c = $xpath->query('//s:g[@data-name="' . $n . '"]/s:circle[@class="wm-badge"]')->item(0);
+            return round((float) $c->getAttribute('r') + (float) $c->getAttribute('stroke-width') / 2, 2);
+        };
+
+        $this->assertEqualsWithDelta(25.0, $r('a'), 0.05);
+        $this->assertEqualsWithDelta(15.0, $r('b'), 0.05);
+        $icon = $xpath->query('//s:g[@data-name="b"]/s:image')->item(0);
+        $this->assertNotNull($icon);
+        $this->assertLessThanOrEqual(20, (float) $icon->getAttribute('width'), 'the icon fits the smaller disc');
+        // too small: its own size
+        $this->assertSame(0, $map->nodes['c']->badgeSize());
+        $this->assertGreaterThanOrEqual(12.0, $r('c'));
+        // the PNG badge has the same size (the disc plus its shadow)
+        $this->assertSame(50 + 6, $map->nodes['a']->width);
+    }
+
     /** BWSTYLE pill: a rounded box along the link and an arrow toward where the traffic goes */
     public function testPillLinkLabels(): void
     {

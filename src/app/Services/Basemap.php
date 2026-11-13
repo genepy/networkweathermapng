@@ -114,6 +114,31 @@ final class Basemap
             'center' => [$frame[0], $frame[1]],
             'zoom' => $frame[2],
             'attribution' => $credit !== '' ? $credit : (self::kind($url) === 'raster' ? self::RASTER_ATTRIBUTION : null),
+            // how located nodes too close together merge in the viewer
+            'clusters' => self::clusterMode($map),
         ];
+    }
+
+    /** The cluster modes of SET cluster_mode; the first is the default */
+    public const CLUSTER_MODES = ['nearby', 'none', 'groups'];
+
+    /**
+     * SET cluster_mode: how located nodes too close to tell apart merge
+     * into one badge. nearby: any of them (the default); none: never;
+     * groups: only the nodes of a group the author made (SET cluster on
+     * the nodes, or their site), the whole group at once.
+     */
+    public static function clusterMode(\WeatherMap $map): string
+    {
+        $mode = strtolower(trim((string) ($map->hints['cluster_mode'] ?? '')));
+        return in_array($mode, self::CLUSTER_MODES, true) ? $mode : self::CLUSTER_MODES[0];
+    }
+
+    /** The cluster group of a node: SET cluster, or its site when it has none ('' for no group) */
+    public static function clusterOf(\WeatherMapNode $node): string
+    {
+        $group = $node->hints['cluster'] ?? '';
+        $group = is_scalar($group) ? trim(preg_replace('/\s+/u', ' ', (string) $group) ?? '') : '';
+        return $group !== '' ? $group : MapService::siteOf($node);
     }
 }

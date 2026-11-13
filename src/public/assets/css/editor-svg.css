@@ -304,6 +304,15 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #canvas.on-basemap #paper { fill: none; filter: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
 #canvas.on-basemap #map rect.wm-bg { fill-opacity: 0; }
 #canvas.hide-basemap #basemap { visibility: hidden; }
+/* located nodes on a deep zoom (editor-svg.js "Located nodes"), as in the viewer:
+   thinner links, and the bandwidth labels go when they would cover the city */
+#canvas.geo-thin #map polygon[data-spine] { vector-effect: non-scaling-stroke; }
+#canvas.geo-near #map .wm-bwlabel-in,
+#canvas.geo-near #map .wm-bwlabel-out,
+#canvas.geo-near #map .wm-link .wm-comment { display: none; }
+/* SET cluster_mode groups: the groups the viewer merges */
+#overlay .cluster-group { fill: color-mix(in srgb, var(--accent) 6%, transparent); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+#overlay .cluster-group-name { fill: var(--accent); font-family: var(--wm-font); font-weight: 600; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }
 #stage.tool-link, #stage.placing { cursor: crosshair; }
 #stage.panning { cursor: grabbing; }
 #paper { fill: #fff; filter: drop-shadow(0 1px 4px var(--paper-shadow)); }
@@ -450,7 +459,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .focus-add { margin-bottom: 4px; }
 #focus-areas .focus-frame { fill: color-mix(in srgb, var(--accent) 8%, transparent); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 10 5; vector-effect: non-scaling-stroke; }
 #focus-areas .focus-frame.default { stroke-dasharray: none; }
-#focus-areas .focus-label { fill: var(--accent); font-weight: 600; paint-order: stroke; stroke: var(--panel, #fff); stroke-width: 3px; stroke-linejoin: round; }
+#focus-areas .focus-label { fill: var(--accent); font-weight: 600; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
 #inspector .map-sec-body h4 { margin: 12px 0 6px; font-size: 12px; }
 #inspector .map-sec-body button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 #inspector .map-sec-body .actions { justify-content: flex-end; }

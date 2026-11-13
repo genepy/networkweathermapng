@@ -191,8 +191,10 @@
         state.links = new Map(d.model.links.map(function (l) { return [l.name, l]; }));
         state.zones = new Map((d.model.zones || []).map(function (z) { return [z.name, z]; }));
         state.furniture = new Map((d.model.furniture || []).map(function (f) { return [key(f.kind, f.name), f]; }));
-        computeOverlaps();
         setBasemap(d.model.map.basemap || null);
+        // located nodes keep their size on a deep zoom (also computes the overlaps)
+        setupGeo();
+        computeOverlaps();
 
         var w = d.model.map.width, h = d.model.map.height;
         [paper, gridLayer].forEach(function (r) { r.setAttribute('width', w); r.setAttribute('height', h); });
@@ -399,6 +401,7 @@
         var hh = canvas.clientHeight / state.zoom;
         stage.setAttribute('viewBox', [state.view.x, state.view.y, w, hh].join(' '));
         syncBasemap();
+        applyGeo();
         var zoom = Math.round(state.zoom * 100);
         $$('.zoom-value').forEach(function (v) { v.textContent = zoom + '%'; });
         $$('[data-cmd="zoom-reset"]').forEach(function (b) { b.title = t('Zoom of the editor view: :p%. Click for actual size', { p: zoom }) + keyHint('editor.actual-size'); });
@@ -416,7 +419,8 @@
     }
 
     function zoomAt(factor, mx, my) {
-        var z = Math.min(16, Math.max(0.1, state.zoom * factor));
+        // on a basemap, deeper as in the viewer: located nodes keep their size there
+        var z = Math.min(geoOn() ? window.WMGeo.MAX_ZOOM : 16, Math.max(0.1, state.zoom * factor));
         if (mx === undefined) {
             mx = state.view.x + canvas.clientWidth / state.zoom / 2;
             my = state.view.y + canvas.clientHeight / state.zoom / 2;
@@ -491,6 +495,106 @@
         if (!basemap.inst || !state.model) { return; }
         var m = state.model.map;
         basemap.inst.sync(state.zoom, -state.view.x * state.zoom, -state.view.y * state.zoom, m.width, m.height);
+    }
+
+    // ------------------------------------------------------------------
+    // Located nodes on a basemap (geo-view.js), as in the viewer: past
+    // 100 %, a node with a point keeps its size at 100 % on the screen, so
+    // zooming in pulls close sites apart, and the links get as much thinner.
+    // Its boxes in the model shrink with it, so picking and the selection
+    // follow what is drawn.
+
+    var geo = { k: 1, nodes: [], arrows: [], labelFont: 0 };
+    // above this on-screen size, bandwidth labels are hidden on a basemap (as in the viewer)
+    var GEO_LABEL_MAX_PX = 40;
+    var GEO_BOXES = ['box', 'icon_box', 'label_box'];
+
+    function geoOn() {
+        return !!(state.model && state.model.map.basemap && window.WMGeo);
+    }
+
+    /** After each drawing: find the located nodes and their arrows */
+    function setupGeo() {
+        geo.k = 1;
+        geo.nodes = [];
+        geo.arrows = [];
+        geo.labelFont = 0;
+        if (!geoOn()) { return; }
+        geo.arrows = window.WMGeo.arrows(mapLayer);
+        mapLayer.querySelectorAll('text.wm-bwlabel-in, text.wm-bwlabel-out').forEach(function (n) {
+            var f = parseFloat(n.getAttribute('font-size'));
+            if (f > 0 && (!geo.labelFont || f < geo.labelFont)) { geo.labelFont = f; }
+        });
+        mapLayer.querySelectorAll('g[data-kind="node"]').forEach(function (g) {
+            var n = state.nodes.get(g.dataset.name);
+            if (!n || !n.geo || n.note) { return; }
+            // the scale goes on a group inside, the node's own transform previews moves
+            var inner = document.createElementNS(SVGNS, 'g');
+            inner.setAttribute('class', 'geo-scale');
+            while (g.firstChild) { inner.appendChild(g.firstChild); }
+            g.appendChild(inner);
+            var base = {};
+            GEO_BOXES.forEach(function (b) { base[b] = n[b] ? n[b].slice() : null; });
+            geo.nodes.push({ n: n, inner: inner, base: base });
+        });
+        applyGeo(true);
+    }
+
+    /** The scale of located nodes for the current zoom */
+    function applyGeo(force) {
+        var k = geoOn() ? Math.round(window.WMGeo.nodeScale(state.zoom) * 1000) / 1000 : 1;
+        canvas.classList.toggle('geo-near', geoOn() && geo.labelFont > 0 && geo.labelFont * state.zoom > GEO_LABEL_MAX_PX);
+        if (k === geo.k && !force) { return; }
+        geo.k = k;
+        geo.nodes.forEach(function (o) {
+            var n = o.n;
+            if (k < 1) {
+                o.inner.setAttribute('transform', 'translate(' + n.x + ' ' + n.y + ') scale(' + k + ') translate(' + (-n.x) + ' ' + (-n.y) + ')');
+            } else {
+                o.inner.removeAttribute('transform');
+            }
+            GEO_BOXES.forEach(function (b) {
+                var v = o.base[b];
+                n[b] = v ? [n.x + (v[0] - n.x) * k, n.y + (v[1] - n.y) * k, n.x + (v[2] - n.x) * k, n.y + (v[3] - n.y) * k] : v;
+            });
+            n.geoScale = k;
+        });
+        canvas.classList.toggle('geo-thin', k < 1);
+        window.WMGeo && window.WMGeo.thin(geo.arrows, k);
+        computeOverlaps();
+    }
+
+    /** The margin around a node's box in the overlay: smaller with the node on a deep zoom */
+    function nodePad(n, px) {
+        return px * (n.geoScale || 1);
+    }
+
+    /**
+     * SET cluster_mode groups: a dashed ring around the located nodes of
+     * each group, with its name, so the groups the viewer merges show here.
+     */
+    function renderClusterGroups() {
+        if (!geoOn() || window.WMGeo.modeOf(state.model.map.basemap) !== 'groups') { return; }
+        var groups = {}, order = [];
+        state.nodes.forEach(function (n) {
+            var g = n.geo && !n.note && !isHidden(n) ? (n.cluster || n.site) : '';
+            if (!g) { return; }
+            if (!groups[g]) { groups[g] = []; order.push(g); }
+            groups[g].push(n);
+        });
+        var u = 1 / state.zoom;
+        order.forEach(function (name) {
+            var list = groups[name];
+            if (list.length < 2) { return; }
+            var b = unionBox(list.map(function (n) { return n.box; }));
+            var pad = 8 * u;
+            el('rect', {
+                'class': 'cluster-group', x: b[0] - pad, y: b[1] - pad, width: b[2] - b[0] + 2 * pad, height: b[3] - b[1] + 2 * pad,
+                rx: 10 * u
+            }, overlay);
+            var label = el('text', { 'class': 'cluster-group-name', x: b[0] - pad, y: b[1] - pad - 4 * u, 'font-size': 11 * u }, overlay);
+            label.textContent = t(':group (:n nodes)', { group: name, n: list.length });
+        });
     }
 
     /** The point [lat, lon] under map pixels, or null when the map has no basemap */
@@ -620,6 +724,7 @@
         }
 
         renderOverlaps(moved);
+        renderClusterGroups();
 
         state.selection.forEach(function (k) {
             var p = parseKey(k);
@@ -629,13 +734,15 @@
                 var dx = moved && moved.nodes[n.name] ? moved.dx : 0, dy = moved && moved.nodes[n.name] ? moved.dy : 0;
                 var scaled = drag && drag.type === 'scale' && drag.started && drag.pos[n.name];
                 if (scaled) { dx = scaled[0] - n.x; dy = scaled[1] - n.y; }
+                var sp = nodePad(n, 3);
                 el('rect', {
                     'class': 'sel-box' + (n.group ? ' grouped' : ''),
-                    x: n.box[0] - 3 + dx, y: n.box[1] - 3 + dy,
-                    width: n.box[2] - n.box[0] + 6, height: n.box[3] - n.box[1] + 6
+                    x: n.box[0] - sp + dx, y: n.box[1] - sp + dy,
+                    width: n.box[2] - n.box[0] + 2 * sp, height: n.box[3] - n.box[1] + 2 * sp
                 }, overlay);
                 if (n.locked) {
-                    el('use', { 'class': 'lock-mark', href: '#i-lock', x: n.box[2] + 2 + dx, y: n.box[1] - 11 + dy, width: 11, height: 11 }, overlay);
+                    var lk = nodePad(n, 11);
+                    el('use', { 'class': 'lock-mark', href: '#i-lock', x: n.box[2] + lk / 5.5 + dx, y: n.box[1] - lk + dy, width: lk, height: lk }, overlay);
                 }
             } else if (p.kind === 'zone') {
                 renderZoneBox(state.zones.get(p.name), drag);
@@ -1521,7 +1628,9 @@
     function previewLabel(name, dx, dy) {
         $$('#map g[data-kind="node"]').forEach(function (g) {
             if (g.dataset.name !== name) { return; }
-            Array.prototype.forEach.call(g.children, function (c) {
+            // a located node has its parts in its scale group (setupGeo)
+            var parts = g.querySelector(':scope > g.geo-scale') || g;
+            Array.prototype.forEach.call(parts.children, function (c) {
                 if (c.classList.contains('wm-icon')) { return; }
                 if (dx || dy) { c.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')'); } else { c.removeAttribute('transform'); }
             });
@@ -3061,6 +3170,7 @@
             labelPositionRow(nodes),
             h('h3', { text: t('Label style') }),
             row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')]] })),
+            badgeSizeRow(nodes),
             row(t('Font'), fontField(nodes, 'labelfont', 'node')),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
             row(t('Text'), colourField(nodes, 'labelfontcolour', 'node', true)),
@@ -3130,7 +3240,55 @@
         out.push(h('p', { 'class': 'help', text: single && single.geo
             ? t('This node sits on its point of the basemap: it moves with the basemap, and dragging it moves the point.')
             : t('Without a location, the node keeps its place on the canvas when the basemap moves.') }));
+        out.push(clusterRow(nodes));
         return out;
+    }
+
+    /** SET cluster: the group a located node merges with when the map merges only groups (Basemap tab) */
+    function clusterRow(nodes) {
+        var mode = window.WMGeo ? window.WMGeo.modeOf(state.model.map.basemap) : 'nearby';
+        var seen = new Set();
+        state.nodes.forEach(function (n) {
+            if (n.cluster) { seen.add(n.cluster); }
+            if (n.site) { seen.add(n.site); }
+        });
+        var sites = new Set(nodes.map(function (n) { return n.site || ''; }));
+        var site = sites.size === 1 ? Array.from(sites)[0] : '';
+        var input = field(nodes, 'cluster', 'node', { list: 'cluster-options', placeholder: site ? t('Its site: :site', { site: site }) : t('none') });
+        var help = {
+            nearby: t('The map merges any close nodes (Basemap tab, Clusters): the group is used only when it merges groups.'),
+            none: t('The map never merges close nodes (Basemap tab, Clusters).'),
+            groups: t('Close nodes of the same group merge into one badge with its name in the live view; nodes without a group never merge. Empty: the group is its site.')
+        }[mode];
+        return h('div', {}, [
+            row(t('Cluster group'), input),
+            h('datalist', { id: 'cluster-options' }, Array.from(seen).sort().map(function (v) { return h('option', { value: v }); })),
+            h('p', { 'class': 'help', text: help })
+        ]);
+    }
+
+    /** SET badge_size: the diameter of round badges, the same in the viewer and the editor */
+    function badgeSizeRow(nodes) {
+        var badges = nodes.filter(function (n) { return n.style === 'badge'; });
+        if (!badges.length) { return null; }
+        var names = badges.map(function (n) { return n.name; });
+        var c = common(badges, 'badge_size');
+        var input = h('input', {
+            type: 'number', name: 'badge_size', min: 12, max: 200, step: 1, value: c.mixed || !+c.value ? '' : c.value,
+            placeholder: c.mixed ? t('(mixed)') : t('auto'), 'class': c.mixed ? 'mixed' : '', 'aria-label': t('Badge size')
+        });
+        var save = function (v) { send([{ op: 'set_node', names: names, props: { badge_size: v } }]); };
+        input.addEventListener('change', function () { save(+input.value || 0); });
+        return h('div', {}, [
+            row(t('Badge size'), h('div', { 'class': 'pair' }, [input, h('label', { text: t('px') }),
+                h('button', {
+                    type: 'button', text: t('auto'), title: t('The size of its icon or initials'),
+                    disabled: badges.every(function (n) { return !n.badge_size; }),
+                    onclick: function () { save(0); }
+                })
+            ])),
+            h('p', { 'class': 'help', text: t('The diameter of the badge on the map at 100 %. On a basemap, located nodes keep this size on the screen when zooming in, in the live view and here.') })
+        ]);
     }
 
     /** Label position presets: above, top, centre, bottom or below the icon, in one click */

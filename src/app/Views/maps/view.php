@@ -213,6 +213,7 @@ window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode(\App\Core\I18n::f
 
 <script>window.WM_MAPLIBRE = <?= json_encode(['js' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp.js'), 'worker' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp-worker.js'), 'css' => asset('/assets/vendor/maplibre-gl/maplibre-gl.css')], JSON_UNESCAPED_SLASHES) ?>;</script>
 <script src="<?= asset('/assets/js/basemap.js') ?>" defer></script>
+<script src="<?= asset('/assets/js/geo-view.js') ?>" defer></script>
 <script src="<?= asset('/assets/js/viewer.js') ?>" defer></script>
 <?php if ($isFullscreen): ?>
 </body>

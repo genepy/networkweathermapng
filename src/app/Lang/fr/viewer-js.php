@@ -64,4 +64,6 @@ return [
     ':name (default)' => ':name (par défaut)',
     'Focus area: :name' => 'Zone de focus : :name',
     'Focus areas' => 'Zones de focus',
+    // F15: geographic maps in the editor
+    ':group, :n nodes: :names' => ':group, :n nœuds : :names',
 ];

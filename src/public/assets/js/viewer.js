@@ -72,7 +72,7 @@
     const MIN_Z = 0.05;
     const MAX_Z = 10;
     // on a basemap, zoom in further: 64 is six web map zoom levels
-    const MAX_Z_BASEMAP = 64;
+    const MAX_Z_BASEMAP = window.WMGeo ? window.WMGeo.MAX_ZOOM : 64;
     // above this size on the screen, the SVG covers only what is in view
     const MAX_SVG_PX = 4096;
 
@@ -380,85 +380,9 @@
     const L = {arrows: [], k: 1};
 
     function setupLinks(svg) {
-        L.arrows = [];
+        L.arrows = window.WMGeo ? window.WMGeo.arrows(svg) : [];
         L.k = 1;
         root.classList.remove('wmv-links-thin');
-        svg.querySelectorAll('polygon[data-spine]').forEach(function (el) {
-            const nums = (el.getAttribute('data-spine').match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/g) || []).map(Number);
-            const pts = [];
-            for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
-            const w = parseFloat(el.getAttribute('data-w'));
-            if (pts.length < 2 || !(w > 0)) return;
-            const cut = (el.getAttribute('data-cut') || '').split(' ').map(Number);
-            L.arrows.push({
-                el: el, pts: pts, points: el.getAttribute('points'), w: w,
-                aw: parseFloat(el.getAttribute('data-aw')) || w,
-                as: parseFloat(el.getAttribute('data-as')) || 0,
-                cut: [cut[0] > 0 ? cut[0] : 0, cut[1] > 0 ? cut[1] : 0]
-            });
-        });
-    }
-
-    /** The outline of an arrow along pts: body of half width w, head of half width aw and length as */
-    function arrowOutline(pts, w, aw, as) {
-        const d = [0];
-        for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
-        const len = d[d.length - 1];
-        if (len <= 0) return null;
-        as = Math.min(as, len / 1.2);
-        const at = len - as;
-        // the spine up to where the head starts
-        const body = [pts[0]];
-        let i = 1;
-        while (i < pts.length - 1 && d[i] < at) body.push(pts[i++]);
-        const a = pts[i - 1], b = pts[i];
-        const f = d[i] > d[i - 1] ? (at - d[i - 1]) / (d[i] - d[i - 1]) : 0;
-        const base = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
-        if (Math.hypot(base[0] - body[body.length - 1][0], base[1] - body[body.length - 1][1]) > 0.01 || body.length < 2) body.push(base);
-        if (body.length < 2) return null;
-        function normal(p, q) {
-            const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
-            return [(q[1] - p[1]) / l, -(q[0] - p[0]) / l];
-        }
-        const left = [], right = [];
-        for (let j = 0; j < body.length; j++) {
-            const n1 = normal(body[Math.max(0, j - 1)], body[Math.max(1, j)]);
-            const n2 = normal(body[Math.min(j, body.length - 2)], body[Math.min(j + 1, body.length - 1)]);
-            let nx = n1[0] + n2[0], ny = n1[1] + n2[1];
-            const nl = Math.hypot(nx, ny);
-            if (nl < 1e-6) { nx = n1[0]; ny = n1[1]; } else { nx /= nl; ny /= nl; }
-            // a mitred corner, not too long on a sharp turn
-            const m = w / Math.max(0.25, nx * n1[0] + ny * n1[1]);
-            const p = body[j];
-            left.push([p[0] + nx * m, p[1] + ny * m]);
-            right.push([p[0] - nx * m, p[1] - ny * m]);
-        }
-        const tip = pts[pts.length - 1];
-        const hn = normal(base, tip);
-        const out = left.concat([
-            [base[0] + hn[0] * aw, base[1] + hn[1] * aw],
-            tip,
-            [base[0] - hn[0] * aw, base[1] - hn[1] * aw]
-        ], right.reverse());
-        return out.map(function (p) { return p[0].toFixed(3) + ',' + p[1].toFixed(3); }).join(' ');
-    }
-
-    /**
-     * The engine stops each link where its end is just hidden under its
-     * node (data-cut: the length cut at the start and at the tip). A
-     * thinner link drawn under a node shrunk as much ends that much closer
-     * to the centre, or it would show between the node and its old edge.
-     */
-    function reachNodes(pts, cut, k) {
-        if (!(cut[0] > 0) && !(cut[1] > 0)) return pts;
-        function stretch(p, q, d) {
-            const l = Math.hypot(p[0] - q[0], p[1] - q[1]);
-            return l > 0 ? [p[0] + (p[0] - q[0]) / l * d, p[1] + (p[1] - q[1]) / l * d] : p;
-        }
-        const out = pts.slice();
-        if (cut[0] > 0) out[0] = stretch(pts[0], pts[1], cut[0] * (1 - k));
-        if (cut[1] > 0) out[out.length - 1] = stretch(pts[pts.length - 1], pts[pts.length - 2], cut[1] * (1 - k));
-        return out;
     }
 
     /** Draw the arrows at k times their width (1: as the SVG has them) */
@@ -467,10 +391,7 @@
         if (k === L.k) return;
         L.k = k;
         root.classList.toggle('wmv-links-thin', k < 1);
-        L.arrows.forEach(function (a) {
-            const pts = k < 1 ? arrowOutline(reachNodes(a.pts, a.cut, k), a.w * k, a.aw * k, a.as * k) : null;
-            a.el.setAttribute('points', pts || a.points);
-        });
+        if (window.WMGeo) window.WMGeo.thin(L.arrows, k);
     }
 
     // ---- Traffic flow (SET link_flow 1) ----
@@ -776,8 +697,6 @@
     // cluster or a row of the side panel shows its city in a small web
     // map in the top right corner.
 
-    // two nodes closer than this on the screen merge (or than most of their size)
-    const CLUSTER_PX = 32;
     const INSET_ZOOM = 11;
     // above this on-screen size, bandwidth labels are hidden on a basemap
     const LABEL_MAX_PX = 40;
@@ -803,7 +722,8 @@
                 } catch (e) { /* not drawn */ }
                 const n = {
                     name: g.getAttribute('data-name'), g: g, lat: it.geo[0], lon: it.geo[1],
-                    x: p[0], y: p[1], size: size, site: typeof it.site === 'string' ? it.site : ''
+                    x: p[0], y: p[1], size: size, site: typeof it.site === 'string' ? it.site : '',
+                    group: typeof it.cluster === 'string' ? it.cluster : ''
                 };
                 // it shrinks around its point
                 g.classList.add('wmv-geo');
@@ -849,50 +769,29 @@
         if (G.menu) placeClusterMenu();
     }
 
-    /** Whether two located nodes are too close on the screen at the current zoom */
-    function tooClose(a, b) {
-        // their size on the screen: as on the map up to 100 %, then no bigger
-        const size = Math.min(a.size, b.size) * Math.min(S.z, 1);
-        return Math.hypot(a.x - b.x, a.y - b.y) * S.z < Math.max(CLUSTER_PX, 0.8 * size);
-    }
-
-    /** Merge the nodes too close at this zoom; the focused node always stays apart */
+    /** Merge the nodes too close at this zoom, as the map's cluster mode says; the focused node stays apart */
     function regroup() {
-        const free = G.nodes.filter(function (n) { return n.name !== S.focus; });
-        const taken = new Set();
-        const groups = [];
-        free.forEach(function (n) {
-            if (taken.has(n)) return;
-            taken.add(n);
-            const group = [n];
-            free.forEach(function (m) {
-                if (!taken.has(m) && tooClose(n, m)) {
-                    taken.add(m);
-                    group.push(m);
-                }
-            });
-            if (group.length > 1) groups.push(group);
-        });
-        showClusters(groups);
+        showClusters(window.WMGeo ? window.WMGeo.clusters(G.nodes, S.z, window.WMGeo.modeOf(B.cfg), S.focus) : []);
     }
 
-    function clusterLabel(nodes) {
-        return fmt(':n nodes close together: :names', {
-            n: nodes.length,
-            names: nodes.map(function (n) { return labelOf(n.g); }).join(', ')
-        });
+    function clusterLabel(c) {
+        const names = c.nodes.map(function (n) { return labelOf(n.g); }).join(', ');
+        return c.group
+            ? fmt(':group, :n nodes: :names', {group: c.group, n: c.nodes.length, names: names})
+            : fmt(':n nodes close together: :names', {n: c.nodes.length, names: names});
     }
 
     /** Draw the badges of the clusters (only when they change) and hide their nodes */
     function showClusters(groups) {
         const key = groups.map(function (g) {
-            return g.map(function (n) { return n.name; }).join('\u0001');
+            return g.group + '\u0003' + g.nodes.map(function (n) { return n.name; }).join('\u0001');
         }).join('\u0002');
         if (key === G.key) return;
         G.key = key;
         closeClusterMenu();
         const hidden = new Set();
-        G.clusters = groups.map(function (nodes) {
+        G.clusters = groups.map(function (group) {
+            const nodes = group.nodes;
             let x = 0, y = 0, load = -1;
             nodes.forEach(function (n) {
                 x += n.x;
@@ -900,13 +799,20 @@
                 load = Math.max(load, nodeLoad(n.name));
                 hidden.add(n);
             });
-            const c = {nodes: nodes, x: x / nodes.length, y: y / nodes.length, el: null};
+            const c = {nodes: nodes, group: group.group, x: x / nodes.length, y: y / nodes.length, el: null};
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'wmv-cluster';
             b.dataset.level = levelOf(load);
             b.textContent = String(nodes.length);
-            const label = clusterLabel(nodes);
+            if (c.group) {
+                // a group the author made (SET cluster_mode groups): its name under the badge
+                const name = document.createElement('span');
+                name.className = 'wmv-cluster-name';
+                name.textContent = c.group;
+                b.appendChild(name);
+            }
+            const label = clusterLabel(c);
             b.title = label;
             b.setAttribute('aria-label', label);
             // not a drag of the map
@@ -944,28 +850,21 @@
     /** Zoom so the nodes of a cluster split; list them when the view cannot zoom more */
     function openCluster(c) {
         let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-        let near = Infinity, size = Infinity;
-        c.nodes.forEach(function (n, i) {
+        c.nodes.forEach(function (n) {
             x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y);
             x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y);
-            size = Math.min(size, n.size);
-            c.nodes.slice(i + 1).forEach(function (m) {
-                // nodes on the same point never split: they are listed
-                const d = Math.hypot(n.x - m.x, n.y - m.y);
-                if (d > 0.01) near = Math.min(near, d);
-            });
         });
-        if (near === Infinity) {
+        // the two closest apart, with some room (0: nodes on the same point never split, they are listed)
+        const apart = window.WMGeo.splitZoom(c.nodes);
+        if (!apart) {
             showClusterMenu(c);
             return;
         }
         const vp = vpSize();
         const pad = 100;
-        // all of them in view...
+        // all of them in view too, unless a group must split as a whole
         const fitAll = Math.min((vp.w - 2 * pad) / Math.max(1, x1 - x0), (vp.h - 2 * pad) / Math.max(1, y1 - y0));
-        // ...and the two closest apart, with some room
-        const apart = 1.5 * Math.max(CLUSTER_PX, 0.8 * size) / near;
-        const z = clampZ(Math.min(fitAll, apart));
+        const z = clampZ(c.group ? apart : Math.min(fitAll, apart));
         if (z <= S.z * 1.05) {
             showClusterMenu(c);
             return;

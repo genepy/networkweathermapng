@@ -42,7 +42,7 @@ the open question P8.
 
 | Item | Notes |
 |------|-------|
-| F15. Geographic maps in the editor | Zoom in the editor like the viewer; cluster modes (nearby, none, author-defined groups); per-site size that stays proportional with zoom and matches the viewer. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P10 |
+| — | All feedback tasks F1 to F15 are done. |
 
 ## Stale branches
 
@@ -54,6 +54,7 @@ the open question P8.
 
 | PR | Item |
 |----|------|
+| (this PR) | F15. Geographic maps in the editor: the editor zooms into a basemap like the viewer (up to 64×, located nodes keep their 100 % size, thinner links, bandwidth labels hidden deep in), shared `assets/js/geo-view.js` (`WMGeo`); `SET cluster_mode nearby\|none\|groups` (*Basemap > Clusters*) with node `SET cluster <group>` (falls back to `SET site`), group badges named in the viewer, dashed group frames in the editor; `SET badge_size <px>` (*Badge size*, PNG and SVG). Tests in `BasemapTest`, `SvgRenderTest::testBadgeSize`, `ViewerTest` |
 | #99 | F14. Focus areas: `SET focus_<id> x1 y1 x2 y2`, `_title`, `_style both\|dim\|zoom`, `SET focus_default <id>` (`App\Services\FocusAreas`). The viewer's focus button (`.wmv-areas`, `#a=<id>`) dims the rest behind a veil in the map's background colour (under legends and boxes) and/or zooms onto the area in the part of the view the toolbar and panel leave free; the map and the kiosk open on the default area. `/map/{id}/svg` returns `focus` (areas with their nodes and links). Editor: *Focus areas* section of the map properties (`assets/js/editor-focus.js`, frames drawn over the canvas while it is open), ops `add_focus`, `set_focus`, `delete_focus`, context menu *Add a focus area around the selection*. ISP backbone demo has two areas. Test `FocusAreasTest` |
 | #98 | F13. History and savepoints: a *History* panel in the editor (clock button of the top bar, ⋯ menu, Ctrl+K; `assets/js/editor-timeline.js`) lists the map's saved versions by day with relative and exact times, VS Code Timeline style; edits within `ConfigHistory::MERGE_SECONDS` (60 s) share one version, savepoints are named versions (create from the panel, name or rename any row, remove the name), *Savepoints only* filter; a click previews a version over the drawing (SVG without live data), *Restore this version* writes it back as a new version and an undo step. `ConfigHistory` keeps `versions/NNNNNNNN.conf` + `.json` (kind `start`, `outside`, `edit`, `import`, `restore`, `savepoint`; time; name), 200 unnamed versions, savepoints never dropped; routes `/editor/timeline/{id}` (list), `/{version}` (preview), `/savepoint`, `/unname`, `/restore`. Test `ConfigTimelineTest` |
 | #97 | F12. Zone shapes and labels: `SHAPE rect\|rounded\|ellipse` and `RADIUS` for zones (PNG polygons, SVG `rx` / `<ellipse>`), inspector *Shape* and *Corner radius*; the label of the selected zone is dragged on its own (`LABELOFFSET dx dy`, op `set_zone {labeloffset}`, a placement or *Reset label position* puts it back). Editor picks curved zones by their real edge. Datacenter fabric demo uses rounded zones. Tests in `ZoneTest`, `MapEditorTest` |

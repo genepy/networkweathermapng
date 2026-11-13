@@ -75,7 +75,7 @@ or Observium:
 
 | Map | What it shows |
 |-----|---------------|
-| *France sites* | A geographic basemap with nodes placed by latitude and longitude; several sites in Paris, Lyon, Marseille and Toulouse merge into numbered clusters until you zoom in, with the city inset on hover; round badge nodes, pill labels, traffic flow, pulsing saturated links, sites in the side panel |
+| *France sites* | A geographic basemap with nodes placed by latitude and longitude; several sites in Paris, Lyon, Marseille and Toulouse merge into numbered clusters until you zoom in (in the viewer and the editor alike), with the city inset on hover; round badge nodes, pill labels, traffic flow, pulsing saturated links, sites in the side panel |
 | *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, link widths by speed, comments along curved links |
 | *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing links, long-haul links that curve with their comments, a speed legend |
 
@@ -346,6 +346,27 @@ top right corner, with the located nodes and their links (a node with
 `SET site` shows its whole site); the city of the focused node stays there.
 Bandwidth labels are hidden when they would grow over 40 pixels.
 
+The editor zooms into a basemap the same way (up to 64×): located nodes
+keep their 100 % size on the screen, links get thinner and bandwidth labels
+go when they would cover the city, so the sites of a city can be split and
+edited, and they look the same size as in the viewer. *Map properties >
+Basemap > Clusters* picks how close located nodes merge in the viewer:
+
+```
+SET cluster_mode nearby   # any nodes too close at the current zoom (the default)
+SET cluster_mode none     # never: every node always shows
+SET cluster_mode groups   # only the nodes of a group you define, the whole group at once
+
+NODE par-nord
+	SET cluster Paris         # its group (Cluster group in the node panel); without it, its SET site
+```
+
+With `groups`, a group of located nodes becomes one badge with its number and
+its name as soon as two of them run into each other, and a click zooms until
+they all split; nodes without a group never merge. The editor draws a dashed
+frame with the name around each group instead of merging them, so they can
+still be selected.
+
 ### Zabbix TARGET Formats
 
 | Format | Description |
@@ -570,7 +591,11 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   outline colour and a soft shadow, in the PNG and the SVG. The label is
   not drawn on the map: it shows on hover and in *Find a node*. Put the
   hint in `NODE DEFAULT` to make every node a badge (`SET node_style box`
-  on a node keeps its box).
+  on a node keeps its box). *Badge size* sets the diameter of the selected
+  badges in pixels (`SET badge_size 40`, 12 to 200; empty for the size of
+  their icon or initials, which then shrinks or grows to fit), in the PNG
+  and the SVG; on a basemap it is also their size on the screen when
+  zooming in, in the viewer and the editor alike.
 - **Sites and total traffic**: *Site* in the node panel (`SET site <name>`,
   offered from the sites already on the map) groups nodes in the side panel
   of the map view. Every link counts in the map's total traffic shown
