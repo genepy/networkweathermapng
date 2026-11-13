@@ -715,3 +715,52 @@ form.set-panel > .set-foot { position: sticky; bottom: 0; z-index: 5; background
     .wm-drawer[open] { animation: none; }
     .ms-switch input, .ms-switch input::after { transition: none; }
 }
+
+/* Keyboard shortcuts page (/account/shortcuts, assets/js/shortcuts-page.js) */
+.ks-page { max-width: 920px; margin: 0 auto; }
+.ks-page .set-head h1 .icon { width: 22px; height: 22px; }
+.ks-filter { display: flex; align-items: center; gap: var(--wm-space-2); padding: 0 var(--wm-space-3); border: 1px solid var(--wm-field-border); border-radius: var(--wm-radius-control); background: var(--wm-input-bg); color: var(--wm-text-muted); }
+.ks-filter:focus-within { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
+.ks-filter .icon { width: 16px; height: 16px; flex: none; }
+.ks-filter input { width: 220px; max-width: 50vw; min-height: 34px; border: 0; background: none; color: var(--wm-text); font: inherit; outline: none; }
+.ks-intro, .ks-help { margin: 0 0 var(--wm-space-4); color: var(--wm-text-muted); }
+.ks-notice { padding: var(--wm-space-3); border-radius: var(--wm-radius-control); background: var(--wm-info-soft); }
+.ks-area + .ks-area { margin-top: var(--wm-space-5); }
+.ks-area h2 { margin: 0 0 var(--wm-space-2); font-size: var(--wm-text-lg); font-weight: 600; }
+.ks-table { width: 100%; border-collapse: collapse; }
+.ks-table th, .ks-table td { padding: var(--wm-row-pad-y) var(--wm-space-2); border-top: 1px solid var(--wm-border); vertical-align: middle; text-align: left; }
+.ks-table th { width: 42%; font-weight: 500; }
+.ks-table td:last-child { width: 1%; white-space: nowrap; text-align: right; }
+.ks-keys { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wm-space-2); }
+.ks-key { display: inline-flex; align-items: center; gap: 2px; padding: 1px 2px 1px 0; border: 1px solid var(--wm-border); border-radius: 6px; background: var(--wm-surface); }
+.ks-key kbd, .ks-plain { padding: 1px 6px; font-family: var(--wm-font-mono); font-size: 12.5px; white-space: nowrap; }
+.ks-plain { padding: 0; color: var(--wm-text-muted); font-family: inherit; }
+.ks-remove { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--wm-text-muted); cursor: pointer; }
+.ks-remove:hover { background: var(--wm-danger-soft); color: var(--wm-danger-text); }
+.ks-remove:focus-visible, .ks-add:focus-visible, .ks-reset:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
+.ks-remove .icon { width: 14px; height: 14px; }
+.ks-none { color: var(--wm-text-muted); font-style: italic; }
+.ks-listening { padding: 2px 8px; border: 1px dashed var(--wm-accent); border-radius: 6px; background: var(--wm-accent-soft); }
+.ks-listening small { color: var(--wm-text-muted); }
+.ks-actions { display: flex; justify-content: flex-end; gap: var(--wm-space-2); }
+.ks-actions .wm-btn { min-height: 32px; padding: 0 var(--wm-space-3); }
+.ks-actions .icon { width: 16px; height: 16px; }
+.ks-add[aria-pressed="true"] { border-color: var(--wm-accent); background: var(--wm-accent-soft); }
+.ks-drag { width: auto; min-width: 140px; }
+.ks-tag { margin-left: var(--wm-space-2); padding: 0 6px; border-radius: 999px; background: var(--wm-accent-soft); color: var(--wm-text); font-size: var(--wm-text-sm); font-weight: 400; }
+.ks-problem { display: block; margin-top: 2px; color: var(--wm-danger-text); font-size: var(--wm-text-sm); font-weight: 400; }
+.ks-bad .ks-key { border-color: var(--wm-danger); }
+.ks-fixed th { font-weight: 400; color: var(--wm-text-muted); }
+.ks-fixed-note { color: var(--wm-text-muted); font-size: var(--wm-text-sm); }
+.ks-state { margin-right: auto; color: var(--wm-text-muted); font-size: var(--wm-text-sm); }
+.ks-state-bad { color: var(--wm-danger-text); }
+@media (max-width: 640px) {
+    .ks-table, .ks-table tbody, .ks-table tr, .ks-table th, .ks-table td { display: block; width: auto; }
+    .ks-table tr { padding: var(--wm-space-2) 0; border-top: 1px solid var(--wm-border); }
+    .ks-table th, .ks-table td { padding: 2px 0; border: 0; text-align: left; }
+    .ks-table td:last-child { text-align: left; }
+    .ks-actions { justify-content: flex-start; }
+    .ks-filter input { width: 100%; max-width: none; }
+    .set-head-actions { width: 100%; margin-left: 0; }
+    .ks-filter { flex: 1; }
+}

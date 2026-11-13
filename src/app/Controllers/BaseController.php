@@ -40,6 +40,8 @@ abstract class BaseController
         $auth = $this->auth;
         $config = $this->config;
         $user = $this->auth->user();
+        // the user's keyboard shortcuts, for assets/js/shortcuts.js
+        $keysScript = (new \App\Services\KeyboardShortcuts($this->database))->scriptFor((int) ($user['id'] ?? 0));
         
         // Start output buffering
         ob_start();

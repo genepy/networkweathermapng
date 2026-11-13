@@ -158,24 +158,24 @@
             </nav>
             <form class="wmv-find" role="search" autocomplete="off">
                 <?= icon('search') ?>
-                <input type="search" class="wmv-find-input" list="wmv-nodes" placeholder="<?= e__('Find a node') ?>" aria-label="<?= e__('Find a node') ?>" aria-keyshortcuts="/">
-                <kbd aria-hidden="true">/</kbd>
+                <input type="search" class="wmv-find-input" list="wmv-nodes" placeholder="<?= e__('Find a node') ?>" aria-label="<?= e__('Find a node') ?>" aria-keyshortcuts="/" data-keys="viewer.find">
+                <kbd aria-hidden="true" data-keys="viewer.find">/</kbd>
                 <datalist id="wmv-nodes"></datalist>
             </form>
             <?php if (!empty($history)): ?>
             <div class="segmented wmv-when" role="group" aria-label="<?= e__('Time shown') ?>">
                 <button type="button" data-act="live" aria-pressed="true" aria-label="<?= e__('Live') ?>" title="<?= e__('The map with the latest data') ?>"><span class="wmv-live-dot" aria-hidden="true"></span><span><?= e__('Live') ?></span></button>
-                <button type="button" data-act="history" aria-pressed="false" aria-keyshortcuts="H" aria-label="<?= e__('Last :hours h', ['hours' => $historyHours]) ?>" title="<?= e__('Play back the recorded hours (H)') ?>"><?= icon('history') ?><span><?= e__('Last :hours h', ['hours' => $historyHours]) ?></span></button>
+                <button type="button" data-act="history" aria-pressed="false" aria-keyshortcuts="H" data-keys="viewer.history" aria-label="<?= e__('Last :hours h', ['hours' => $historyHours]) ?>" title="<?= e__('Play back the recorded hours') ?>"><?= icon('history') ?><span><?= e__('Last :hours h', ['hours' => $historyHours]) ?></span></button>
             </div>
             <?php endif; ?>
-            <button type="button" class="wmv-icon-btn" data-act="panel" aria-controls="wmv-panel" aria-pressed="false" aria-keyshortcuts="P"
-                    title="<?= e__('Side panel: sites, total traffic, legend (P)') ?>" aria-label="<?= e__('Side panel') ?>"><?= icon('panel-left') ?></button>
+            <button type="button" class="wmv-icon-btn" data-act="panel" aria-controls="wmv-panel" aria-pressed="false" aria-keyshortcuts="P" data-keys="viewer.panel"
+                    title="<?= e__('Side panel: sites, total traffic, legend') ?>" aria-label="<?= e__('Side panel') ?>"><?= icon('panel-left') ?></button>
             <?php if ($isFullscreen): ?>
             <a class="wmv-icon-btn" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" aria-keyshortcuts="F" title="<?= e__('Leave fullscreen (Esc)') ?>" aria-label="<?= e__('Leave fullscreen') ?>"><?= icon('minimize') ?></a>
             <?php else: ?>
-            <button type="button" class="wmv-icon-btn" data-act="fullscreen" aria-keyshortcuts="F" aria-pressed="false"
-                    data-enter="<?= e__('Fullscreen (F)') ?>" data-leave="<?= e__('Leave fullscreen (F)') ?>"
-                    title="<?= e__('Fullscreen (F)') ?>" aria-label="<?= e__('Fullscreen') ?>"><?= icon('maximize') ?></button>
+            <button type="button" class="wmv-icon-btn" data-act="fullscreen" aria-keyshortcuts="F" data-keys="viewer.fullscreen" aria-pressed="false"
+                    data-enter="<?= e__('Fullscreen') ?>" data-leave="<?= e__('Leave fullscreen') ?>"
+                    title="<?= e__('Fullscreen') ?>" aria-label="<?= e__('Fullscreen') ?>"><?= icon('maximize') ?></button>
             <?php endif; ?>
             <?php if ($canEdit && !$isFullscreen): ?>
             <a class="wmv-icon-btn" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode($normalUrl) ?>" data-map-settings title="<?= e__('Map settings') ?>" aria-label="<?= e__('Map settings') ?>"><?= icon('settings') ?></a>
@@ -190,13 +190,13 @@
                 </div>
             </details>
             <?php if ($canEdit): ?>
-            <a class="wm-btn wm-btn-primary wmv-edit" href="/editor/edit/<?= $mapId ?>" aria-keyshortcuts="E"><?= icon('pencil') ?><span><?= e__('Edit') ?></span></a>
+            <a class="wm-btn wm-btn-primary wmv-edit" href="/editor/edit/<?= $mapId ?>" aria-keyshortcuts="E" data-keys="viewer.edit"><?= icon('pencil') ?><span><?= e__('Edit') ?></span></a>
             <?php endif; ?>
         </div>
 
         <?php if (!empty($history)): ?>
         <div class="wmv-history" role="group" aria-label="<?= e__('Playback') ?>" hidden>
-            <button type="button" class="wmv-btn" data-hist="play" title="<?= e__('Play or pause (Space)') ?>" aria-label="<?= e__('Play') ?>"><?= icon('play') ?></button>
+            <button type="button" class="wmv-btn" data-hist="play" title="<?= e__('Play or pause') ?>" data-keys="viewer.play" aria-label="<?= e__('Play') ?>"><?= icon('play') ?></button>
             <input type="range" class="wmv-history-slider" min="0" max="0" value="0" aria-label="<?= e__('Time of the frame shown') ?>">
             <span class="wmv-history-time" aria-live="polite"></span>
             <select class="wmv-history-speed" aria-label="<?= e__('Playback speed') ?>">
@@ -219,10 +219,10 @@
         </div>
 
         <div class="wmv-zoombar wmv-fades" role="group" aria-label="<?= e__('Zoom') ?>">
-            <button type="button" class="wmv-icon-btn" data-act="in" aria-keyshortcuts="+" title="<?= e__('Zoom in (+)') ?>" aria-label="<?= e__('Zoom in') ?>"><?= icon('plus') ?></button>
-            <button type="button" class="wmv-zoom" data-act="actual" aria-keyshortcuts="1" title="<?= e__('Actual size (1)') ?>" aria-live="polite">100 %</button>
-            <button type="button" class="wmv-icon-btn" data-act="out" aria-keyshortcuts="-" title="<?= e__('Zoom out (-)') ?>" aria-label="<?= e__('Zoom out') ?>"><?= icon('minus') ?></button>
-            <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" title="<?= e__('Fit the map to the window (0)') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
+            <button type="button" class="wmv-icon-btn" data-act="in" aria-keyshortcuts="+" data-keys="viewer.zoom-in" title="<?= e__('Zoom in') ?>" aria-label="<?= e__('Zoom in') ?>"><?= icon('plus') ?></button>
+            <button type="button" class="wmv-zoom" data-act="actual" aria-keyshortcuts="1" data-keys="viewer.actual-size" title="<?= e__('Actual size') ?>" aria-live="polite">100 %</button>
+            <button type="button" class="wmv-icon-btn" data-act="out" aria-keyshortcuts="-" data-keys="viewer.zoom-out" title="<?= e__('Zoom out') ?>" aria-label="<?= e__('Zoom out') ?>"><?= icon('minus') ?></button>
+            <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" data-keys="viewer.fit" title="<?= e__('Fit the map to the window') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
         </div>
 
         <aside class="wmv-panel wmv-fades" id="wmv-panel" hidden aria-label="<?= e__('Side panel') ?>">
@@ -230,7 +230,7 @@
                 <header class="wmv-panel-head">
                     <h2 id="wmv-sites-title" data-sites="<?= e__('Sites') ?>" data-nodes="<?= e__('Nodes') ?>"><?= e__('Nodes') ?></h2>
                     <span class="wmv-panel-count"></span>
-                    <button type="button" class="wmv-icon-btn" data-act="panel-close" title="<?= e__('Close the side panel (P)') ?>" aria-label="<?= e__('Close the side panel') ?>"><?= icon('x') ?></button>
+                    <button type="button" class="wmv-icon-btn" data-act="panel-close" data-keys="viewer.panel" title="<?= e__('Close the side panel') ?>" aria-label="<?= e__('Close the side panel') ?>"><?= icon('x') ?></button>
                 </header>
                 <ul class="wmv-site-list"></ul>
             </section>

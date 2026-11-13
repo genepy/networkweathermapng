@@ -406,6 +406,7 @@ class AdminController extends BaseController
         try {
             $this->database->delete('user_map_permissions', 'user_id = ?', [$id]);
             $this->database->delete('user_group_permissions', 'user_id = ?', [$id]);
+            $this->database->delete('user_shortcuts', 'user_id = ?', [$id]);
             $this->database->delete('users', 'id = ?', [$id]);
             $this->flash('success', __('User ":name" deleted successfully', ['name' => $userData['username']]));
         } catch (\Exception $e) {

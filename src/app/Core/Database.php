@@ -88,6 +88,7 @@ class Database
             'settings',
             'data_sources',
             'data_source_cache',
+            'user_shortcuts',
         ];
         
         $missing = array_diff($required, $existing);
@@ -188,6 +189,14 @@ CREATE TABLE IF NOT EXISTS data_source_cache (
     expires_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(source_id, cache_key)
+);
+
+-- Keyboard shortcuts a user changed (App\\Services\\KeyboardShortcuts)
+CREATE TABLE IF NOT EXISTS user_shortcuts (
+    user_id INTEGER NOT NULL,
+    action VARCHAR(64) NOT NULL,
+    binding VARCHAR(255) NOT NULL,
+    PRIMARY KEY (user_id, action)
 );
 SQL;
         

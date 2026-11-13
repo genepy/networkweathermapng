@@ -31,6 +31,22 @@
         return out;
     }
 
+    /**
+     * The user's keyboard shortcuts (shortcuts.js, set in the profile).
+     * Without that script, nothing matches and no key is shown.
+     */
+    var KEYS = window.WMKeys || {
+        is: function () { return false; }, held: function () { return false; },
+        dragKey: function () { return ''; }, first: function () { return ''; }, label: function () { return ''; },
+        display: function (k) { return k; }
+    };
+
+    /** " (key)" after a tooltip, for an action that has a key */
+    function keyHint(id) {
+        var k = KEYS.first(id);
+        return k ? ' (' + k + ')' : '';
+    }
+
     function $(sel, root) { return (root || document).querySelector(sel); }
     function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
 
@@ -385,7 +401,7 @@
         syncBasemap();
         var zoom = Math.round(state.zoom * 100);
         $$('.zoom-value').forEach(function (v) { v.textContent = zoom + '%'; });
-        $$('[data-cmd="zoom-reset"]').forEach(function (b) { b.title = t('Zoom of the editor view: :p%. Click for actual size (0)', { p: zoom }); });
+        $$('[data-cmd="zoom-reset"]').forEach(function (b) { b.title = t('Zoom of the editor view: :p%. Click for actual size', { p: zoom }) + keyHint('editor.actual-size'); });
         if (state.model) {
             var s = 12 / state.zoom;
             resizeHandle.setAttribute('x', state.model.map.width - s / 2);
@@ -843,7 +859,7 @@
             var outside = !!(state.history.outside && state.history.outside[direction] && state.history[direction]);
             if (b.dataset.title === undefined) { b.dataset.title = b.title; }
             b.disabled = !state.history[direction] || outside;
-            b.title = outside ? outsideMessage(direction) : b.dataset.title;
+            b.title = outside ? outsideMessage(direction) : b.dataset.title + keyHint('editor.' + direction);
         });
         var nodes = selected('node').length, any = state.selection.size, objects = alignUnits(selectedObjects()).length;
         $$('[data-needs]').forEach(function (e) {
@@ -1017,7 +1033,14 @@
 
         var ctrl = evt.ctrlKey || evt.metaKey;
         if (!item) {
-            // Ctrl+click on empty space adds a node; Ctrl or Shift+drag adds an area to the selection
+            // Ctrl+click on empty space adds a node. A drag with the key of
+            // "move the view" (Ctrl by default) moves the view; otherwise a
+            // drag selects an area, added to the selection with Shift or Ctrl.
+            if (KEYS.held(evt, 'editor.drag-pan')) {
+                startDrag(evt, { type: 'pan', client: { x: evt.clientX, y: evt.clientY }, view: { x: state.view.x, y: state.view.y }, create: ctrl && !evt.shiftKey });
+                stage.classList.add('panning');
+                return;
+            }
             startDrag(evt, { type: 'lasso', start: p, now: p, add: evt.shiftKey || ctrl, create: ctrl && !evt.shiftKey });
             return;
         }
@@ -1321,8 +1344,8 @@
             case 'move':
                 d.moved.dx = snap(d.origin[0] + p.x - d.start.x) - d.origin[0];
                 d.moved.dy = snap(d.origin[1] + p.y - d.start.y) - d.origin[1];
-                applyGuides(d, evt.altKey);
-                d.copy = (evt.ctrlKey || evt.metaKey) && Object.keys(d.moved.nodes).length > 0;
+                applyGuides(d, KEYS.held(evt, 'editor.drag-nosnap'));
+                d.copy = copyDrag(evt) && Object.keys(d.moved.nodes).length > 0;
                 previewMove(d.moved, d.copy);
                 break;
 
@@ -1489,6 +1512,25 @@
         return true;
     }
 
+    /**
+     * True when a drag of nodes duplicates them: with the key of "duplicate"
+     * (Alt by default). Ctrl+drag duplicated before, and still does for a
+     * while when Ctrl has no other use during a drag, with a hint once.
+     * TODO: remove the Ctrl fallback once people are used to the new key.
+     */
+    var oldCopyHinted = false;
+    function copyDrag(evt) {
+        if (KEYS.held(evt, 'editor.drag-duplicate')) { return true; }
+        if (!(evt.ctrlKey || evt.metaKey) || KEYS.dragKey('editor.drag-nosnap') === 'Ctrl' || KEYS.dragKey('editor.drag-duplicate') === 'Ctrl') { return false; }
+        if (!oldCopyHinted) {
+            oldCopyHinted = true;
+            var dup = KEYS.dragKey('editor.drag-duplicate');
+            toast(dup ? t(':key+drag now duplicates. Ctrl+drag still does for a while.', { key: KEYS.display(dup) })
+                : t('Ctrl+drag still duplicates for a while. Pick a key for it in your keyboard shortcuts.'));
+        }
+        return true;
+    }
+
     function endDrag(evt, cancelled) {
         var d = state.drag;
         if (!d || d.pointer !== evt.pointerId) {
@@ -1569,6 +1611,14 @@
                 var labelProps = { labelpos_in: Math.round(pos.in), labelpos_out: Math.round(pos.out) };
                 if (d.shift !== d.shift0) { labelProps['labelshift_' + d.dir] = d.shift; }
                 send([{ op: 'set_link', names: [d.link], props: labelProps }]);
+                return;
+
+            case 'pan':
+                // Ctrl+click without moving: a new node, as on the area selection
+                if (!d.started && d.create) {
+                    var at0 = toMap(evt);
+                    addNode({ x: snap(at0.x), y: snap(at0.y) });
+                }
                 return;
 
             case 'lasso':
@@ -2688,7 +2738,7 @@
             if (zones.length) { parts = parts.concat(zonePanel(zones)); }
             if (furniture.length) { parts = parts.concat(furniturePanel(furniture)); }
             parts.push(h('div', { 'class': 'actions' }, [
-                h('button', { type: 'button', text: t('Duplicate'), title: 'Ctrl+D', onclick: duplicateSelection, disabled: !nodes.length }),
+                h('button', { type: 'button', text: t('Duplicate'), title: KEYS.first('editor.duplicate'), onclick: duplicateSelection, disabled: !nodes.length }),
                 h('button', { type: 'button', 'class': 'danger', text: t('Delete'), title: t('Delete key'), onclick: deleteSelection, disabled: !nodes.length && !links.length && !zones.length && !deletableFurniture() })
             ]));
         }
@@ -3989,19 +4039,19 @@
         // a link with bends, right-clicked alone: one of its segments can be made straight
         var segment = links.length === 1 && !nodes.length && !zones.length ? segmentAt(links[0], at) : null;
         var entries = [
-            { label: t('Cut'), kbd: 'Ctrl+X', run: function () { copySelection(true); }, off: !nodes.length },
-            { label: t('Copy'), kbd: 'Ctrl+C', run: function () { copySelection(false); }, off: !nodes.length },
-            { label: t('Paste'), kbd: 'Ctrl+V', run: function () { paste(at); }, off: !hasClip() },
-            { label: t('Duplicate'), kbd: 'Ctrl+D', run: duplicateSelection, off: !nodes.length },
-            { label: t('Delete'), kbd: t('Del'), run: deleteSelection, off: !any && !deletableFurniture(), danger: true }
+            { label: t('Cut'), kbd: KEYS.first('editor.cut'), run: function () { copySelection(true); }, off: !nodes.length },
+            { label: t('Copy'), kbd: KEYS.first('editor.copy'), run: function () { copySelection(false); }, off: !nodes.length },
+            { label: t('Paste'), kbd: KEYS.first('editor.paste'), run: function () { paste(at); }, off: !hasClip() },
+            { label: t('Duplicate'), kbd: KEYS.first('editor.duplicate'), run: duplicateSelection, off: !nodes.length },
+            { label: t('Delete'), kbd: KEYS.first('editor.delete'), run: deleteSelection, off: !any && !deletableFurniture(), danger: true }
         ];
         if (all.length) {
             entries.push('-',
-                { label: t('Group'), kbd: 'Ctrl+G', run: group, off: any < 2 },
-                { label: t('Ungroup'), kbd: 'Ctrl+Shift+G', run: ungroup, off: !grouped },
-                { label: locked ? t('Unlock') : t('Lock'), kbd: 'Ctrl+L', run: toggleLock },
-                { label: t('Bring to front'), kbd: 'Ctrl+]', run: function () { zorder('front'); } },
-                { label: t('Send to back'), kbd: 'Ctrl+[', run: function () { zorder('back'); } },
+                { label: t('Group'), kbd: KEYS.first('editor.group'), run: group, off: any < 2 },
+                { label: t('Ungroup'), kbd: KEYS.first('editor.ungroup'), run: ungroup, off: !grouped },
+                { label: locked ? t('Unlock') : t('Lock'), kbd: KEYS.first('editor.lock'), run: toggleLock },
+                { label: t('Bring to front'), kbd: KEYS.first('editor.front'), run: function () { zorder('front'); } },
+                { label: t('Send to back'), kbd: KEYS.first('editor.back'), run: function () { zorder('back'); } },
                 { label: t('Add to a layer…'), run: askLayer },
                 { label: t('Take out of its layer'), run: function () { send(hintOps('editor_layer', null)); }, off: !all.some(function (i) { return i.layer; }) });
         }
@@ -4021,7 +4071,7 @@
             { label: t('Make this segment straight'), run: function () { straightenSegment(segment); }, off: !segment || segment.link.locked },
             { label: nodes.length ? t('Spread apart the selection') : t('Spread apart overlapping nodes'), run: function () { spreadApart(10); }, off: !state.overlaps.size },
             { label: links.length ? t('Move overlapping labels of the selection apart') : t('Move overlapping link labels apart'), run: untangle, off: !state.links.size },
-            { label: t('Select all'), kbd: 'Ctrl+A', run: selectAll });
+            { label: t('Select all'), kbd: KEYS.first('editor.select-all'), run: selectAll });
         return entries;
     }
 
@@ -4353,41 +4403,56 @@
     // Keyboard shortcuts (? or the ⋯ menu)
 
     function shortcutGroups() {
-        return [
+        // the first key of each action, as the user set them
+        function k() {
+            var keys = Array.prototype.map.call(arguments, function (id) { return KEYS.first(id); });
+            return keys.some(Boolean) ? keys.map(function (x) { return x || '—'; }).join(' / ') : '';
+        }
+        // the key of a drag action ('' when it has none), written by write(key)
+        function drag(id, write) {
+            var m = KEYS.dragKey(id);
+            return m ? write(KEYS.display(m)) : '';
+        }
+        var pan = drag('editor.drag-pan', function (key) { return t(':key+drag on empty space', { key: key }); });
+        var groups = [
             [t('Select'), [
                 [t('Click, Shift+click'), t('select, add to selection')],
                 [t('Drag on empty space'), t('select an area')],
                 [t('Alt+click'), t('one item of a group')],
-                ['Ctrl+A', t('select everything, zones and legends included')],
-                ['Ctrl+F', t('select by criteria')],
+                [k('editor.select-all'), t('select everything, zones and legends included')],
+                [k('editor.find'), t('select by criteria')],
                 ['Esc', t('cancel the drag, close the menu, or select nothing')]
             ]],
             [t('Add and change'), [
                 [t('Ctrl+click empty space'), t('new node')],
-                ['L / V', t('link tool / select tool')],
+                [k('editor.link-tool', 'editor.select-tool'), t('link tool / select tool')],
                 [t('Double-click a link'), t('add a bend point there')],
                 [t('Enter in a field'), t('apply the change')],
-                [t('Arrows, Shift+arrows'), t('move by 1 or 10 px')],
-                [t('Alt while dragging'), t('no snapping to the other objects')],
-                [t('Ctrl+drag'), t('duplicate the selected nodes')],
-                [t('Ctrl+D / Delete'), t('duplicate / delete')],
-                ['Ctrl+C / Ctrl+X / Ctrl+V', t('copy / cut / paste, also into another map')],
-                ['Ctrl+Z, Ctrl+Shift+Z', t('undo, redo')]
+                [k('editor.nudge-left', 'editor.nudge-right', 'editor.nudge-up', 'editor.nudge-down'), t('move by 1 px, by 10 px with Shift')],
+                [drag('editor.drag-nosnap', function (key) { return t(':key while dragging', { key: key }); }), t('no snapping to the other objects')],
+                [drag('editor.drag-duplicate', function (key) { return t(':key+drag', { key: key }); }), t('duplicate the selected nodes')],
+                [k('editor.duplicate', 'editor.delete'), t('duplicate / delete')],
+                [k('editor.copy', 'editor.cut', 'editor.paste'), t('copy / cut / paste, also into another map')],
+                [k('editor.undo', 'editor.redo'), t('undo / redo')]
             ]],
             [t('Arrange'), [
-                ['Ctrl+G / Ctrl+Shift+G', t('group / ungroup')],
-                ['Ctrl+L', t('lock or unlock')],
-                ['Ctrl+] / Ctrl+[', t('bring to front / send to back')],
-                [t('Right-click, Shift+F10'), t('menu of actions')]
+                [k('editor.group', 'editor.ungroup'), t('group / ungroup')],
+                [k('editor.lock'), t('lock or unlock')],
+                [k('editor.front', 'editor.back'), t('bring to front / send to back')],
+                [[t('Right-click'), KEYS.label('editor.menu')].filter(Boolean).join(', '), t('menu of actions')]
             ]],
             [t('View'), [
-                [t('Wheel, Space+drag'), t('zoom, move the view')],
-                ['+ / -', t('zoom in / zoom out')],
-                ['F / 0', t('fit / actual size')],
-                ['G', t('snap to the grid')],
-                ['?', t('this list')]
+                [t('Wheel'), t('zoom')],
+                [t('Space+drag, middle button drag'), t('move the view')],
+                [pan, t('move the view')],
+                [k('editor.zoom-in', 'editor.zoom-out'), t('zoom in / zoom out')],
+                [k('editor.fit', 'editor.actual-size'), t('fit / actual size')],
+                [k('editor.snap'), t('snap to the grid')],
+                [k('editor.shortcuts'), t('this list')]
             ]]
         ];
+        // an action without a key is left out
+        return groups.map(function (g) { return [g[0], g[1].filter(function (l) { return l[0]; })]; });
     }
 
     function openShortcuts() {
@@ -4482,42 +4547,48 @@
         if (tgt.tagName === 'INPUT' || tgt.tagName === 'SELECT' || tgt.tagName === 'TEXTAREA' || $('dialog[open]')) {
             return;
         }
-        var ctrl = evt.ctrlKey || evt.metaKey, k = evt.key;
+        // hold Space and drag to move the view (kept: no action may use Space)
+        if (evt.key === ' ') { state.spaceDown = true; evt.preventDefault(); return; }
 
-        if (k === 'ContextMenu' || (evt.shiftKey && k === 'F10')) { openMenuForSelection(); evt.preventDefault(); return; }
-        if (ctrl && (k === 'c' || k === 'C')) { copySelection(false); evt.preventDefault(); return; }
-        if (ctrl && (k === 'x' || k === 'X')) { copySelection(true); evt.preventDefault(); return; }
-        if (ctrl && (k === 'v' || k === 'V')) { paste(state.mouse); evt.preventDefault(); return; }
-
-        if (k === ' ') { state.spaceDown = true; evt.preventDefault(); return; }
-        if (ctrl && (k === 'z' || k === 'Z')) { historyStep(evt.shiftKey ? 'redo' : 'undo'); evt.preventDefault(); return; }
-        if (ctrl && (k === 'y' || k === 'Y')) { historyStep('redo'); evt.preventDefault(); return; }
-        if (ctrl && (k === 'a' || k === 'A')) { selectAll(); evt.preventDefault(); return; }
-        if (ctrl && (k === 'd' || k === 'D')) { duplicateSelection(); evt.preventDefault(); return; }
-        if (ctrl && (k === 'g' || k === 'G')) { (evt.shiftKey ? ungroup : group)(); evt.preventDefault(); return; }
-        if (ctrl && (k === 'l' || k === 'L')) { toggleLock(); evt.preventDefault(); return; }
-        if (ctrl && (k === 'f' || k === 'F')) { openFind(); evt.preventDefault(); return; }
-        if (ctrl && k === ']') { zorder('front'); evt.preventDefault(); return; }
-        if (ctrl && k === '[') { zorder('back'); evt.preventDefault(); return; }
-        if (ctrl) { return; }
-        if (k === '?') { openShortcuts(); evt.preventDefault(); return; }
-
-        var step = evt.shiftKey ? 10 : 1;
-        switch (k) {
-            case 'Delete': case 'Backspace': deleteSelection(); break;
-            case 'ArrowLeft': nudge(-step, 0); break;
-            case 'ArrowRight': nudge(step, 0); break;
-            case 'ArrowUp': nudge(0, -step); break;
-            case 'ArrowDown': nudge(0, step); break;
-            case 'l': case 'L': setTool('link'); break;
-            case 'v': case 'V': setTool('select'); break;
-            case 'g': case 'G': commands.snap(); break;
-            case 'f': case 'F': zoomFit(); break;
-            case '0': zoomReset(); break;
-            case '+': case '=': zoomAt(1.25); break;
-            case '-': zoomAt(0.8); break;
-            default: return;
+        // the keys come from the user's profile (shortcuts.js, /account/shortcuts)
+        var actions = [
+            ['editor.menu', openMenuForSelection],
+            ['editor.copy', function () { copySelection(false); }],
+            ['editor.cut', function () { copySelection(true); }],
+            ['editor.paste', function () { paste(state.mouse); }],
+            ['editor.undo', function () { historyStep('undo'); }],
+            ['editor.redo', function () { historyStep('redo'); }],
+            ['editor.select-all', selectAll],
+            ['editor.duplicate', duplicateSelection],
+            ['editor.group', group],
+            ['editor.ungroup', ungroup],
+            ['editor.lock', toggleLock],
+            ['editor.find', openFind],
+            ['editor.front', function () { zorder('front'); }],
+            ['editor.back', function () { zorder('back'); }],
+            ['editor.shortcuts', openShortcuts],
+            ['editor.delete', deleteSelection],
+            ['editor.link-tool', function () { setTool('link'); }],
+            ['editor.select-tool', function () { setTool('select'); }],
+            ['editor.snap', function () { commands.snap(); }],
+            ['editor.fit', zoomFit],
+            ['editor.actual-size', zoomReset],
+            ['editor.zoom-in', function () { zoomAt(1.25); }],
+            ['editor.zoom-out', function () { zoomAt(0.8); }]
+        ];
+        for (var i = 0; i < actions.length; i++) {
+            if (KEYS.is(evt, actions[i][0])) {
+                actions[i][1]();
+                evt.preventDefault();
+                return;
+            }
         }
+        // the arrows move by 1 px, by 10 px with Shift
+        var step = evt.shiftKey ? 10 : 1;
+        var nudges = { 'editor.nudge-left': [-step, 0], 'editor.nudge-right': [step, 0], 'editor.nudge-up': [0, -step], 'editor.nudge-down': [0, step] };
+        var hit = Object.keys(nudges).filter(function (id) { return KEYS.is(evt, id, { anyShift: true }); })[0];
+        if (!hit) { return; }
+        nudge(nudges[hit][0], nudges[hit][1]);
         evt.preventDefault();
     });
 
@@ -4556,7 +4627,7 @@
         spreadApart: spreadApart, copy: copySelection, paste: paste, openMenu: openMenu, setLayer: setLayer,
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
-        t: t, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
+        t: t, keyHint: keyHint, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
         selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector,
         // for the contextual bar and the command palette (editor-selbar.js, editor-palette.js)
         selectionBox: selectionBox, toCanvas: toCanvas, hasClip: hasClip, menuOpen: menuOpen,

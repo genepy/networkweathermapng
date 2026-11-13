@@ -322,7 +322,8 @@
                 if (e.shortcut) {
                     var keys = document.createElement('kbd');
                     keys.className = 'pal-keys';
-                    keys.textContent = isMac ? e.shortcut.replace(/Ctrl\+/g, '⌘').replace(/Shift\+/g, '⇧') : e.shortcut;
+                    // shortcuts.js already writes the keys the way this computer shows them
+                    keys.textContent = isMac && !window.WMKeys ? e.shortcut.replace(/Ctrl\+/g, '⌘').replace(/Shift\+/g, '⇧') : e.shortcut;
                     end.appendChild(keys);
                 }
                 if (e.badge) {
@@ -480,7 +481,10 @@
     }
 
     document.addEventListener('keydown', function (e) {
-        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+        // the keys of the user (shortcuts.js), Ctrl+K when that script is missing
+        var hit = window.WMKeys ? window.WMKeys.is(e, 'palette')
+            : (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K');
+        if (hit) {
             e.preventDefault();
             if (dialog && dialog.open) { close(true); } else { open(); }
         }
@@ -498,9 +502,14 @@
     });
 
     function ready() {
-        // the shortcut shown on the button follows the keyboard
+        // the shortcut shown on the button follows the keyboard and the user's keys
         document.querySelectorAll('[data-palette-open] .app-search-key').forEach(function (k) {
-            k.textContent = isMac ? '⌘ K' : 'Ctrl K';
+            if (window.WMKeys) {
+                k.textContent = window.WMKeys.first('palette');
+                k.hidden = !k.textContent;
+            } else {
+                k.textContent = isMac ? '⌘ K' : 'Ctrl K';
+            }
         });
     }
     if (document.readyState === 'loading') {
