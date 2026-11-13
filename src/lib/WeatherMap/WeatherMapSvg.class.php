@@ -431,6 +431,8 @@ class WeatherMapSvg {
 			'stroke'  => ($zone->outlinecolour !== null && $zone->outlinewidth > 0) ? array($zone->outlinecolour[0], $zone->outlinecolour[1], $zone->outlinecolour[2], 1) : null,
 			'width'   => $zone->outlinewidth,
 			'dashed'  => $zone->outlinestyle == 'dashed',
+			'shape'   => $zone->shape,
+			'radius'  => $zone->cornerRadius(),
 		);
 	}
 
@@ -619,13 +621,32 @@ class WeatherMapSvg {
 			case 'zone':
 				// the stroke sits inside the box, like the GD outline
 				$inset = $item['stroke'] ? $item['width'] / 2 : 0;
-				$s = sprintf('<rect class="wm-zone-box" x="%s" y="%s" width="%s" height="%s"%s/>',
-					self::num($item['x']), self::num($item['y']), self::num($item['w'] + 1), self::num($item['h'] + 1),
+				$shape = isset($item['shape']) ? $item['shape'] : 'rect';
+				if ($shape == 'ellipse') {
+					$cx = $item['x'] + ($item['w'] + 1) / 2;
+					$cy = $item['y'] + ($item['h'] + 1) / 2;
+					$s = sprintf('<ellipse class="wm-zone-box" cx="%s" cy="%s" rx="%s" ry="%s"%s/>',
+						self::num($cx), self::num($cy), self::num(($item['w'] + 1) / 2), self::num(($item['h'] + 1) / 2),
+						$item['fill'] ? self::paint('fill', $item['fill']) : ' fill="none"');
+					if ($item['stroke']) {
+						$s .= sprintf('<ellipse class="wm-zone-outline" pointer-events="none" cx="%s" cy="%s" rx="%s" ry="%s" fill="none" stroke-width="%s"%s%s/>',
+							self::num($cx), self::num($cy),
+							self::num(max(0, ($item['w'] + 1) / 2 - $inset)), self::num(max(0, ($item['h'] + 1) / 2 - $inset)),
+							self::num($item['width']), self::paint('stroke', $item['stroke']),
+							$item['dashed'] ? sprintf(' stroke-dasharray="%s"', self::num(6 + 2 * $item['width'])) : '');
+					}
+					return $s;
+				}
+				$r = $shape == 'rounded' ? (float) $item['radius'] : 0;
+				$rx = $r > 0 ? sprintf(' rx="%s"', self::num($r)) : '';
+				$rxIn = $r > 0 ? sprintf(' rx="%s"', self::num(max(0, $r - $inset))) : '';
+				$s = sprintf('<rect class="wm-zone-box" x="%s" y="%s" width="%s" height="%s"%s%s/>',
+					self::num($item['x']), self::num($item['y']), self::num($item['w'] + 1), self::num($item['h'] + 1), $rx,
 					$item['fill'] ? self::paint('fill', $item['fill']) : ' fill="none"');
 				if ($item['stroke']) {
-					$s .= sprintf('<rect class="wm-zone-outline" pointer-events="none" x="%s" y="%s" width="%s" height="%s" fill="none" stroke-width="%s"%s%s/>',
+					$s .= sprintf('<rect class="wm-zone-outline" pointer-events="none" x="%s" y="%s" width="%s" height="%s"%s fill="none" stroke-width="%s"%s%s/>',
 						self::num($item['x'] + $inset), self::num($item['y'] + $inset),
-						self::num($item['w'] + 1 - 2 * $inset), self::num($item['h'] + 1 - 2 * $inset),
+						self::num($item['w'] + 1 - 2 * $inset), self::num($item['h'] + 1 - 2 * $inset), $rxIn,
 						self::num($item['width']), self::paint('stroke', $item['stroke']),
 						$item['dashed'] ? sprintf(' stroke-dasharray="%s"', self::num(6 + 2 * $item['width'])) : '');
 				}

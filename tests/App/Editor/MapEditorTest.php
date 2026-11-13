@@ -662,6 +662,31 @@ final class MapEditorTest extends TestCase
         $this->assertSame($before, (string) file_get_contents($this->file));
     }
 
+    public function testZoneShapeAndLabelOffsetAreEdited(): void
+    {
+        $this->editor->apply([['op' => 'add_zone', 'x' => 10, 'y' => 20, 'width' => 300, 'height' => 150, 'label' => 'Paris']]);
+        $this->editor->apply([['op' => 'set_zone', 'names' => ['zone'], 'props' => ['shape' => 'Rounded', 'radius' => 9999, 'labeloffset' => [15, 25]]]]);
+
+        $z = $this->editor->load()->zones['zone'];
+        $this->assertSame(['rounded', \WeatherMapZone::RADIUS_MAX, [15, 25]], [$z->shape, $z->radius, $z->labeloffset]);
+
+        $model = MapEditor::model($this->editor->load())['zones'][0];
+        $this->assertSame('rounded', $model['shape']);
+        $this->assertSame([15, 25], $model['label_offset']);
+        $this->assertCount(4, $model['label_box']);
+
+        // a placement puts the label back, unless moved in the same change
+        $this->editor->apply([['op' => 'set_zone', 'names' => ['zone'], 'props' => ['labelpos' => 'S']]]);
+        $this->assertSame([0, 0], $this->editor->load()->zones['zone']->labeloffset);
+        $this->editor->apply([['op' => 'set_zone', 'names' => ['zone'], 'props' => ['labelpos' => 'N', 'labeloffset' => [1, 2]]]]);
+        $this->assertSame([1, 2], $this->editor->load()->zones['zone']->labeloffset);
+        $this->editor->apply([['op' => 'set_zone', 'names' => ['zone'], 'props' => ['labeloffset' => null]]]);
+        $this->assertSame([0, 0], $this->editor->load()->zones['zone']->labeloffset);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_zone', 'names' => ['zone'], 'props' => ['shape' => 'star']]]);
+    }
+
     public function testBadZoneValuesAreRefused(): void
     {
         $this->editor->apply([['op' => 'add_zone', 'x' => 0, 'y' => 0]]);

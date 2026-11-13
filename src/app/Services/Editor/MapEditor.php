@@ -79,11 +79,13 @@ class MapEditor
         'fillcolour' => ['fillcolour', 'colour'],
         'outlinecolour' => ['outlinecolour', 'colour'],
         'labelfontcolour' => ['labelfontcolour', 'colour'],
+        'radius' => ['radius', 'radius'],
     ];
 
     private const ZONE_CHOICES = [
         'labelpos' => \WeatherMapZone::LABEL_POSITIONS,
         'outlinestyle' => ['solid', 'dashed'],
+        'shape' => \WeatherMapZone::SHAPES,
     ];
 
     private const NOTE_ALIGNS = ['left', 'centre', 'right'];
@@ -544,6 +546,7 @@ class MapEditor
                         'percent' => max(0, min(100, (int) $value)),
                         // same bounds as OUTLINEWIDTH in the .conf
                         'outline' => max(0, min(20, (int) $value)),
+                        'radius' => max(0, min(\WeatherMapZone::RADIUS_MAX, (int) $value)),
                         'colour' => $this->zoneColour($value),
                         'font' => $this->fontNumber($map, $value),
                         default => (int) $value,
@@ -554,6 +557,14 @@ class MapEditor
                         throw new InvalidArgumentException(__('Invalid value for :key: :value', ['key' => $key, 'value' => $value]));
                     }
                     $zone->$key = $value;
+                    // a placement puts the label back on its spot, unless moved in the same change
+                    if ($key === 'labelpos' && !array_key_exists('labeloffset', $props)) {
+                        $zone->labeloffset = [0, 0];
+                    }
+                } elseif ($key === 'labeloffset') {
+                    // [dx, dy] from the label's placement, null puts it back
+                    $offset = $value === null ? [0, 0] : $this->point($value);
+                    $zone->labeloffset = [\WeatherMapZone::clampOffset($offset[0]), \WeatherMapZone::clampOffset($offset[1])];
                 } elseif ($key !== 'name') {
                     throw new InvalidArgumentException(__('Unknown zone property: :key', ['key' => $key]));
                 }
@@ -1977,6 +1988,10 @@ class MapEditor
                 'opacity' => (int) $zone->opacity,
                 'outlinewidth' => (int) $zone->outlinewidth,
                 'outlinestyle' => (string) $zone->outlinestyle,
+                'shape' => (string) $zone->shape,
+                'radius' => (int) $zone->radius,
+                'label_offset' => array_map('intval', (array) $zone->labeloffset),
+                'label_box' => self::zoneLabelBox($map, $zone),
                 'group' => (string) ($zone->hints['editor_group'] ?? ''),
                 'locked' => !empty($zone->hints['editor_lock']),
                 'layer' => (string) ($zone->hints['editor_layer'] ?? ''),
@@ -2098,6 +2113,18 @@ class MapEditor
         }
         $c = $this->colour($value);
         return $c[0] < 0 ? null : $c;
+    }
+
+    /** Where the label of a zone is drawn, [x1, y1, x2, y2], or null without one */
+    private static function zoneLabelBox(\WeatherMap $map, \WeatherMapZone $zone): ?array
+    {
+        if ($zone->label === '' || $zone->labelfontcolour === null) {
+            return null;
+        }
+        [$tw, $th] = $map->myimagestringsize($zone->labelfont, $zone->label);
+        [$tx, $ty] = $zone->labelPosition($map);
+
+        return [(int) $tx, (int) round($ty - $th), (int) round($tx + $tw), (int) $ty];
     }
 
     private static function zoneColourOut(?array $c): string

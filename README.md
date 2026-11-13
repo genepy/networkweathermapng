@@ -198,13 +198,19 @@ ZONE paris
 	OUTLINEWIDTH 1
 	OUTLINESTYLE dashed     # or solid
 	LABELFONTCOLOR 40 60 100
+	LABELOFFSET 12 -4       # moves the label from its LABELPOS place
+	SHAPE rounded           # rect (default), rounded or ellipse
+	RADIUS 16               # corner radius of a rounded zone
 ```
 
 Everything but `POSITION` and `SIZE` is optional. In the SVG editor, the
 **Zone** button adds one (around the selected nodes, if any). A zone is picked
 by its edge or its label, so its inside stays free for selecting nodes. Dragging
 a zone moves the nodes inside it too; hold Alt to move the zone alone. The
-corner handle resizes it, and the inspector edits its label and style.
+corner handle resizes it, and the inspector edits its label, style and shape
+(rectangle, rounded corners with a radius, or ellipse). Select a zone, then
+drag its label to move it on its own; choosing a placement, or *Reset label
+position*, puts it back.
 
 ### Map notes
 

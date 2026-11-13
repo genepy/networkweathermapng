@@ -93,6 +93,11 @@ class WeatherMapScaler {
 			$zone->y = $py($zone->y);
 			$zone->width = max(1, $x2 - $zone->x);
 			$zone->height = max(1, $y2 - $zone->y);
+			// a moved label stays at the same spot of the zone
+			$zone->labeloffset = array(intval(round($zone->labeloffset[0] * $sx)), intval(round($zone->labeloffset[1] * $sy)));
+			if ($scale_sizes) {
+				$zone->radius = min(WeatherMapZone::RADIUS_MAX, intval(round($zone->radius * $sd)));
+			}
 		}
 
 		foreach ($map->keyx as $scale => $x) {

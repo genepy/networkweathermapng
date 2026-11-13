@@ -753,6 +753,29 @@
                     : t('Drag to resize the zone on this side');
             });
         }
+        renderZoneLabelHandle(z, drag, moving);
+    }
+
+    /** The label of the selected zone, dragged on its own */
+    function renderZoneLabelHandle(z, drag, moving) {
+        if (!z.label_box || z.locked || moving || state.selection.size !== 1 || state.tool !== 'select') { return; }
+        if (drag && drag.type === 'zone-size' && drag.started) { return; }
+        var b = z.label_box, dx = 0, dy = 0;
+        if (drag && drag.type === 'zonelabel' && drag.started) { dx = drag.dx; dy = drag.dy; }
+        el('rect', {
+            'class': 'label-handle', x: b[0] - 2 + dx, y: b[1] - 2 + dy, width: b[2] - b[0] + 4, height: b[3] - b[1] + 4,
+            'data-handle': 'zonelabel'
+        }, overlay).appendChild(el('title', {})).textContent = t('Drag to move the label');
+    }
+
+    /** Show the label of a zone moved by (dx, dy) while it is dragged */
+    function previewZoneLabel(name, dx, dy) {
+        $$('#map g[data-kind="zone"]').forEach(function (g) {
+            if (g.dataset.name !== name) { return; }
+            Array.prototype.forEach.call(g.querySelectorAll('.wm-zone-label'), function (c) {
+                if (dx || dy) { c.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')'); } else { c.removeAttribute('transform'); }
+            });
+        });
     }
 
     /** The icon of the selected node, resized from its corner */
@@ -931,12 +954,26 @@
         var tol = 6 / state.zoom, found = null;
         if (!state.layers.zones) { return null; }
         state.zones.forEach(function (z) {
-            if (isHidden(z)) { return; }
-            var inOuter = p.x >= z.x - tol && p.x <= z.x + z.width + tol && p.y >= z.y - tol && p.y <= z.y + z.height + tol;
-            var inInner = p.x > z.x + tol && p.x < z.x + z.width - tol && p.y > z.y + tol && p.y < z.y + z.height - tol;
-            if (inOuter && !inInner) { found = z; }
+            if (!isHidden(z) && Math.abs(zoneEdgeDistance(z, p)) <= tol) { found = z; }
         });
         return found;
+    }
+
+    /**
+     * Signed distance from a map point to the edge of a zone: negative
+     * inside. Rectangles and rounded zones are exact, an ellipse close
+     * enough near its edge.
+     */
+    function zoneEdgeDistance(z, p) {
+        var hw = z.width / 2, hh = z.height / 2, cx = z.x + hw, cy = z.y + hh;
+        var qx = Math.abs(p.x - cx), qy = Math.abs(p.y - cy);
+        if (z.shape === 'ellipse') {
+            var k = Math.hypot(qx / Math.max(hw, 1), qy / Math.max(hh, 1));
+            return (k - 1) * Math.min(hw, hh);
+        }
+        var r = z.shape === 'rounded' ? Math.max(0, Math.min(z.radius, hw, hh)) : 0;
+        var dx = qx - (hw - r), dy = qy - (hh - r);
+        return Math.hypot(Math.max(dx, 0), Math.max(dy, 0)) + Math.min(Math.max(dx, dy), 0) - r;
     }
 
     function nodeAtPoint(p) {
@@ -1279,6 +1316,11 @@
             startDrag(evt, { type: 'iconsize', node: ni.name, box: ib, w: ib[2] - ib[0], h: ib[3] - ib[1] });
             return;
         }
+        if (handle === 'zonelabel') {
+            var zl = selected('zone')[0];
+            startDrag(evt, { type: 'zonelabel', zone: zl.name, start: p, dx: 0, dy: 0 });
+            return;
+        }
         if (handle === 'nodelabel') {
             var n = selected('node')[0];
             startDrag(evt, { type: 'nodelabel', node: n.name, start: p, dx: 0, dy: 0 });
@@ -1361,6 +1403,12 @@
                 d.dx = Math.round(p.x - d.start.x);
                 d.dy = Math.round(p.y - d.start.y);
                 previewLabel(d.node, d.dx, d.dy);
+                break;
+
+            case 'zonelabel':
+                d.dx = Math.round(p.x - d.start.x);
+                d.dy = Math.round(p.y - d.start.y);
+                previewZoneLabel(d.zone, d.dx, d.dy);
                 break;
 
             case 'bwlabel':
@@ -1508,6 +1556,7 @@
         previewMove(noMove());
         previewPositions({});
         if (d.type === 'nodelabel') { previewLabel(d.node, 0, 0); }
+        if (d.type === 'zonelabel') { previewZoneLabel(d.zone, 0, 0); }
         refresh();
         return true;
     }
@@ -1595,6 +1644,16 @@
                     return;
                 }
                 send([{ op: 'set_node', names: [d.node], props: { labelshift: [ln.label_shift[0] + d.dx, ln.label_shift[1] + d.dy] } }]);
+                return;
+
+            case 'zonelabel':
+                var lz = state.zones.get(d.zone);
+                if (!d.started || (!d.dx && !d.dy) || !lz) {
+                    previewZoneLabel(d.zone, 0, 0);
+                    renderOverlay();
+                    return;
+                }
+                send([{ op: 'set_zone', names: [d.zone], props: { labeloffset: [lz.label_offset[0] + d.dx, lz.label_offset[1] + d.dy] } }]);
                 return;
 
             case 'bwlabel':
@@ -3265,6 +3324,12 @@
             row(t('Outline'), colourField(zones, 'outlinecolour', 'zone')),
             row(t('Outline width'), field(zones, 'outlinewidth', 'zone', { type: 'number', number: true })),
             row(t('Outline style'), field(zones, 'outlinestyle', 'zone', { options: [['solid', t('Solid')], ['dashed', t('Dashed')]] })),
+            row(t('Shape'), field(zones, 'shape', 'zone', { options: [['rect', t('Rectangle')], ['rounded', t('Rounded corners')], ['ellipse', t('Ellipse')]] }))
+        );
+        if (zones.some(function (z) { return z.shape === 'rounded'; })) {
+            out.push(row(t('Corner radius'), field(zones, 'radius', 'zone', { type: 'number', number: true })));
+        }
+        out.push(
             h('h3', { text: t('Label style') }),
             row(t('Font'), fontField(zones, 'labelfont', 'zone')),
             row(t('Text'), colourField(zones, 'labelfontcolour', 'zone')),
@@ -3274,6 +3339,17 @@
             ] })),
             h('p', { 'class': 'help', text: t('Zones are drawn under links and nodes. Dragging a zone by its edge or label moves the zone alone; group it with nodes (Ctrl+G) to move them together.') })
         );
+        if (single && single.label_box) {
+            out.push(
+                h('p', { 'class': 'help', text: t('Drag the label of the selected zone to move it. Choosing a placement puts it back.') }),
+                h('div', { 'class': 'actions' }, [
+                    h('button', {
+                        type: 'button', text: t('Reset label position'), disabled: !single.label_offset[0] && !single.label_offset[1],
+                        onclick: function () { send([{ op: 'set_zone', names: [single.name], props: { labeloffset: null } }]); }
+                    })
+                ])
+            );
+        }
         return out;
     }
 
