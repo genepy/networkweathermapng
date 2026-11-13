@@ -263,6 +263,26 @@ the editor, the *Boxes* tiles of the *Add* panel add one in the middle of
 the view; it moves like the legends, its panel edits the title, style, rows
 and width, and Delete removes it.
 
+### Focus areas
+
+On a broad map, a focus area puts one part forward in the live view and the
+kiosk: the rest of the map dims behind a veil (legends and boxes stay
+readable), or the view zooms onto the area, or both. The PNG and SVG
+pictures do not change.
+
+```
+SET focus_1 110 30 560 450         # the rectangle, x1 y1 x2 y2 in map pixels
+SET focus_1_title Paris PoP        # its name in the viewer (default: "Area 1")
+SET focus_1_style both             # both (default), dim (the whole map in view) or zoom (nothing dimmed)
+SET focus_default 1                # the area the map opens on, and the one the kiosk shows
+```
+
+The viewer's focus button lists the areas and *Whole map*; `#a=<id>` in the
+address opens on an area (`#a=-` on the whole map). In the editor, *Focus
+areas* in the map properties adds, names and deletes them, sets their
+rectangle (numbers, or *Use the view*) and the one the map opens on; the
+context menu adds one around the selection.
+
 ### Comments along curved links
 
 `INCOMMENT` and `OUTCOMMENT` are drawn straight, along the link where they

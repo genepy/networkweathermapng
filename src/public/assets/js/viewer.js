@@ -54,6 +54,7 @@
     const insetBox = root.querySelector('.wmv-inset');
 
     const mapId = root.dataset.mapId;
+    const areaMenu = root.querySelector('.wmv-areas');
     // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
     const standalone = root.dataset.fullscreen === '1';
     // a map of the kiosk (?kiosk=1): the kiosk page around it keeps the keys
@@ -202,6 +203,8 @@
                 hash = '#z=' + (Math.round(S.z * 1000) / 1000) + '&x=' + Math.round(c.x) + '&y=' + Math.round(c.y);
             }
             if (S.focus !== null) hash += (hash ? '&' : '#') + 'n=' + encodeURIComponent(S.focus);
+            // a focus area other than the one the map opens on ("-": the whole map)
+            if (A.current !== A.def) hash += (hash ? '&' : '#') + 'a=' + encodeURIComponent(A.current === null ? '-' : A.current);
             history.replaceState(null, '', base + hash);
             const exit = root.querySelector('[data-act="exit"]');
             if (exit) exit.href = root.dataset.normalUrl + hash;
@@ -215,6 +218,7 @@
         const y = parseFloat(p.get('y') || '');
         if (p.get('n') && S.focus === null) S.focus = p.get('n');
         if (p.has('play')) S.playOnLoad = true;
+        if (p.has('a')) A.hash = p.get('a');
         if (!isFinite(z) || !isFinite(x) || !isFinite(y) || z <= 0) {
             // a link to a node without a view: zoom onto it once it is drawn
             S.focusZoom = S.focus !== null;
@@ -363,6 +367,7 @@
         setupGeo();
         refocus();
         fillSites();
+        markArea();
     }
 
     // ---- Link width deep in a basemap ----
@@ -613,7 +618,9 @@
             .then(function (data) {
                 // first, so the view from the address may zoom as far as a basemap allows
                 if (data.status) setBasemap(data.status.basemap || null);
+                setAreas(data.focus || null);
                 installSvg(data.svg, data.items);
+                startArea();
                 showState(data.status);
                 if (data.version) S.version = data.version;
                 showMessage('');
@@ -2152,6 +2159,210 @@
     });
 
     // ------------------------------------------------------------------
+    // Focus areas (SET focus_*, see FocusAreas.php): a part of a broad map
+    // stands out, the rest dims behind a veil, or the view zooms onto it,
+    // or both. The map opens on its default area, and so does the kiosk;
+    // the menu of the toolbar picks another one or the whole map.
+
+    const A = {
+        list: [], byId: {},     // the areas: {id, title, style, box: [x1, y1, x2, y2], nodes, links}
+        def: null,              // the area the map opens on
+        current: null,          // the area shown
+        hash: null,             // a= of the address: an area id, or "-" for the whole map
+        started: false,
+        view: null              // the view the area set, while nobody moved it: {z, x, y}
+    };
+
+    function areaTitle(a) {
+        return a.title || fmt('Area :id', {id: a.id});
+    }
+
+    function setAreas(focus) {
+        A.list = focus && Array.isArray(focus.areas) ? focus.areas : [];
+        A.byId = {};
+        A.list.forEach(function (a) { A.byId[a.id] = a; });
+        A.def = focus && focus.default && A.byId[focus.default] ? focus.default : null;
+        // the area shown is gone from the map
+        if (A.current !== null && !A.byId[A.current]) {
+            A.current = null;
+            A.view = null;
+        }
+        fillAreaMenu();
+    }
+
+    /** Once the map is drawn the first time: the area of the address, or the default one */
+    function startArea() {
+        if (A.started) return;
+        A.started = true;
+        let id = A.def;
+        if (!kioskFrame && A.hash !== null) {
+            id = A.hash === '-' ? null : (A.byId[A.hash] ? A.hash : A.def);
+        }
+        if (id === null) {
+            // the address asked for the whole map: keep it in the address
+            if (A.def !== null) saveHash();
+            return;
+        }
+        // a view in the address wins over the zoom of the area
+        showArea(id, {zoom: !S.touched, animate: false});
+    }
+
+    /** Whether the view is still the one the area set */
+    function areaViewKept() {
+        if (!A.view) return false;
+        const c = viewCentre();
+        return Math.abs(S.z - A.view.z) < 1e-6 && Math.abs(c.x - A.view.x) < 1 && Math.abs(c.y - A.view.y) < 1;
+    }
+
+    /** Puts an area forward (null: the whole map); zoom onto it when its style says so */
+    function showArea(id, opts) {
+        const a = id !== null && A.byId[id] ? A.byId[id] : null;
+        const zoomed = areaViewKept() || (A.view && !S.touched);
+        A.current = a ? a.id : null;
+        A.view = null;
+        markArea();
+        fillAreaMenu();
+        if (a && a.style !== 'dim' && opts.zoom) {
+            areaView(a, opts.animate);
+        } else if (zoomed && opts.zoom) {
+            // back from the zoom of an area: the whole map, dimmed around this one
+            fit();
+            return;
+        }
+        saveHash();
+    }
+
+    /** The part of the viewport the toolbar, the side panel and the status line leave free */
+    function freeRect() {
+        const vr = viewport.getBoundingClientRect();
+        function rect(el) {
+            return el && !el.hidden && el.getClientRects().length ? el.getBoundingClientRect() : null;
+        }
+        const pb = rect(panel), bb = rect(root.querySelector('.wmv-bar')), sb = rect(statusBox);
+        let x0 = 0, y0 = 0, x1 = vr.width, y1 = vr.height;
+        if (pb && vr.width > 640) x0 = Math.max(0, pb.right - vr.left + 8);
+        if (bb) y0 = Math.max(0, bb.bottom - vr.top + 8);
+        if (sb) y1 = Math.min(y1, sb.top - vr.top - 8);
+        // too little room left: the whole viewport
+        if (x1 - x0 < 200) x0 = 0;
+        if (y1 - y0 < 200) {
+            y0 = 0;
+            y1 = vr.height;
+        }
+        return {x0: x0, y0: y0, x1: x1, y1: y1};
+    }
+
+    /** Zooms onto an area, with a small margin around it, in the free part of the view */
+    function areaView(a, animate) {
+        if (!a) return;
+        const m = 20;
+        const b = a.box;
+        const w = b[2] - b[0] + 2 * m, h = b[3] - b[1] + 2 * m;
+        const vp = vpSize();
+        const f = freeRect();
+        const z = clampZ(Math.min((f.x1 - f.x0) / w, (f.y1 - f.y0) / h));
+        // the centre of the view, so the centre of the area sits in the middle of the free part
+        const x = (b[0] + b[2]) / 2 - ((f.x0 + f.x1) / 2 - vp.w / 2) / z;
+        const y = (b[1] + b[3]) / 2 - ((f.y0 + f.y1) / 2 - vp.h / 2) / z;
+        if (animate) {
+            animateTo(z, x, y);
+        } else {
+            centreOn(x, y, z);
+            draw();
+        }
+        // the address keeps the area rather than this view
+        S.touched = false;
+        A.view = {z: z, x: x, y: y};
+    }
+
+    /**
+     * The veil over the rest of the map and the frame of the area, drawn
+     * in the SVG over the nodes and links, under the legends and boxes
+     * (they stay readable). Hovering and clicking go through it.
+     */
+    function markArea() {
+        if (!S.el || !S.el.querySelector) return;
+        const old = S.el.querySelector('.wmv-area-layer');
+        if (old) old.remove();
+        const a = A.current !== null ? A.byId[A.current] : null;
+        S.el.classList.toggle('wmv-area-on', !!a);
+        if (!a || a.style === 'zoom') return;
+        const NS = 'http://www.w3.org/2000/svg';
+        const layer = document.createElementNS(NS, 'g');
+        layer.setAttribute('class', 'wmv-area-layer');
+        layer.setAttribute('aria-hidden', 'true');
+        layer.setAttribute('pointer-events', 'none');
+        const b = a.box, W = S.w, H = S.h;
+        const veil = document.createElementNS(NS, 'path');
+        veil.setAttribute('class', 'wmv-area-veil');
+        // the map's own background colour, so the rest fades into the map
+        const bg = S.el.querySelector('rect.wm-bg');
+        const fill = bg ? bg.getAttribute('fill') : null;
+        if (fill && fill !== 'none') veil.style.fill = fill;
+        veil.setAttribute('fill-rule', 'evenodd');
+        veil.setAttribute('d', 'M' + (-W) + ' ' + (-H) + 'H' + (2 * W) + 'V' + (2 * H) + 'H' + (-W) + 'Z'
+            + 'M' + b[0] + ' ' + b[1] + 'V' + b[3] + 'H' + b[2] + 'V' + b[1] + 'Z');
+        const frame = document.createElementNS(NS, 'rect');
+        frame.setAttribute('class', 'wmv-area-frame');
+        frame.setAttribute('x', b[0]);
+        frame.setAttribute('y', b[1]);
+        frame.setAttribute('width', b[2] - b[0]);
+        frame.setAttribute('height', b[3] - b[1]);
+        frame.setAttribute('rx', 6);
+        layer.appendChild(veil);
+        layer.appendChild(frame);
+        // right after the last node or link
+        const items = S.el.querySelectorAll('g.wm-node, g.wm-link');
+        const last = items.length ? items[items.length - 1] : null;
+        if (last && last.parentNode) last.parentNode.insertBefore(layer, last.nextSibling);
+        else S.el.appendChild(layer);
+    }
+
+    function fillAreaMenu() {
+        if (!areaMenu) return;
+        areaMenu.hidden = !A.list.length;
+        if (!A.list.length) {
+            areaMenu.open = false;
+            return;
+        }
+        const box = areaMenu.querySelector('.row-menu-items');
+        const rows = [{id: null, label: t('Whole map')}].concat(A.list.map(function (a) {
+            return {id: a.id, label: a.id === A.def ? fmt(':name (default)', {name: areaTitle(a)}) : areaTitle(a)};
+        }));
+        box.replaceChildren.apply(box, rows.map(function (r) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('aria-checked', A.current === r.id ? 'true' : 'false');
+            b.dataset.area = r.id === null ? '' : r.id;
+            const mark = document.createElement('span');
+            mark.className = 'wmv-area-check';
+            mark.setAttribute('aria-hidden', 'true');
+            mark.textContent = A.current === r.id ? '✓' : '';
+            const label = document.createElement('span');
+            label.textContent = r.label;
+            b.append(mark, label);
+            return b;
+        }));
+        const current = A.current !== null ? A.byId[A.current] : null;
+        const summary = areaMenu.querySelector('summary');
+        const title = current ? fmt('Focus area: :name', {name: areaTitle(current)}) : t('Focus areas');
+        summary.title = title;
+        summary.setAttribute('aria-label', title);
+        summary.classList.toggle('wmv-on', !!current);
+    }
+
+    if (areaMenu) {
+        areaMenu.addEventListener('click', function (e) {
+            const b = e.target.closest ? e.target.closest('[data-area]') : null;
+            if (!b) return;
+            e.preventDefault();
+            closeMenus();
+            showArea(b.dataset.area === '' ? null : b.dataset.area, {zoom: true, animate: true});
+        });
+    }
+
+    // ------------------------------------------------------------------
     // Toolbar and keyboard
 
     root.querySelectorAll('[data-act]').forEach(function (b) {
@@ -2246,6 +2457,8 @@
         } else {
             centreOn(c.x, c.y, S.z);
         }
+        // the view of a focus area follows the window
+        if (A.view && !S.touched) areaView(A.byId[A.current], false);
         apply();
     });
 

@@ -75,6 +75,10 @@
                 <button type="button" data-act="history" aria-pressed="false" aria-keyshortcuts="H" data-keys="viewer.history" aria-label="<?= e__('Last :hours h', ['hours' => $historyHours]) ?>" title="<?= e__('Play back the recorded hours') ?>"><?= icon('history') ?><span><?= e__('Last :hours h', ['hours' => $historyHours]) ?></span></button>
             </div>
             <?php endif; ?>
+            <details class="row-menu wmv-more wmv-areas" hidden>
+                <summary class="wmv-icon-btn" title="<?= e__('Focus areas') ?>" aria-label="<?= e__('Focus areas') ?>"><?= icon('focus') ?></summary>
+                <div class="row-menu-items" role="menu" aria-label="<?= e__('Focus areas') ?>"></div>
+            </details>
             <button type="button" class="wmv-icon-btn" data-act="panel" aria-controls="wmv-panel" aria-pressed="false" aria-keyshortcuts="P" data-keys="viewer.panel"
                     title="<?= e__('Side panel: sites, total traffic, legend') ?>" aria-label="<?= e__('Side panel') ?>"><?= icon('panel-left') ?></button>
             <?php if ($isFullscreen): ?>

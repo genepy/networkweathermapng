@@ -199,6 +199,8 @@ class MapController extends BaseController
             'svg' => $result['svg'],
             'items' => (object) ($summary['items'] ?? []),
             'status' => self::publicStatus($summary),
+            // the focus areas of the map (SET focus_*), null when it has none
+            'focus' => $summary['focus'] ?? null,
             'version' => $this->configVersion($mapId),
         ]);
     }

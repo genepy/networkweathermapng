@@ -222,6 +222,19 @@
     .wmv-svg g.wm-node { transition: none; }
 }
 
+/* Focus areas: a veil over the rest of the map, a frame around the area */
+.wmv-svg .wmv-area-veil { fill: var(--wm-bg); fill-opacity: 0.72; }
+.wmv-svg .wmv-area-frame {
+    fill: none;
+    stroke: var(--wm-accent);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--wm-accent) 60%, transparent));
+}
+.wmv-areas > summary.wmv-on { color: var(--wm-accent); }
+.wmv-areas .row-menu-items button { display: flex; align-items: center; gap: 6px; }
+.wmv-area-check { width: 1em; flex: none; text-align: center; color: var(--wm-accent); }
+
 /* Level of detail: bandwidth labels unreadable when zoomed out */
 .wmv-lod-far .wmv-svg .wm-bwlabel-in,
 .wmv-lod-far .wmv-svg .wm-bwlabel-out { display: none; }

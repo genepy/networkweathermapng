@@ -215,7 +215,8 @@
 
     var SECTIONS = [
         ['general', t('General')], ['title', t('Title')], ['legend', t('Link load legend')], ['scale', t('Link colours')],
-        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
+        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
+        ['focus', t('Focus areas')]
     ];
 
     /**
@@ -546,6 +547,8 @@
                 return basemapPane(p, m);
             case 'fonts':
                 return fontsPane();
+            case 'focus':
+                return ed.focusPane ? ed.focusPane() : [];
         }
         return [];
     }
@@ -564,13 +567,15 @@
                 if (!p.basemap) { return t('None'); }
                 try { return new URL(p.basemap, location.href).hostname; } catch (e) { return p.basemap; }
             case 'fonts': return String(Object.keys(ed.state.model.font_info || {}).length);
+            case 'focus': return ed.focusSummary ? ed.focusSummary() : '';
         }
         return '';
     }
 
     var SECTIONS = [
         ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Link load legend')], ['scale', t('Link colours')],
-        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')]
+        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
+        ['focus', t('Focus areas')]
     ];
 
     function loadFolds() {

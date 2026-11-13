@@ -58,4 +58,10 @@ return [
     'Reset zoom (double-click)' => 'Annuler le zoom (double-clic)',
     // node card: the traffic of one of its links
     'To :node' => 'Vers :node',
+    // focus areas (SET focus_*)
+    'Area :id' => 'Zone :id',
+    'Whole map' => 'Toute la carte',
+    ':name (default)' => ':name (par défaut)',
+    'Focus area: :name' => 'Zone de focus : :name',
+    'Focus areas' => 'Zones de focus',
 ];
