@@ -3,9 +3,9 @@
  * Ready-made looks for a map, applied in one click from Map properties.
  *
  * A theme only sets values the map format already has (colours, the legend
- * style, the colour scale, the DEFAULT node and link label colours) plus
- * SET link_glow, so a themed map stays an ordinary .conf file that any
- * Weathermap reads.
+ * style, the colour scale, the DEFAULT node and link label colours, and for
+ * some the fonts, as FONTDEFINE lines) plus SET link_glow, so a themed map
+ * stays an ordinary .conf file that any Weathermap reads.
  *
  * Every theme is built on the same design base (BASE): the same legend
  * card, timestamp pill and link label pills, so maps keep one look whatever
@@ -36,14 +36,15 @@ final class MapThemes
     /**
      * The palettes. 'idle' colours the links without traffic (a 0 to 0
      * step); 'smooth' lists the stops of a gradient, 'steps' the bands of a
-     * stepped scale [from %, to %, colour].
+     * stepped scale [from %, to %, colour]. 'font' is a shipped font family
+     * given to every text of the map (MapEditor::fontFamilies()).
      */
     private const PALETTES = [
         // dark canvas, links from cream to amber to red, gold-edged cards
         'night' => [
             'bg' => '#11141a', 'text' => '#f3e7c9', 'muted' => '#b8ad95',
             'card' => '#1a1e26', 'edge' => '#c9a24a', 'line' => '#4a4f5c', 'glow' => true,
-            'idle' => '#5d6472',
+            'idle' => '#5d6472', 'font' => 'Inter',
             'smooth' => [[0, '#efe7d2'], [30, '#f4c76d'], [60, '#f2992c'], [100, '#e5531c']],
         ],
         // warm light canvas, white cards, green to amber to red
@@ -126,7 +127,7 @@ final class MapThemes
     }
 
     /**
-     * @return array{map: array<string, mixed>, scale: list<array{bottom: int|float, top: int|float, colour: string, colour2: string}>, link: array<string, string>, node: array<string, string>}|null
+     * @return array{map: array<string, mixed>, scale: list<array{bottom: int|float, top: int|float, colour: string, colour2: string}>, link: array<string, string>, node: array<string, string>, font: ?string}|null
      */
     public static function get(string $name): ?array
     {
@@ -158,6 +159,7 @@ final class MapThemes
                 'labelfontcolour' => $p['text'],
                 'labeloutlinecolour' => $p['edge'],
             ],
+            'font' => $p['font'] ?? null,
         ];
     }
 

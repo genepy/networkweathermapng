@@ -13,6 +13,10 @@ use App\Services\Observium\ObserviumTarget;
  */
 class MapService
 {
+    /** The fonts of new maps, shipped in public/fonts (SIL Open Font License) */
+    public const DEFAULT_FONT = 'fonts/Inter-Regular.ttf';
+    public const DEFAULT_FONT_BOLD = 'fonts/Inter-SemiBold.ttf';
+
     private $db;
     private $configPath;
     private $outputPath;
@@ -53,16 +57,6 @@ class MapService
         }
     }
 
-    private function findFirstExistingPath(array $paths): string
-    {
-        foreach ($paths as $path) {
-            if ($path !== '' && file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return $paths[0] ?? '';
-    }
     
     /**
      * Get all maps
@@ -1250,16 +1244,10 @@ class MapService
         $width = max(100, min(10000, (int) ($data['width'] ?? 800)));
         $height = max(100, min(10000, (int) ($data['height'] ?? 600)));
 
-        $fontRegular = $this->findFirstExistingPath([
-            '/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf',
-            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-            '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-        ]);
-        $fontBold = $this->findFirstExistingPath([
-            '/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf',
-            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-            '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
-        ]);
+        // Inter, shipped in public/fonts: a TrueType font, so comments can
+        // follow curved links and the SVG draws the same letters as the PNG
+        $fontRegular = self::DEFAULT_FONT;
+        $fontBold = self::DEFAULT_FONT_BOLD;
         
         return <<<CONFIG
 # WeatherMap Configuration
@@ -1273,14 +1261,15 @@ TITLE {$title}
 # Background color
 BGCOLOR 255 255 255
 
-# Default fonts
-FONTDEFINE 1 {$fontRegular} 8
-FONTDEFINE 2 {$fontRegular} 10
-FONTDEFINE 3 {$fontBold} 12
+# Default fonts (fonts 1 to 5 are GD's own, drawn without TrueType)
+FONTDEFINE 10 {$fontRegular} 8
+FONTDEFINE 11 {$fontRegular} 9
+FONTDEFINE 12 {$fontBold} 10
+FONTDEFINE 13 {$fontBold} 12
 
-TITLEFONT 3
-TIMEFONT 2
-KEYFONT 1
+TITLEFONT 13
+TIMEFONT 11
+KEYFONT 10
 
 # Timestamp position
 TIMEPOS 10 {$height} Created: %b %d %Y %H:%M:%S
@@ -1301,10 +1290,13 @@ KEYPOS DEFAULT 10 10
 
 # Default node settings
 NODE DEFAULT
+    LABELFONT 12
     MAXVALUE 100
 
 # Default link settings
 LINK DEFAULT
+    BWFONT 11
+    COMMENTFONT 10
     BANDWIDTH 100M
     BWLABEL bits
     BWLABELPOS 50 50
