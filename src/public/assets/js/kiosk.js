@@ -4,8 +4,13 @@
  * Each map stays for its own time (Settings > Kiosk); a thin bar at the top
  * fills up until the next one. Arrows go to the previous or next map, Space
  * pauses, F switches to fullscreen. The controls fade out after 3 s without
- * movement and come back with the mouse, a touch or a key. The pictures are
- * fetched again every refresh interval.
+ * movement and come back with the mouse, a touch or a key.
+ *
+ * Each map is the SVG viewer in a frame (/map/{id}?kiosk=1): it draws the
+ * map like the live view and refreshes it by itself. Only the current map
+ * and the next one have a frame, so the next one is drawn before it shows
+ * and a long kiosk does not keep every map in memory. The keys and the
+ * movements made over a frame come back to this page.
  */
 (function () {
     'use strict';
@@ -21,17 +26,48 @@
     const fsBtn = root.querySelector('[data-kiosk="fullscreen"]');
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // A fixed zoom is a percentage of the map's own size
-    maps.forEach(function (div) {
-        const zoom = parseInt(div.dataset.zoom, 10) || 0;
-        const img = div.querySelector('img');
-        if (!zoom || !img) return;
-        function size() {
-            if (img.naturalWidth) img.style.width = (img.naturalWidth * zoom / 100) + 'px';
+    // ------------------------------------------------------------------
+    // Frames: the current map and the next one
+
+    function frameOf(div) {
+        return div.querySelector('iframe');
+    }
+
+    function addFrame(div) {
+        if (frameOf(div)) return;
+        const frame = document.createElement('iframe');
+        frame.title = div.dataset.name || '';
+        frame.setAttribute('tabindex', '-1');
+        frame.addEventListener('load', function () { listenInside(frame); });
+        frame.src = div.dataset.src;
+        div.appendChild(frame);
+    }
+
+    /** Keys and movements over the map act on the kiosk (same origin) */
+    function listenInside(frame) {
+        let doc;
+        try {
+            doc = frame.contentDocument;
+        } catch (e) {
+            return;
         }
-        img.addEventListener('load', size);
-        if (img.complete) size();
-    });
+        if (!doc) return;
+        doc.addEventListener('keydown', onKey);
+        ['mousemove', 'pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
+            doc.addEventListener(ev, wake, {passive: true});
+        });
+    }
+
+    function keepFrames() {
+        const keep = [current, (current + 1) % maps.length];
+        maps.forEach(function (div, k) {
+            if (keep.indexOf(k) !== -1) {
+                addFrame(div);
+            } else if (frameOf(div)) {
+                frameOf(div).remove();
+            }
+        });
+    }
 
     let current = 0;
     let paused = false;
@@ -51,7 +87,11 @@
 
     function show(i) {
         current = (i + maps.length) % maps.length;
-        maps.forEach(function (m, k) { m.classList.toggle('active', k === current); });
+        keepFrames();
+        maps.forEach(function (m, k) {
+            m.classList.toggle('active', k === current);
+            m.setAttribute('aria-hidden', k === current ? 'false' : 'true');
+        });
         root.querySelector('.kiosk-current').textContent = current + 1;
         root.querySelector('.kiosk-name').textContent = maps[current].dataset.name || '';
     }
@@ -159,7 +199,7 @@
         });
     });
 
-    document.addEventListener('keydown', function (e) {
+    function onKey(e) {
         const tag = (e.target && e.target.tagName) || '';
         if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || e.ctrlKey || e.metaKey || e.altKey) return;
         const onButton = tag === 'BUTTON' || tag === 'A';
@@ -178,21 +218,8 @@
             default: return;
         }
         e.preventDefault();
-    });
-
-    // ------------------------------------------------------------------
-    // Fresh pictures
-
-    const refreshMs = Math.max(30, parseInt(root.dataset.refresh || '300', 10)) * 1000;
-    setInterval(function () {
-        if (document.hidden) return;
-        maps.forEach(function (div) {
-            const img = div.querySelector('img');
-            const next = new Image();
-            next.onload = function () { img.src = next.src; };
-            next.src = img.src.split('?')[0] + '?t=' + Date.now();
-        });
-    }, refreshMs);
+    }
+    document.addEventListener('keydown', onKey);
 
     show(0);
     run();

@@ -72,7 +72,7 @@ $menu = static function (array $r) use ($h): string {
         . $item('/editor/maps/duplicate/' . $id . '?return=%2F', 'copy', __('Duplicate'))
         . '<button type="button" class="menu-move" data-map-id="' . $id . '" data-group="' . (int) $r['map']['group_id'] . '">' . icon('arrow-left-right') . e__('Move to…') . '</button>'
         . $item('/editor/maps/toggle/' . $id . '?return=%2F', $r['active'] ? 'eye-off' : 'eye', $r['active'] ? __('Hide from users') : __('Show to users'), ' data-method="post"')
-        . $item('/map/' . $id . '?mode=preview&amp;hours=4&amp;fullscreen=1&amp;fit=0', 'monitor', __('Preview'))
+        . $item('/map/' . $id . '?fullscreen=1', 'monitor', __('Fullscreen'))
         . $item('/editor/maps/export/' . $id, 'download', __('Download .conf'))
         . $item('/editor/maps/delete/' . $id, 'trash-2', __('Delete…'), ' class="danger" data-method="post" data-confirm-label="' . e__('Delete') . '" data-confirm="'
             . $h(__('Delete the map ":name" and all its data (configuration, images, history, permissions)? This cannot be undone.', ['name' => $r['map']['name']])) . '"')

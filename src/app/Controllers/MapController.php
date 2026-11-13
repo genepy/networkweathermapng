@@ -116,102 +116,39 @@ class MapController extends BaseController
         ));
     }
 
+    /**
+     * The viewer: the map drawn as SVG, with zoom, hover cards, side panel,
+     * site focus and playback. ?fullscreen=1 is the same page without the
+     * application shell (the kiosk link), ?kiosk=1 the bare map that the
+     * kiosk shows (no toolbar, no panel; the kiosk keeps the keys).
+     * The old picture views (?view=png, ?mode=preview) open the viewer: the
+     * PNG is only made when someone downloads it.
+     */
     public function view(array $params): void
     {
         $this->requireAuth();
-        
+
         $mapId = (int) ($params['id'] ?? 0);
         $fullscreen = (bool) $this->getInput('fullscreen', false);
-        $fit = (bool) $this->getInput('fit', false);
-        $mode = (string) $this->getInput('mode', '');
-        
+        $kiosk = (bool) $this->getInput('kiosk', false);
+
         if (!$this->auth->canViewMap($mapId)) {
             ErrorPage::send(403, $this->auth);
             return;
         }
-        
+
         $map = $this->getMap($mapId);
-        
+
         if (!$map) {
             ErrorPage::send(404, $this->auth, __('Map not found'), __('This map does not exist any more, or its address is wrong.'));
             return;
         }
-        
-        $outputBase = pathinfo($map['config_file'], PATHINFO_FILENAME);
-        // Check if HTML output exists
-        $htmlFile = $this->config->getOutputPath() . '/' . $outputBase . '.html';
-        $mapHtml = '';
 
-        // Only preview mode is interactive (imagemap). All other views are plain PNG.
-        // Preview mode requires the HTML imagemap. Generate it on demand.
-        if ($mode === 'preview') {
-            // Suppress library warnings during render
-            ob_start();
-            $this->mapService->renderMap($mapId, true);
-            ob_end_clean();
+        if ((string) $this->getInput('view', '') === 'png' || (string) $this->getInput('mode', '') === 'preview') {
+            $this->redirect(self::viewerUrl($mapId, $fullscreen));
         }
 
-        // Fallback: if preview mode is requested but no HTML imagemap was generated, build it in-memory.
-        if ($mode === 'preview' && trim($mapHtml) === '') {
-            $mapFile = $this->config->getConfigsPath() . '/' . $map['config_file'];
-            if (file_exists($mapFile)) {
-                // Suppress library warnings during dynamic generation
-                ob_start();
-                require_once $this->config->getLibPath() . '/WeatherMap/bootstrap.php';
-
-                $zone = $this->timezones()->forMap($mapId);
-                $mapHtml = (string) $this->mapService->engine(static function () use ($mapFile, $mapId, $zone) {
-                    $wmap = new \WeatherMap();
-                    // context='editor' forces SortedImagemap to include ALL areas, even those with no href/infourl.
-                    // This is required for preview tooltips to work on links that are monitored but have no click action.
-                    $wmap->context = 'editor';
-                    $wmap->ReadConfig($mapFile);
-
-                    // We want Hover URL (OVERLIBGRAPH) to be available in the generated <area> tags for preview.
-                    // WeatherMap only emits overlib-related attributes (e.g. data-hover) when HTMLSTYLE is 'overlib'.
-                    // Force it for preview generation without changing the user's config file.
-                    $wmap->htmlstyle = 'overlib';
-
-                    // DrawMap('null') populates imagemap regions without writing an image file.
-                    TimezoneService::using($zone, static fn () => $wmap->DrawMap('null'));
-
-                    // MakeHTML uses imageuri when provided.
-                    $wmap->imageuri = '/map/' . $mapId . '/image?t=' . time();
-                    return $wmap->MakeHTML('weathermap_imap');
-                });
-                ob_end_clean();
-
-                // Ensure hover works consistently.
-                $mapHtml = preg_replace(
-                    '/(<area\b[^>]*?)\bnohref\b([^>]*?\/?>)/i',
-                    '$1href="#" $2',
-                    $mapHtml
-                ) ?? $mapHtml;
-            }
-        }
-
-        // When the image is scaled to fit the browser, imagemap <area> coords would no longer match.
-        // In fit mode, render a plain <img> instead.
-        // Fullscreen is allowed for preview, as long as fit is disabled.
-        if ($fit || $mode !== 'preview') {
-            $mapHtml = '';
-        }
-        if ($fullscreen && $mode === 'preview' && $fit) {
-            $mapHtml = '';
-        }
-        
-        $hours = (int) $this->getInput('hours', 4);
-        if ($hours <= 0) {
-            $hours = 4;
-        }
-        $defaultRefresh = $fullscreen ? 120 : 0;
-        $autoRefresh = (int) $this->getInput('autorefresh', $defaultRefresh);
-        if ($autoRefresh < 0) {
-            $autoRefresh = 0;
-        }
-
-        // The zoomable SVG is the default view; ?view=png keeps the picture
-        $viewKind = ($mode === 'preview' || (string) $this->getInput('view', '') === 'png') ? 'png' : 'svg';
+        $autoRefresh = max(0, (int) $this->getInput('autorefresh', 0));
 
         $timezones = $this->timezones();
         $timezone = $timezones->forMap($mapId);
@@ -220,17 +157,21 @@ class MapController extends BaseController
             'map' => $map,
             'timezone' => $timezone,
             'lastRun' => $map['last_run'] ? $timezones->formatStored((string) $map['last_run'], $timezone) : null,
-            'mapHtml' => $mapHtml,
-            'viewKind' => $viewKind,
-            'fullscreen' => $fullscreen,
-            'fit' => $fit,
-            'mode' => $mode,
-            'hours' => $hours,
+            'fullscreen' => $fullscreen || $kiosk,
+            'kiosk' => $kiosk,
+            // the kiosk's fixed zoom, in % of the map's own size (0: fit the screen)
+            'zoom' => $kiosk ? max(0, min(400, (int) $this->getInput('zoom', 0))) : 0,
             'autoRefresh' => $autoRefresh,
-            'history' => $this->historyAvailable($mapId),
+            'history' => !$kiosk && $this->historyAvailable($mapId),
             'historyHours' => $this->recording()->getRetention(),
             'title' => $map['title_cache'] ?: $map['name'],
-        ], !$fullscreen);
+        ], !($fullscreen || $kiosk));
+    }
+
+    /** The viewer's address for a map, on the page or fullscreen */
+    public static function viewerUrl(int $mapId, bool $fullscreen = false): string
+    {
+        return '/map/' . $mapId . ($fullscreen ? '?fullscreen=1' : '');
     }
 
     /**
@@ -260,6 +201,37 @@ class MapController extends BaseController
             'status' => self::publicStatus($summary),
             'version' => $this->configVersion($mapId),
         ]);
+    }
+
+    /** GET: the live map as an SVG file to download (Download as SVG) */
+    public function svgDownload(array $params): void
+    {
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->canView($mapId)) {
+            http_response_code(403);
+            return;
+        }
+        $map = $this->getMap($mapId);
+        $svg = $map ? $this->mapService->svgFile($mapId) : null;
+        if ($svg === null) {
+            http_response_code(404);
+            return;
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: image/svg+xml; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . self::downloadName((string) $map['name']) . '.svg"');
+        header('Cache-Control: no-store');
+        header('Content-Length: ' . strlen($svg));
+        echo $svg;
+    }
+
+    /** A file name from a map name: letters, digits, dot, dash and underscore */
+    public static function downloadName(string $name): string
+    {
+        return trim((string) preg_replace('/[^A-Za-z0-9._-]+/', '-', $name), '-.') ?: 'map';
     }
 
     /** GET: the recorded frames of a map, to play them back: {frames: [unix times], interval} */
@@ -946,7 +918,6 @@ class MapController extends BaseController
             'kiosk' => (new KioskService($this->database))->resolve($maps),
             'groupId' => $groupId,
             'fullscreen' => $fullscreen,
-            'refreshInterval' => (int) $this->config->get('MAP_REFRESH_INTERVAL', 300),
             'title' => __('Kiosk'),
         ], !$fullscreen);
     }

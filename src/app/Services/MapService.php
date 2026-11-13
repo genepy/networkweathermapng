@@ -1066,6 +1066,40 @@ class MapService
         return $data;
     }
 
+    /**
+     * The live SVG of a map as a file that stands on its own (Download as
+     * SVG): the map's fonts are put inside it instead of being fetched from
+     * this server. Null when the map cannot be drawn.
+     */
+    public function svgFile(int $id): ?string
+    {
+        $result = $this->liveRender($id);
+        if ($result === null) {
+            return null;
+        }
+        return self::inlineFonts($result['svg'], $id, fn (int $n): ?string => $this->fontFile($id, $n));
+    }
+
+    /**
+     * Replace the font addresses of a viewer SVG (/map/{id}/font/{n}) by the
+     * fonts themselves. $fontFile gives the file of font n (null: none, the
+     * address is left and the text falls back to a common font).
+     */
+    public static function inlineFonts(string $svg, int $id, callable $fontFile): string
+    {
+        return (string) preg_replace_callback(
+            '#url\("/map/' . $id . '/font/(\d+)"\)#',
+            static function (array $m) use ($fontFile): string {
+                $file = $fontFile((int) $m[1]);
+                if ($file === null || !is_readable($file)) {
+                    return $m[0];
+                }
+                return 'url("data:font/ttf;base64,' . base64_encode((string) file_get_contents($file)) . '")';
+            },
+            $svg
+        );
+    }
+
     /** The TrueType file of font $n of a map, null when it has none */
     public function fontFile(int $id, int $n): ?string
     {
