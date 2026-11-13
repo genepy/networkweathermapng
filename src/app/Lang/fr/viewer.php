@@ -2,8 +2,6 @@
 // Map viewer: zoomable SVG view of a map, map list search, favourites and state
 return [
     // Map view
-    'Zoomable view of the map' => 'Vue zoomable de la carte',
-    'Zoomable view' => 'Vue zoomable',
     'Map :name, zoom with the wheel, drag to move' => 'Carte :name : zoomer avec la molette, faire glisser pour se déplacer',
     'Loading the map…' => 'Chargement de la carte…',
     'Map view' => 'Vue de la carte',
@@ -19,10 +17,11 @@ return [
     'The map with the latest data' => 'La carte avec les dernières données',
     'Last :hours h' => 'Dernières :hours h',
     'Map settings' => 'Réglages de la carte',
-    'Open as PNG' => 'Ouvrir en PNG',
-    'Graphs on hover (PNG)' => 'Graphes au survol (PNG)',
     'Copy kiosk link' => 'Copier le lien kiosque',
     'Download PNG' => 'Télécharger le PNG',
+    'Download as SVG' => 'Télécharger en SVG',
+    'Collapse every site' => 'Replier tous les sites',
+    'Expand every site' => 'Déplier tous les sites',
 
     // Map list
     'Search maps' => 'Rechercher une carte',

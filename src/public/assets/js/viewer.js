@@ -18,6 +18,8 @@
  * recorded hours, and the colour legend; hovering a node on the map
  * highlights it in the list, hovering it in the list frames it on the map
  * and in the minimap. The saved map is never changed.
+ * With ?kiosk=1 the page is the bare map that the kiosk (kiosk.js) shows in
+ * a frame: fitted (or at the kiosk's fixed zoom), no toolbar, no keys.
  */
 (function () {
     'use strict';
@@ -54,6 +56,9 @@
     const mapId = root.dataset.mapId;
     // the fullscreen page (/map/{id}?fullscreen=1, the kiosk link)
     const standalone = root.dataset.fullscreen === '1';
+    // a map of the kiosk (?kiosk=1): the kiosk page around it keeps the keys
+    const kioskFrame = root.dataset.kiosk === '1';
+    const kioskZoom = (parseInt(root.dataset.zoom || '0', 10) || 0) / 100;
     function isFullscreen() {
         return standalone || document.fullscreenElement === root;
     }
@@ -188,6 +193,7 @@
     let hashTimer = 0;
     function saveHash() {
         clearTimeout(hashTimer);
+        if (kioskFrame) return;
         hashTimer = setTimeout(function () {
             const base = location.pathname + location.search;
             let hash = '';
@@ -218,6 +224,10 @@
     }
 
     function initialView() {
+        if (kioskFrame) {
+            centreOn(S.w / 2, S.h / 2, kioskZoom > 0 ? clampZ(kioskZoom) : fitZ());
+            return;
+        }
         const h = readHash();
         if (h) {
             S.touched = true;
@@ -1366,11 +1376,9 @@
             focusNode(node, true);
             return;
         }
-        if (it && it.data && it.data.url) {
-            window.open(it.data.url, '_blank', 'noopener');
-            return;
-        }
-        if (!it && S.focus !== null) unfocus();
+        // a click anywhere but on a node closes the pinned card
+        if (S.focus !== null) unfocus();
+        if (it && it.data && it.data.url) window.open(it.data.url, '_blank', 'noopener');
     }, true);
 
     // Hovering a node frames it in the minimap, and shows its city on a basemap
@@ -1388,6 +1396,46 @@
 
     const PANEL_KEY = 'wmv-panel';
     const P = {open: {}, rows: {}, hover: null, totals: null, totalsAt: 0, totalsBusy: false, total: null};
+
+    // Every site open or closed at once (the button in the panel heading),
+    // remembered in this browser; a site opened or closed by hand stays so
+    // until the next "every site"
+    const SITES_KEY = 'wmv-sites-open';
+    function storedSites() {
+        try {
+            const v = localStorage.getItem(SITES_KEY);
+            return v === 'all' || v === 'none' ? v : null;
+        } catch (e) { return null; }
+    }
+
+    function siteOpen(key, count) {
+        if (P.open[key] !== undefined) return P.open[key];
+        const all = storedSites();
+        return all ? all === 'all' : count <= 6;
+    }
+
+    /** The heading button: collapse when a site is open, expand when all are closed */
+    function updateSitesAll() {
+        const btn = panel && panel.querySelector('[data-act="sites-all"]');
+        if (!btn) return;
+        const toggles = panel.querySelectorAll('.wmv-site-toggle');
+        btn.hidden = toggles.length < 2;
+        const anyOpen = Array.prototype.some.call(toggles, function (b) { return b.getAttribute('aria-expanded') === 'true'; });
+        const label = anyOpen ? btn.dataset.collapse : btn.dataset.expand;
+        btn.title = label;
+        btn.setAttribute('aria-label', label);
+        btn.setAttribute('aria-pressed', anyOpen ? 'false' : 'true');
+        const use = btn.querySelector('use');
+        use.setAttribute('href', iconHref(anyOpen ? 'chevrons-down-up' : 'chevrons-up-down'));
+    }
+
+    function setAllSites() {
+        const toggles = panel ? panel.querySelectorAll('.wmv-site-toggle') : [];
+        const open = !Array.prototype.some.call(toggles, function (b) { return b.getAttribute('aria-expanded') === 'true'; });
+        P.open = {};
+        try { localStorage.setItem(SITES_KEY, open ? 'all' : 'none'); } catch (e) { /* private mode */ }
+        fillSites();
+    }
 
     function storedPanel() {
         try { return localStorage.getItem(PANEL_KEY); } catch (e) { return null; }
@@ -1534,7 +1582,7 @@
             title.textContent = title.dataset.sites;
             info.groups.forEach(function (grp) {
                 const key = grp.site;
-                const open = P.open[key] !== undefined ? P.open[key] : info.groups.length <= 6;
+                const open = siteOpen(key, info.groups.length);
                 const li = document.createElement('li');
                 li.className = 'wmv-site';
                 const head = document.createElement('div');
@@ -1567,6 +1615,7 @@
                     nodes.hidden = !now;
                     P.open[key] = now;
                     toggle.setAttribute('aria-expanded', now ? 'true' : 'false');
+                    updateSitesAll();
                 });
                 toggle.addEventListener('mouseenter', function () { highlightNodes(grp.nodes); });
                 toggle.addEventListener('mouseleave', function () { highlightNodes(null); });
@@ -1596,6 +1645,7 @@
         }
         list.replaceChildren.apply(list, items);
         list.scrollTop = scroll;
+        updateSitesAll();
         markCurrentRow();
         if (P.hover) markRow(P.hover);
     }
@@ -2101,6 +2151,7 @@
                 case 'copy-kiosk': copyKioskLink(); closeMenus(); break;
                 case 'panel': setPanel(panel ? panel.hidden : false, true); break;
                 case 'panel-close': setPanel(false, true); break;
+                case 'sites-all': setAllSites(); break;
                 default: return;
             }
             e.preventDefault();
@@ -2129,6 +2180,7 @@
     ];
 
     document.addEventListener('keydown', function (e) {
+        if (kioskFrame) return;
         const tag = (e.target && e.target.tagName) || '';
         if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) {
             if (e.key === 'Escape' && e.target === findInput) findInput.blur();
@@ -2172,7 +2224,9 @@
         if (!S.el) return;
         const c = {x: (lastVp.w / 2 - S.tx) / S.z, y: (lastVp.h / 2 - S.ty) / S.z};
         lastVp = vpSize();
-        if (!S.touched) {
+        if (kioskFrame) {
+            initialView();
+        } else if (!S.touched) {
             centreOn(S.w / 2, S.h / 2, isFullscreen() ? fitZ() : Math.min(1, fitZ()));
             besidePanel();
         } else {
@@ -2253,6 +2307,18 @@
     document.addEventListener('click', function (e) {
         if (!e.target.closest || !e.target.closest('.wmv-more')) closeMenus();
     });
+
+    // A box that stays open (the hover card tapped on a touch screen, the
+    // list of a cluster, the card of a node) closes on a click outside it.
+    // The map handles its own clicks: an item shows its box, the empty map
+    // closes it. The controls that move the view keep the node card.
+    document.addEventListener('pointerdown', function (e) {
+        const el = e.target;
+        if (!el || !el.closest || viewport.contains(el)) return;
+        if (!el.closest('.wm-hovercard')) hidePanel();
+        closeClusterMenu();
+        if (S.focus !== null && !el.closest('.wmv-card, .wmv-bar, .wmv-zoombar, .wmv-panel, .wmv-minimap, .wmv-history')) unfocus();
+    }, true);
 
     /** Address of the fullscreen page on the current view, for a wall screen */
     function copyKioskLink() {

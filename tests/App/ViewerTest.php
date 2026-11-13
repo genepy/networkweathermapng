@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\App;
 
+use App\Controllers\MapController;
 use App\Core\Config;
 use App\Core\Database;
 use App\Services\MapService;
@@ -310,6 +311,80 @@ CONF);
         $this->assertNull($this->maps->fontFile($id, 3), 'built-in GD font');
         $this->assertNull($this->maps->fontFile($id, 77), 'not defined');
         $this->assertNull($this->maps->fontFile(9999, 20), 'no such map');
+    }
+
+    public function testSvgFileCarriesItsFonts(): void
+    {
+        $id = $this->createMap();
+        $live = $this->maps->liveRender($id);
+        $this->assertNotNull($live);
+        $this->assertStringContainsString('url("/map/' . $id . '/font/20")', $live['svg'], 'the viewer fetches the font');
+
+        $file = (string) $this->maps->svgFile($id);
+        $this->assertStringStartsWith('<svg', ltrim($file));
+        $this->assertStringNotContainsString('/map/' . $id . '/font/', $file);
+        $ttf = (string) file_get_contents(dirname(TESTS_ROOT) . '/src/public/fonts/DejaVuSansMono.ttf');
+        $this->assertStringContainsString('url("data:font/ttf;base64,' . base64_encode($ttf) . '")', $file);
+        $this->assertNull($this->maps->svgFile(9999), 'no such map');
+    }
+
+    public function testInlineFontsKeepsWhatItCannotFind(): void
+    {
+        $svg = '<style>@font-face{font-family:wmfont3;src:url("/map/7/font/3")}'
+            . '@font-face{font-family:wmfont4;src:url("/map/8/font/4")}</style>';
+        $out = MapService::inlineFonts($svg, 7, static fn (int $n): ?string => null);
+        $this->assertSame($svg, $out, 'a font without a file stays an address');
+        $out = MapService::inlineFonts($svg, 7, static fn (int $n): ?string => dirname(TESTS_ROOT) . '/src/public/fonts/DejaVuSansMono.ttf');
+        $this->assertStringNotContainsString('/map/7/font/3', $out);
+        $this->assertStringContainsString('url("/map/8/font/4")', $out, 'only the fonts of this map');
+    }
+
+    public function testDownloadName(): void
+    {
+        $this->assertSame('France-sites', MapController::downloadName('France sites'));
+        $this->assertSame('R-seau-Paris', MapController::downloadName('Réseau / Paris'));
+        $this->assertSame('map', MapController::downloadName('***'));
+        $this->assertSame('/map/4', MapController::viewerUrl(4));
+        $this->assertSame('/map/4?fullscreen=1', MapController::viewerUrl(4, true));
+    }
+
+    /**
+     * One viewer (F7): the picture views are gone, the PNG and the SVG are
+     * downloads, and the kiosk shows each map in the SVG viewer.
+     */
+    public function testEverythingOnScreenIsSvg(): void
+    {
+        $root = dirname(TESTS_ROOT);
+        $view = (string) file_get_contents($root . '/src/app/Views/maps/view.php');
+        $this->assertStringNotContainsString('mode=preview', $view);
+        $this->assertStringNotContainsString('view=png', $view);
+        $this->assertStringNotContainsString('<area', $view);
+        $this->assertStringContainsString('/svg/download', $view);
+        $this->assertStringContainsString('/image" download=', $view);
+
+        $index = (string) file_get_contents($root . '/src/app/Views/maps/index.php');
+        $this->assertStringNotContainsString('mode=preview', $index);
+
+        $cycle = (string) file_get_contents($root . '/src/app/Views/maps/cycle.php');
+        $this->assertStringNotContainsString('<img', $cycle);
+        $this->assertStringContainsString('?kiosk=1', $cycle);
+        $kiosk = (string) file_get_contents($root . '/src/public/assets/js/kiosk.js');
+        $this->assertStringContainsString("createElement('iframe')", $kiosk);
+
+        $routes = (string) file_get_contents($root . '/src/app/Core/Application.php');
+        $this->assertStringContainsString("'/map/{id}/svg/download', 'MapController@svgDownload'", $routes);
+    }
+
+    /**
+     * MapLibre's stylesheet comes after viewer.css on the fullscreen page:
+     * its .maplibregl-map {position: relative} must not shrink the basemap
+     * to nothing (the kiosk link showed the map without its basemap).
+     */
+    public function testBasemapRuleOutweighsMapLibre(): void
+    {
+        $css = (string) file_get_contents(dirname(TESTS_ROOT) . '/src/public/assets/css/viewer.css');
+        $this->assertMatchesRegularExpression('/\.wmv \.wmv-basemap \{\s*position: absolute;\s*inset: 0;/', $css);
+        $this->assertDoesNotMatchRegularExpression('/^\.wmv-basemap \{/m', $css);
     }
 
     /**

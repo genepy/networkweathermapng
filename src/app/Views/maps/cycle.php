@@ -1,7 +1,8 @@
 <?php
 /**
  * Kiosk: the maps of a group one after the other, each for its own time
- * (Settings > Kiosk). The map fills the page; the controls float at the
+ * (Settings > Kiosk). Each map is the SVG viewer in a frame (/map/{id}?kiosk=1),
+ * so it looks like the live view: basemap, fonts, hover cards. The map fills the page; the controls float at the
  * bottom and fade out after a few seconds without movement. ?fullscreen=1
  * is the same page without the application shell, for a wall screen.
  */
@@ -27,7 +28,6 @@ $fsUrl = '/cycle?fullscreen=1' . ($groupId ? '&group=' . (int) $groupId : '');
 <link rel="stylesheet" href="<?= asset('/assets/css/viewer.css') ?>">
 
 <div class="kiosk<?= $fullscreen ? ' kiosk-standalone wmv-fullscreen' : '' ?>" id="kiosk"
-     data-refresh="<?= max(30, (int) $refreshInterval) ?>"
      data-exit-url="<?= htmlspecialchars($cycleUrl) ?>"
      data-fullscreen-url="<?= htmlspecialchars($fsUrl) ?>"
      data-standalone="<?= $fullscreen ? '1' : '0' ?>">
@@ -43,13 +43,11 @@ $fsUrl = '/cycle?fullscreen=1' . ($groupId ? '&group=' . (int) $groupId : '');
             $settings = $kiosk[(int) $map['id']] ?? ['zoom' => 0, 'duration' => 30];
             $name = (string) ($map['title_cache'] ?: $map['name']);
         ?>
-        <div class="cycle-map <?= $settings['zoom'] ? 'zoom-fixed' : 'zoom-fit' ?><?= $index === 0 ? ' active' : '' ?>"
+        <div class="cycle-map<?= $index === 0 ? ' active' : '' ?>"
              data-map-id="<?= (int) $map['id'] ?>"
              data-name="<?= htmlspecialchars($name) ?>"
-             data-zoom="<?= (int) $settings['zoom'] ?>"
-             data-duration="<?= (int) $settings['duration'] ?>">
-            <img src="/map/<?= (int) $map['id'] ?>/image?t=<?= time() ?>" alt="<?= htmlspecialchars($name) ?>">
-        </div>
+             data-src="/map/<?= (int) $map['id'] ?>?kiosk=1<?= $settings['zoom'] ? '&amp;zoom=' . (int) $settings['zoom'] : '' ?>"
+             data-duration="<?= (int) $settings['duration'] ?>"></div>
         <?php endforeach; ?>
     </div>
 
