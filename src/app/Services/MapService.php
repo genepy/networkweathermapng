@@ -875,6 +875,8 @@ class MapService
             'total' => self::trafficTotal($items),
             // the geographic basemap the viewer draws under the map, or null
             'basemap' => Basemap::of($wmap),
+            // the parts of the map the viewer and the kiosk can put forward, or null
+            'focus' => FocusAreas::forViewer($wmap),
             'items' => $items,
         ];
     }

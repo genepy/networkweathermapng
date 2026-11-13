@@ -451,6 +451,7 @@ window.WM_EDITOR = {
 <script src="<?= asset('/assets/js/editor-icons.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-backgrounds.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-toolbars.js') ?>"></script>
+<script src="<?= asset('/assets/js/editor-focus.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-mapprops.js') ?>"></script>
 <script src="<?= asset('/assets/js/map-settings.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-selbar.js') ?>"></script>

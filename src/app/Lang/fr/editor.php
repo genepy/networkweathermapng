@@ -312,4 +312,11 @@ return [
     'Give the savepoint a name' => 'Donnez un nom au point de sauvegarde',
     'The map was changed by someone else since you loaded it. It has been reloaded: look at it before restoring a version.' => 'La carte a été modifiée par quelqu’un d’autre depuis son chargement. Elle a été rechargée : regardez-la avant de restaurer une version.',
     'The map is already this version' => 'La carte est déjà dans cette version',
+
+    // Focus areas (SET focus_*)
+    'Unknown focus area: :name' => 'Zone de focus inconnue : :name',
+    'Unknown focus area style: :style' => 'Style de zone de focus inconnu : :style',
+    'Unknown focus area property: :key' => 'Propriété de zone de focus inconnue : :key',
+    'A focus area needs a rectangle: x1 y1 x2 y2' => 'Une zone de focus a besoin d’un rectangle : x1 y1 x2 y2',
+    'A focus area must be at least 10 pixels wide and high' => 'Une zone de focus doit faire au moins 10 pixels de large et de haut',
 ];

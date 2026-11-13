@@ -4300,6 +4300,7 @@
         entries.push('-',
             { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
             { label: t('Add a note here'), run: function () { addNote(at); } },
+            { label: state.selection.size ? t('Add a focus area around the selection') : t('Add a focus area over the view'), run: function () { window.WMEditor.addFocusArea(); }, off: !window.WMEditor.addFocusArea },
             { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
             { label: t('Make straight'), run: function () { rightAngles(links, 'straight'); }, off: !links.some(function (l) { return l.via.length; }) },
             { label: t('Make this segment straight'), run: function () { straightenSegment(segment); }, off: !segment || segment.link.locked },

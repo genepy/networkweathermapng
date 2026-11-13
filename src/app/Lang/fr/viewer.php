@@ -58,4 +58,5 @@ return [
     // Tooltips without their key: shortcuts.js adds the user's key (F6)
     'Side panel: sites, total traffic, legend' => 'Panneau latéral : sites, trafic total, légende',
     'Play or pause' => 'Lecture ou pause',
+    'Focus areas' => 'Zones de focus',
 ];

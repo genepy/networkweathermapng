@@ -437,6 +437,20 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .map-sec-body .pair { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 #inspector .map-sec-body .pair > * { flex: 0 0 auto; }
 #inspector .map-sec-body .pair > select { flex: 1 1 120px; min-width: 0; }
+/* Focus areas (editor-focus.js): one card per area, and their frames over the canvas */
+#inspector .focus-area { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 10px; }
+#inspector .focus-area > label { display: block; margin-bottom: 8px; color: var(--muted); }
+#inspector .focus-area > label > input[type=text], #inspector .focus-area > label > select { display: block; width: 100%; margin-top: 2px; color: var(--text); }
+#inspector .focus-area > label.inline { display: flex; gap: 6px; align-items: center; color: var(--text); }
+#inspector .focus-nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+#inspector .focus-num { display: flex; flex-direction: column; color: var(--muted); font-size: 12px; }
+#inspector .focus-num input { width: 100%; min-width: 0; color: var(--text); }
+#inspector .focus-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#inspector .focus-actions .danger { color: var(--danger); }
+#inspector .focus-add { margin-bottom: 4px; }
+#focus-areas .focus-frame { fill: color-mix(in srgb, var(--accent) 8%, transparent); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 10 5; vector-effect: non-scaling-stroke; }
+#focus-areas .focus-frame.default { stroke-dasharray: none; }
+#focus-areas .focus-label { fill: var(--accent); font-weight: 600; paint-order: stroke; stroke: var(--panel, #fff); stroke-width: 3px; stroke-linejoin: round; }
 #inspector .map-sec-body h4 { margin: 12px 0 6px; font-size: 12px; }
 #inspector .map-sec-body button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 #inspector .map-sec-body .actions { justify-content: flex-end; }

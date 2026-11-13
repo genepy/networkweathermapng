@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace App\Services\Editor;
 
 use App\Services\Basemap;
+use App\Services\FocusAreas;
 
 use InvalidArgumentException;
 
@@ -176,6 +177,9 @@ class MapEditor
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
                 'add_box' => $this->addBox($map, $op),
                 'set_box' => $this->setBox($map, (string) ($op['name'] ?? ''), (array) ($op['props'] ?? [])),
+                'add_focus' => $this->addFocus($map, $op),
+                'set_focus' => $this->setFocus($map, (string) ($op['name'] ?? ''), (array) ($op['props'] ?? [])),
+                'delete_focus' => $this->deleteFocus($map, (string) ($op['name'] ?? '')),
                 'define_font' => $this->defineFont($map, $op),
                 'set_map_font' => $this->setMapFont($map, (string) ($op['family'] ?? '')),
                 'set_scale' => $this->setScale($map, (array) ($op['steps'] ?? [])),
@@ -483,10 +487,16 @@ class MapEditor
     /** Keep the SET box_* lines together in the .conf, box by box */
     private static function groupBoxHints(\WeatherMap $map): void
     {
+        self::groupHints($map, 'box');
+    }
+
+    /** Keep the SET <prefix>_* lines together at the end of the .conf hints, item by item */
+    private static function groupHints(\WeatherMap $map, string $prefix): void
+    {
         $boxes = [];
         $others = [];
         foreach ($map->hints as $key => $value) {
-            if (preg_match('/^box_([A-Za-z0-9]+)(?:_(\w+))?$/', (string) $key, $m)) {
+            if (preg_match('/^' . $prefix . '_([A-Za-z0-9]+)(?:_(\w+))?$/', (string) $key, $m)) {
                 $boxes[(string) $key] = [$m[1], isset($m[2]) ? $m[2] : '', $value];
             } else {
                 $others[$key] = $value;
@@ -505,6 +515,100 @@ class MapEditor
         $box = \WeatherMapBoxes::parse($map, $id, (string) $map->get_hint('box_' . $id));
         if ($box === null) {
             throw new InvalidArgumentException(__('Unknown box: :name', ['name' => $id]));
+        }
+        return $box;
+    }
+
+    /**
+     * {op: add_focus, box: [x1, y1, x2, y2], title?, style?, default?} - a
+     * focus area (SET focus_<id>, see FocusAreas). Returns {focus: [id]}.
+     */
+    private function addFocus(\WeatherMap $map, array $op): array
+    {
+        $id = 1;
+        while ($map->get_hint('focus_' . $id) !== null) {
+            $id++;
+        }
+        $box = $this->focusBox($op['box'] ?? null);
+        $map->add_hint('focus_' . $id, implode(' ', $box));
+        $this->setFocus($map, (string) $id, array_intersect_key($op, array_flip(['title', 'style', 'default'])));
+
+        return ['focus' => [(string) $id]];
+    }
+
+    /** {op: set_focus, name, props: {title, style, box, default}} - an empty title or style takes the default */
+    private function setFocus(\WeatherMap $map, string $id, array $props): void
+    {
+        if (!preg_match('/^[A-Za-z0-9]+$/', $id) || $id === 'default' || FocusAreas::box((string) ($map->get_hint('focus_' . $id) ?? '')) === null) {
+            throw new InvalidArgumentException(__('Unknown focus area: :name', ['name' => $id]));
+        }
+        foreach ($props as $key => $value) {
+            switch ($key) {
+                case 'title':
+                    $value = $this->text($value ?? '');
+                    break;
+                case 'style':
+                    $value = strtolower($this->text($value ?? ''));
+                    if ($value !== '' && !in_array($value, FocusAreas::STYLES, true)) {
+                        throw new InvalidArgumentException(__('Unknown focus area style: :style', ['style' => $value]));
+                    }
+                    // both is the default: not written
+                    $value = $value === FocusAreas::STYLES[0] ? '' : $value;
+                    break;
+                case 'box':
+                    $map->add_hint('focus_' . $id, implode(' ', $this->focusBox($value)));
+                    continue 2;
+                case 'default':
+                    if ($value) {
+                        $map->add_hint('focus_default', $id);
+                    } elseif (FocusAreas::defaultId($map) === $id) {
+                        unset($map->hints['focus_default']);
+                    }
+                    continue 2;
+                default:
+                    throw new InvalidArgumentException(__('Unknown focus area property: :key', ['key' => (string) $key]));
+            }
+            $hint = 'focus_' . $id . '_' . $key;
+            if ($value === '') {
+                unset($map->hints[$hint]);
+            } else {
+                $map->add_hint($hint, $value);
+            }
+        }
+        self::groupHints($map, 'focus');
+    }
+
+    /** {op: delete_focus, name} - the area and its settings; the map opens on the whole map if it was the default */
+    private function deleteFocus(\WeatherMap $map, string $id): void
+    {
+        if (!preg_match('/^[A-Za-z0-9]+$/', $id) || $id === 'default' || $map->get_hint('focus_' . $id) === null) {
+            throw new InvalidArgumentException(__('Unknown focus area: :name', ['name' => $id]));
+        }
+        if (trim((string) ($map->get_hint('focus_default') ?? '')) === $id) {
+            unset($map->hints['focus_default']);
+        }
+        foreach (array_keys($map->hints) as $key) {
+            if ($key === 'focus_' . $id || str_starts_with((string) $key, 'focus_' . $id . '_')) {
+                unset($map->hints[$key]);
+            }
+        }
+    }
+
+    /**
+     * [x1, y1, x2, y2] in map pixels, ordered, at least 10 px each way.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: int}
+     */
+    private function focusBox(mixed $value): array
+    {
+        $v = is_array($value) ? array_values($value) : [];
+        if (count($v) !== 4 || array_filter($v, static fn ($n) => !is_numeric($n)) !== []) {
+            throw new InvalidArgumentException(__('A focus area needs a rectangle: x1 y1 x2 y2'));
+        }
+        $v = array_map(static fn ($n) => (int) round((float) $n), $v);
+        $box = [min($v[0], $v[2]), min($v[1], $v[3]), max($v[0], $v[2]), max($v[1], $v[3])];
+        if ($box[2] - $box[0] < 10 || $box[3] - $box[1] < 10) {
+            throw new InvalidArgumentException(__('A focus area must be at least 10 pixels wide and high'));
         }
         return $box;
     }
@@ -2014,6 +2118,8 @@ class MapEditor
             'links' => $links,
             'zones' => $zones,
             'furniture' => self::furnitureOut($map),
+            // the focus areas of the viewer and the kiosk (SET focus_*)
+            'focus' => array_values(FocusAreas::all($map)),
             'templates' => $templates,
             'fonts' => array_values(array_unique(array_merge([1, 2, 3, 4, 5], array_keys($map->fonts)))),
             // what each defined font is: family (from the file name) and size
