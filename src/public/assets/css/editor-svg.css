@@ -455,6 +455,19 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .scale-row input[type=color] { display: inline-block; margin: 0; width: 36px; flex: 0 0 36px; }
 #inspector .scale-row label { margin: 0; font-size: 12px; }
 #inspector .scale-row button { padding: 2px 6px; }
+#inspector .scale-row .scale-to { color: var(--muted); font-size: 12px; }
+#inspector label.scale-smooth { margin: 8px 0 2px; }
+/* Theme cards of Map properties > Appearance: the canvas, a label and the link colours */
+#inspector .theme-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 6px; }
+#inspector .theme-card { display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 6px; margin: 0;
+    text-align: left; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+#inspector .theme-card:hover:not(:disabled) { border-color: var(--accent); }
+#inspector .theme-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#inspector .theme-swatch { position: relative; display: block; height: 46px; border-radius: 4px; border: 1px solid var(--border); overflow: hidden; }
+#inspector .theme-label { position: absolute; left: 6px; top: 6px; padding: 0 6px; font-size: 11px; line-height: 16px; border: 1px solid; border-radius: 8px; }
+#inspector .theme-scale { position: absolute; left: 6px; right: 6px; bottom: 7px; height: 6px; border-radius: 3px; }
+#inspector .theme-name { font-weight: 600; font-size: 12px; }
+#inspector .theme-kind { color: var(--muted); font-size: 11px; }
 #inspector .scale-msg { color: var(--danger); margin: 0; }
 #inspector .shortcuts-hint {
     display: flex; align-items: center; gap: 6px; margin-top: 14px; padding: 4px 0;

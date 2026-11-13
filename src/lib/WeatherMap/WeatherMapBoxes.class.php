@@ -332,24 +332,9 @@ class WeatherMapBoxes {
 		}
 	}
 
-	/** The scale as a bar: one column per pixel, coloured at its load */
+	/** The scale as a bar, smooth in the SVG (a linear gradient) */
 	static function drawBar($map, $image, $x, $y, $width, $height) {
-		$run = 0;
-		$last = null;
-		for ($i = 0; $i <= $width; $i++) {
-			$colour = null;
-			if ($i < $width) {
-				list($col) = $map->NewColourFromPercent(100 * $i / max(1, $width - 1), 'DEFAULT');
-				$colour = $col->is_real() ? array($col->r, $col->g, $col->b) : null;
-			}
-			if ($i > 0 && $colour !== $last) {
-				if ($last !== null) {
-					wimagefilledrectangle($image, $x + $run, $y, $x + $i - 1, $y + $height - 1, self::allocate($image, $last));
-				}
-				$run = $i;
-			}
-			$last = $colour;
-		}
+		$map->DrawScaleBar($image, $x, $y, $x + $width - 1, $y + $height - 1, 'DEFAULT');
 	}
 
 	/** IN above the middle line and OUT under it, both on the same scale */

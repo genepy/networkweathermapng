@@ -1,5 +1,5 @@
 <?php
-/** @var array $map @var int $mapId @var array $icons @var array $backgrounds (BackgroundLibrary::all()) @var array $iconThemes @var array $themeColours (MapThemes::colours()) */
+/** @var array $map @var int $mapId @var array $icons @var array $backgrounds (BackgroundLibrary::all()) @var array $iconThemes @var array $themeColours (MapThemes::colours()) @var array $themes (MapThemes::previews()) */
 $e = static fn ($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : '';
 ?>
@@ -405,7 +405,8 @@ window.WM_EDITOR = {
     iconThemes: <?= json_encode($iconThemes, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     backgrounds: <?= json_encode(array_values($backgrounds), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     fonts: <?= json_encode($fonts, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-    themeColours: <?= json_encode((object) ($themeColours ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>
+    themeColours: <?= json_encode((object) ($themeColours ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+    themes: <?= json_encode((object) ($themes ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>
 };
 </script>
 <script src="<?= asset('/assets/js/ui.js') ?>"></script>

@@ -683,7 +683,10 @@
         // the same legend, larger, in the side panel: one row per band
         if (panel) {
             const sec = panel.querySelector('.wmv-panel-legend');
-            const rows = scale.slice().reverse().map(function (b) {
+            // a smooth scale: one gradient bar from the lowest to the highest load
+            const smooth = scale.some(function (b) { return b.colour2 && b.top > b.bottom; });
+            const bands = smooth ? scale.filter(function (b) { return b.top <= b.bottom; }).reverse() : scale.slice().reverse();
+            const rows = bands.map(function (b) {
                 const row = document.createElement('div');
                 row.className = 'wmv-scale-row';
                 const sw = document.createElement('span');
@@ -694,6 +697,17 @@
                 row.append(sw, label);
                 return row;
             });
+            if (smooth) {
+                const row = document.createElement('div');
+                row.className = 'wmv-scale-row wmv-scale-smooth';
+                const sw = document.createElement('span');
+                sw.className = 'wmv-scale-swatch';
+                sw.style.background = 'linear-gradient(to right, ' + stops.filter(function (x, i) { return scale[i >> 1].top > scale[i >> 1].bottom; }).join(', ') + ')';
+                const label = document.createElement('span');
+                label.textContent = num(lo) + ' – ' + num(hi) + ' %';
+                row.append(sw, label);
+                rows.unshift(row);
+            }
             const box2 = sec.querySelector('.wmv-panel-scale');
             box2.replaceChildren.apply(box2, rows);
             sec.hidden = false;

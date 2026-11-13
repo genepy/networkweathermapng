@@ -1619,6 +1619,97 @@ class WeatherMap extends WeatherMapBase {
 		return array($this->white, '', '');
 	}
 
+	/**
+	 * Whether a scale blends its colours: at least one band has a second
+	 * colour (SCALE min max r g b r2 g2 b2), so a link takes the colour
+	 * at its exact load and the legends draw a smooth bar.
+	 */
+	function scale_is_smooth($scalename = 'DEFAULT') {
+		foreach ((array) ($this->colours[$scalename] ?? array()) as $colour) {
+			if (empty($colour['special']) && isset($colour['red2']) && $colour['red1'] >= 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The scale as gradient stops from 0 to 100%: a list of
+	 * array(offset 0..1, array(r, g, b) or null for 'none'). A band of one
+	 * colour gives two stops of that colour, so it keeps its hard edges.
+	 * Bands of a single value (0 to 0) are left out.
+	 */
+	function scale_stops($scalename = 'DEFAULT') {
+		$bands = array();
+		foreach ((array) ($this->colours[$scalename] ?? array()) as $colour) {
+			if (empty($colour['special']) && $colour['top'] > $colour['bottom']) {
+				$bands[] = $colour;
+			}
+		}
+		usort($bands, function ($a, $b) {
+			return array($a['bottom'], $a['top']) <=> array($b['bottom'], $b['top']);
+		});
+
+		$stops = array();
+		foreach ($bands as $band) {
+			$from = $band['red1'] >= 0 ? array((int) $band['red1'], (int) $band['green1'], (int) $band['blue1']) : null;
+			$to = $from;
+			if ($from !== null && isset($band['red2']) && $band['red2'] >= 0) {
+				$to = array((int) $band['red2'], (int) $band['green2'], (int) $band['blue2']);
+			}
+			$stops[] = array(max(0, min(1, $band['bottom'] / 100)), $from);
+			$stops[] = array(max(0, min(1, $band['top'] / 100)), $to);
+		}
+		return $stops;
+	}
+
+	/**
+	 * A bar of the scale, 0% at one end and 100% at the other: one column of
+	 * pixels per step in GD, one rectangle with a linear gradient in the SVG.
+	 * $direction: 'right' (0% on the left), 'down' (0% at the top) or 'up'.
+	 */
+	function DrawScaleBar($image, $x1, $y1, $x2, $y2, $scalename = 'DEFAULT', $direction = 'right') {
+		$x1 = intval(round($x1));
+		$y1 = intval(round($y1));
+		$x2 = intval(round($x2));
+		$y2 = intval(round($y2));
+		$vertical = $direction !== 'right';
+		$length = $vertical ? $y2 - $y1 + 1 : $x2 - $x1 + 1;
+		if ($length < 1) {
+			return;
+		}
+
+		$run = 0;
+		$last = null;
+		for ($i = 0; $i <= $length; $i++) {
+			$colour = null;
+			if ($i < $length) {
+				$p = 100 * $i / max(1, $length - 1);
+				if ($direction === 'up') {
+					$p = 100 - $p;
+				}
+				list($col) = $this->NewColourFromPercent($p, $scalename, '', true, false);
+				$colour = $col->is_real() ? array($col->r, $col->g, $col->b) : null;
+			}
+			if ($i > 0 && $colour !== $last) {
+				if ($last !== null) {
+					$gd = myimagecolorallocate($image, $last[0], $last[1], $last[2]);
+					if ($vertical) {
+						imagefilledrectangle($image, $x1, $y1 + $run, $x2, $y1 + $i - 1, $gd);
+					} else {
+						imagefilledrectangle($image, $x1 + $run, $y1, $x1 + $i - 1, $y2, $gd);
+					}
+				}
+				$run = $i;
+			}
+			$last = $colour;
+		}
+
+		if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+			WeatherMapSvg::$active->gradient($x1, $y1, $x2, $y2, $this->scale_stops($scalename), $direction);
+		}
+	}
+
 	function NewColourFromPercent($value, $scalename = 'DEFAULT', $name = '', $is_percent = true, $scale_warning = true) {
 		$col = new Colour(0, 0, 0);
 		$tag = '';
@@ -1806,6 +1897,7 @@ class WeatherMap extends WeatherMapBase {
 		$this->myimagestring($scale_im, $font, $scale_left, $scale_bottom + $tileheight * 2 + 2 , $title,
 			$this->colours['DEFAULT']['KEYTEXT'][$scale_ref]);
 
+		$smooth = $this->scale_is_smooth($scalename);
 		for($p=0;$p<=100;$p++) {
 			$dx = $p*$scalefactor;
 
@@ -1825,6 +1917,10 @@ class WeatherMap extends WeatherMapBase {
 					$this->colours['DEFAULT']['KEYTEXT'][$scale_ref]);
 			}
 
+			if ($smooth) {
+				continue;
+			}
+
 			list($col,$junk) = $this->NewColourFromPercent($p,$scalename);
 
 			if ($col->is_real()) {
@@ -1835,6 +1931,12 @@ class WeatherMap extends WeatherMapBase {
 					$cc
 				);
 			}
+		}
+
+		// a scale that blends: one smooth bar over the marks, like the steps above
+		if ($smooth) {
+			$this->DrawScaleBar($scale_im, $scale_left - $scalefactor/2, $scale_top,
+				$scale_left + 100 * $scalefactor + $scalefactor/2, $scale_bottom, $scalename);
 		}
 
 		imagecopy($image, $scale_im, $this->keyx[$scalename], $this->keyy[$scalename], 0, 0, imagesx($scale_im), imagesy($scale_im));
@@ -1892,10 +1994,15 @@ class WeatherMap extends WeatherMapBase {
 			$this->myimagestring($scale_im, $font, $pad, $pad + $lineheight, $title, $text);
 		}
 
-		// the bar: one rectangle for each run of 1% steps of the same colour
+		// the bar: smooth when the scale blends, else one rectangle for each
+		// run of 1% steps of the same colour
+		$smooth = $this->scale_is_smooth($scalename);
+		if ($smooth) {
+			$this->DrawScaleBar($scale_im, $bar_left, $bar_top, $bar_right, $bar_bottom, $scalename);
+		}
 		$run_start = 0;
 		$run_colour = null;
-		for ($p = 0; $p <= 101; $p++) {
+		for ($p = 0; !$smooth && $p <= 101; $p++) {
 			$colour = null;
 			if ($p <= 100) {
 				list($col, $junk) = $this->NewColourFromPercent($p, $scalename);
@@ -2003,6 +2110,8 @@ class WeatherMap extends WeatherMapBase {
 			$updown = -1;
 		}
 
+		$smooth = $this->scale_is_smooth($scalename);
+
 		for($p = 0; $p <= 100; $p++) {
 			if ($inverted) {
 				$dy = (100 - $p) * $scalefactor;
@@ -2027,6 +2136,10 @@ class WeatherMap extends WeatherMapBase {
 				);
 			}
 
+			if ($smooth) {
+				continue;
+			}
+
 			list($col, $junk) = $this->NewColourFromPercent($p, $scalename);
 
 			if ($col->is_real()) {
@@ -2037,6 +2150,11 @@ class WeatherMap extends WeatherMapBase {
 					$cc
 				);
 			}
+		}
+
+		if ($smooth) {
+			$this->DrawScaleBar($scale_im, $scale_left, $scale_top - $scalefactor/2,
+				$scale_right, $scale_top + 100 * $scalefactor + $scalefactor/2, $scalename, $inverted ? 'up' : 'down');
 		}
 
 		imagecopy($image, $scale_im, $this->keyx[$scalename], $this->keyy[$scalename], 0, 0, imagesx($scale_im), imagesy($scale_im));
