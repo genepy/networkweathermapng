@@ -164,6 +164,8 @@ class MapEditor
                 'add_zone' => $this->addZone($map, $op),
                 'set_zone' => $this->setZones($map, $op),
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
+                'add_box' => $this->addBox($map, $op),
+                'set_box' => $this->setBox($map, (string) ($op['name'] ?? ''), (array) ($op['props'] ?? [])),
                 'define_font' => $this->defineFont($map, $op),
                 'set_scale' => $this->setScale($map, (array) ($op['steps'] ?? [])),
                 'apply_theme' => $this->applyTheme($map, (string) ($op['theme'] ?? '')),
@@ -171,7 +173,7 @@ class MapEditor
             };
 
             if (is_array($created)) {
-                $result['created'] = array_merge($result['created'], $created);
+                $result['created'] = array_merge_recursive($result['created'], $created);
             }
         }
 
@@ -276,6 +278,11 @@ class MapEditor
             case 'widthlegend':
                 $map->add_hint('width_legend', $x . ' ' . $y);
                 return;
+
+            case 'box':
+                $box = $this->box($map, $name);
+                $map->add_hint('box_' . $name, $box['type'] . ' ' . $x . ' ' . $y);
+                return;
         }
 
         throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
@@ -359,6 +366,19 @@ class MapEditor
                 }
                 return;
 
+            case 'box':
+                // a box is deleted: it has no place to keep while hidden
+                $this->box($map, $name);
+                if ($shown) {
+                    return;
+                }
+                foreach (array_keys($map->hints) as $hint) {
+                    if ($hint === 'box_' . $name || str_starts_with((string) $hint, 'box_' . $name . '_')) {
+                        unset($map->hints[$hint]);
+                    }
+                }
+                return;
+
             case 'title':
                 throw new InvalidArgumentException(__('The title cannot be hidden: it shows the map name.'));
         }
@@ -370,6 +390,112 @@ class MapEditor
     private static function widthLegendShown(\WeatherMap $map): bool
     {
         return (bool) preg_match('/^-?\d+[\s,]+-?\d+$/', trim((string) $map->get_hint('width_legend')));
+    }
+
+    /**
+     * {op: add_box, type, at: [x, y], title?, style?, text?, rows?} - a box
+     * on the map (WeatherMapBoxes): total, legend, speed, updated or text.
+     * The title is written as given, so a box keeps the language of the
+     * editor that added it.
+     */
+    private function addBox(\WeatherMap $map, array $op): array
+    {
+        $type = (string) ($op['type'] ?? '');
+        if (!in_array($type, \WeatherMapBoxes::TYPES, true)) {
+            throw new InvalidArgumentException(__('Unknown box type: :type', ['type' => $type]));
+        }
+        [$x, $y] = $this->point($op['at'] ?? [10, 10]);
+        $taken = \WeatherMapBoxes::all($map);
+        $id = 1;
+        while (isset($taken[(string) $id]) || $map->get_hint('box_' . $id) !== null) {
+            $id++;
+        }
+        $map->add_hint('box_' . $id, $type . ' ' . max(0, $x) . ' ' . max(0, $y));
+        $this->setBox($map, (string) $id, array_intersect_key($op, array_flip(['title', 'style', 'text', 'rows', 'width'])));
+
+        return ['furniture' => ['box:' . $id]];
+    }
+
+    /** {op: set_box, name, props: {title, style, text, rows, width, x, y}} - an empty value takes the default */
+    private function setBox(\WeatherMap $map, string $id, array $props): void
+    {
+        $box = $this->box($map, $id);
+        foreach ($props as $key => $value) {
+            $hint = 'box_' . $id . '_' . $key;
+            switch ($key) {
+                case 'title':
+                    // an empty title is kept as "-" (no title), unset takes the default
+                    $value = $value === null ? '' : $this->text($value);
+                    if ($value === '' && $props[$key] !== null) {
+                        $value = '-';
+                    }
+                    break;
+                case 'text':
+                    $value = \WeatherMapBoxes::encode(str_replace("\r", '', (string) $value));
+                    $value = trim(str_replace('\\n', '', $value)) === '' ? '' : $value;
+                    break;
+                case 'style':
+                    $value = strtolower($this->text($value));
+                    $allowed = ['legend' => ['bar', 'list'], 'total' => ['graph', 'plain']][$box['type']] ?? [];
+                    if ($value !== '' && !in_array($value, $allowed, true)) {
+                        throw new InvalidArgumentException(__('Unknown box style: :style', ['style' => $value]));
+                    }
+                    break;
+                case 'rows':
+                    $value = strtolower($this->text($value));
+                    if ($value !== '' && !in_array($value, \WeatherMapBoxes::ROW_SOURCES, true)) {
+                        throw new InvalidArgumentException(__('Unknown box rows: :rows', ['rows' => $value]));
+                    }
+                    break;
+                case 'width':
+                    $value = $value === '' || $value === null ? '' : (string) max(0, min(2000, (int) $value));
+                    $value = $value === '0' ? '' : $value;
+                    break;
+                case 'x':
+                case 'y':
+                    continue 2;
+                default:
+                    throw new InvalidArgumentException(__('Unknown box property: :key', ['key' => (string) $key]));
+            }
+            if ($value === '') {
+                unset($map->hints[$hint]);
+            } else {
+                $map->add_hint($hint, $value);
+            }
+        }
+        if (isset($props['x']) || isset($props['y'])) {
+            $map->add_hint('box_' . $id, $box['type'] . ' ' . (int) ($props['x'] ?? $box['x']) . ' ' . (int) ($props['y'] ?? $box['y']));
+        }
+        self::groupBoxHints($map);
+    }
+
+    /** Keep the SET box_* lines together in the .conf, box by box */
+    private static function groupBoxHints(\WeatherMap $map): void
+    {
+        $boxes = [];
+        $others = [];
+        foreach ($map->hints as $key => $value) {
+            if (preg_match('/^box_([A-Za-z0-9]+)(?:_(\w+))?$/', (string) $key, $m)) {
+                $boxes[(string) $key] = [$m[1], isset($m[2]) ? $m[2] : '', $value];
+            } else {
+                $others[$key] = $value;
+            }
+        }
+        uasort($boxes, static fn (array $a, array $b) => [strnatcmp($a[0], $b[0]), $a[1]] <=> [0, $b[1]]);
+        foreach ($boxes as $key => $b) {
+            $others[$key] = $b[2];
+        }
+        $map->hints = $others;
+    }
+
+    /** @return array<string, mixed> */
+    private function box(\WeatherMap $map, string $id): array
+    {
+        $box = \WeatherMapBoxes::parse($map, $id, (string) $map->get_hint('box_' . $id));
+        if ($box === null) {
+            throw new InvalidArgumentException(__('Unknown box: :name', ['name' => $id]));
+        }
+        return $box;
     }
 
     /** {op: add_zone, x, y, width?, height?, label?, name?} */
@@ -1771,6 +1897,8 @@ class MapEditor
             $name = (string) $area->name;
             if (str_starts_with($name, 'LEGEND:')) {
                 [$kind, $item] = ['legend', substr($name, 7)];
+            } elseif (str_starts_with($name, 'BOX:')) {
+                [$kind, $item] = ['box', substr($name, 4)];
             } elseif (isset(self::FURNITURE_AREAS[$name])) {
                 [$kind, $item] = self::FURNITURE_AREAS[$name];
             } else {
@@ -1787,6 +1915,20 @@ class MapEditor
 
             // the last drawing wins, if an area was recorded twice
             $found[$kind . ':' . $item] = ['kind' => $kind, 'name' => $item, 'box' => $box, 'pos' => $pos];
+            if ($kind === 'box') {
+                // what the box panel edits
+                $b = \WeatherMapBoxes::parse($map, $item, (string) $map->get_hint('box_' . $item));
+                if ($b !== null) {
+                    $found[$kind . ':' . $item]['props'] = [
+                        'type' => $b['type'],
+                        'title' => $b['title'],
+                        'style' => $b['style'],
+                        'text' => $b['text'],
+                        'rows' => $b['rows'],
+                        'width' => $b['width'],
+                    ];
+                }
+            }
         }
 
         return array_values($found);

@@ -168,6 +168,14 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <button type="button" class="add-tile" data-cmd="add-speed-legend" title="<?= e__('Show the legend of the link widths by speed, in the middle of the view') ?>"><svg class="i" aria-hidden="true"><use href="#i-legend-speed"/></svg><span><?= e__('Link speed') ?></span></button>
             <button type="button" class="add-tile" data-cmd="add-timestamp" title="<?= e__('Show the time the map was drawn, in the middle of the view') ?>"><?= icon('clock', 'i') ?><span><?= e__('Timestamp') ?></span></button>
         </div>
+        <h3><?= e__('Boxes') ?></h3>
+        <div class="add-tiles add-items add-boxes">
+            <button type="button" class="add-tile" data-cmd="add-box-total" title="<?= e__('A box with the total traffic of the map and its graph') ?>"><?= icon('chart-line', 'i') ?><span><?= e__('Total traffic') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-box-legend" title="<?= e__('A box with the link load colours, as a bar or a list') ?>"><?= icon('sliders-horizontal', 'i') ?><span><?= e__('Traffic legend') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-box-speed" title="<?= e__('A box with the link widths by speed') ?>"><?= icon('list', 'i') ?><span><?= e__('Link speed') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-box-updated" title="<?= e__('A box with the time of the last data') ?>"><?= icon('clock', 'i') ?><span><?= e__('Updated at') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-box-text" title="<?= e__('A box with a title and rows, typed or taken from the map sites') ?>"><?= icon('rectangle-horizontal', 'i') ?><span><?= e__('Text box') ?></span></button>
+        </div>
         <div id="palette-templates"></div>
         <div class="palette-head">
             <h3><?= e__('Icons') ?></h3>
