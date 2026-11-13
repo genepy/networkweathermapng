@@ -44,11 +44,29 @@ the open question P8.
 |------|-------|
 | — | All feedback tasks F1 to F15 are done. |
 
+Viewer and editor feedback of 2026-11-13, in order. Every point is in
+[studies/feedback-2026-11-13.md](studies/feedback-2026-11-13.md), with
+its screenshots and acceptance criteria.
+
+| Item | Notes |
+|------|-------|
+| F16 | Link ends at nodes in the live viewer (bug, P43): the F5 fix works in the editor, not in the viewer |
+| F17 | Link hover halo proportional to the link width at every zoom (P44) |
+| F18 | Link flow animation: one spot per link, as wide as the link, Nine IX style (P45) |
+| F19 | Merge *Map items* and *Boxes* into one modern design (Nine IX *Traffic* card), removable from the editor menu (P46) |
+| F20 | *Untangle labels* keeps labels on their links, spread along them only when there is room (P47) |
+| F21 | No-arrow and one-direction links take the colour of their busiest direction (P48) |
+| F22 | Bandwidth labels sized with the zoom instead of growing huge (P49) |
+| F23 | Ctrl+A in the editor selects map objects only, not the page text (P50) |
+| F24 | Tooltips explaining the editor options, e.g. *Shape* > *Arrow* both / one direction (P51) |
+| F25 | Choose which viewer panels show (*Sites*, *Total traffic*, *Link load*, last update) and where (P52) |
+| F26 | Leftovers: Ctrl+Shift+drag adds to the selection (P53), shortcuts on the fullscreen page (P54), *Custom text* label style like #90 (P55) |
+
 ## Stale branches
 
 | Branch | Note |
 |--------|------|
-| `claude/project-thread-9dr755` | "Build the testbed images with the classic Compose builder": superseded by #20 (host-network entitlement). Can be deleted |
+| (none) | |
 
 ## Recently done
 
