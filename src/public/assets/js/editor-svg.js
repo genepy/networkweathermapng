@@ -3106,6 +3106,36 @@
         return options.concat(extra.map(function (v) { return [v, label + (v === '--' ? '' : ' (' + v + ')')]; }));
     }
 
+    /** ARROWSTYLE <length> <width>: a custom arrow head size, as a map file may have it */
+    var CUSTOM_ARROW = /^\d+ \d+$/;
+
+    /** Arrow head choices: the named ones, the custom size the links have, or a new custom size */
+    function arrowChoices(links) {
+        var options = withCurrent(links, 'arrowstyle', [
+            ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
+        ], t('Custom size'));
+        var hasCustom = options.some(function (o) { return CUSTOM_ARROW.test(o[0]); });
+        // a new custom size starts from the classic head (length 4, width 2)
+        return hasCustom ? options : options.concat([['4 2', t('Custom size...')]]);
+    }
+
+    /** Length and width of a custom arrow head, when the links share one */
+    function arrowSizeRow(links) {
+        var c = common(links, 'arrowstyle');
+        if (c.mixed || !CUSTOM_ARROW.test(String(c.value))) { return null; }
+        var parts = String(c.value).split(' ');
+        var length = h('input', { type: 'number', min: 1, max: 20, step: 1, value: parts[0], title: t('Length, in link widths'), 'aria-label': t('Length, in link widths') });
+        var width = h('input', { type: 'number', min: 1, max: 20, step: 1, value: parts[1], title: t('Width, in link widths'), 'aria-label': t('Width, in link widths') });
+        function save() {
+            var l = Math.round(+length.value), w = Math.round(+width.value);
+            if (!(l >= 1 && l <= 20 && w >= 1 && w <= 20)) { return; }
+            send([{ op: 'set_link', names: links.map(function (i) { return i.name; }), props: { arrowstyle: l + ' ' + w } }]);
+        }
+        length.addEventListener('change', save);
+        width.addEventListener('change', save);
+        return row(t('Head size'), h('div', { 'class': 'pair' }, [length, width]));
+    }
+
     function linkPanel(links) {
         var single = links.length === 1 ? links[0] : null;
         var out = [h('h2', { text: single ? t('Link :name', { name: single.name }) : t(':n links', { n: links.length }) })];
@@ -3136,9 +3166,8 @@
                 return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
             }))),
             row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
-            row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: withCurrent(links, 'arrowstyle', [
-                ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
-            ], t('Custom size')) })),
+            row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: arrowChoices(links) })),
+            arrowSizeRow(links),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
             row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true })),
             h('h3', { text: t('Bandwidth labels') }),
