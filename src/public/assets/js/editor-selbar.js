@@ -14,6 +14,7 @@
 
     var ed = window.WMEditor;
     var t = ed.t;
+    var keyHint = ed.keyHint;
     var state = ed.state;
     var app = document.getElementById('app');
     var canvas = document.getElementById('canvas');
@@ -57,11 +58,11 @@
         var label = locked ? t('Unlock') : t('Lock');
         lock.querySelector('use').setAttribute('href', locked ? '#i-unlock' : '#i-lock');
         lock.setAttribute('aria-label', label);
-        lock.title = (locked ? t('Unlock') : t('Lock')) + ' (Ctrl+L)';
+        lock.title = (locked ? t('Unlock') : t('Lock')) + keyHint('editor.lock');
         lock.querySelector('.lbl').textContent = label;
 
         var link = bar.querySelector('[data-cmd="link-selection"]');
-        link.title = nodes === 2 ? t('Link the two selected nodes') : t('Draw a link from the selected node (L)');
+        link.title = nodes === 2 ? t('Link the two selected nodes') : t('Draw a link from the selected node') + keyHint('editor.link-tool');
         link.setAttribute('aria-label', link.title);
 
         // a separator only between two shown groups of buttons

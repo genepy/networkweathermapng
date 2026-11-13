@@ -342,6 +342,14 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab)
   and *View*, which opens the map view.
 - **Keyboard shortcuts**: `?` (or ⋯ › *Keyboard shortcuts*) lists them all.
+  Each user can change them in the user menu › *Keyboard shortcuts*
+  (`/account/shortcuts`): the keys of the editor, the map viewer and the
+  `Ctrl+K` search, and the key held to move the view, duplicate or drag
+  without snapping. A row takes up to three keys; a key used twice in the
+  same area (or one of *Everywhere* used in an area) is marked in red and
+  cannot be saved; *Back to the defaults* puts one action or every key
+  back. The keys are saved with the account (table `user_shortcuts`, only
+  the changed actions) and shown in the tooltips, menus and the `?` list.
 - **Contextual bar**: while something is selected, a small bar floats over
   it with what applies: *Align and space evenly* (a menu), *Group* or
   *Ungroup*, *Lock*, *Front*, *Back*, *Link* (the two selected nodes, or
@@ -365,13 +373,17 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 - **Move**: drag the selection, or use the arrow keys (Shift for 10 px).
   Nodes, zones, legends (`KEYPOS`), timestamps (`TIMEPOS`) and the title
   (`TITLEPOS`) move alike. While dragging, pink guides show the edges and
-  centres the selection lines up with, and it snaps to them (hold Alt not
-  to). *Grid* (G) snaps to 10 px; its lines are light on a dark background
+  centres the selection lines up with, and it snaps to them (hold Shift
+  not to). *Grid* (G) snaps to 10 px; its lines are light on a dark background
   colour, dark on a light one, and dark with a light halo over a picture or
   a basemap. Links whose two ends move keep their shape.
   A zone moves alone: group it with its nodes to move them together.
-  Hold Ctrl (Cmd on a Mac) while dragging to drop a copy of the selected
-  nodes, and of the links between them, instead of moving them.
+  Hold Alt while dragging to drop a copy of the selected nodes, and of the
+  links between them, instead of moving them. Ctrl+drag (Cmd on a Mac)
+  still duplicates for a while, with a hint the first time.
+- **Move the view**: drag on empty space with Ctrl (Cmd on a Mac), Space
+  or the middle button held, or use the wheel to zoom. A Ctrl+click on
+  empty space without moving still adds a node.
 - **Arrange**: align and distribute nodes, zones, legends and the title
   (a group moves as one block, unless everything selected is one group),
   group nodes, links and zones (Ctrl+G; Alt+click picks one member), lock

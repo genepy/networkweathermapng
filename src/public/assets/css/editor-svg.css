@@ -470,6 +470,8 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #shortcuts-dialog dt { white-space: nowrap; }
 #shortcuts-dialog dd { margin: 0; }
 #shortcuts-dialog kbd { border: 1px solid var(--border); border-radius: 3px; padding: 0 4px; font-size: 11px; background: var(--panel-2); }
+#shortcuts-dialog .shortcuts-more { margin: 12px 0 0; font-size: 13px; }
+#shortcuts-dialog .shortcuts-more a { color: var(--accent); }
 
 /* Background library: search, add, pick or remove a background */
 #bg-dialog { width: min(640px, 94vw); }

@@ -7,7 +7,7 @@ line up to date and hand it over.
 States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
 an item with a branch belongs to whoever owns that branch.
 
-Last updated: 2026-11-12.
+Last updated: 2026-11-13.
 
 ## In progress
 
@@ -42,7 +42,6 @@ the open question P8.
 
 | Item | Notes |
 |------|-------|
-| F6. Editor navigation and shortcuts | `Ctrl` + drag on the background pans (duplicate moves to `Alt` + drag, proposal to confirm); keyboard shortcuts page in the user profile (rebind, conflicts, reset). [feedback-2026-11-06](studies/feedback-2026-11-06.md) P9, P25 |
 | F7. SVG everywhere in viewer and kiosk | Preview and kiosk drawn as SVG, PNG only for download; merge View and Preview; kiosk link keeps the background; *Download as SVG*; collapse/expand all sites in the side panel; popups close on an outside click. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P29, P33, P34, P36-P38 |
 | F8. Boxes on the map | Movable boxes on the map, in the `.conf`, shown in live, kiosk, PNG and SVG: total traffic, traffic legend (Nine-style gradient bar), free formatted box (like Nine's Points of presence), link speed, updated at. After F7. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P30, P32 |
 | F9. Map settings and colour picker in the editor | *Map settings* in the editor's right panel instead of another page; a colour picker in the app's style. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P13, P18 |
@@ -63,6 +62,7 @@ the open question P8.
 
 | PR | Item |
 |----|------|
+| #91 | F6. Editor navigation and keyboard shortcuts: Ctrl + drag on empty space moves the view (Ctrl + click still adds a node), Alt + drag duplicates, Shift while dragging turns the snapping off; Ctrl + drag on a node still duplicates for a while with a hint (`copyDrag` in editor-svg.js, remove later). *Keyboard shortcuts* page in the user menu (`/account/shortcuts`): every action by area (Everywhere, Map viewer, Map editor, drag keys), up to three keys per action, conflicts in red, reset one or all, saved per user (table `user_shortcuts`, `App\Services\KeyboardShortcuts`); `assets/js/shortcuts.js` (`WMKeys`, `window.WM_KEYS`) is read by the editor, the viewer and the command palette, and writes the keys in tooltips (`data-keys`). Kiosk keys are not in the page yet. Test `KeyboardShortcutsTest` |
 | #89 | F5. Link ends and hover highlight: each link stops where its square end is still hidden under its node (badge disc, icon box, label box with a background; `WeatherMapNode::cover_shapes`, `link_end_cut`), the arrows still meet at the same place, a link is never drawn above the nodes it joins (whatever its `ZORDER`), and the viewer keeps the ends hidden when it draws links thinner deep in a basemap (`data-cut`); *Route* row of the link panel and the right-click menu get *Straight* (removes the `VIA` points), and *Make this segment straight* drops the bend points of the segment right-clicked; `SET link_glow 1` glows only under the pointer; every map item shows its outline with the same small soft glow under the pointer, in the editor and the viewer. Tests in `SvgRenderTest` |
 | #88 | F4. Link labels in the editor: *Untangle labels* in the selection bar (links selected) and the right-click menu, limited to the labels of the selected links; *Spread apart* in the selection bar for selected nodes that overlap; a new untangle (labels and node boxes as drawn, turned boxes, several passes, along the link or a few pixels aside with `SET bwlabel_offset_in|out`, labels left over are named); *Labels* (`BWLABEL`) and *Arrow heads* (`ARROWSTYLE flat`, new: square ends) in the link panel and *Link defaults*; a bandwidth label is dragged with the mouse without selecting the link first, along it or to one side, with a move cursor. Tests in `MapEditorTest`, `SvgRenderTest` |
 | #87 | F3. Map items in the editor: *Map items* in the Add panel shows the *Link load* legend, the *Link speed* legend (`SET width_legend`) or the *Timestamp* in the middle of the view; Delete (key, selection bar, right panel, context menu, Ctrl+K) hides a selected legend or timestamp, one undo step (`hide_furniture` / `show_furniture` editor ops; hidden legends and timestamps keep their place as -x - 1, -y - 1, the engine no longer draws a timestamp at a negative position); *Link speed legend* section in the map panel (shown, text) and *Show the timestamp on the map*. P8 was a copy of P7 |

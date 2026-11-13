@@ -31,14 +31,14 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <span class="tb-title" title="<?= $e($map['name']) ?>"><?= $e($map['name']) ?></span>
         <span id="save-state" role="status" aria-live="polite" data-state="loading"><?= icon('circle-check', 'i') ?><span class="save-label"><span class="save-text"><?= e__('Loading…') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Loading…') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Saving…') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Saved') ?></span><span class="save-ghost" aria-hidden="true"><?= e__('Not saved') ?></span></span></span>
         <span class="tb-sep" aria-hidden="true"></span>
-        <?= $btn('undo', 'undo', __('Undo'), __('Undo (Ctrl+Z)'), 'disabled') ?>
-        <?= $btn('redo', 'redo', __('Redo'), __('Redo (Ctrl+Shift+Z)'), 'disabled') ?>
+        <?= $btn('undo', 'undo', __('Undo'), __('Undo'), 'disabled data-keys="editor.undo"') ?>
+        <?= $btn('redo', 'redo', __('Redo'), __('Redo'), 'disabled data-keys="editor.redo"') ?>
         <span class="appbar-centre">
-            <button type="button" class="app-search" data-palette-open aria-keyshortcuts="Control+K Meta+K"
-                    title="<?= e__('Search commands, nodes and maps (Ctrl+K)') ?>" aria-label="<?= e__('Search commands, nodes and maps') ?>">
+            <button type="button" class="app-search" data-palette-open data-keys="palette" aria-keyshortcuts="Control+K Meta+K"
+                    title="<?= e__('Search commands, nodes and maps') ?>" aria-label="<?= e__('Search commands, nodes and maps') ?>">
                 <?= icon('search') ?>
                 <span class="app-search-text"><?= e__('Commands, nodes, maps…') ?></span>
-                <kbd class="app-search-key">Ctrl K</kbd>
+                <kbd class="app-search-key" data-keys="palette">Ctrl K</kbd>
             </button>
         </span>
         <span class="appbar-right">
@@ -64,7 +64,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <button type="button" role="menuitem" data-cmd="map-properties"><?= icon('sliders-horizontal', 'i') ?><span><?= e__('Map properties') ?></span></button>
         <a role="menuitem" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span><?= e__('Map settings') ?></span></a>
         <button type="button" role="menuitem" popovertarget="toolbars-menu" id="toolbars-button"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span><?= e__('Toolbars and panels') ?></span></button>
-        <button type="button" role="menuitem" data-cmd="shortcuts"><?= icon('list', 'i') ?><span><?= e__('Keyboard shortcuts') ?></span><kbd>?</kbd></button>
+        <button type="button" role="menuitem" data-cmd="shortcuts"><?= icon('list', 'i') ?><span><?= e__('Keyboard shortcuts') ?></span><kbd data-keys="editor.shortcuts">?</kbd></button>
         <hr>
         <button type="button" role="menuitem" data-pref="theme" aria-label="<?= e__('Theme') ?>"
                 data-labels="<?= htmlspecialchars(json_encode(['' => __('Theme: automatic'), 'light' => __('Theme: light'), 'dark' => __('Theme: dark')])) ?>"><?= icon('sun-moon', 'i') ?><span class="theme-label"></span></button>
@@ -107,13 +107,13 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
 
     <div class="dock" id="dock-top" data-dock="top">
         <div class="toolbar" data-toolbar="clipboard" aria-label="<?= e__('Clipboard') ?>" role="toolbar">
-            <?= $btn('cut', 'cut', __('Cut'), __('Cut (Ctrl+X)'), 'data-needs="nodes1"') ?>
-            <?= $btn('copy', 'copy', __('Copy'), __('Copy the selected nodes and the links between them, also for another map (Ctrl+C)'), 'data-needs="nodes1"') ?>
-            <?= $btn('paste', 'paste', __('Paste'), __('Paste (Ctrl+V): where the mouse is, or next to the original'), 'disabled') ?>
+            <?= $btn('cut', 'cut', __('Cut'), __('Cut'), 'data-needs="nodes1" data-keys="editor.cut"') ?>
+            <?= $btn('copy', 'copy', __('Copy'), __('Copy the selected nodes and the links between them, also for another map'), 'data-needs="nodes1" data-keys="editor.copy"') ?>
+            <?= $btn('paste', 'paste', __('Paste'), __('Paste: where the mouse is, or next to the original'), 'disabled data-keys="editor.paste"') ?>
         </div>
         <div class="toolbar" data-toolbar="tools" aria-label="<?= e__('Tools') ?>" role="toolbar">
-            <?= $btn('tool-select', 'select', __('Select'), __('Select and move (V)'), 'class="active"') ?>
-            <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes (L)')) ?>
+            <?= $btn('tool-select', 'select', __('Select'), __('Select and move'), 'class="active" data-keys="editor.select-tool"') ?>
+            <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes'), 'data-keys="editor.link-tool"') ?>
             <?= $btn('zone', 'zone', __('Zone'), __('Add a zone: a labelled rectangle for a site, around the selected nodes if any')) ?>
             <?= $btn('note', 'note', __('Note'), __('Add a note: free text on several lines, for a legend, a contact or a maintenance window')) ?>
         </div>
@@ -128,24 +128,24 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <?= $btn('distribute-v', 'distribute-v', __('Space down'), __('Space evenly, top to bottom'), 'data-needs="objects3"') ?>
         </div>
         <div class="toolbar" data-toolbar="arrange" aria-label="<?= e__('Arrange') ?>" role="toolbar" data-needs="any">
-            <?= $btn('group', 'group', __('Group'), __('Group (Ctrl+G)')) ?>
-            <?= $btn('ungroup', 'ungroup', __('Ungroup'), __('Ungroup (Ctrl+Shift+G)')) ?>
-            <?= $btn('lock', 'lock', __('Lock'), __('Lock or unlock position (Ctrl+L)')) ?>
-            <?= $btn('front', 'front', __('Front'), __('Bring to front (Ctrl+])')) ?>
-            <?= $btn('back', 'send-back', __('Back'), __('Send to back (Ctrl+[)')) ?>
+            <?= $btn('group', 'group', __('Group'), __('Group'), 'data-keys="editor.group"') ?>
+            <?= $btn('ungroup', 'ungroup', __('Ungroup'), __('Ungroup'), 'data-keys="editor.ungroup"') ?>
+            <?= $btn('lock', 'lock', __('Lock'), __('Lock or unlock position'), 'data-keys="editor.lock"') ?>
+            <?= $btn('front', 'front', __('Front'), __('Bring to front'), 'data-keys="editor.front"') ?>
+            <?= $btn('back', 'send-back', __('Back'), __('Send to back'), 'data-keys="editor.back"') ?>
         </div>
         <div class="toolbar" data-toolbar="tidy" aria-label="<?= e__('Tidy up') ?>" role="toolbar">
             <?= $btn('autoroute', 'autoroute', __('Auto-route'), __('Route the selected links (or all) around nodes')) ?>
             <?= $btn('spread', 'spread', __('Spread apart'), __('Move overlapping nodes apart')) ?>
             <?= $btn('untangle', 'untangle', __('Untangle labels'), __('Move bandwidth labels that overlap')) ?>
-            <?= $btn('find', 'find', __('Select…'), __('Select by criteria (Ctrl+F)')) ?>
+            <?= $btn('find', 'find', __('Select…'), __('Select by criteria'), 'data-keys="editor.find"') ?>
         </div>
         <div class="toolbar" data-toolbar="view" aria-label="<?= e__('View') ?>" role="toolbar">
-            <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid (G)')) ?>
-            <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out (-)')) ?>
-            <button type="button" data-cmd="zoom-reset" id="zoom-level" title="<?= e__('Actual size (0)') ?>" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-tag"><?= e__('Zoom') ?></span> <span id="zoom-value" class="zoom-value">100%</span></button>
-            <?= $btn('zoom-in', 'zoom-in', __('Zoom in'), __('Zoom in (+)')) ?>
-            <?= $btn('zoom-fit', 'fit', __('Fit'), __('Fit to window (F)')) ?>
+            <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid'), 'data-keys="editor.snap"') ?>
+            <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out'), 'data-keys="editor.zoom-out"') ?>
+            <button type="button" data-cmd="zoom-reset" id="zoom-level" title="<?= e__('Actual size') ?>" data-keys="editor.actual-size" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-tag"><?= e__('Zoom') ?></span> <span id="zoom-value" class="zoom-value">100%</span></button>
+            <?= $btn('zoom-in', 'zoom-in', __('Zoom in'), __('Zoom in'), 'data-keys="editor.zoom-in"') ?>
+            <?= $btn('zoom-fit', 'fit', __('Fit'), __('Fit to window'), 'data-keys="editor.fit"') ?>
         </div>
     </div>
     <div class="dock vertical" id="dock-left" data-dock="left"></div>
@@ -159,7 +159,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <button type="button" class="add-tile palette-item" draggable="true" data-template="DEFAULT" data-cmd="add-node" title="<?= e__('Add a node in the middle of the view, or drag it onto the map') ?>"><?= icon('rectangle-horizontal', 'i') ?><span><?= e__('Node') ?></span></button>
             <button type="button" class="add-tile" data-cmd="note" title="<?= e__('Add a note: free text on several lines, for a legend, a contact or a maintenance window') ?>"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg><span><?= e__('Note') ?></span></button>
             <button type="button" class="add-tile" data-cmd="zone" title="<?= e__('Add a zone: a labelled rectangle for a site, around the selected nodes if any') ?>"><svg class="i" aria-hidden="true"><use href="#i-zone"/></svg><span><?= e__('Zone') ?></span></button>
-            <button type="button" class="add-tile" data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes (L)') ?>"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg><span><?= e__('Link') ?></span><kbd>L</kbd></button>
+            <button type="button" class="add-tile" data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes') ?>" data-keys="editor.link-tool"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg><span><?= e__('Link') ?></span><kbd data-keys="editor.link-tool">L</kbd></button>
         </div>
         <p class="hint"><?= e__('Click to add in the middle of the view, or drag a node or an icon onto the map.') ?></p>
         <h3><?= e__('Map items') ?></h3>
@@ -208,29 +208,29 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             </svg>
         </div>
         <div id="tool-rail" role="toolbar" aria-orientation="vertical" aria-label="<?= e__('Tools') ?>">
-            <?= $btn('tool-select', 'select', __('Select'), __('Select and move (V)'), 'class="active" aria-pressed="true"') ?>
-            <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes (L)'), 'aria-pressed="false"') ?>
-            <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid (G)'), 'aria-pressed="false"') ?>
+            <?= $btn('tool-select', 'select', __('Select'), __('Select and move'), 'class="active" aria-pressed="true" data-keys="editor.select-tool"') ?>
+            <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes'), 'aria-pressed="false" data-keys="editor.link-tool"') ?>
+            <?= $btn('snap', 'grid', __('Grid'), __('Snap to a 10 px grid'), 'aria-pressed="false" data-keys="editor.snap"') ?>
         </div>
         <div id="zoom-group" role="toolbar" aria-label="<?= e__('Zoom') ?>">
-            <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out (-)')) ?>
-            <button type="button" data-cmd="zoom-reset" class="zoom-level" title="<?= e__('Actual size (0)') ?>" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-value">100%</span></button>
-            <?= $btn('zoom-in', 'zoom-in', __('Zoom in'), __('Zoom in (+)')) ?>
-            <?= $btn('zoom-fit', 'fit', __('Fit'), __('Fit to window (F)')) ?>
+            <?= $btn('zoom-out', 'zoom-out', __('Zoom out'), __('Zoom out'), 'data-keys="editor.zoom-out"') ?>
+            <button type="button" data-cmd="zoom-reset" class="zoom-level" title="<?= e__('Actual size') ?>" data-keys="editor.actual-size" aria-label="<?= e__('Zoom level, click for actual size') ?>"><span class="zoom-value">100%</span></button>
+            <?= $btn('zoom-in', 'zoom-in', __('Zoom in'), __('Zoom in'), 'data-keys="editor.zoom-in"') ?>
+            <?= $btn('zoom-fit', 'fit', __('Fit'), __('Fit to window'), 'data-keys="editor.fit"') ?>
         </div>
         <div id="selbar" role="toolbar" aria-label="<?= e__('Selection') ?>" hidden>
             <button type="button" class="sb-align" popovertarget="selbar-align" data-needs="objects2" title="<?= e__('Align and space evenly') ?>" aria-label="<?= e__('Align and space evenly') ?>" aria-haspopup="menu"><svg class="i" aria-hidden="true"><use href="#i-align-left"/></svg><?= icon('chevron-down', 'i caret') ?></button>
-            <?= $btn('group', 'group', __('Group'), __('Group (Ctrl+G)'), 'data-needs="any"') ?>
-            <?= $btn('ungroup', 'ungroup', __('Ungroup'), __('Ungroup (Ctrl+Shift+G)'), 'data-needs="any"') ?>
-            <?= $btn('lock', 'lock', __('Lock'), __('Lock or unlock position (Ctrl+L)'), 'data-needs="any"') ?>
-            <?= $btn('front', 'front', __('Front'), __('Bring to front (Ctrl+])'), 'data-needs="any"') ?>
-            <?= $btn('back', 'send-back', __('Back'), __('Send to back (Ctrl+[)'), 'data-needs="any"') ?>
+            <?= $btn('group', 'group', __('Group'), __('Group'), 'data-needs="any" data-keys="editor.group"') ?>
+            <?= $btn('ungroup', 'ungroup', __('Ungroup'), __('Ungroup'), 'data-needs="any" data-keys="editor.ungroup"') ?>
+            <?= $btn('lock', 'lock', __('Lock'), __('Lock or unlock position'), 'data-needs="any" data-keys="editor.lock"') ?>
+            <?= $btn('front', 'front', __('Front'), __('Bring to front'), 'data-needs="any" data-keys="editor.front"') ?>
+            <?= $btn('back', 'send-back', __('Back'), __('Send to back'), 'data-needs="any" data-keys="editor.back"') ?>
             <span class="sb-sep" aria-hidden="true"></span>
             <?= $btn('untangle', 'untangle', __('Untangle labels'), __('Move the overlapping bandwidth labels of the selected links apart')) ?>
             <?= $btn('spread', 'spread', __('Spread apart'), __('Move the selected nodes that overlap apart')) ?>
-            <?= $btn('link-selection', 'link', __('Link'), __('Link the two selected nodes, or draw a link from the selected node (L)'), 'data-needs="nodes1"') ?>
-            <?= $btn('duplicate', 'copy', __('Duplicate'), __('Duplicate (Ctrl+D)'), 'data-needs="nodes1"') ?>
-            <?= $btn('delete', 'trash', __('Delete'), __('Delete (Del)'), 'class="danger" data-needs="any"') ?>
+            <?= $btn('link-selection', 'link', __('Link'), __('Link the two selected nodes, or draw a link from the selected node'), 'data-needs="nodes1" data-keys="editor.link-tool"') ?>
+            <?= $btn('duplicate', 'copy', __('Duplicate'), __('Duplicate'), 'data-needs="nodes1" data-keys="editor.duplicate"') ?>
+            <?= $btn('delete', 'trash', __('Delete'), __('Delete'), 'class="danger" data-needs="any" data-keys="editor.delete"') ?>
             <button type="button" data-cmd="selection-menu" title="<?= e__('More actions (Shift+F10)') ?>" aria-label="<?= e__('More actions') ?>" aria-haspopup="menu"><?= icon('ellipsis', 'i') ?></button>
         </div>
         <div id="selbar-align" popover role="menu" aria-label="<?= e__('Align and space evenly') ?>">
@@ -352,8 +352,9 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     <form method="dialog">
         <h3 id="shortcuts-title"><?= e__('Keyboard shortcuts') ?></h3>
         <div class="shortcuts-body"></div>
+        <p class="shortcuts-more"><a href="/account/shortcuts"><?= e__('Change the keys in your profile') ?></a></p>
         <menu>
-            <button value="cancel" class="primary"><?= e__('Close') ?></button>
+            <button value="cancel" class="primary" autofocus><?= e__('Close') ?></button>
         </menu>
     </form>
 </dialog>
@@ -399,6 +400,8 @@ window.WM_EDITOR = {
 };
 </script>
 <script src="<?= asset('/assets/js/ui.js') ?>"></script>
+<?= $keysScript ?>
+<script src="<?= asset('/assets/js/shortcuts.js') ?>"></script>
 <script>window.WM_MAPLIBRE = <?= json_encode(['js' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp.js'), 'worker' => asset('/assets/vendor/maplibre-gl/maplibre-gl-csp-worker.js'), 'css' => asset('/assets/vendor/maplibre-gl/maplibre-gl.css')], JSON_UNESCAPED_SLASHES) ?>;</script>
 <script src="<?= asset('/assets/js/basemap.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-svg.js') ?>"></script>

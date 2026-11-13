@@ -48,6 +48,10 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
     <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/map-settings.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/weathermap.js') ?>" data-uplot="<?= asset('/assets/vendor/uplot/uPlot.iife.min.js') ?>" data-uplot-css="<?= asset('/assets/vendor/uplot/uPlot.min.css') ?>" defer></script>
+    <?php if (isset($keysScript)): ?>
+    <?= $keysScript ?>
+    <script src="<?= asset('/assets/js/shortcuts.js') ?>" defer></script>
+    <?php endif; ?>
     <?php if ($showNav): ?>
     <script src="<?= asset('/assets/js/palette.js') ?>" defer></script>
     <?php endif; ?>
@@ -70,11 +74,11 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
         <?php endif; ?>
         <div class="app-bar-end">
             <?php if ($showNav): ?>
-            <button type="button" class="app-search" data-palette-open aria-keyshortcuts="Control+K Meta+K"
+            <button type="button" class="app-search" data-palette-open data-keys="palette" aria-keyshortcuts="Control+K Meta+K"
                     aria-label="<?= e__('Search maps, nodes, commands') ?>">
                 <?= icon('search') ?>
                 <span class="app-search-text"><?= e__('Search maps, nodes, commands') ?></span>
-                <kbd class="app-search-key">Ctrl K</kbd>
+                <kbd class="app-search-key" data-keys="palette">Ctrl K</kbd>
             </button>
             <?php endif; ?>
             <?php if (!$showNav): ?>
@@ -117,6 +121,7 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
             </div>
             <?php if ($signedIn): ?>
             <div class="um-sep" role="separator"></div>
+            <a class="um-item" href="/account/shortcuts"><?= icon('keyboard') ?><?= e__('Keyboard shortcuts') ?></a>
             <a class="um-item" href="/account/password"><?= icon('lock') ?><?= e__('Change password') ?></a>
             <form method="post" action="/logout" class="um-logout"><?= \App\Core\Csrf::field() ?>
                 <button type="submit" class="um-item"><?= icon('arrow-left') ?><?= e__('Log out') ?></button>

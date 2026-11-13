@@ -165,6 +165,8 @@ class Application
         // Account
         $this->router->get('/account/password', 'AccountController@changePasswordForm');
         $this->router->post('/account/password', 'AccountController@changePassword');
+        $this->router->get('/account/shortcuts', 'AccountController@shortcuts');
+        $this->router->post('/account/shortcuts', 'AccountController@saveShortcuts');
         
         // Admin
         $this->router->get('/admin', 'AdminController@index');

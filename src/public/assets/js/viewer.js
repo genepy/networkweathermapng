@@ -2107,34 +2107,44 @@
         });
     });
 
+    // the keys come from the user's profile (shortcuts.js, /account/shortcuts)
+    const KEYS = window.WMKeys || {is: function () { return false; }};
+    const keyActions = [
+        ['viewer.zoom-in', function () { zoomBy(1.4); }],
+        ['viewer.zoom-out', function () { zoomBy(1 / 1.4); }],
+        ['viewer.fit', function () { fit(); }],
+        ['viewer.actual-size', function () { actualSize(); }],
+        ['viewer.pan-left', function () { S.tx += 60; userMoved(); }],
+        ['viewer.pan-right', function () { S.tx -= 60; userMoved(); }],
+        ['viewer.pan-up', function () { S.ty += 60; userMoved(); }],
+        ['viewer.pan-down', function () { S.ty -= 60; userMoved(); }],
+        ['viewer.find', function () { findInput.focus(); }],
+        ['viewer.panel', function () { if (!panel) return false; setPanel(panel.hidden, true); }],
+        ['viewer.fullscreen', function () { toggleFullscreen(); }],
+        ['viewer.edit', function () {
+            const edit = root.querySelector('.wmv-edit');
+            if (!edit) return false;
+            window.location.href = edit.href;
+        }]
+    ];
+
     document.addEventListener('keydown', function (e) {
         const tag = (e.target && e.target.tagName) || '';
-        if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || e.ctrlKey || e.metaKey || e.altKey) {
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag)) {
             if (e.key === 'Escape' && e.target === findInput) findInput.blur();
             return;
         }
         // The map is the whole page: the keys act unless another control
         // outside the map (the user menu...) has the focus
         if (!keysForMap()) return;
-        const step = 60;
-        switch (e.key) {
-            case '+': case '=': zoomBy(1.4); break;
-            case '-': case '_': zoomBy(1 / 1.4); break;
-            case '0': fit(); break;
-            case '1': actualSize(); break;
-            case 'ArrowLeft': S.tx += step; userMoved(); break;
-            case 'ArrowRight': S.tx -= step; userMoved(); break;
-            case 'ArrowUp': S.ty += step; userMoved(); break;
-            case 'ArrowDown': S.ty -= step; userMoved(); break;
-            case '/': findInput.focus(); break;
-            case 'p': case 'P': if (!panel) return; setPanel(panel.hidden, true); break;
-            case 'f': case 'F': toggleFullscreen(); break;
-            case 'e': case 'E': {
-                const edit = root.querySelector('.wmv-edit');
-                if (!edit) return;
-                window.location.href = edit.href;
-                break;
+        for (const [id, run] of keyActions) {
+            if (KEYS.is(e, id)) {
+                if (run() !== false) e.preventDefault();
+                return;
             }
+        }
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        switch (e.key) {
             case 'Escape':
                 if (closeClusterMenu()) break;
                 if (root.querySelector('.wmv-more[open]')) {
@@ -2219,7 +2229,8 @@
         root.classList.toggle('wmv-fullscreen', on);
         if (fsButton) {
             fsButton.setAttribute('aria-pressed', on ? 'true' : 'false');
-            fsButton.title = on ? fsButton.dataset.leave : fsButton.dataset.enter;
+            const fsKey = window.WMKeys ? window.WMKeys.first('viewer.fullscreen') : '';
+            fsButton.title = (on ? fsButton.dataset.leave : fsButton.dataset.enter) + (fsKey ? ' (' + fsKey + ')' : '');
             const use = fsButton.querySelector('use');
             use.setAttribute('href', use.getAttribute('href').split('#')[0] + '#' + (on ? 'minimize' : 'maximize'));
         }
@@ -2420,11 +2431,11 @@
         document.addEventListener('keydown', function (e) {
             const tag = (e.target && e.target.tagName) || '';
             if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) && e.target.type !== 'range') return;
-            if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (!keysForMap()) return;
-            if (e.key === 'h' || e.key === 'H') {
+            const KEYS = window.WMKeys || {is: function () { return false; }};
+            if (KEYS.is(e, 'viewer.history')) {
                 if (H.on) closeHistory(); else openHistory();
-            } else if (H.on && e.key === ' ') {
+            } else if (H.on && KEYS.is(e, 'viewer.play')) {
                 setPlaying(!H.playing);
             } else if (H.on && e.key === 'Escape') {
                 closeHistory();
