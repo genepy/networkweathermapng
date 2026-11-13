@@ -59,6 +59,9 @@ class MapEditor
         'arrowstyle' => ['classic', 'compact', 'flat'],
     ];
 
+    /** Largest custom arrow head factor (ARROWSTYLE <length> <width>) */
+    private const ARROW_FACTOR_MAX = 20;
+
     /** How far a bandwidth label may be moved across its link, in pixels */
     private const LABEL_SHIFT_MAX = 60;
 
@@ -651,6 +654,8 @@ class MapEditor
                     } else {
                         $link->$field = (int) $value;
                     }
+                } elseif ($key === 'arrowstyle') {
+                    $link->arrowstyle = self::arrowStyle($value);
                 } elseif (isset(self::LINK_CHOICES[$key])) {
                     if (!in_array($value, self::LINK_CHOICES[$key], true)) {
                         throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
@@ -1419,8 +1424,7 @@ class MapEditor
                 : throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value])),
             'link_bwstyle' => in_array($value, self::LINK_CHOICES['bwstyle'], true) ? $value
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
-            'link_arrowstyle' => in_array($value, self::LINK_CHOICES['arrowstyle'], true) ? $value
-                : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
+            'link_arrowstyle' => self::arrowStyle($value, $key),
         };
 
         foreach ($fields as $field) {
@@ -1474,6 +1478,27 @@ class MapEditor
         };
         $link->bwlabelformats[IN] = $in;
         $link->bwlabelformats[OUT] = $out;
+    }
+
+    /**
+     * ARROWSTYLE as the editor may set it: one of the named styles, or a
+     * custom head size "<length> <width>" (each 1 to ARROW_FACTOR_MAX), as
+     * a map file may have it.
+     */
+    private static function arrowStyle(mixed $value, string $key = 'arrowstyle'): string
+    {
+        $value = is_scalar($value) ? trim((string) $value) : '';
+        if (in_array($value, self::LINK_CHOICES['arrowstyle'], true)) {
+            return $value;
+        }
+        if (preg_match('/^(\d{1,3})\s+(\d{1,3})$/', $value, $m)) {
+            $length = (int) $m[1];
+            $width = (int) $m[2];
+            if ($length >= 1 && $width >= 1 && $length <= self::ARROW_FACTOR_MAX && $width <= self::ARROW_FACTOR_MAX) {
+                return $length . ' ' . $width;
+            }
+        }
+        throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
     }
 
     /** BWSTYLE of a link: classic, angled or pill */

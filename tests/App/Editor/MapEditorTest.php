@@ -456,6 +456,42 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['arrowstyle' => 'round']]]);
     }
 
+    /** A custom arrow head size (ARROWSTYLE <length> <width>) can be kept, changed and used as the default */
+    public function testCustomArrowHeadSize(): void
+    {
+        file_put_contents($this->file, str_replace("LINK core-paris\n", "LINK core-paris\n\tARROWSTYLE 2 1\n", (string) file_get_contents($this->file)));
+        $links = array_column(MapEditor::model($this->editor->load())['links'], null, 'name');
+        $this->assertSame('2 1', $links['core-paris']['arrowstyle']);
+
+        // choosing the value the panel shows again keeps it
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['arrowstyle' => '2 1']]]);
+        $this->assertStringContainsString('ARROWSTYLE 2 1', (string) file_get_contents($this->file));
+
+        // a new size, spaces tidied
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris', 'core-lyon'], 'props' => ['arrowstyle' => ' 6   3 ']]]);
+        $map = $this->editor->load();
+        $this->assertSame('6 3', $map->links['core-paris']->arrowstyle);
+        $this->assertSame('6 3', $map->links['core-lyon']->arrowstyle);
+
+        // as the link default
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['arrowstyle' => 'classic']]]);
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_arrowstyle' => '3 2']]]);
+        $map = $this->editor->load();
+        $this->assertSame('3 2', $map->links['core-lyon']->arrowstyle);
+        $this->assertSame('6 3', $map->links['core-paris']->arrowstyle, 'its own value stays');
+        $this->assertSame('3 2', MapEditor::model($map)['map']['props']['link_arrowstyle']);
+
+        foreach (['0 2', '2', '21 2', '2 1 1', '-2 1', 'a b'] as $bad) {
+            try {
+                $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['arrowstyle' => $bad]]]);
+                $this->fail('accepted ' . $bad);
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $this->assertSame('6 3', $this->editor->load()->links['core-paris']->arrowstyle);
+    }
+
     public function testBadgeNodeStyleFollowsItsTemplate(): void
     {
         $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'badge']]]);

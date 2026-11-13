@@ -426,7 +426,7 @@
                     ])),
                     field(t('Arrow heads'), choice('link_arrowstyle', p.link_arrowstyle, [
                         ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
-                    ]), t('With no arrow heads, pill labels still show which way the traffic goes.'))
+                    ].concat(/^\d+ \d+$/.test(p.link_arrowstyle) ? [[p.link_arrowstyle, t('Custom size') + ' (' + p.link_arrowstyle + ')']] : [])), t('With no arrow heads, pill labels still show which way the traffic goes.'))
                 ];
             case 'scale':
                 return scalePane(m.scale).concat([
