@@ -555,8 +555,9 @@ final class MapEditorTest extends TestCase
         $this->assertSame('pill', $props['stamp_style']);
         $this->assertTrue($props['link_glow']);
         $this->assertSame('pill', $props['link_bwstyle']);
-        [$colour] = $map->NewColourFromPercent(90, 'DEFAULT');
-        $this->assertSame([229, 83, 28], [$colour->r, $colour->g, $colour->b]);
+        [$colour] = $map->NewColourFromPercent(100, 'DEFAULT');
+        $this->assertSame([229, 83, 28], [(int) round($colour->r), (int) round($colour->g), (int) round($colour->b)]);
+        $this->assertTrue($map->scale_is_smooth('DEFAULT'), 'Night blends its link colours');
 
         $this->assertEquals([26, 30, 38], $map->nodes['lyon']->labelbgcolour, 'a node with the default follows');
         $this->assertEquals([255, 128, 0], $map->nodes['paris']->labelbgcolour, 'its own colour stays');
@@ -574,6 +575,28 @@ final class MapEditorTest extends TestCase
         } catch (InvalidArgumentException) {
             $this->assertSame($conf, (string) file_get_contents($this->file));
         }
+    }
+
+    /** Every theme replaces all that the one before set, on the same design base */
+    public function testThemesReplaceEachOther(): void
+    {
+        $this->editor->apply([['op' => 'apply_theme', 'theme' => 'night']]);
+        $this->editor->apply([['op' => 'apply_theme', 'theme' => 'day']]);
+
+        $map = $this->editor->load();
+        $props = MapEditor::model($map)['map']['props'];
+        $this->assertSame('#f6f4ef', $props['bg_colour']);
+        $this->assertFalse($props['link_glow'], 'Day has no glow');
+        $this->assertSame('modern', $props['key_style'], 'the shared base stays');
+        $this->assertEquals([31, 36, 48], $map->nodes['lyon']->labelfontcolour, 'labels follow the new theme');
+        $this->assertTrue($map->scale_is_smooth('DEFAULT'));
+        $this->assertStringNotContainsString('link_glow', (string) file_get_contents($this->file));
+
+        $this->editor->apply([['op' => 'apply_theme', 'theme' => 'contrast']]);
+        $map = $this->editor->load();
+        $this->assertFalse($map->scale_is_smooth('DEFAULT'), 'High contrast keeps steps');
+        [$colour] = $map->NewColourFromPercent(90, 'DEFAULT');
+        $this->assertSame('#8e1b3f', $colour->as_html());
     }
 
     public function testBackgroundSizingIsAMapSetting(): void

@@ -233,7 +233,7 @@
     }
 
     /** Names of the map themes (App\Services\Editor\MapThemes) */
-    var THEME_NAMES = { night: t('Night') };
+    var THEME_NAMES = { night: t('Night'), day: t('Day'), ocean: t('Ocean'), contrast: t('High contrast') };
 
     function themeTitle(name) {
         return t('Theme: :name', { name: THEME_NAMES[name] || name });

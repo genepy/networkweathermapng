@@ -498,8 +498,18 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   bandwidth): one row per step, with a preview bar. Presets start from the
   classic Weathermap colours, a traffic light, a colour-blind safe scale
   (Okabe and Ito colours), a heat scale or a single blue that darkens with
-  the load. The presets but the classic one read on light and dark
-  backgrounds. A step that fades between two colours keeps them.
+  the load, and three smooth scales (green to red, cream to amber to red for
+  dark maps, a colour-blind safe blue to orange). The presets but the
+  classic one read on light and dark backgrounds.
+- **Smooth link colours**: with *Smooth gradient* on, each step fades into
+  the next one (`SCALE 0 40 r g b r2 g2 b2`, the second colour is where the
+  step ends, as in PHP Weathermap), so a link takes the colour of its exact
+  load instead of a block of colour, and every legend (the *modern*,
+  *horizontal* and *vertical* styles, the *Traffic legend* box, the live
+  map's legend) draws one gradient bar: a linear gradient in the SVG, one
+  column of pixels per step in the PNG. Each row then has a start and an
+  end colour; changing where a step starts also moves the end of the step
+  before.
 - **Saturated links**: the same section has a switch that makes the links at
   80 % or more (in either direction) pulse and glow on the live map
   (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
@@ -542,13 +552,16 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   leaves one out, for example a backbone link whose traffic is already
   counted on the access links. Both hints can go in `NODE DEFAULT` /
   `LINK DEFAULT`.
-- **Themes**: *Apply the theme* in the *Background colour and theme*
-  section of *Map properties*
-  restyles the whole map in one click, saved at once and undone with
-  Ctrl+Z. *Night* (an idea from the Nine IX traffic map): a dark canvas,
-  links from cream to amber as the load grows, with the glow, pill link
-  labels, dark node and link labels with light text, and the modern legend card with a gold edge.
-  A theme only writes ordinary settings (colours, `KEYSTYLE`, the `SCALE`
+- **Themes**: the theme cards of the *Background colour and theme*
+  section of *Map properties* restyle the whole map in one click, saved at
+  once and undone with Ctrl+Z. Every theme shares one design base (the
+  modern legend card, the timestamp pill and pill link labels), so only the
+  palette changes: *Night* (an idea from the Nine IX traffic map: a dark
+  canvas, glowing links that fade from cream to amber to red, gold-edged
+  cards), *Day* (a warm light canvas, green to red), *Ocean* (deep blue,
+  glowing links from cyan to pink) and *High contrast* (white and black,
+  colour-blind safe steps). Each card shows the canvas, a label and the
+  link colours. A theme only writes ordinary settings (colours, `KEYSTYLE`, the `SCALE`
   steps, the label colours of `NODE DEFAULT` and `LINK DEFAULT`); nodes and
   links with their own colours keep them.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and

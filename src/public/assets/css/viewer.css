@@ -772,6 +772,8 @@
     border-radius: 3px;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wm-text) 15%, transparent);
 }
+/* a smooth scale: one long gradient bar */
+.wmv-scale-smooth .wmv-scale-swatch { flex: 1 1 auto; width: auto; }
 /* the legend lives in the panel while it is open */
 .wmv-panel-open .wmv-status .wmv-legend { display: none; }
 /* a node of the list, hovered */

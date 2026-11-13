@@ -53,6 +53,7 @@ class SvgEditorController extends BaseController
             'backgrounds' => $this->backgrounds()->all(),
             'fonts' => MapEditor::shippedFonts(),
             'themeColours' => MapThemes::colours(),
+            'themes' => MapThemes::previews(),
             'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
     }

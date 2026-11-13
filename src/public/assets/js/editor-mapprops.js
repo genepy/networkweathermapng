@@ -42,12 +42,47 @@
         ['blue', t('One colour: blue, darker when loaded'), [
             [0, 0, '#9aa0a6'], [0, 20, '#9ecae1'], [20, 40, '#6baed6'], [40, 60, '#3182bd'],
             [60, 80, '#1c5fa0'], [80, 100, '#0b3a75']
-        ]]
+        ]],
+        ['smooth-traffic', t('Smooth: green, amber, red'),
+            smooth('#9aa0a6', [[0, '#2e9e4f'], [40, '#d9b21b'], [70, '#f08c1a'], [100, '#d93025']])],
+        ['smooth-amber', t('Smooth: cream to amber to red, for dark maps'),
+            smooth('#5d6472', [[0, '#efe7d2'], [30, '#f4c76d'], [60, '#f2992c'], [100, '#e5531c']])],
+        ['smooth-colourblind', t('Smooth: colour-blind safe, blue to orange'),
+            smooth('#9aa0a6', [[0, '#56b4e9'], [30, '#0072b2'], [55, '#009e73'], [75, '#e69f00'], [100, '#d55e00']])]
     ];
+
+    /**
+     * Steps of a smooth scale: the idle (0 to 0) colour, then one step per
+     * pair of stops [load %, colour] that fades from one to the next.
+     */
+    function smooth(idle, stops) {
+        var rows = [[0, 0, idle]];
+        for (var i = 0; i + 1 < stops.length; i++) {
+            rows.push([stops[i][0], stops[i + 1][0], stops[i][1], stops[i + 1][1]]);
+        }
+        return rows;
+    }
 
     function presetRows(id) {
         var p = PRESETS.filter(function (x) { return x[0] === id; })[0];
-        return p ? p[2].map(function (r) { return { bottom: r[0], top: r[1], colour: r[2], colour2: '', tag: '' }; }) : [];
+        return p ? p[2].map(function (r) { return { bottom: r[0], top: r[1], colour: r[2], colour2: r[3] || '', tag: '' }; }) : [];
+    }
+
+    /** A step that can fade: it covers a range and has a colour */
+    function blends(r) {
+        return r.colour !== 'none' && +r.top > +r.bottom;
+    }
+
+    /**
+     * Make every step fade into the colour the next one starts with; the
+     * last step (or one before a gap) keeps its own end colour.
+     */
+    function chainRows(rows) {
+        rows.forEach(function (r) {
+            if (!blends(r)) { r.colour2 = ''; return; }
+            var next = rows.filter(function (n) { return n !== r && blends(n) && +n.bottom === +r.top; })[0];
+            r.colour2 = next ? next.colour : (r.colour2 || r.colour);
+        });
     }
 
     function scaleJson(rows) {
@@ -59,6 +94,15 @@
         scaleRows = (steps || []).map(function (s) { return Object.assign({}, s); });
         scaleStart = scaleJson(scaleRows);
         var list = h('div', { 'class': 'scale-list' });
+        var smoothBox = h('input', { type: 'checkbox', checked: scaleRows.some(function (r) { return !!r.colour2; }) });
+        smoothBox.addEventListener('change', function () {
+            if (smoothBox.checked) {
+                chainRows(scaleRows);
+            } else {
+                scaleRows.forEach(function (r) { r.colour2 = ''; });
+            }
+            render();
+        });
         var bar = h('div', { 'class': 'scale-bar', 'aria-hidden': 'true' });
         var msg = h('span', { 'class': 'hint scale-msg', role: 'status' });
 
@@ -75,15 +119,40 @@
                     return inp;
                 }
                 var none = r.colour === 'none';
-                var pick = h('input', { type: 'color', value: none ? '#ffffff' : r.colour, disabled: none, 'aria-label': t('Colour'), 'data-none': '' });
-                pick.addEventListener('input', function () { r.colour = pick.value; r.colour2 = ''; preview(); });
+                var fades = smoothBox.checked && blends(r);
+                var pick = h('input', { type: 'color', value: none ? '#ffffff' : r.colour, disabled: none,
+                    'aria-label': fades ? t('Colour at :value %', { value: r.bottom }) : t('Colour'), 'data-none': '' });
+                pick.addEventListener('input', function () {
+                    var old = r.colour;
+                    r.colour = pick.value;
+                    if (smoothBox.checked) {
+                        // the step before ends where this one starts: it keeps fading into it
+                        scaleRows.forEach(function (o) { if (o !== r && +o.top === +r.bottom && o.colour2 === old) { o.colour2 = r.colour; } });
+                    } else {
+                        r.colour2 = '';
+                    }
+                    preview();
+                });
+                pick.addEventListener('change', function () { if (smoothBox.checked) { render(); } });
                 var off = h('input', { type: 'checkbox', checked: none, title: t('No colour: links in this step are not drawn') });
-                off.addEventListener('change', function () { r.colour = off.checked ? 'none' : pick.value; pick.disabled = off.checked; preview(); });
+                off.addEventListener('change', function () {
+                    r.colour = off.checked ? 'none' : pick.value;
+                    if (off.checked) { r.colour2 = ''; }
+                    pick.disabled = off.checked;
+                    if (smoothBox.checked) { render(); } else { preview(); }
+                });
                 pick.addEventListener('wm-colour-none', function () { off.checked = true; off.dispatchEvent(new Event('change', { bubbles: true })); });
-                return h('div', { 'class': 'scale-row' }, [
+                var end = null;
+                if (fades) {
+                    end = h('input', { type: 'color', value: r.colour2 || r.colour, 'aria-label': t('Colour at :value %', { value: r.top }), 'data-k': 'colour2' });
+                    end.addEventListener('input', function () { r.colour2 = end.value; preview(); });
+                }
+                return h('div', { 'class': 'scale-row' + (fades ? ' fades' : '') }, [
                     num('bottom', t('From (%)')), h('span', { text: '–' }), num('top', t('To (%)')), h('span', { text: '%' }),
-                    pick, h('label', { 'class': 'inline' }, [off, ' ' + t('None')]),
-                    r.colour2 ? h('span', { 'class': 'hint', text: t('gradient'), title: t('This step fades to :colour', { colour: r.colour2 }) }) : null,
+                    pick,
+                    fades ? h('span', { 'class': 'scale-to', text: '→', 'aria-hidden': 'true' }) : null,
+                    fades ? end : h('label', { 'class': 'inline' }, [off, ' ' + t('None')]),
+                    !smoothBox.checked && r.colour2 ? h('span', { 'class': 'hint', text: t('gradient'), title: t('This step fades to :colour', { colour: r.colour2 }) }) : null,
                     h('button', { type: 'button', text: '×', title: t('Remove this step'), 'aria-label': t('Remove this step'), disabled: scaleRows.length < 2,
                         onclick: function () { scaleRows.splice(i, 1); render(); } })
                 ]);
@@ -108,12 +177,14 @@
             if (!preset.value) { return; }
             scaleRows = presetRows(preset.value);
             preset.value = '';
+            smoothBox.checked = scaleRows.some(function (r) { return !!r.colour2; });
             render();
         });
         var add = h('button', { type: 'button', text: t('Add a step'), onclick: function () {
             var last = scaleRows[scaleRows.length - 1];
             var from = last ? Math.min(100, +last.top) : 0;
-            scaleRows.push({ bottom: from, top: 100, colour: last && last.colour !== 'none' ? last.colour : '#808080', colour2: '', tag: '' });
+            var colour = last && last.colour !== 'none' ? (last.colour2 || last.colour) : '#808080';
+            scaleRows.push({ bottom: from, top: 100, colour: colour, colour2: smoothBox.checked ? colour : '', tag: '' });
             render();
         } });
 
@@ -125,6 +196,7 @@
         } });
         var reset = h('button', { type: 'button', text: t('Reset'), title: t('Back to the saved colours'), onclick: function () {
             scaleRows = JSON.parse(scaleStart).map(function (r) { return { bottom: r[0], top: r[1], colour: r[2], colour2: r[3], tag: r[4] }; });
+            smoothBox.checked = scaleRows.some(function (r) { return !!r.colour2; });
             render();
         } });
 
@@ -132,6 +204,8 @@
         return [
             h('p', { 'class': 'mapprops-explain', text: t('The colour of a link follows its load, in % of its bandwidth: each step gives the colour from one value to the next. A 0 to 0 step colours the links without traffic. The legend shows these steps.') }),
             field(t('Start from a preset'), preset, t('Replaces the steps below. Nothing is saved before Apply.')),
+            h('label', { 'class': 'inline scale-smooth' }, [smoothBox, ' ' + t('Smooth gradient')]),
+            h('span', { 'class': 'hint', text: t('Each step fades into the next one: a link takes the colour of its exact load, and the legends show a gradient bar.') }),
             bar,
             list,
             h('div', { 'class': 'pair' }, [add, msg]),
@@ -329,26 +403,53 @@
         return h('label', { 'class': 'inline' }, [h('input', { type: 'checkbox', name: name, checked: checked }), ' ' + label]);
     }
 
-    /** Themes the server knows (MapThemes), by id */
-    var THEMES = [['night', t('Night: dark canvas, cream to amber glowing links')]];
+    /**
+     * Themes the server knows (MapThemes), by id: name and what sets it
+     * apart. They share one design base (legend card, timestamp and link
+     * label pills), so only the colours change from one to the next.
+     */
+    var THEMES = [
+        ['night', t('Night'), t('Dark canvas, cream to amber glowing links')],
+        ['day', t('Day'), t('Warm light canvas, green to red links')],
+        ['ocean', t('Ocean'), t('Deep blue canvas, cyan to pink glowing links')],
+        ['contrast', t('High contrast'), t('White canvas, black text, colour-blind safe steps')]
+    ];
 
-    /** The theme row of the General tab: applied and saved at once, one undo step */
+    /** The scale of a theme as a CSS gradient, from its stops [load %, colour] */
+    function scaleCss(stops) {
+        return 'linear-gradient(90deg,' + stops.map(function (s) { return s[1] + ' ' + s[0] + '%'; }).join(',') + ')';
+    }
+
+    /**
+     * The theme row of the Appearance section: one card per theme (its
+     * canvas, a label and its link colours), applied and saved at once on
+     * click, as one undo step.
+     */
     function themePane() {
-        var pick = h('select', { 'aria-label': t('Theme') }, THEMES.map(function (x) {
-            return h('option', { value: x[0], text: x[1] });
+        var looks = (window.WM_EDITOR && window.WM_EDITOR.themes) || {};
+        var cards = h('div', { 'class': 'theme-cards', role: 'group', 'aria-label': t('Theme') }, THEMES.map(function (x) {
+            var look = looks[x[0]] || { bg: '#888888', text: '#000000', card: '#ffffff', edge: '#888888', smooth: false, scale: [] };
+            var card = h('button', { type: 'button', 'class': 'theme-card', 'data-theme-id': x[0], title: x[2] }, [
+                h('span', { 'class': 'theme-swatch', style: 'background:' + look.bg, 'aria-hidden': 'true' }, [
+                    h('span', { 'class': 'theme-label', style: 'background:' + look.card + ';color:' + look.text + ';border-color:' + look.edge, text: 'Aa' }),
+                    h('span', { 'class': 'theme-scale', style: 'background:' + scaleCss(look.scale) })
+                ]),
+                h('span', { 'class': 'theme-name', text: x[1] }),
+                h('span', { 'class': 'theme-kind', text: look.smooth ? t('Smooth gradient') : t('Steps') })
+            ]);
+            card.addEventListener('click', function () {
+                var done = false;
+                cards.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+                ed.send([{ op: 'apply_theme', theme: x[0] }], function () { done = true; return undefined; }).then(function () {
+                    if (done) { ed.toast(t('Theme applied: :name. Ctrl+Z to undo.', { name: x[1] })); }
+                }).finally(function () { cards.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); });
+            });
+            return card;
         }));
-        var go = h('button', { type: 'button', text: t('Apply the theme') });
-        go.addEventListener('click', function () {
-            var name = pick.selectedOptions[0].text, done = false;
-            go.disabled = true;
-            ed.send([{ op: 'apply_theme', theme: pick.value }], function () { done = true; return undefined; }).then(function () {
-                if (done) { ed.toast(t('Theme applied: :name. Ctrl+Z to undo.', { name: name })); }
-            }).finally(function () { go.disabled = false; });
-        });
         return [
             h('h4', { text: t('Theme') }),
-            h('div', { 'class': 'pair' }, [pick, go]),
-            h('span', { 'class': 'hint', text: t('Sets the colours of the map, the legend, the link colours and the default node and link labels. Ctrl+Z undoes it.') })
+            cards,
+            h('span', { 'class': 'hint', text: t('Click a theme to apply it: the colours of the map and the legend, the link colours and the default node and link labels. Every theme has the same legend and label styles. Ctrl+Z undoes it.') })
         ];
     }
 

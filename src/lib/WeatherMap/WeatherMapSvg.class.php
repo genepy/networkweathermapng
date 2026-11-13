@@ -118,6 +118,28 @@ class WeatherMapSvg {
 		);
 	}
 
+	/**
+	 * A bar filled with a linear gradient (a smooth legend): $stops is a
+	 * list of array(offset 0..1, array(r, g, b) or null), from 0% to 100%;
+	 * $direction is right, down or up. Recorded for a map item only.
+	 */
+	function gradient($x1, $y1, $x2, $y2, $stops, $direction = 'right') {
+		if ($this->owner === null || !$stops) {
+			return;
+		}
+		list($dx, $dy) = $this->offset;
+		$this->items[] = array(
+			'type'      => 'gradient',
+			'owner'     => $this->owner,
+			'x1'        => min($x1, $x2) + $dx,
+			'y1'        => min($y1, $y2) + $dy,
+			'x2'        => max($x1, $x2) + $dx,
+			'y2'        => max($y1, $y2) + $dy,
+			'stops'     => $stops,
+			'direction' => $direction,
+		);
+	}
+
 	/** A one-pixel GD line, recorded for a map item only */
 	function line($x1, $y1, $x2, $y2, $colour) {
 		if ($this->owner === null) {
@@ -622,6 +644,9 @@ class WeatherMapSvg {
 					self::num($item['x2'] - $item['x1']), self::num($item['y2'] - $item['y1']),
 					self::paint('stroke', $item['colour']));
 
+			case 'gradient':
+				return $this->gradientElement($item);
+
 			case 'line':
 				$p = $item['points'];
 				return sprintf('<line x1="%s" y1="%s" x2="%s" y2="%s" stroke-width="1"%s shape-rendering="crispEdges"/>',
@@ -633,6 +658,27 @@ class WeatherMapSvg {
 		}
 
 		return '';
+	}
+
+	/**
+	 * A rectangle and its gradient. The id comes from the gradient itself,
+	 * so two maps on one page that share an id also share the same stops.
+	 */
+	function gradientElement($item) {
+		$ends = array('right' => array(0, 0, 1, 0), 'down' => array(0, 0, 0, 1), 'up' => array(0, 1, 0, 0));
+		$e = isset($ends[$item['direction']]) ? $ends[$item['direction']] : $ends['right'];
+		$stops = '';
+		foreach ($item['stops'] as $stop) {
+			list($offset, $rgb) = $stop;
+			$stops .= sprintf('<stop offset="%s" stop-color="%s"%s/>', self::num($offset),
+				$rgb ? sprintf('#%02x%02x%02x', $rgb[0], $rgb[1], $rgb[2]) : '#000000',
+				$rgb ? '' : ' stop-opacity="0"');
+		}
+		$id = 'wm-scale-' . substr(md5(implode(',', $e) . $stops), 0, 10);
+		return sprintf('<defs><linearGradient id="%s" x1="%d" y1="%d" x2="%d" y2="%d">%s</linearGradient></defs>', $id, $e[0], $e[1], $e[2], $e[3], $stops)
+			. sprintf('<rect class="wm-scale-bar" x="%s" y="%s" width="%s" height="%s" fill="url(#%s)"/>',
+				self::num($item['x1']), self::num($item['y1']),
+				self::num($item['x2'] - $item['x1'] + 1), self::num($item['y2'] - $item['y1'] + 1), $id);
 	}
 
 	function nodeElements($n) {

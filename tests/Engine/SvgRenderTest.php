@@ -104,6 +104,68 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
     }
 
+    /** A scale that blends: a link takes the colour of its exact load, the legends draw one gradient bar */
+    public function testSmoothScaleGivesGradientLegends(): void
+    {
+        $conf = "WIDTH 700\nHEIGHT 500\nKEYPOS DEFAULT 20 40 Traffic load\nKEYSTYLE DEFAULT modern 240\n"
+            . "KEYPOS other 400 40 Other\nKEYSTYLE other vertical 200\n"
+            . "SCALE DEFAULT 0 0 128 128 128\nSCALE DEFAULT 0 50 0 255 0 255 255 0\nSCALE DEFAULT 50 100 255 255 0 255 0 0\n"
+            . "SCALE other 0 50 0 0 255\nSCALE other 50 100 255 0 0\n";
+        $file = TESTS_OUTPUT . '/smooth-legend.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $this->assertTrue($map->scale_is_smooth('DEFAULT'));
+        $this->assertFalse($map->scale_is_smooth('other'));
+        [$c] = $map->NewColourFromPercent(25, 'DEFAULT');
+        $this->assertSame([128, 255, 0], [(int) round($c->r), (int) round($c->g), (int) round($c->b)], 'halfway from green to yellow');
+        $this->assertEquals([[0, [0, 255, 0]], [0.5, [255, 255, 0]], [0.5, [255, 255, 0]], [1, [255, 0, 0]]], $map->scale_stops('DEFAULT'), 'the 0 to 0 step is not in the bar');
+
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $legend = '//s:g[@data-kind="legend"][@data-name="DEFAULT"]';
+        $bar = $xpath->query($legend . '/s:rect[@class="wm-scale-bar"]');
+        $this->assertSame(1, $bar->length, 'one bar');
+        $this->assertSame(0, $xpath->query($legend . '/s:rect[not(@class)]')->length, 'no stepped pieces');
+        $id = substr($bar->item(0)->getAttribute('fill'), 5, -1);
+        $stops = $xpath->query('//s:linearGradient[@id="' . $id . '"]/s:stop');
+        $this->assertSame(['#00ff00', '#ffff00', '#ffff00', '#ff0000'], array_map(fn ($n) => $n->getAttribute('stop-color'), iterator_to_array($stops)));
+
+        $this->assertSame(0, $xpath->query('//s:g[@data-kind="legend"][@data-name="other"]//s:linearGradient')->length, 'a stepped scale keeps its steps');
+    }
+
+    public function testSmoothBarInThePng(): void
+    {
+        $file = TESTS_OUTPUT . '/smooth-png.conf';
+        file_put_contents($file, "WIDTH 300\nHEIGHT 100\nBGCOLOR 255 255 255\nKEYPOS DEFAULT 0 0 Load\nKEYSTYLE DEFAULT modern 200\n"
+            . "SCALE DEFAULT 0 100 0 0 255 255 0 0\n");
+        $map = $this->load($file);
+        $png = TESTS_OUTPUT . '/smooth.png';
+        ob_start();
+        $map->DrawMap($png);
+        ob_end_clean();
+
+        $im = imagecreatefrompng($png);
+        $this->assertNotFalse($im);
+        // the bar runs from x = 10 to 210 in the card: blue on the left, red on the right, purple between
+        $y = 0;
+        for ($yy = 0; $yy < 60; $yy++) {
+            $c = imagecolorsforindex($im, imagecolorat($im, 110, $yy));
+            if ($c['red'] > 100 && $c['blue'] > 100 && $c['green'] < 40) {
+                $y = $yy;
+                break;
+            }
+        }
+        $this->assertGreaterThan(0, $y, 'a purple column in the middle of the bar');
+        $left = imagecolorsforindex($im, imagecolorat($im, 12, $y));
+        $right = imagecolorsforindex($im, imagecolorat($im, 208, $y));
+        $this->assertGreaterThan($left['red'], $left['blue']);
+        $this->assertGreaterThan($right['blue'], $right['red']);
+    }
+
     /** A wide link between close nodes gets shorter arrowheads instead of vanishing */
     public function testAWideShortLinkIsStillDrawn(): void
     {
