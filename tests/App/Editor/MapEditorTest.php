@@ -13,6 +13,7 @@ final class MapEditorTest extends TestCase
 {
     private string $file;
     private MapEditor $editor;
+    private string|false $cwd = false;
 
     protected function setUp(): void
     {
@@ -28,6 +29,20 @@ final class MapEditorTest extends TestCase
         $this->file = $dir . '/map.conf';
         copy(TESTS_ROOT . '/fixtures/maps/basic.conf', $this->file);
         $this->editor = new MapEditor($this->file);
+    }
+
+    /** Run the rest of the test from the web root, as the editor does: themes write shipped fonts (fonts/...) */
+    private function fromWebRoot(): void
+    {
+        $this->cwd = getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public');
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->cwd !== false) {
+            chdir($this->cwd);
+        }
     }
 
     public function testMovingSeveralNodesIsOneSave(): void
@@ -545,6 +560,7 @@ final class MapEditorTest extends TestCase
     /** The Night theme: map colours, scale and the DEFAULT labels, in one batch; own values stay */
     public function testNightThemeInOneStep(): void
     {
+        $this->fromWebRoot();
         $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['labelbgcolour' => '#ff8000']]]);
         $this->editor->apply([['op' => 'apply_theme', 'theme' => 'night']]);
 
@@ -580,6 +596,7 @@ final class MapEditorTest extends TestCase
     /** Every theme replaces all that the one before set, on the same design base */
     public function testThemesReplaceEachOther(): void
     {
+        $this->fromWebRoot();
         $this->editor->apply([['op' => 'apply_theme', 'theme' => 'night']]);
         $this->editor->apply([['op' => 'apply_theme', 'theme' => 'day']]);
 

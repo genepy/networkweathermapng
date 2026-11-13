@@ -392,6 +392,24 @@ CONF);
      * PHP-FPM does not run in that folder: the render goes there, and the
      * engine warnings never reach the standard error.
      */
+    /** New maps use Inter, shipped with the application, in the PNG and the SVG */
+    public function testNewMapsUseTheShippedInterFont(): void
+    {
+        $id = $this->maps->createMap(['name' => 'Inter map']);
+        $conf = (string) $this->maps->getMapConfig($id);
+        $this->assertStringContainsString('FONTDEFINE 10 fonts/Inter-Regular.ttf 8', $conf);
+        $this->assertStringContainsString('FONTDEFINE 13 fonts/Inter-SemiBold.ttf 12', $conf);
+        $this->assertStringContainsString('TITLEFONT 13', $conf);
+        $this->assertSame(dirname(TESTS_ROOT) . '/src/public/fonts/Inter-SemiBold.ttf', $this->maps->fontFile($id, 13));
+
+        $result = $this->maps->renderMap($id, true, true);
+        $this->assertIsArray($result);
+        $this->assertArrayNotHasKey('error', $result);
+        $svg = (string) file_get_contents($this->maps->viewerPaths($this->maps->getMap($id) ?? [])['svg']);
+        $this->assertStringContainsString('font-family="wmfont13, sans-serif"', $svg, 'the title is drawn in Inter');
+        $this->assertStringNotContainsString('monospace', $svg, 'no text falls back to the pixel fonts');
+    }
+
     public function testRenderFindsRelativeFontsFromAnyFolder(): void
     {
         $id = $this->maps->createMap(['name' => 'Relative fonts']);

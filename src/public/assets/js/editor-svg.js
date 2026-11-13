@@ -2845,8 +2845,78 @@
         });
     }
 
-    function fontOptions() {
-        return state.model.fonts.map(function (f) { return [f, fontName(f)]; });
+    /** TrueType size standing in for the GD built-in fonts 1 to 5 (MapEditor::BUILTIN_FONTS) */
+    var BUILTIN_SIZES = { 1: 7, 2: 8, 3: 8, 4: 10, 5: 10 };
+
+    /**
+     * A font choice: any shipped font (or another file the map uses) and a
+     * size, or a built-in pixel font. `value` is a font number of the map,
+     * null when the selection mixes fonts. onPick gets a font number, or
+     * "<file>@<size>" that the server turns into a font of the map (one with
+     * that file and size, or a new one).
+     */
+    function fontPicker(value, onPick, label) {
+        var infos = state.model.font_info || {};
+        var cur = value === null || value === undefined || value === '' ? null : infos[value];
+        var hasFile = !!(cur && cur.size);
+        var shipped = (window.WM_EDITOR.fonts || []).map(function (f) { return f.file; });
+        var others = [];
+        Object.keys(infos).forEach(function (n) {
+            var f = infos[n];
+            if (f.size && shipped.indexOf(f.file) < 0 && others.indexOf(f.file) < 0) { others.push(f.file); }
+        });
+        // the numbers that are not TrueType: GD's own 1 to 5 (the server leaves them out of font_info)
+        var builtins = [];
+        [1, 2, 3, 4, 5].concat(state.model.fonts).forEach(function (n) {
+            if (!(infos[n] && infos[n].size) && builtins.indexOf(+n) < 0) { builtins.push(+n); }
+        });
+
+        function opt(val, text) {
+            var selected = value !== null && (hasFile ? val === cur.file : val === 'n:' + value);
+            return h('option', { value: val, text: text, selected: selected });
+        }
+        var groups = [h('optgroup', { label: t('Fonts') }, (window.WM_EDITOR.fonts || []).map(function (f) { return opt(f.file, f.label); }))];
+        if (others.length) {
+            groups.push(h('optgroup', { label: t('Other fonts of this map') }, others.map(function (file) {
+                var n = Object.keys(infos).filter(function (k) { return infos[k].file === file; })[0];
+                return opt(file, infos[n].label);
+            })));
+        }
+        if (builtins.length) {
+            groups.push(h('optgroup', { label: t('Pixel fonts, without curves') }, builtins.map(function (n) {
+                return opt('n:' + n, fontName(n));
+            })));
+        }
+        var select = h('select', { 'class': 'font-select', 'aria-label': label || t('Font') },
+            (value === null ? [h('option', { value: '', text: t('(mixed)'), selected: true })] : []).concat(groups));
+        var size = h('input', {
+            type: 'number', min: 4, max: 96, 'class': 'font-size', value: hasFile ? cur.size : '',
+            disabled: !hasFile, 'aria-label': t('Font size'), title: t('Font size')
+        });
+
+        function pick() {
+            var v = select.value;
+            if (!v) { return; }
+            if (v.indexOf('n:') === 0) { onPick(+v.slice(2)); return; }
+            var px = +size.value || (cur && cur.size) || BUILTIN_SIZES[value] || 10;
+            onPick(v + '@' + Math.max(4, Math.min(96, Math.round(px))));
+        }
+        select.addEventListener('change', function () {
+            size.disabled = select.value.indexOf('n:') === 0 || !select.value;
+            pick();
+        });
+        size.addEventListener('change', function () { if (!size.disabled && select.value) { pick(); } });
+        return h('div', { 'class': 'pair font-pick' }, [select, size]);
+    }
+
+    /** The font of the selected nodes, links or zones (`name`: labelfont, bwfont, commentfont) */
+    function fontField(items, name, kind) {
+        var c = common(items, name);
+        return fontPicker(c.mixed ? null : c.value, function (v) {
+            var props = {};
+            props[name] = v;
+            send([{ op: 'set_' + kind, names: items.map(function (i) { return i.name; }), props: props }]);
+        });
     }
 
     /** "Fira Sans 10", or "Built-in 3" for the fonts drawn by GD itself */
@@ -2883,7 +2953,7 @@
         out.push(
             row(t('Alignment'), field(notes, 'note_align', 'node', { options: [['left', t('Left')], ['centre', t('Centre')], ['right', t('Right')]] })),
             h('h3', { text: t('Text style') }),
-            row(t('Font'), field(notes, 'labelfont', 'node', { options: fontOptions(), number: true })),
+            row(t('Font'), fontField(notes, 'labelfont', 'node')),
             row(t('Background'), colourField(notes, 'labelbgcolour', 'node')),
             row(t('Text'), colourField(notes, 'labelfontcolour', 'node', true)),
             row(t('Outline'), colourField(notes, 'labeloutlinecolour', 'node')),
@@ -2932,7 +3002,7 @@
             labelPositionRow(nodes),
             h('h3', { text: t('Label style') }),
             row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')]] })),
-            row(t('Font'), field(nodes, 'labelfont', 'node', { options: fontOptions(), number: true })),
+            row(t('Font'), fontField(nodes, 'labelfont', 'node')),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
             row(t('Text'), colourField(nodes, 'labelfontcolour', 'node', true)),
             row(t('Outline'), colourField(nodes, 'labeloutlinecolour', 'node')),
@@ -3196,7 +3266,7 @@
             row(t('Outline width'), field(zones, 'outlinewidth', 'zone', { type: 'number', number: true })),
             row(t('Outline style'), field(zones, 'outlinestyle', 'zone', { options: [['solid', t('Solid')], ['dashed', t('Dashed')]] })),
             h('h3', { text: t('Label style') }),
-            row(t('Font'), field(zones, 'labelfont', 'zone', { options: fontOptions(), number: true })),
+            row(t('Font'), fontField(zones, 'labelfont', 'zone')),
             row(t('Text'), colourField(zones, 'labelfontcolour', 'zone')),
             row(t('Placement'), field(zones, 'labelpos', 'zone', { options: [
                 ['NW', t('Top left')], ['N', t('Top centre')], ['NE', t('Top right')],
@@ -3310,7 +3380,8 @@
             row(t('Labels'), field(links, 'labelstyle', 'link', { options: withCurrent(links, 'labelstyle', [
                 ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
             ], t('Custom text')) })),
-            row(t('Label box'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] }))
+            row(t('Label box'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] })),
+            row(t('Label font'), fontField(links, 'bwfont', 'link'))
         );
 
         if (single) {
@@ -3334,6 +3405,7 @@
         }
         out.push(
             row(t('Along the link'), field(links, 'commentcurve', 'link', { options: [['0', t('Straight')], ['1', t('Follow the curve')]] })),
+            row(t('Font'), fontField(links, 'commentfont', 'link')),
             h('p', { 'class': 'help', text: t('Comments follow the curve where it bends gently, in a TrueType font.') })
         );
         return out;
@@ -4733,7 +4805,7 @@
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, keyHint: keyHint, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
-        selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, addNodeHere: addNodeHere, renderInspector: renderInspector,
+        selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, fontPicker: fontPicker, addNodeHere: addNodeHere, renderInspector: renderInspector,
         // for the contextual bar and the command palette (editor-selbar.js, editor-palette.js)
         selectionBox: selectionBox, toCanvas: toCanvas, hasClip: hasClip, menuOpen: menuOpen,
         alignCount: function () { return alignUnits(selectedObjects()).length; },

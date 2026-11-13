@@ -48,6 +48,7 @@ class MapEditor
         'a_offset' => 'a_offset',
         'b_offset' => 'b_offset',
         'bwfont' => 'bwfont',
+        'commentfont' => 'commentfont',
     ];
 
     private const LINK_CHOICES = [
@@ -72,7 +73,7 @@ class MapEditor
         'y' => ['y', 'int'],
         'width' => ['width', 'size'],
         'height' => ['height', 'size'],
-        'labelfont' => ['labelfont', 'int'],
+        'labelfont' => ['labelfont', 'font'],
         'opacity' => ['opacity', 'percent'],
         'outlinewidth' => ['outlinewidth', 'outline'],
         'fillcolour' => ['fillcolour', 'colour'],
@@ -86,6 +87,13 @@ class MapEditor
     ];
 
     private const NOTE_ALIGNS = ['left', 'centre', 'right'];
+
+    /**
+     * The fonts GD draws itself, 1 to 5 (the engine draws them even when the
+     * map has a FONTDEFINE with their number): the TrueType size and weight
+     * that stand in for each when a map font replaces them, n => [size, bold]
+     */
+    private const BUILTIN_FONTS = [1 => [7, false], 2 => [8, false], 3 => [8, true], 4 => [10, false], 5 => [10, true]];
 
     /**
      * Label position presets of the inspector, as compass offsets of the
@@ -167,6 +175,7 @@ class MapEditor
                 'add_box' => $this->addBox($map, $op),
                 'set_box' => $this->setBox($map, (string) ($op['name'] ?? ''), (array) ($op['props'] ?? [])),
                 'define_font' => $this->defineFont($map, $op),
+                'set_map_font' => $this->setMapFont($map, (string) ($op['family'] ?? '')),
                 'set_scale' => $this->setScale($map, (array) ($op['steps'] ?? [])),
                 'apply_theme' => $this->applyTheme($map, (string) ($op['theme'] ?? '')),
                 default => throw new InvalidArgumentException(__('Unknown operation: :op', ['op' => $op['op']])),
@@ -536,6 +545,7 @@ class MapEditor
                         // same bounds as OUTLINEWIDTH in the .conf
                         'outline' => max(0, min(20, (int) $value)),
                         'colour' => $this->zoneColour($value),
+                        'font' => $this->fontNumber($map, $value),
                         default => (int) $value,
                     };
                 } elseif (isset(self::ZONE_CHOICES[$key])) {
@@ -659,9 +669,11 @@ class MapEditor
             foreach ($props as $key => $value) {
                 if (isset(self::NODE_FIELDS[$key])) {
                     $field = self::NODE_FIELDS[$key];
-                    $node->$field = in_array($key, ['label', 'labeloffset'], true)
-                        ? $this->text($value)
-                        : (int) $value;
+                    $node->$field = match ($key) {
+                        'label', 'labeloffset' => $this->text($value),
+                        'labelfont' => $this->fontNumber($map, $value),
+                        default => (int) $value,
+                    };
                 } elseif (isset(self::NODE_COLOURS[$key])) {
                     $field = self::NODE_COLOURS[$key];
                     $node->$field = $this->colour($value);
@@ -777,6 +789,8 @@ class MapEditor
                     $field = self::LINK_FIELDS[$key];
                     if ($key === 'a_offset' || $key === 'b_offset') {
                         $link->$field = $this->anchor((string) $value);
+                    } elseif ($key === 'bwfont' || $key === 'commentfont') {
+                        $link->$field = $this->fontNumber($map, $value);
                     } else {
                         $link->$field = (int) $value;
                     }
@@ -1164,6 +1178,120 @@ class MapEditor
         return trim($name);
     }
 
+    /**
+     * The shipped font families, from the file names (<Family>-<Weight>.ttf):
+     * family => {label, regular: file, bold: file or null}. A family needs a
+     * regular file; its bold is the first file whose weight says bold.
+     *
+     * @return array<string, array{label: string, regular: string, bold: ?string}>
+     */
+    public static function fontFamilies(): array
+    {
+        $out = [];
+        foreach (self::shippedFonts() as $font) {
+            $base = (string) preg_replace('/\.ttf$/i', '', basename($font['file']));
+            [$family, $weight] = array_pad(explode('-', $base, 2), 2, 'Regular');
+            $out[$family] ??= ['label' => self::fontLabel($family . '.ttf'), 'regular' => '', 'bold' => null];
+            if ($weight === 'Regular') {
+                $out[$family]['regular'] = $font['file'];
+            } elseif (self::isBold($weight)) {
+                $out[$family]['bold'] ??= $font['file'];
+            }
+        }
+        $out = array_filter($out, static fn (array $f): bool => $f['regular'] !== '');
+        uasort($out, static fn (array $a, array $b): int => strcmp($a['label'], $b['label']));
+        return $out;
+    }
+
+    /** A font file or weight name that is drawn bold (semi-bold and heavier) */
+    private static function isBold(string $name): bool
+    {
+        return (bool) preg_match('/bold|black|heavy/i', basename($name));
+    }
+
+    /**
+     * A font of the map from what the editor sends: its number, or
+     * "<file>@<size>" for a TrueType file (shipped, or one the map already
+     * uses) at a size. The map font with that file and size is used, or a
+     * new one is defined, so every object can take any shipped font.
+     */
+    private function fontNumber(\WeatherMap $map, mixed $value): int
+    {
+        if (is_string($value) && preg_match('/^(\S+)@(\d+)$/', trim($value), $m)) {
+            foreach ($map->fonts as $n => $font) {
+                if ((int) $n > 5 && $font->type === 'truetype' && (string) $font->file === $m[1] && (int) $font->size === (int) $m[2]) {
+                    return (int) $n;
+                }
+            }
+            return $this->defineFont($map, ['file' => $m[1], 'size' => (int) $m[2]])['fonts'][0];
+        }
+        if (!is_numeric($value) || !in_array((int) $value, array_merge(array_keys(self::BUILTIN_FONTS), array_keys($map->fonts)), true)) {
+            throw new InvalidArgumentException(__('Invalid font: :value', ['value' => (string) (is_scalar($value) ? $value : '')]));
+        }
+        return (int) $value;
+    }
+
+    /**
+     * {op: set_map_font, family} - one shipped font family for every text of
+     * the map (title, legend, timestamp, node, zone and note labels, link
+     * labels and comments), at the same size, bold where it was bold and the
+     * family has a bold file. The TrueType fonts of the map are redefined in
+     * place; a text in one of GD's built-in fonts (1 to 5, which the engine
+     * always draws itself) gets a TrueType font of a matching size. The fonts
+     * picked for single items are replaced too; picking another font for one
+     * afterwards gives it its own font again.
+     */
+    private function setMapFont(\WeatherMap $map, string $family): void
+    {
+        $files = self::fontFamilies()[$family] ?? null;
+        if ($files === null) {
+            throw new InvalidArgumentException(__('Unknown font: :file', ['file' => $family]));
+        }
+        $fileFor = static fn (bool $bold): string => $bold && $files['bold'] !== null ? $files['bold'] : $files['regular'];
+
+        // the TrueType fonts first, so the built-in ones can reuse them
+        foreach ($map->fonts as $n => $font) {
+            if ($font->type === 'truetype' && (int) $n > 5) {
+                $font->file = $fileFor(self::isBold((string) $font->file));
+            }
+        }
+
+        $new = [];
+        $swap = function (mixed $n) use ($map, $fileFor, &$new): int {
+            $n = (int) $n;
+            $font = $map->fonts[$n] ?? null;
+            if ($n > 5 && $font !== null && $font->type === 'truetype') {
+                return $n;
+            }
+            if (!isset($new[$n])) {
+                [$size, $bold] = self::BUILTIN_FONTS[$n] ?? [10, false];
+                $new[$n] = $this->fontNumber($map, $fileFor($bold) . '@' . $size);
+            }
+            return $new[$n];
+        };
+
+        foreach (['titlefont', 'timefont', 'keyfont'] as $field) {
+            $map->$field = $swap($map->$field);
+        }
+        // ':: DEFAULT ::' holds the engine's own defaults, that DEFAULT is written against
+        foreach ($map->nodes as $name => $node) {
+            if (!str_starts_with((string) $name, ':: ')) {
+                $node->labelfont = $swap($node->labelfont);
+            }
+        }
+        foreach ($map->links as $name => $link) {
+            if (str_starts_with((string) $name, ':: ')) {
+                continue;
+            }
+            $link->bwfont = $swap($link->bwfont);
+            $link->commentfont = $swap($link->commentfont);
+        }
+        foreach ($map->zones as $zone) {
+            $zone->labelfont = $swap($zone->labelfont);
+        }
+        ksort($map->fonts);
+    }
+
     /** {op: set_map, width?, height?, resize_mode?: extend|scale, keep_aspect?, scale_sizes?, title?, background?, props?: {...}} */
     private function setMap(\WeatherMap $map, array $op): void
     {
@@ -1337,8 +1465,6 @@ class MapEditor
      */
     private function setMapProps(\WeatherMap $map, array $props): void
     {
-        $fonts = array_merge([1, 2, 3, 4, 5], array_keys($map->fonts));
-
         foreach ($props as $key => $value) {
             if (isset(self::MAP_COLOURS[$key])) {
                 $c = $this->colour($value);
@@ -1356,11 +1482,8 @@ class MapEditor
             } elseif (in_array($key, Basemap::HINTS, true)) {
                 $this->setBasemapHint($map, $key, $value);
             } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
-                if (!in_array((int) $value, $fonts, true)) {
-                    throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value]));
-                }
                 $field = ['title_font' => 'titlefont', 'time_font' => 'timefont', 'key_font' => 'keyfont'][$key];
-                $map->$field = (int) $value;
+                $map->$field = $this->fontNumber($map, $value);
             } elseif ($key === 'key_text') {
                 $map->keytext['DEFAULT'] = $this->text($value);
             } elseif ($key === 'key_style') {
@@ -1432,7 +1555,7 @@ class MapEditor
                     $map->add_hint('background_sizing', $value);
                 }
             } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont', 'link_bwstyle', 'link_arrowstyle'], true)) {
-                $this->setLinkDefault($map, $key, $value, $fonts);
+                $this->setLinkDefault($map, $key, $value);
             } else {
                 throw new InvalidArgumentException(__('Unknown map property: :key', ['key' => $key]));
             }
@@ -1454,6 +1577,9 @@ class MapEditor
 
         $this->setMapProps($map, $theme['map']);
         $this->setScale($map, $theme['scale']);
+        if ($theme['font'] !== null) {
+            $this->setMapFont($map, $theme['font']);
+        }
         foreach (['links' => $theme['link'], 'nodes' => $theme['node']] as $kind => $fields) {
             if (!isset($map->{$kind}['DEFAULT'])) {
                 continue;
@@ -1526,7 +1652,7 @@ class MapEditor
         return $hidden ? [$x, $y] : [-$x - 1, -$y - 1];
     }
 
-    private function setLinkDefault(\WeatherMap $map, string $key, mixed $value, array $fonts): void
+    private function setLinkDefault(\WeatherMap $map, string $key, mixed $value): void
     {
         $default = $map->links['DEFAULT'] ?? null;
         if (!$default) {
@@ -1546,8 +1672,7 @@ class MapEditor
             'link_width' => strtolower((string) $value) === 'auto' ? 'auto' : max(1, (int) $value),
             'link_labelstyle' => in_array($value, self::LINK_CHOICES['labelstyle'], true) ? $value
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
-            'link_bwfont' => in_array((int) $value, $fonts, true) ? (int) $value
-                : throw new InvalidArgumentException(__('Invalid font: :value', ['value' => $value])),
+            'link_bwfont' => $this->fontNumber($map, $value),
             'link_bwstyle' => in_array($value, self::LINK_CHOICES['bwstyle'], true) ? $value
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
             'link_arrowstyle' => self::arrowStyle($value, $key),
@@ -1820,6 +1945,8 @@ class MapEditor
                 'infourl' => (string) ($link->infourl[IN] ?? ''),
                 'hover_url' => implode(' ', (array) ($link->overliburl[IN] ?? [])),
                 'commentcurve' => (string) $link->commentcurve === '1' ? '1' : '0',
+                'bwfont' => (int) $link->bwfont,
+                'commentfont' => (int) $link->commentfont,
                 'bwstyle' => self::bwStyle($link),
                 'labelstyle' => (string) $link->labelstyle,
                 'arrowstyle' => (string) $link->arrowstyle,
@@ -1879,7 +2006,8 @@ class MapEditor
             'font_info' => array_map(static fn ($f) => $f->type === 'truetype'
                 ? ['label' => self::fontLabel((string) $f->file), 'size' => (int) $f->size, 'file' => (string) $f->file]
                 : ['label' => basename((string) $f->file), 'size' => 0, 'file' => (string) $f->file],
-                array_filter($map->fonts, static fn ($f) => (string) $f->file !== '')),
+                // 1 to 5 are drawn by GD whatever FONTDEFINE says
+                array_filter($map->fonts, static fn ($f, $n) => (int) $n > 5 && (string) $f->file !== '', ARRAY_FILTER_USE_BOTH)),
         ];
     }
 

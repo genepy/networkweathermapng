@@ -445,6 +445,9 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .font-n { color: var(--muted); font-size: 12px; }
 #inspector .font-sample { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #inspector .font-add select { flex: 1 1 100px; min-width: 0; }
+#inspector .font-pick { flex-wrap: nowrap; }
+#inspector .font-pick > select { flex: 1 1 auto; min-width: 0; }
+#inspector .font-pick > .font-size { flex: 0 0 58px; width: 58px; min-width: 0; }
 #inspector .font-add input { width: 60px; }
 #inspector .font-add + .font-sample { display: block; margin-top: 8px; padding: 6px 8px; background: #fff; color: #000; border: 1px solid var(--border); border-radius: 4px; }
 #inspector .scale-bar { display: flex; height: 14px; margin: 10px 0; border: 1px solid var(--border); border-radius: 3px; overflow: hidden;

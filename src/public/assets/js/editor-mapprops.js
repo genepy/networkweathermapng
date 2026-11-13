@@ -281,98 +281,95 @@
         ];
     }
 
+    /** Any shipped font at any size for the title, legend, timestamp or link labels, saved at once */
     function fontSelect(name, value) {
-        return h('select', { name: name, 'class': 'font-select' }, ed.state.model.fonts.map(function (f) {
-            return h('option', { value: f, text: ed.fontName(f), selected: +f === +value });
-        }));
+        return ed.fontPicker(value, function (v) {
+            var props = {};
+            props[name] = v;
+            sendProps(props);
+        });
     }
 
     // ------------------------------------------------------------------
-    // Fonts: those of the map, with a sample, and adding one of the fonts
-    // shipped with the application. Saved at once, not with Apply.
+    // Fonts: those the map uses, with a sample and their size, and one
+    // font for every text of the map. Saved at once, not with Apply.
 
     var loadedFaces = {};
 
-    /** A CSS font family drawing font n of this map (the editor serves its file) */
-    function faceFor(n) {
-        var info = ed.state.model.font_info[n];
-        if (!info || !info.size || !window.FontFace) { return null; }
-        var family = 'wm-font-' + n + '-' + info.file.replace(/[^\w]/g, '');
+    /** A CSS font family for the font at `url`, loaded once; `key` names it */
+    function face(key, url) {
+        if (!window.FontFace) { return null; }
+        var family = 'wm-font-' + key.replace(/[^\w]/g, '');
         if (!loadedFaces[family]) {
-            loadedFaces[family] = new FontFace(family, 'url(/editor/font/' + window.WM_EDITOR.mapId + '/' + n + ')');
+            loadedFaces[family] = new FontFace(family, 'url(' + url + ')');
             loadedFaces[family].load().then(function (f) { document.fonts.add(f); }).catch(function () {});
         }
         return family;
     }
 
-    function fontsPane() {
-        var list = h('div', { 'class': 'font-list' });
-        function renderList() {
-            var rows = Object.keys(ed.state.model.font_info || {}).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
-                var info = ed.state.model.font_info[n], family = faceFor(n);
-                var size = info.size ? h('input', { type: 'number', min: 4, max: 96, value: info.size, 'aria-label': t('Size of font :n', { n: n }) }) : null;
-                if (size) {
-                    size.addEventListener('change', function () {
-                        if (+size.value === info.size) { return; }
-                        ed.send([{ op: 'define_font', n: n, file: info.file, size: +size.value }], function () { return undefined; }).then(afterChange);
-                    });
-                }
-                return h('div', { 'class': 'font-row' }, [
-                    h('span', { 'class': 'font-n', text: '#' + n }),
-                    h('span', { 'class': 'font-sample', style: family ? 'font-family: "' + family + '", sans-serif; font-size: ' + Math.min(22, Math.max(10, info.size * 1.2)) + 'px' : null, text: info.label }),
-                    size
-                ]);
-            });
-            if (!rows.length) { rows.push(h('p', { 'class': 'hint', text: t('This map uses only the built-in fonts.') })); }
-            list.replaceChildren.apply(list, rows);
-        }
+    /** A CSS font family drawing font n of this map (the editor serves its file) */
+    function faceFor(n) {
+        var info = ed.state.model.font_info[n];
+        if (!info || !info.size) { return null; }
+        return face(n + '-' + info.file, '/editor/font/' + window.WM_EDITOR.mapId + '/' + n);
+    }
 
-        var file = h('select', { 'aria-label': t('Font') }, (window.WM_EDITOR.fonts || []).map(function (f) {
-            return h('option', { value: f.file, text: f.label });
+    function fontsPane() {
+        var rows = Object.keys(ed.state.model.font_info || {}).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
+            var info = ed.state.model.font_info[n], family = faceFor(n);
+            var size = info.size ? h('input', { type: 'number', min: 4, max: 96, value: info.size, 'aria-label': t('Size of font :n', { n: n }) }) : null;
+            if (size) {
+                size.addEventListener('change', function () {
+                    if (+size.value === info.size) { return; }
+                    ed.send([{ op: 'define_font', n: n, file: info.file, size: +size.value }], function () { return undefined; });
+                });
+            }
+            return h('div', { 'class': 'font-row' }, [
+                h('span', { 'class': 'font-n', text: '#' + n }),
+                h('span', { 'class': 'font-sample', style: family ? 'font-family: "' + family + '", sans-serif; font-size: ' + Math.min(22, Math.max(10, info.size * 1.2)) + 'px' : null, text: info.label }),
+                size
+            ]);
+        });
+        if (!rows.length) { rows.push(h('p', { 'class': 'hint', text: t('This map uses only the built-in fonts.') })); }
+
+        // one family for every text, after a confirmation
+        var families = (window.WM_EDITOR && window.WM_EDITOR.fontFamilies) || {};
+        var ids = Object.keys(families);
+        var family = h('select', { 'aria-label': t('Font for the whole map') }, ids.map(function (id) {
+            return h('option', { value: id, text: families[id].label, selected: id === 'Inter' });
         }));
-        var size = h('input', { type: 'number', min: 4, max: 96, value: 10, 'aria-label': t('Size') });
-        var add = h('button', { type: 'button', text: t('Add the font') });
         var preview = h('span', { 'class': 'font-sample', text: 'Core-Paris 1G 45%' });
         function showPreview() {
-            preview.style.fontFamily = '';
-            var url = '/' + file.value, family = 'wm-ship-' + file.value.replace(/[^\w]/g, '');
-            if (!loadedFaces[family] && window.FontFace) {
-                loadedFaces[family] = new FontFace(family, 'url(' + url + ')');
-                loadedFaces[family].load().then(function (f) { document.fonts.add(f); }).catch(function () {});
-            }
-            preview.style.fontFamily = '"' + family + '", sans-serif';
-            preview.style.fontSize = Math.min(22, Math.max(10, +size.value * 1.2)) + 'px';
+            var f = families[family.value];
+            var css = f ? face('ship-' + f.regular, '/' + f.regular) : null;
+            preview.style.fontFamily = css ? '"' + css + '", sans-serif' : '';
+            preview.style.fontSize = '16px';
         }
-        file.addEventListener('change', showPreview);
-        size.addEventListener('input', showPreview);
-        add.addEventListener('click', function () {
-            ed.send([{ op: 'define_font', file: file.value, size: +size.value || 10 }], function (r) {
-                var n = r.created && r.created.fonts && r.created.fonts[0];
-                // the model is not updated yet: name it from the form
-                if (n) { ed.toast(t('Font :name added: pick it in the Font lists.', { name: file.selectedOptions[0].text + ' ' + (+size.value || 10) })); }
-                return undefined;
-            }).then(afterChange);
+        family.addEventListener('change', showPreview);
+        var apply = h('button', { type: 'button', text: t('Use it for every text') });
+        apply.addEventListener('click', function () {
+            var f = families[family.value];
+            if (!f) { return; }
+            var question = t('Use :font for every text of the map? It replaces the fonts of the title, legends, timestamp, labels, link labels and comments, also those chosen for single items. Sizes and bold text are kept. You can still give an item its own font afterwards.', { font: f.label });
+            var ask = window.WMUI ? window.WMUI.confirm({ message: question, confirm: t('Use :font', { font: f.label }) })
+                : Promise.resolve(window.confirm(question));
+            ask.then(function (yes) {
+                if (!yes) { return; }
+                var done = false;
+                ed.send([{ op: 'set_map_font', family: family.value }], function () { done = true; return undefined; }).then(function () {
+                    if (done) { ed.toast(t('Every text now uses :font. Ctrl+Z to undo.', { font: f.label })); }
+                });
+            });
         });
 
-        /** New fonts show in the lists of the other tabs, keeping what is chosen there */
-        function afterChange() {
-            renderList();
-            Array.prototype.forEach.call(document.querySelectorAll('#inspector select.font-select'), function (sel) {
-                var v = sel.value;
-                sel.replaceChildren.apply(sel, ed.state.model.fonts.map(function (f) {
-                    return h('option', { value: f, text: ed.fontName(f), selected: String(f) === v });
-                }));
-            });
-        }
-
-        renderList();
         showPreview();
         return [
-            h('p', { 'class': 'mapprops-explain', text: t('The fonts the map can use. Changes here are saved at once. Add a font, then choose it for the title, legend, timestamp, labels or links.') }),
-            list,
-            h('h4', { text: t('Add a font') }),
-            h('div', { 'class': 'pair font-add' }, [file, size, add]),
-            preview
+            h('p', { 'class': 'mapprops-explain', text: t('Every item can take any of the fonts shipped with the application, at any size: pick it in its Font field. The fonts the map uses so far are listed here; changing a size here changes every text that uses it.') }),
+            h('div', { 'class': 'font-list' }, rows),
+            h('h4', { text: t('One font for the whole map') }),
+            h('div', { 'class': 'pair font-add' }, [family, apply]),
+            preview,
+            h('span', { 'class': 'hint', text: t('Inter is the default font of new maps and of the Night theme. Every font here is a vector font, so link comments can follow curves.') })
         ];
     }
 
@@ -409,7 +406,7 @@
      * label pills), so only the colours change from one to the next.
      */
     var THEMES = [
-        ['night', t('Night'), t('Dark canvas, cream to amber glowing links')],
+        ['night', t('Night'), t('Dark canvas, cream to amber glowing links, Inter font')],
         ['day', t('Day'), t('Warm light canvas, green to red links')],
         ['ocean', t('Ocean'), t('Deep blue canvas, cyan to pink glowing links')],
         ['contrast', t('High contrast'), t('White canvas, black text, colour-blind safe steps')]

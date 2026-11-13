@@ -552,6 +552,17 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   leaves one out, for example a backbone link whose traffic is already
   counted on the access links. Both hints can go in `NODE DEFAULT` /
   `LINK DEFAULT`.
+- **Fonts**: every text (node, note and zone labels, link labels and
+  comments, title, legend, timestamp) has a *Font* field that offers every
+  font shipped in `src/public/fonts` at any size, plus the built-in pixel
+  fonts (1 to 5, which the engine always draws itself, even when a
+  `FONTDEFINE` uses their number). Picking one writes a `FONTDEFINE` for that file and size (or reuses
+  the one the map has). *Fonts* in *Map properties* lists the fonts the map
+  uses and has *One font for the whole map*: after a confirmation, every
+  font of the map becomes that family, at the same size, bold where it was
+  bold; a single item can still get its own font afterwards. New maps use
+  Inter (Regular and SemiBold), an open-source TrueType font, so link
+  comments can follow curves; the *Night* theme also sets Inter.
 - **Themes**: the theme cards of the *Background colour and theme*
   section of *Map properties* restyle the whole map in one click, saved at
   once and undone with Ctrl+Z. Every theme shares one design base (the
@@ -911,6 +922,7 @@ listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 - Zabbix edition, Zabbix integration and Docker containerization by Artur Zdolinski (nchekwa)
 - Network icons from Network-Icons-SVG by aci686 and BobTheButcher
 - DejaVu fonts by the DejaVu team, based on Bitstream Vera
+- Inter font by Rasmus Andersson and the Inter Project Authors
 
 ## Support
 
