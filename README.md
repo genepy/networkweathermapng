@@ -603,6 +603,21 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   that undo or redo is refused instead of overwriting the change, and the
   button says why. An undo sent from a tab that has not seen the latest save
   of another tab or user is refused too, and the map is reloaded.
+- **History and savepoints**: the clock button of the top bar (also in the
+  ⋯ menu and Ctrl+K) opens a timeline of the map's saved versions, newest
+  first and grouped by day, with their time (relative, the exact time on
+  hover), in the style of the VS Code *Timeline*. Every change is a version;
+  edits made within a minute of each other share one. Name the map as it is
+  now to make a *savepoint* (for example before a test), or name any
+  version from its row; *Savepoints only* filters the list. A click on a
+  version previews it over the drawing (without live data); *Restore this
+  version* puts it back as the map. Restoring is a new version and one undo
+  step, so Ctrl+Z goes back. The versions are kept under
+  `DATA_ROOT/history/<map id>/versions` (a `.conf` and a `.json` with the
+  time, kind and name of each); savepoints are always kept, the other
+  versions past the last 200 are dropped. A save made outside the editor
+  shows as *Changed outside the editor* and is kept as a version at the
+  next change.
 
 The classic editor was removed: its address, `/editor/classic/<map id>`,
 opens this editor.

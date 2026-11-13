@@ -294,4 +294,22 @@ return [
     'Updated at' => 'Mis à jour à',
     'A box with a title and rows, typed or taken from the map sites' => 'Un encadré avec un titre et des lignes, saisies ou tirées des sites de la carte',
     'Text box' => 'Encadré libre',
+
+    // History and savepoints (timeline of saved versions)
+    'History and savepoints' => 'Historique et points de sauvegarde',
+    'History' => 'Historique',
+    'Create a savepoint of the map as it is now' => 'Créer un point de sauvegarde de la carte telle qu’elle est',
+    'Savepoint name, e.g. Before the test' => 'Nom du point de sauvegarde, p. ex. Avant le test',
+    'Create' => 'Créer',
+    'Savepoints only' => 'Points de sauvegarde seulement',
+    'Saved versions, newest first' => 'Versions enregistrées, la plus récente d’abord',
+    'Preview of a saved version' => 'Aperçu d’une version enregistrée',
+    'Preview without live data. The map is not changed until you restore.' => 'Aperçu sans données en direct. La carte ne change pas tant que vous ne restaurez pas.',
+    'Close the preview' => 'Fermer l’aperçu',
+    'Restore this version' => 'Restaurer cette version',
+    'This version no longer exists' => 'Cette version n’existe plus',
+    'The map could not be drawn' => 'La carte n’a pas pu être dessinée',
+    'Give the savepoint a name' => 'Donnez un nom au point de sauvegarde',
+    'The map was changed by someone else since you loaded it. It has been reloaded: look at it before restoring a version.' => 'La carte a été modifiée par quelqu’un d’autre depuis son chargement. Elle a été rechargée : regardez-la avant de restaurer une version.',
+    'The map is already this version' => 'La carte est déjà dans cette version',
 ];

@@ -33,6 +33,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <span class="tb-sep" aria-hidden="true"></span>
         <?= $btn('undo', 'undo', __('Undo'), __('Undo'), 'disabled data-keys="editor.undo"') ?>
         <?= $btn('redo', 'redo', __('Redo'), __('Redo'), 'disabled data-keys="editor.redo"') ?>
+        <button type="button" data-cmd="timeline" class="tb-history" title="<?= e__('History and savepoints') ?>" aria-label="<?= e__('History and savepoints') ?>" aria-expanded="false" aria-controls="timeline"><?= icon('history', 'i') ?></button>
         <span class="appbar-centre">
             <button type="button" class="app-search" data-palette-open data-keys="palette" aria-keyshortcuts="Control+K Meta+K"
                     title="<?= e__('Search commands, nodes and maps') ?>" aria-label="<?= e__('Search commands, nodes and maps') ?>">
@@ -63,6 +64,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
     <div id="editor-menu" popover role="menu" aria-label="<?= e__('More') ?>">
         <button type="button" role="menuitem" data-cmd="map-properties"><?= icon('sliders-horizontal', 'i') ?><span><?= e__('Map properties') ?></span></button>
         <a role="menuitem" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" data-map-settings title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span><?= e__('Map settings') ?></span></a>
+        <button type="button" role="menuitem" data-cmd="timeline"><?= icon('history', 'i') ?><span><?= e__('History and savepoints') ?></span></button>
         <button type="button" role="menuitem" popovertarget="toolbars-menu" id="toolbars-button"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span><?= e__('Toolbars and panels') ?></span></button>
         <button type="button" role="menuitem" data-cmd="shortcuts"><?= icon('list', 'i') ?><span><?= e__('Keyboard shortcuts') ?></span><kbd data-keys="editor.shortcuts">?</kbd></button>
         <hr>
@@ -252,11 +254,40 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <?= $btn('distribute-v', 'distribute-v', __('Space down'), __('Space evenly, top to bottom'), 'role="menuitem" data-needs="objects3"') ?>
         </div>
         <div id="toast" hidden></div>
+        <section id="version-preview" hidden aria-label="<?= e__('Preview of a saved version') ?>">
+            <div class="vp-bar">
+                <?= icon('history', 'i') ?>
+                <span class="vp-text"><strong class="vp-title"></strong> <span class="vp-time"></span></span>
+                <span class="vp-hint"><?= e__('Preview without live data. The map is not changed until you restore.') ?></span>
+                <span class="vp-actions">
+                    <button type="button" data-vp="close"><?= e__('Close the preview') ?></button>
+                    <button type="button" data-vp="restore" class="primary"><?= e__('Restore this version') ?></button>
+                </span>
+            </div>
+            <div class="vp-body"></div>
+        </section>
     </main>
 
     <aside id="inspector">
         <div class="splitter" data-panel="inspector" title="<?= e__('Drag to resize, double-click to hide') ?>"></div>
         <div id="inspector-body"></div>
+    </aside>
+
+    <aside id="timeline" hidden aria-labelledby="timeline-title">
+        <div class="tl-head">
+            <h3 id="timeline-title"><?= icon('history', 'i') ?><?= e__('History') ?></h3>
+            <button type="button" data-tl="close" title="<?= e__('Close') ?>" aria-label="<?= e__('Close') ?>"><?= icon('x', 'i') ?></button>
+        </div>
+        <form class="tl-new">
+            <label for="timeline-name"><?= e__('Create a savepoint of the map as it is now') ?></label>
+            <span class="tl-new-row">
+                <input id="timeline-name" name="name" type="text" maxlength="80" autocomplete="off" placeholder="<?= e__('Savepoint name, e.g. Before the test') ?>">
+                <button type="submit" class="primary"><?= icon('star', 'i') ?><?= e__('Create') ?></button>
+            </span>
+        </form>
+        <label class="tl-filter"><input type="checkbox" name="named"> <?= e__('Savepoints only') ?></label>
+        <div class="tl-list" role="list" aria-label="<?= e__('Saved versions, newest first') ?>"></div>
+        <p class="tl-note hint"></p>
     </aside>
 
     <section id="text-mode" hidden aria-label="<?= e__('Text mode') ?>">
@@ -423,6 +454,8 @@ window.WM_EDITOR = {
 <script src="<?= asset('/assets/js/editor-mapprops.js') ?>"></script>
 <script src="<?= asset('/assets/js/map-settings.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-selbar.js') ?>"></script>
+<script>window.WM_TIMELINE = { icons: <?= json_encode(asset('/assets/icons/ui.svg'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?> };</script>
+<script src="<?= asset('/assets/js/editor-timeline.js') ?>"></script>
 <script src="<?= asset('/assets/js/palette.js') ?>"></script>
 <script src="<?= asset('/assets/js/editor-palette.js') ?>"></script>
 </body>

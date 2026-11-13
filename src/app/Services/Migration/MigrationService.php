@@ -73,7 +73,7 @@ class MigrationService
         }
 
         $this->maps->saveMapConfig((int) $map['id'], $content);
-        $this->history($map)->record($this->original($meta));
+        $this->history($map)->record($this->original($meta), 'import');
 
         $this->store->update($meta['id'], ['mapId' => (int) $map['id'], 'applied' => date('Y-m-d H:i:s')]);
         return $map;
@@ -91,7 +91,7 @@ class MigrationService
         $before = is_file($file) ? (string) file_get_contents($file) : null;
         $this->maps->saveMapConfig((int) $map['id'], $this->original($meta));
         if ($before !== null) {
-            $this->history($map)->record($before);
+            $this->history($map)->record($before, 'import');
         }
         return $map;
     }
