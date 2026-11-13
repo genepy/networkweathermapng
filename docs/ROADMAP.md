@@ -42,7 +42,6 @@ the open question P8.
 
 | Item | Notes |
 |------|-------|
-| F9. Map settings and colour picker in the editor | *Map settings* in the editor's right panel instead of another page; a colour picker in the app's style. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P13, P18 |
 | F10. Themes and load gradient | More coherent map themes in the library; a gradient link load scale like Nine IX. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P19, P28 |
 | F11. Fonts | Modern open-source default font that follows curved links; every shipped font for nodes, legends, zones; map-wide font with confirmation, per-object override kept. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P16, P27 |
 | F12. Zone shapes and labels | Rounded corners and other shapes for zones; move a zone's label with the mouse. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P15 |

@@ -720,3 +720,16 @@ dialog.wm-palette input.pal-input { width: auto; margin: 0; padding: 4px 0; bord
     #zoom-group { right: 10px; bottom: 150px; }
     #app.no-minimap #zoom-group { bottom: 10px; }
 }
+
+/* Map settings in the drawer over the editor (map-settings.js): the form
+   rules of the application pages (weathermap.css), which the editor does
+   not load */
+.wm-drawer .form-group { margin-bottom: 1.25rem; }
+.wm-drawer .form-group > label:not(.ms-switch) { display: block; margin-bottom: 0.4rem; font-weight: 500; }
+.wm-drawer .form-group small { display: block; margin-top: 4px; }
+.wm-drawer .text-muted { color: var(--muted); }
+.wm-drawer .form-control { margin-top: 0; padding: 0.5rem 0.75rem; background: var(--wm-input-bg); }
+.wm-drawer .form-control:focus { outline: 2px solid var(--wm-focus); outline-offset: 0; border-color: var(--wm-focus); }
+.wm-drawer .form-pair { display: flex; gap: 12px; }
+.wm-drawer .form-pair label { flex: 1; font-weight: 500; }
+.wm-drawer .checkbox-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 6px; }

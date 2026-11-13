@@ -68,6 +68,27 @@ final class MapThemes
     }
 
     /**
+     * The colours of each theme, without repeats, in the order they appear
+     * (swatches of the colour picker).
+     *
+     * @return array<string, list<string>>
+     */
+    public static function colours(): array
+    {
+        $out = [];
+        foreach (self::THEMES as $name => $theme) {
+            $found = [];
+            array_walk_recursive($theme, static function ($v) use (&$found): void {
+                if (is_string($v) && preg_match('/^#[0-9a-f]{6}$/i', $v)) {
+                    $found[strtolower($v)] = true;
+                }
+            });
+            $out[$name] = array_keys($found);
+        }
+        return $out;
+    }
+
+    /**
      * @return array{map: array<string, mixed>, scale: list<array<string, mixed>>, link: array<string, string>, node: array<string, string>}|null
      */
     public static function get(string $name): ?array

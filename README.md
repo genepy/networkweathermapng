@@ -369,7 +369,17 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   not move), undo and redo; in the middle the
   `Ctrl+K` search (see below); on the right *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
   *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab)
-  and *View*, which opens the map view.
+  and *View*, which opens the map view. *Map settings* opens in a drawer
+  over the editor: saving it closes the drawer and redraws the map (a new
+  name is also its drawn title) without leaving the editor.
+- **Colour picker**: every colour field opens the application's own picker
+  (light and dark themes) instead of the browser's: a saturation and
+  brightness area (arrow keys move it, Shift for bigger steps), a hue
+  slider, the hex code, the previous colour (click to go back to it),
+  swatches of the colours already used on the map, of the map themes and of
+  a basic palette, the colours picked recently (remembered in the browser)
+  and *None* where a field may have no colour. A click outside keeps the
+  colour, `Esc` puts the previous one back.
 - **Keyboard shortcuts**: `?` (or ⋯ › *Keyboard shortcuts*) lists them all.
   Each user can change them in the user menu › *Keyboard shortcuts*
   (`/account/shortcuts`): the keys of the editor, the map viewer and the

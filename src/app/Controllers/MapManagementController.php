@@ -120,7 +120,8 @@ class MapManagementController extends BaseController
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = $this->saveSettings($map);
             if ($wantsJson) {
-                if ($error === null) {
+                // inline: the page stays open (the map editor), no message for the next page
+                if ($error === null && empty($_POST['inline'])) {
                     $this->flash('success', __('Map ":name" saved', ['name' => $this->mapService->getMap($id)['name']]));
                 }
                 $this->json($error === null ? ['success' => true] : ['success' => false, 'error' => $error], $error === null ? 200 : 422);

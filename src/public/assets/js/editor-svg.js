@@ -2730,13 +2730,14 @@
     function colourField(items, name, kind, allowContrast) {
         var c = common(items, name);
         var text = h('input', { name: name, value: c.value, placeholder: c.mixed ? t('(mixed)') : t('none'), 'class': c.mixed ? 'mixed' : '' });
-        var swatch = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(c.value) ? c.value : '#ffffff', title: t('Pick a colour') });
+        var swatch = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(c.value) ? c.value : '#ffffff', title: t('Pick a colour'), 'data-none': '' });
         function save(v) {
             var props = {};
             props[name] = v;
             send([{ op: 'set_' + kind, names: items.map(function (i) { return i.name; }), props: props }]);
         }
         swatch.addEventListener('change', function () { text.value = swatch.value; save(swatch.value); });
+        swatch.addEventListener('wm-colour-none', function () { text.value = 'none'; save('none'); });
         text.addEventListener('change', function () { save(text.value); });
         var buttons = [h('button', { type: 'button', text: t('none'), title: t('No colour'), onclick: function () { save('none'); } })];
         if (allowContrast) {
@@ -4711,8 +4712,22 @@
 
     run(load);
 
+    /** The colours used on the map, the most used first (swatches of the colour picker) */
+    function mapColours() {
+        var count = {};
+        (function walk(v) {
+            if (typeof v === 'string') {
+                if (/^#[0-9a-f]{6}$/i.test(v)) { v = v.toLowerCase(); count[v] = (count[v] || 0) + 1; }
+            } else if (v && typeof v === 'object') {
+                Object.keys(v).forEach(function (k) { walk(v[k]); });
+            }
+        })(state.model);
+        return Object.keys(count).sort(function (a, b) { return count[b] - count[a]; });
+    }
+
     // for tests and debugging
     window.WMEditor = {
+        mapColours: mapColours,
         state: state, send: send, load: load, autoRoute: autoRoute, untangle: untangle, align: align,
         spreadApart: spreadApart, copy: copySelection, paste: paste, openMenu: openMenu, setLayer: setLayer,
         openText: openText, closeText: closeText,
