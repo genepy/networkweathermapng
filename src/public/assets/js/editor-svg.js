@@ -4574,6 +4574,8 @@
     var commands = {
         'undo': function () { historyStep('undo'); },
         'redo': function () { historyStep('redo'); },
+        // the History panel (editor-timeline.js)
+        'timeline': function () { if (window.WMEditor.timeline) { window.WMEditor.timeline.toggle(); } },
         'tool-select': function () { setTool('select'); },
         'tool-link': function () { setTool(state.tool === 'link' ? 'select' : 'link'); },
         'align-left': function () { align('left'); },
@@ -4626,7 +4628,7 @@
 
     document.addEventListener('click', function (evt) {
         var b = evt.target.closest && evt.target.closest('.toolbar button[data-cmd], #appbar button[data-cmd], #palette button[data-cmd], #editor-menu button[data-cmd], #selbar button[data-cmd], #tool-rail button[data-cmd], #zoom-group button[data-cmd]');
-        if (b && state.textMode && b.dataset.cmd !== 'text-mode' && b.dataset.cmd !== 'shortcuts') {
+        if (b && state.textMode && b.dataset.cmd !== 'text-mode' && b.dataset.cmd !== 'shortcuts' && b.dataset.cmd !== 'timeline') {
             return;
         }
         if (b && b.closest('#editor-menu')) {
@@ -4876,7 +4878,9 @@
     // for tests and debugging
     window.WMEditor = {
         mapColours: mapColours,
-        state: state, send: send, load: load, autoRoute: autoRoute, untangle: untangle, align: align,
+        state: state, send: send, load: load, applyRender: applyRender,
+        mapVersion: function () { return lastVersion || ''; },
+        autoRoute: autoRoute, untangle: untangle, align: align,
         spreadApart: spreadApart, copy: copySelection, paste: paste, openMenu: openMenu, setLayer: setLayer,
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)

@@ -130,6 +130,11 @@ class Application
         $this->router->post('/editor/undo/{id}', 'SvgEditorController@undo');
         $this->router->post('/editor/redo/{id}', 'SvgEditorController@redo');
         $this->router->post('/editor/copy/{id}', 'SvgEditorController@copy');
+        $this->router->get('/editor/timeline/{id}', 'SvgEditorController@timeline');
+        $this->router->get('/editor/timeline/{id}/{version}', 'SvgEditorController@previewVersion');
+        $this->router->post('/editor/timeline/{id}/savepoint', 'SvgEditorController@savepoint');
+        $this->router->post('/editor/timeline/{id}/unname', 'SvgEditorController@unnameVersion');
+        $this->router->post('/editor/timeline/{id}/restore', 'SvgEditorController@restoreVersion');
         $this->router->get('/editor/source/{id}', 'SvgEditorController@source');
         $this->router->post('/editor/source/{id}', 'SvgEditorController@saveSource');
         $this->router->post('/editor/validate/{id}', 'SvgEditorController@validate');

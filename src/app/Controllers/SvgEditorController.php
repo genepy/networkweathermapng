@@ -375,6 +375,159 @@ class SvgEditorController extends BaseController
         readfile($font->file);
     }
 
+    /** GET: the saved versions of the map, newest first (the timeline) */
+    public function timeline(array $params): void
+    {
+        $this->requireEditor();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $this->json($this->timelineData($map));
+    }
+
+    /** GET: one version drawn as SVG, without live data, to look at before restoring it */
+    public function previewVersion(array $params): void
+    {
+        $this->requireEditor();
+
+        $map = $this->findMap($params);
+        $id = (string) ($params['version'] ?? '');
+        $history = $map ? $this->history($map) : null;
+        $content = $history?->version($id);
+        if (!$map || $history === null || $content === null) {
+            $this->json(['error' => __('This version no longer exists')], 404);
+            return;
+        }
+
+        $file = tempnam(sys_get_temp_dir(), 'wm_ver_');
+        if ($file === false) {
+            $this->json(['error' => __('The map could not be drawn')], 500);
+            return;
+        }
+        try {
+            file_put_contents($file, $content);
+            [$svg, $wmap] = $this->draw($map, $file, false);
+        } catch (\Throwable $e) {
+            error_log('SVG editor preview: ' . $e->getMessage());
+            $this->json(['error' => __('The map could not be drawn')], 500);
+            return;
+        } finally {
+            @unlink($file);
+        }
+
+        $this->json([
+            'svg' => $svg,
+            'width' => (int) $wmap->width,
+            'height' => (int) $wmap->height,
+            'version' => $history->versionInfo($id),
+        ]);
+    }
+
+    /**
+     * POST {name, version?}: save the map as it is now as a named savepoint,
+     * or with version, name (or rename) that version.
+     */
+    public function savepoint(array $params): void
+    {
+        $this->requireEditor();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $body = $this->body();
+        $name = ConfigHistory::cleanName((string) ($body['name'] ?? ''));
+        if ($name === '') {
+            $this->json(['error' => __('Give the savepoint a name')], 422);
+            return;
+        }
+        $version = isset($body['version']) && $body['version'] !== '' ? (string) $body['version'] : null;
+
+        if ($this->history($map)->savepoint($name, $version) === null) {
+            $this->json(['error' => __('This version no longer exists')], 404);
+            return;
+        }
+
+        $this->json($this->timelineData($map));
+    }
+
+    /** POST {version}: take the name off a savepoint (the version stays) */
+    public function unnameVersion(array $params): void
+    {
+        $this->requireEditor();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        if (!$this->history($map)->unname((string) ($this->body()['version'] ?? ''))) {
+            $this->json(['error' => __('This version no longer exists')], 404);
+            return;
+        }
+
+        $this->json($this->timelineData($map));
+    }
+
+    /**
+     * POST {version, mapVersion?}: put a saved version back as the map. It
+     * is one undo step, and a new version of the timeline.
+     */
+    public function restoreVersion(array $params): void
+    {
+        $this->requireEditor();
+
+        $map = $this->findMap($params);
+        if (!$map) {
+            $this->json(['error' => __('Map not found')], 404);
+            return;
+        }
+
+        $file = $this->configFile($map);
+        $body = $this->body();
+        if (isset($body['mapVersion']) && $body['mapVersion'] !== '' && (string) $body['mapVersion'] !== $this->version($file)) {
+            $this->json(['error' => __('The map was changed by someone else since you loaded it. It has been reloaded: look at it before restoring a version.')], 409);
+            return;
+        }
+
+        $history = $this->history($map);
+        $id = (string) ($body['version'] ?? '');
+        if ($history->version($id) === null) {
+            $this->json(['error' => __('This version no longer exists')], 404);
+            return;
+        }
+
+        clearstatcache(true, $file);
+        $before = is_file($file) ? (string) file_get_contents($file) : null;
+        if (!$history->restore($id)) {
+            $this->json(['error' => __('The map is already this version')], 409);
+            return;
+        }
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate($file, true);
+        }
+        $this->followTitle($map, $before);
+
+        $this->respond($map, true);
+    }
+
+    /** @return array{versions: list<array>, limit: int, merge: int} */
+    private function timelineData(array $map): array
+    {
+        return [
+            'versions' => $this->history($map)->versions(),
+            'limit' => ConfigHistory::VERSION_LIMIT,
+            'merge' => ConfigHistory::MERGE_SECONDS,
+        ];
+    }
+
     // ------------------------------------------------------------------
 
     private function step(array $params, string $direction): void
@@ -418,8 +571,29 @@ class SvgEditorController extends BaseController
 
     private function respond(array $map, bool $withData, array $result = []): void
     {
-        $this->loadEngine();
         $file = $this->configFile($map);
+        [$svg, $wmap] = $this->draw($map, $file, $withData);
+
+        clearstatcache(true, $file);
+
+        $this->json([
+            'svg' => $svg,
+            'model' => MapEditor::model($wmap),
+            'history' => $this->history($map)->counts() + ['outside' => $this->history($map)->changedOutside()],
+            'version' => $this->version($file),
+            'name' => (string) ($this->mapService->getMap((int) $map['id'])['name'] ?? $map['name']),
+            'result' => $result,
+        ]);
+    }
+
+    /**
+     * The SVG of a .conf file drawn as the editor draws the map.
+     *
+     * @return array{0: string, 1: \WeatherMap}
+     */
+    private function draw(array $map, string $file, bool $withData): array
+    {
+        $this->loadEngine();
         $mapId = (int) $map['id'];
 
         $GLOBALS['weathermap_error_suppress'] = array_values(array_unique(array_merge(
@@ -444,16 +618,7 @@ class SvgEditorController extends BaseController
             ob_end_clean();
         }
 
-        clearstatcache(true, $file);
-
-        $this->json([
-            'svg' => $svg,
-            'model' => MapEditor::model($wmap),
-            'history' => $this->history($map)->counts() + ['outside' => $this->history($map)->changedOutside()],
-            'version' => $this->version($file),
-            'name' => (string) ($this->mapService->getMap($mapId)['name'] ?? $map['name']),
-            'result' => $result,
-        ]);
+        return [$svg, $wmap];
     }
 
     /** The map's name follows its TITLE when this save changed it (name and title are one) */

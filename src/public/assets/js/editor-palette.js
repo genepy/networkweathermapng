@@ -103,6 +103,7 @@
             { icon: '#i-layers', label: t('Hide layers while editing'), keys: 'layers show', when: true, run: cmd('layers') },
             { icon: '#i-text', label: state.textMode ? t('Back to the drawing') : t('Edit the map as text (.conf)'), keys: 'text mode conf source', when: true, run: cmd('text-mode') },
             // the map and the editor
+            { icon: 'history', label: t('History and savepoints'), keys: 'timeline versions savepoint restore', when: !!ed.timeline, run: cmd('timeline') },
             { icon: 'sliders-horizontal', label: t('Map properties'), keys: 'title background legend colours fonts', when: editing, run: function () { ed.select([]); } },
             { icon: 'settings', label: t('Map settings'), keys: 'group kiosk recording access time zone', when: true, run: click('#editor-menu a[href^="/editor/maps/edit/"]') },
             { icon: 'eye', label: t('Open the published map'), keys: 'view viewer', when: true, run: click('#appbar .tb-view') },
