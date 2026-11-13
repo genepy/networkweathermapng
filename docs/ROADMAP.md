@@ -13,7 +13,7 @@ Last updated: 2026-11-13.
 
 | Item | Branch | Notes |
 |------|--------|-------|
-| (none) | | |
+| F12. Zone shapes and labels | `claude/project-thread-gn0w71` | Rounded corners and other shapes; move a zone label with the mouse |
 
 ## Paused
 
@@ -42,7 +42,6 @@ the open question P8.
 
 | Item | Notes |
 |------|-------|
-| F12. Zone shapes and labels | Rounded corners and other shapes for zones; move a zone's label with the mouse. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P15 |
 | F13. Savepoints and timestamped history | VS Code Timeline style list of saved versions and named savepoints, preview and restore (builds on `ConfigHistory`). [feedback-2026-11-06](studies/feedback-2026-11-06.md) P12 |
 | F14. Focus areas | Highlight parts of a map, also in kiosk mode, saved in the `.conf`. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P22 |
 | F15. Geographic maps in the editor | Zoom in the editor like the viewer; cluster modes (nearby, none, author-defined groups); per-site size that stays proportional with zoom and matches the viewer. [feedback-2026-11-06](studies/feedback-2026-11-06.md) P10 |
