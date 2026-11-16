@@ -1,83 +1,39 @@
 # Roadmap
 
-Backlog and status board shared by every agent. Read
-[AGENTS.md](../AGENTS.md) first: it explains how to claim an item, keep its
-line up to date and hand it over.
+The backlog and the status board are the
+[GitHub issues](https://github.com/genepy/networkweathermapng/issues) of the
+repository: one issue per task, open until its pull request is merged. Read
+[AGENTS.md](../AGENTS.md) first: it explains how to claim an issue and hand
+it over.
 
-States: *Not started*, *In progress*, *Paused*, *Done*. One line per item:
-an item with a branch belongs to whoever owns that branch.
+- [Open issues](https://github.com/genepy/networkweathermapng/issues), in
+  the order of their task number (`F16`, `F17`...) unless the maintainer
+  says otherwise. Labels: `bug` or `enhancement`, and `viewer` and/or
+  `editor`.
+- An issue with an assignee, a linked branch or a pull request is claimed.
+- The details of the tasks F16 to F31 ([#103](https://github.com/genepy/networkweathermapng/issues/103) to
+  [#118](https://github.com/genepy/networkweathermapng/issues/118)) are in
+  [studies/feedback-2026-11-13.md](studies/feedback-2026-11-13.md), with
+  their screenshots.
 
-Last updated: 2026-11-13.
-
-## In progress
-
-| Item | Branch | Notes |
-|------|--------|-------|
-| (none) | | |
-
-## Paused
-
-These branches are free to take only when the maintainer says so. Each one
-is one `WIP:` commit on top of an older `main`, so rebase it first. None has
-a pull request yet. The details below come from the agent that wrote each
-branch.
-
-| Item | Branch | Based on |
-|------|--------|----------|
-| (none) | | |
+Do not add tasks to this file: open an issue instead.
 
 Common gotcha: `composer install` with dev dependencies may fail on GitHub
-authentication in a sandbox (`--no-dev` works), so phpunit and phpstan have
-not run on these branches. Run them before opening the PR. The cause is
+authentication in a sandbox (`--no-dev` works). The cause is
 `phpstan/phpstan`, which only ships as a GitHub zip: install the rest with
 `--prefer-source` from a copy of `composer.json`/`composer.lock` without
 phpstan (`COMPOSER=composer.tmp.json`), and run `phpstan.phar` from a
 `git clone` of `phpstan/phpstan`.
 
-## Not started
+## Done before the move to issues
 
-Editor and viewer feedback of 2026-11-06, in order. Every point is in
-[studies/feedback-2026-11-06.md](studies/feedback-2026-11-06.md), with
-the open question P8.
-
-| Item | Notes |
-|------|-------|
-| — | All feedback tasks F1 to F15 are done. |
-
-Viewer and editor feedback of 2026-11-13, in order. Every point is in
-[studies/feedback-2026-11-13.md](studies/feedback-2026-11-13.md), with
-its screenshots and acceptance criteria.
-
-| Item | Notes |
-|------|-------|
-| F16 | Link ends at nodes in the live viewer (bug, P43): the F5 fix works in the editor, not in the viewer |
-| F17 | Link hover halo proportional to the link width at every zoom (P44) |
-| F18 | Link flow animation: one spot per link, as wide as the link, Nine IX style (P45) |
-| F19 | Merge *Map items* and *Boxes* into one modern design (Nine IX *Traffic* card), removable from the editor menu (P46) |
-| F20 | *Untangle labels* keeps labels on their links, spread along them only when there is room (P47) |
-| F21 | No-arrow and one-direction links take the colour of their busiest direction (P48) |
-| F22 | Bandwidth labels sized with the zoom instead of growing huge (P49) |
-| F23 | Ctrl+A in the editor selects map objects only, not the page text (P50) |
-| F24 | Tooltips explaining the editor options, e.g. *Shape* > *Arrow* both / one direction (P51) |
-| F25 | Choose which viewer panels show (*Sites*, *Total traffic*, *Link load*, last update) and where (P52) |
-| F26 | Leftovers: Ctrl+Shift+drag adds to the selection (P53), shortcuts on the fullscreen page (P54), *Custom text* label style like #90 (P55) |
-| F27 | Editing the *ISP backbone* and *Datacenter fabric* demo maps fails with "The server sent an unreadable answer" (bug, P59) |
-| F28 | Total traffic graph shown only on the recorded testbed map; show it on every map or say why (bug, P61) |
-| F29 | Total traffic box like Nine IX: link groups, 1 day / 1 week / 1 month, 95th and peak (P57, after F19, see F25) |
-| F30 | City inset in the top right corner with more contrast, like Nine IX (P58) |
-| F31 | Make the basemap choice easy to find from the editor (P60) |
-
-## Stale branches
-
-| Branch | Note |
-|--------|------|
-| (none) | |
-
-## Recently done
+Archive of the work merged up to 2026-11-16, most recent first. It is no
+longer updated: later work is in the closed issues and the merged pull
+requests.
 
 | PR | Item |
 |----|------|
-| (this PR) | F15. Geographic maps in the editor: the editor zooms into a basemap like the viewer (up to 64×, located nodes keep their 100 % size, thinner links, bandwidth labels hidden deep in), shared `assets/js/geo-view.js` (`WMGeo`); `SET cluster_mode nearby\|none\|groups` (*Basemap > Clusters*) with node `SET cluster <group>` (falls back to `SET site`), group badges named in the viewer, dashed group frames in the editor; `SET badge_size <px>` (*Badge size*, PNG and SVG). Tests in `BasemapTest`, `SvgRenderTest::testBadgeSize`, `ViewerTest` |
+| #100 | F15. Geographic maps in the editor: the editor zooms into a basemap like the viewer (up to 64×, located nodes keep their 100 % size, thinner links, bandwidth labels hidden deep in), shared `assets/js/geo-view.js` (`WMGeo`); `SET cluster_mode nearby\|none\|groups` (*Basemap > Clusters*) with node `SET cluster <group>` (falls back to `SET site`), group badges named in the viewer, dashed group frames in the editor; `SET badge_size <px>` (*Badge size*, PNG and SVG). Tests in `BasemapTest`, `SvgRenderTest::testBadgeSize`, `ViewerTest` |
 | #99 | F14. Focus areas: `SET focus_<id> x1 y1 x2 y2`, `_title`, `_style both\|dim\|zoom`, `SET focus_default <id>` (`App\Services\FocusAreas`). The viewer's focus button (`.wmv-areas`, `#a=<id>`) dims the rest behind a veil in the map's background colour (under legends and boxes) and/or zooms onto the area in the part of the view the toolbar and panel leave free; the map and the kiosk open on the default area. `/map/{id}/svg` returns `focus` (areas with their nodes and links). Editor: *Focus areas* section of the map properties (`assets/js/editor-focus.js`, frames drawn over the canvas while it is open), ops `add_focus`, `set_focus`, `delete_focus`, context menu *Add a focus area around the selection*. ISP backbone demo has two areas. Test `FocusAreasTest` |
 | #98 | F13. History and savepoints: a *History* panel in the editor (clock button of the top bar, ⋯ menu, Ctrl+K; `assets/js/editor-timeline.js`) lists the map's saved versions by day with relative and exact times, VS Code Timeline style; edits within `ConfigHistory::MERGE_SECONDS` (60 s) share one version, savepoints are named versions (create from the panel, name or rename any row, remove the name), *Savepoints only* filter; a click previews a version over the drawing (SVG without live data), *Restore this version* writes it back as a new version and an undo step. `ConfigHistory` keeps `versions/NNNNNNNN.conf` + `.json` (kind `start`, `outside`, `edit`, `import`, `restore`, `savepoint`; time; name), 200 unnamed versions, savepoints never dropped; routes `/editor/timeline/{id}` (list), `/{version}` (preview), `/savepoint`, `/unname`, `/restore`. Test `ConfigTimelineTest` |
 | #97 | F12. Zone shapes and labels: `SHAPE rect\|rounded\|ellipse` and `RADIUS` for zones (PNG polygons, SVG `rx` / `<ellipse>`), inspector *Shape* and *Corner radius*; the label of the selected zone is dragged on its own (`LABELOFFSET dx dy`, op `set_zone {labeloffset}`, a placement or *Reset label position* puts it back). Editor picks curved zones by their real edge. Datacenter fabric demo uses rounded zones. Tests in `ZoneTest`, `MapEditorTest` |

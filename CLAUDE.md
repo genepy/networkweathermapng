@@ -1,6 +1,6 @@
 # Instructions
 
-Read [AGENTS.md](AGENTS.md) first: project rules, architecture, dev/test/deploy notes, and how to coordinate with other agents through [docs/ROADMAP.md](docs/ROADMAP.md). It applies to Claude too.
+Read [AGENTS.md](AGENTS.md) first: project rules, architecture, dev/test/deploy notes, and how to coordinate with other agents through the [GitHub issues](https://github.com/genepy/networkweathermapng/issues). It applies to Claude too.
 
 ## graphify
 
