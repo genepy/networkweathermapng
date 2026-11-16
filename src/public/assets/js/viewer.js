@@ -383,6 +383,7 @@
         L.arrows = window.WMGeo ? window.WMGeo.arrows(svg) : [];
         L.k = 1;
         root.classList.remove('wmv-links-thin');
+        root.style.removeProperty('--wm-geo-k');
     }
 
     /** Draw the arrows at k times their width (1: as the SVG has them) */
@@ -391,6 +392,8 @@
         if (k === L.k) return;
         L.k = k;
         root.classList.toggle('wmv-links-thin', k < 1);
+        // the hover and focus glows shrink with them (viewer.css)
+        root.style.setProperty('--wm-geo-k', String(k));
         if (window.WMGeo) window.WMGeo.thin(L.arrows, k);
     }
 
