@@ -3,10 +3,11 @@
 This file is the shared brief for every agent working on NetworkWeathermapNG
 (Claude, Codex, Copilot or any other). Several agents work on the repository
 in parallel and the repository is the only thing they all see, so anything
-another agent needs to know goes in this file or in
-[docs/ROADMAP.md](docs/ROADMAP.md), never only in a chat.
+another agent needs to know goes in this file or in the
+[GitHub issues](https://github.com/genepy/networkweathermapng/issues),
+never only in a chat.
 
-Read this file and `docs/ROADMAP.md` before starting any work.
+Read this file and the open issues before starting any work.
 
 ## Project rules
 
@@ -32,40 +33,45 @@ The project must stay international.
 
 ## Coordination between agents
 
-[docs/ROADMAP.md](docs/ROADMAP.md) is the backlog and the status board. It
-lists every item with its state and its branch.
+The [GitHub issues](https://github.com/genepy/networkweathermapng/issues)
+are the backlog and the status board: one issue per task, with its
+acceptance criteria. [docs/ROADMAP.md](docs/ROADMAP.md) only points to them
+and keeps the archive of the work done before 2026-11-16.
 
-**Before starting an item**
+**Before starting a task**
 
-1. Fetch and read `docs/ROADMAP.md` on `main`, the remote branches
-   (`git branch -r`) and the open pull requests. An item that has a branch
-   or a pull request is claimed by whoever owns that branch: do not start
-   it, pick another one or ask the maintainer.
-2. Claim the item: create its branch from the latest `main`, change the
-   item's line in `docs/ROADMAP.md` to *In progress* with the branch name,
-   commit, push, and open a **draft** pull request right away. The pushed
-   branch and the draft PR are the claim that other agents see.
+1. Read the open issues, the remote branches (`git branch -r`) and the open
+   pull requests. An issue that has an assignee, a branch or a pull request
+   is claimed by whoever owns it: do not start it, pick another one or ask
+   the maintainer. Take the issues in the order of their task number unless
+   the maintainer says otherwise.
+2. Claim the issue: create its branch from the latest `main`, push it, and
+   open a **draft** pull request right away whose description says
+   `Closes #<issue>`. Assign the issue when you can, or comment on it with
+   the branch name. The linked draft PR is the claim that other agents see.
 
 **Branch names** say who owns the work:
 `claude/<slug>` for Claude, `codex/<slug>` for Codex, `<agent>/<slug>` for
 any other agent. Existing Claude branches are named
-`claude/project-thread-<id>`; the roadmap maps each one to its item.
-
-**While working**, keep the item's line in the roadmap up to date on your
-branch (what is done, what is left). If you stop before finishing, push
-everything (a `WIP:` commit is fine), set the item to *Paused* with a short
-note of what is left, so anyone can resume it from the branch alone.
-
-**When finishing**, set the item to *Done* with the PR number in the same
-pull request, and mark the PR ready for review. After the merge, delete the
+`claude/project-thread-<id>`; the issue or its pull request names the
 branch.
 
-**Resuming someone else's paused branch** is allowed only when the roadmap
-says it is free to take (or the maintainer asks): rebase it on `main`, keep
-its branch name or move it to your own prefix and update the roadmap line.
+**While working**, keep the pull request description up to date (what is
+done, what is left). If you stop before finishing, push everything (a
+`WIP:` commit is fine) and leave a comment on the issue with what is left,
+so anyone can resume it from the branch alone.
 
-If two changes to `docs/ROADMAP.md` conflict, keep both sides: each line
-belongs to one item.
+**When finishing**, mark the PR ready for review. The merge closes the
+issue through `Closes #<issue>`. After the merge, delete the branch.
+
+**Resuming someone else's paused branch** is allowed only when its issue
+says it is free to take (or the maintainer asks): rebase it on `main`, keep
+its branch name or move it to your own prefix and say so on the issue.
+
+**New tasks** (feedback, bugs, ideas) are new issues, in English, with
+acceptance criteria and the `bug` or `enhancement` label plus `viewer`
+and/or `editor`. Long notes and screenshots go in `docs/studies/` and the
+issue links to them.
 
 ## Architecture
 
