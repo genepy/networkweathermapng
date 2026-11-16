@@ -714,7 +714,12 @@
             S.el.querySelectorAll('g.wm-node[data-id]').forEach(function (g) {
                 const it = S.items[g.getAttribute('data-id')];
                 if (!it || !Array.isArray(it.geo) || it.geo.length !== 2) return;
-                const p = window.WMBasemap.project(B.cfg, S.w, S.h, it.geo[0], it.geo[1]);
+                // where the node is drawn (its point rounded to whole map
+                // pixels): its links end there, so it shrinks around it, as
+                // in the editor, or deep in the map its links would miss it
+                const p = Array.isArray(it.at) && it.at.length === 2
+                    ? [Number(it.at[0]), Number(it.at[1])]
+                    : window.WMBasemap.project(B.cfg, S.w, S.h, it.geo[0], it.geo[1]);
                 let size = 24;
                 try {
                     const b = g.getBBox();

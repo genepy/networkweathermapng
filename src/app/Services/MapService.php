@@ -859,6 +859,10 @@ class MapService
             if ($geo !== null) {
                 // its point on the basemap: the viewer merges close sites and shows their city
                 $urls['geo'] = $geo;
+                // where the node is drawn: the engine rounds its point to whole
+                // map pixels, and its links end there, so the viewer keeps the
+                // node on this spot (not on the exact point) when it shrinks it
+                $urls['at'] = [(int) $node->x, (int) $node->y];
                 $cluster = Basemap::clusterOf($node);
                 if ($cluster !== '') {
                     // its group when the map merges only groups (SET cluster_mode groups)

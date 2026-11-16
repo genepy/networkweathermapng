@@ -345,6 +345,9 @@ cluster or a row of the side panel shows its city in a small web map in the
 top right corner, with the located nodes and their links (a node with
 `SET site` shows its whole site); the city of the focused node stays there.
 Bandwidth labels are hidden when they would grow over 40 pixels.
+A located node shrinks around the spot where it is drawn (its point rounded
+to whole map pixels), where its links end, so links still end on their
+nodes deep in the map.
 
 The editor zooms into a basemap the same way (up to 64×): located nodes
 keep their 100 % size on the screen, links get thinner and bandwidth labels

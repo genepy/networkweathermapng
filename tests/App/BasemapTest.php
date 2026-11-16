@@ -170,6 +170,51 @@ final class BasemapTest extends TestCase
         }
     }
 
+    /**
+     * The viewer shrinks a located node around the spot the summary gives
+     * (`at`) when it zooms in. That spot must be where the SVG draws the
+     * node and where its links end, not the exact point of the node, which
+     * the engine rounds to whole map pixels: half a pixel off is 30 pixels
+     * on the screen at 64x, and the links missed their nodes (F16).
+     */
+    public function testLinksEndWhereTheViewerKeepsLocatedNodes(): void
+    {
+        // points that do not fall on whole map pixels
+        $body = "NODE a\n\tPOSITION 0 0\n\tSET geo 48.8924 2.3501\n\tLABEL A\n\n"
+            . "NODE b\n\tPOSITION 0 0\n\tSET geo 45.7578 4.8320\n\tLABEL B\n\n"
+            . "LINK ab\n\tNODES a b\n\tWIDTH 6\n\n";
+        $map = $this->read($this->mapFile($body));
+        $frame = \WeatherMapGeo::frame($map);
+        $this->assertNotNull($frame);
+        $exact = \WeatherMapGeo::project($frame, $map->width, $map->height, 48.8924, 2.3501);
+        $this->assertNotEqualsWithDelta($exact[0], round($exact[0]), 0.05, 'the test needs a point between two pixels');
+
+        $at = [];
+        foreach (MapService::summarize($map)['items'] as $item) {
+            if ($item['kind'] === 'node') {
+                $at[$item['name']] = $item['at'] ?? null;
+            }
+        }
+        $this->assertSame([$map->nodes['a']->x, $map->nodes['a']->y], $at['a'], 'the viewer keeps the node where it is drawn');
+        $this->assertSame([$map->nodes['b']->x, $map->nodes['b']->y], $at['b']);
+
+        $svg = \WeatherMapSvg::render($map);
+        preg_match_all('/<polygon class="wm-arrow"[^>]*data-spine="([^"]+)"[^>]*?(?: data-cut="([^"]+)")?\/>/', $svg, $arrows, PREG_SET_ORDER);
+        $this->assertCount(2, $arrows, 'one arrow per direction');
+        foreach ($arrows as $i => $arrow) {
+            $nums = array_map('floatval', preg_split('/[\s,]+/', trim($arrow[1])));
+            $cut = isset($arrow[2]) && $arrow[2] !== '' ? array_map('floatval', explode(' ', $arrow[2])) : [0.0, 0.0];
+            // the spine runs back by its cut to the centre of the node it leaves
+            $dx = $nums[0] - $nums[2];
+            $dy = $nums[1] - $nums[3];
+            $len = hypot($dx, $dy);
+            $start = [$nums[0] + $dx / $len * $cut[0], $nums[1] + $dy / $len * $cut[0]];
+            $from = $at[$i === 0 ? 'a' : 'b'];
+            $this->assertEqualsWithDelta($from[0], $start[0], 0.1, 'the link starts at the node the viewer keeps in place');
+            $this->assertEqualsWithDelta($from[1], $start[1], 0.1);
+        }
+    }
+
     public function testEditorSetsTheBasemapAndLocatesNodes(): void
     {
         $file = $this->dir . '/map.conf';
