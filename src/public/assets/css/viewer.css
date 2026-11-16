@@ -208,20 +208,28 @@
 .wmv-dragging .wmv-svg .wmv-hoverable,
 .wmv-dragging .wmv-svg .wmv-clickable { cursor: grabbing; }
 /* Every item of the map (node, link, zone, legend, note...) shows its
-   outline with the same small soft glow under the pointer (as in the editor) */
-.wmv-svg { --wm-hover-glow: color-mix(in srgb, var(--wm-accent) 80%, transparent); }
+   outline with the same small soft glow under the pointer (as in the editor).
+   The lengths of a filter on an SVG item are map units, so the glow grows
+   with the zoom like the item itself. Deep in a basemap the nodes and the
+   links keep their size on the screen (drawn at --wm-geo-k times their
+   size, set by viewer.js): the glows shrink by the same factor, so they
+   stay in proportion to the link or the node instead of swelling. */
+.wmv-svg {
+    --wm-hover-glow: color-mix(in srgb, var(--wm-accent) 80%, transparent);
+    --wm-glow-unit: calc(1px * var(--wm-geo-k, 1));
+}
 .wmv-svg g[data-kind]:hover:not(.wmv-focus):not(.wmv-found) {
-    filter: drop-shadow(0 0 1px var(--wm-hover-glow)) drop-shadow(0 0 3px var(--wm-hover-glow));
+    filter: drop-shadow(0 0 var(--wm-glow-unit) var(--wm-hover-glow)) drop-shadow(0 0 calc(3 * var(--wm-glow-unit)) var(--wm-hover-glow));
 }
 .wmv-svg g.wmv-found {
     animation: wmv-found 0.6s ease-in-out 4 alternate;
 }
 @keyframes wmv-found {
     from { filter: drop-shadow(0 0 0 transparent); }
-    to { filter: drop-shadow(0 0 6px var(--wm-accent)) drop-shadow(0 0 2px var(--wm-accent)); }
+    to { filter: drop-shadow(0 0 calc(6 * var(--wm-glow-unit)) var(--wm-accent)) drop-shadow(0 0 calc(2 * var(--wm-glow-unit)) var(--wm-accent)); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .wmv-svg g.wmv-found { animation: none; filter: drop-shadow(0 0 5px var(--wm-accent)); }
+    .wmv-svg g.wmv-found { animation: none; filter: drop-shadow(0 0 calc(5 * var(--wm-glow-unit)) var(--wm-accent)); }
 }
 
 /* Node focus: the node, its links and its neighbours stay, the rest dims */
@@ -229,7 +237,7 @@
 .wmv-svg g.wm-node { transition: opacity 0.25s var(--wm-ease); }
 .wmv-svg.wmv-focusing g.wm-link:not(.wmv-near),
 .wmv-svg.wmv-focusing g.wm-node:not(.wmv-near):not(.wmv-focus) { opacity: 0.25; }
-.wmv-svg g.wmv-focus { filter: drop-shadow(0 0 4px var(--wm-accent)) drop-shadow(0 0 1px var(--wm-accent)); }
+.wmv-svg g.wmv-focus { filter: drop-shadow(0 0 calc(4 * var(--wm-glow-unit)) var(--wm-accent)) drop-shadow(0 0 var(--wm-glow-unit) var(--wm-accent)); }
 .wmv-svg .wm-node { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
     .wmv-svg g.wm-link,
@@ -258,9 +266,13 @@
 .wmv-lod-near .wmv-svg .wm-link .wm-comment { display: none; }
 
 /* Deep in a basemap the links keep their width at 100 % (viewer.js draws
-   them again): their outline stays one pixel and the glow stays soft */
+   them again): their outline stays one pixel and the glow stays soft. The
+   glow of SET link_glow (a filter of the SVG, in map units) would swell
+   with the zoom, so the hover halo above, which shrinks with the links,
+   is the only one left; :hover outranks the rule of the SVG itself */
 .wmv-links-thin .wmv-svg polygon[data-spine] { vector-effect: non-scaling-stroke; }
-.wmv-links-thin .wmv-svg .wm-link:not(.wm-hot) .wm-arrow { filter: none; }
+.wmv-links-thin .wmv-svg .wm-link:not(.wm-hot) .wm-arrow,
+.wmv-links-thin .wmv-svg .wm-link:not(.wm-hot):hover .wm-arrow { filter: none; }
 
 /* Messages, under the floating bar */
 .wmv-message {
@@ -804,7 +816,7 @@
 /* the legend lives in the panel while it is open */
 .wmv-panel-open .wmv-status .wmv-legend { display: none; }
 /* a node of the list, hovered */
-.wmv-svg g.wmv-hl { filter: drop-shadow(0 0 5px var(--wm-warning-mark)) drop-shadow(0 0 1px var(--wm-warning-mark)); }
+.wmv-svg g.wmv-hl { filter: drop-shadow(0 0 calc(5 * var(--wm-glow-unit)) var(--wm-warning-mark)) drop-shadow(0 0 var(--wm-glow-unit) var(--wm-warning-mark)); }
 @media (prefers-reduced-motion: reduce) {
     .wmv-site-chevron { transition: none; }
 }

@@ -560,6 +560,8 @@
             n.geoScale = k;
         });
         canvas.classList.toggle('geo-thin', k < 1);
+        // the hover glow shrinks with them (editor-svg.css)
+        canvas.style.setProperty('--wm-geo-k', String(k));
         window.WMGeo && window.WMGeo.thin(geo.arrows, k);
         computeOverlaps();
     }
