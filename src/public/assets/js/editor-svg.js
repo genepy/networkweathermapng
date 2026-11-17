@@ -2683,20 +2683,32 @@
     /**
      * Move bandwidth labels that overlap another label or a node: those
      * of the selected links when links are selected, otherwise all. Each
-     * label may slide along its own half of the link and move a little to
-     * one side; several passes let a label make room for another. Labels
-     * that find no free place are reported.
+     * label only slides along its own half of the link and stays on the
+     * link line (its side shift is kept as it is), and only where it fits
+     * between the two nodes of its link: on a link too short for that, the
+     * label is left in place. Several passes let a label make room for
+     * another. Labels that find no free place are reported.
      */
     function untangle() {
         var labels = drawnLabels();
         var chosen = selected('link');
         var only = chosen.length ? new Set(chosen.map(function (l) { return l.name; })) : null;
 
-        var obstacles = [];
+        var obstacles = [], nodeBoxes = {};
         $$('#map g[data-kind="node"]').forEach(function (g) {
             var b = mapBoxOf(g);
-            if (b) { obstacles.push(boxQuad(b)); }
+            if (!b) { return; }
+            var q = boxQuad(b);
+            obstacles.push(q);
+            (nodeBoxes[g.dataset.name] = nodeBoxes[g.dataset.name] || []).push(q);
         });
+
+        /** Whether a label shape covers one of the two nodes of its own link */
+        function onEnds(lab, shape) {
+            return [lab.link.a, lab.link.b].some(function (name) {
+                return (nodeBoxes[name] || []).some(function (q) { return quadsOverlap(shape, q); });
+            });
+        }
 
         function clashes(lab, shape) {
             var count = 0;
@@ -2721,16 +2733,9 @@
             if (l.linkstyle !== 'oneway') {
                 if (lab.dir === 'out') { hi = Math.min(split - 2, Math.round(other.in) - 2); } else { lo = Math.max(split + 2, Math.round(other.out) + 2); }
             }
-            var shifts = [0, lab.shift];
-            [0.7, 1.2].forEach(function (k) {
-                var v = Math.min(LABEL_SHIFT_MAX, Math.round(lab.wid * k));
-                shifts.push(v, -v);
-            });
+            // along the link only: the label keeps its place across it
             var out = [];
-            for (var p = lo; p <= hi; p += 2) {
-                shifts.forEach(function (sh) { out.push([p, sh]); });
-            }
-            shifts.forEach(function (sh) { out.push([lab.pct, sh]); });
+            for (var p = lo; p <= hi; p += 2) { out.push(p); }
             return out;
         }
 
@@ -2741,15 +2746,16 @@
                 var now = clashes(lab, lab.shape);
                 if (!now) { return; }
                 var best = null;
-                candidates(lab).forEach(function (c) {
-                    var shape = labelShapeAt(lab, c[0], c[1]);
+                candidates(lab).forEach(function (pct) {
+                    var shape = labelShapeAt(lab, pct, lab.shift);
+                    // no room between the two nodes there: not a place for it
+                    if (onEnds(lab, shape)) { return; }
                     var n = clashes(lab, shape);
-                    var cost = Math.abs(c[0] - lab.pct) + Math.abs(c[1]) / Math.max(1, lab.wid) * 15 + (c[1] !== lab.shift ? 1 : 0);
-                    if (!best || n < best.n || (n === best.n && cost < best.cost)) { best = { n: n, cost: cost, pct: c[0], shift: c[1], shape: shape }; }
+                    var cost = Math.abs(pct - lab.pct);
+                    if (!best || n < best.n || (n === best.n && cost < best.cost)) { best = { n: n, cost: cost, pct: pct, shape: shape }; }
                 });
                 if (best && best.n < now) {
                     lab.pct = best.pct;
-                    lab.shift = best.shift;
                     lab.shape = best.shape;
                     moved.add(lab);
                     changed = true;
@@ -2771,7 +2777,6 @@
                 return { labelpos_in: Math.round(pos.in), labelpos_out: Math.round(pos.out) };
             })();
             props['labelpos_' + lab.dir] = Math.round(lab.pct);
-            if (lab.shift !== (l['labelshift_' + lab.dir] || 0)) { props['labelshift_' + lab.dir] = lab.shift; }
         });
         var ops = Object.keys(byLink).map(function (name) { return { op: 'set_link', names: [name], props: byLink[name] }; });
 
