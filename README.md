@@ -470,8 +470,9 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   Settings pages of the application-wide palette.
 
 - **Select**: click, Shift+click to add, drag on empty space for an area,
-  Ctrl+A for everything (zones, legends, timestamps and title included), or
-  *Select…* (Ctrl+F) to pick by name, label, target, group, width or
+  Ctrl+A for every object of the map (zones, legends, timestamps, title and
+  boxes included) wherever the focus is, except in a text field where it
+  still selects the typed text, or *Select…* (Ctrl+F) to pick by name, label, target, group, width or
   bandwidth. Esc cancels a drag, closes the open menu, or empties the
   selection.
 - **Move**: drag the selection, or use the arrow keys (Shift for 10 px).

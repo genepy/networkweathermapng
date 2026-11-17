@@ -4981,6 +4981,29 @@
         }
     }, true);
 
+    /** A field where the browser's own Ctrl+A selects the typed text */
+    function isTextField(el) {
+        if (!el || el.nodeType !== 1) { return false; }
+        if (el.isContentEditable || el.tagName === 'TEXTAREA') { return true; }
+        return el.tagName === 'INPUT'
+            && !/^(button|checkbox|radio|color|file|range|submit|reset|image|hidden)$/.test(el.type);
+    }
+
+    // Ctrl+A selects the objects of the map, wherever the focus is (canvas,
+    // toolbar, panels, menus), and never highlights the text of the page.
+    // A text field keeps its own Ctrl+A.
+    document.addEventListener('keydown', function (evt) {
+        if (isTextField(evt.target)) { return; }
+        var native = (evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && /^a$/i.test(evt.key);
+        var bound = KEYS.is(evt, 'editor.select-all');
+        if (!native && !bound) { return; }
+        evt.preventDefault();
+        if (!bound || state.textMode || $('dialog[open]')) { return; }
+        evt.stopPropagation();
+        if (menuOpen()) { closeMenu(); }
+        selectAll();
+    }, true);
+
     document.addEventListener('keydown', function (evt) {
         var tgt = evt.target;
         if (state.textMode || menuOpen() || (tgt.closest && tgt.closest('#layers-panel'))) {
@@ -5000,7 +5023,6 @@
             ['editor.paste', function () { paste(state.mouse); }],
             ['editor.undo', function () { historyStep('undo'); }],
             ['editor.redo', function () { historyStep('redo'); }],
-            ['editor.select-all', selectAll],
             ['editor.duplicate', duplicateSelection],
             ['editor.group', group],
             ['editor.ungroup', ungroup],
