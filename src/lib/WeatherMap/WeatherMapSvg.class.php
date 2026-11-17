@@ -24,6 +24,8 @@ class WeatherMapSvg {
 	var $owner = null;
 	/** What the shapes being drawn are for, such as "bwlabel-in" */
 	var $role = null;
+	/** The centre of the bandwidth label being drawn, [x, y]: the viewer and the editor scale it there */
+	var $at = null;
 	// the geometry of the link arrow being drawn (see linkShape)
 	var $shape = null;
 	/** Whether a saturated link was drawn: the pulse style is then added */
@@ -376,6 +378,7 @@ class WeatherMapSvg {
 			'type'   => 'polygon',
 			'owner'  => $this->owner,
 			'role'   => $this->role,
+			'at'     => $this->labelAt(),
 			'points' => $points,
 			'shape'  => $this->shape,
 			'fill'   => $filled ? $rgba : null,
@@ -390,6 +393,7 @@ class WeatherMapSvg {
 			'type'   => 'text',
 			'owner'  => $this->owner,
 			'role'   => $this->role,
+			'at'     => $this->labelAt(),
 			'font'   => $fontnumber,
 			'x'      => $x,
 			'y'      => $y,
@@ -868,9 +872,20 @@ class WeatherMapSvg {
 			$cut[0] > 0 || $cut[1] > 0 ? sprintf(' data-cut="%s %s"', self::num(round($cut[0], 2)), self::num(round($cut[1], 2))) : '');
 	}
 
+	/** The centre of the label being drawn, moved as the shape reported next */
+	function labelAt() {
+		if ($this->at === null) {
+			return null;
+		}
+		return array($this->at[0] + $this->offset[0], $this->at[1] + $this->offset[1]);
+	}
+
 	static function roleClass($item) {
 		if (!empty($item['role'])) {
-			return ' class="wm-' . $item['role'] . '"';
+			// a bandwidth label says where its centre is (data-at), so it can
+			// be drawn smaller around it deep in a basemap (geo-view.js)
+			$at = empty($item['at']) ? '' : sprintf(' data-at="%s %s"', self::num(round($item['at'][0], 2)), self::num(round($item['at'][1], 2)));
+			return ' class="wm-' . $item['role'] . '"' . $at;
 		}
 		return $item['type'] == 'polygon' ? ' class="wm-arrow"' : ' class="wm-comment"';
 	}

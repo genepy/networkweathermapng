@@ -435,6 +435,43 @@ final class SvgRenderTest extends TestCase
         $this->assertStringContainsString("BWSTYLE pill", (string) file_get_contents($conf));
     }
 
+    /** Every shape of a bandwidth label says where its centre is, so the viewer can shrink it there */
+    public function testLinkLabelsCarryTheirCentre(): void
+    {
+        foreach (['classic', 'pill'] as $style) {
+            $file = TESTS_OUTPUT . '/label-at-' . $style . '.conf';
+            file_put_contents($file, "WIDTH 400\nHEIGHT 300\nNODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 250\n"
+                . "LINK ab\n\tNODES a b\n\tBANDWIDTH 1G\n\tBWSTYLE $style\n\tTARGET static:300M:100M\n");
+            $map = $this->load($file);
+            $svg = \WeatherMapSvg::render($map);
+            $doc = new \DOMDocument();
+            $this->assertTrue($doc->loadXML($svg));
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+            foreach (['in', 'out'] as $dir) {
+                $shapes = $xpath->query('//*[@class="wm-bwlabel-' . $dir . '"]');
+                $this->assertGreaterThan(1, $shapes->length, "$style $dir: a box and a text");
+                $at = null;
+                foreach ($shapes as $shape) {
+                    \assert($shape instanceof \DOMElement);
+                    $this->assertTrue($shape->hasAttribute('data-at'), "$style $dir: every shape has its centre");
+                    $at ??= $shape->getAttribute('data-at');
+                    $this->assertSame($at, $shape->getAttribute('data-at'), "$style $dir: one centre per label");
+                }
+                // the centre of the box around the text
+                $box = self::points($xpath->query('//s:polygon[@class="wm-bwlabel-' . $dir . '"]')->item(0)->getAttribute('points'));
+                [$x, $y] = array_map('floatval', explode(' ', (string) $at));
+                $xs = array_column($box, 0);
+                $ys = array_column($box, 1);
+                $this->assertEqualsWithDelta((min($xs) + max($xs)) / 2, $x, 1.5, "$style $dir: x");
+                $this->assertEqualsWithDelta((min($ys) + max($ys)) / 2, $y, 1.5, "$style $dir: y");
+            }
+            // only bandwidth labels carry one
+            $this->assertSame(0, $xpath->query('//*[@data-at and not(starts-with(@class, "wm-bwlabel-"))]')->length);
+        }
+    }
+
     /** @return list<array{float, float}> */
     private static function points(string $s): array
     {

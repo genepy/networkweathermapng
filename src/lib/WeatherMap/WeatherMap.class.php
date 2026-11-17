@@ -1379,6 +1379,7 @@ class WeatherMap extends WeatherMapBase {
 
 		if (WeatherMapSvg::$active) {
 			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
+			WeatherMapSvg::$active->at = array($x, $y);
 		}
 
 		if (abs($angle) > 90) {
@@ -1430,6 +1431,7 @@ class WeatherMap extends WeatherMapBase {
 
 		if (WeatherMapSvg::$active) {
 			WeatherMapSvg::$active->role = null;
+			WeatherMapSvg::$active->at = null;
 		}
 
 		$areaname = 'LINK:L' . $map->links[$linkname]->id . ':' . ($direction + 2);
@@ -1455,6 +1457,7 @@ class WeatherMap extends WeatherMapBase {
 
 		if (WeatherMapSvg::$active) {
 			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
+			WeatherMapSvg::$active->at = array($x, $y);
 		}
 
 		$flow = $angle + ($direction == IN ? 180 : 0);
@@ -1530,6 +1533,7 @@ class WeatherMap extends WeatherMapBase {
 
 		if (WeatherMapSvg::$active) {
 			WeatherMapSvg::$active->role = null;
+			WeatherMapSvg::$active->at = null;
 		}
 
 		$areaname = 'LINK:L' . $map->links[$linkname]->id . ':' . ($direction + 2);
