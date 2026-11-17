@@ -806,6 +806,69 @@ final class SvgRenderTest extends TestCase
         $this->assertEqualsWithDelta(30, end($spine)[1], 0.5);
     }
 
+    /**
+     * A link without arrow heads or a one-way link shows no direction, so
+     * the whole link takes the scale colour of max(in %, out %), in the
+     * SVG and the PNG; a two-way link with arrows keeps one per direction
+     */
+    public function testSingleColourLinksTakeTheBusiestDirection(): void
+    {
+        $conf = "WIDTH 400\nHEIGHT 300\n"
+            . "SCALE DEFAULT 0 50 0 255 0\nSCALE DEFAULT 50 100 255 0 0\n"
+            . "NODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 350 50\nNODE c\n\tPOSITION 50 150\nNODE d\n\tPOSITION 350 150\n"
+            . "NODE e\n\tPOSITION 50 250\nNODE f\n\tPOSITION 350 250\n"
+            // in 90 %, out 10 % on each link
+            . "LINK ab\n\tNODES a b\n\tWIDTH 6\n\tBANDWIDTH 1G\n\tTARGET static:900M:100M\n"
+            . "LINK cd\n\tNODES c d\n\tWIDTH 6\n\tBANDWIDTH 1G\n\tARROWSTYLE flat\n\tTARGET static:900M:100M\n"
+            . "LINK ef\n\tNODES e f\n\tWIDTH 6\n\tBANDWIDTH 1G\n\tLINKSTYLE oneway\n\tTARGET static:900M:100M\n";
+        $file = TESTS_OUTPUT . '/busiest.conf';
+        file_put_contents($file, $conf);
+
+        $map = $this->load($file);
+        $this->assertEqualsWithDelta(90, $map->links['ef']->inpercent, 0.01);
+        $this->assertEqualsWithDelta(10, $map->links['ef']->outpercent, 0.01);
+        $this->assertFalse($map->links['ab']->single_colour());
+        $this->assertTrue($map->links['cd']->single_colour());
+        $this->assertTrue($map->links['ef']->single_colour());
+        $this->assertSame(IN, $map->links['ef']->busiest_direction());
+
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        $fills = [];
+        foreach ($xpath->query('//s:g[@data-kind="link"]/s:polygon[@class="wm-arrow"]') as $p) {
+            $this->assertInstanceOf(\DOMElement::class, $p);
+            $g = $p->parentNode;
+            $this->assertInstanceOf(\DOMElement::class, $g);
+            $fills[$g->getAttribute('data-name')][] = strtolower($p->getAttribute('fill'));
+        }
+        $this->assertSame(['#00ff00', '#ff0000'], $fills['ab'], 'two-way: OUT then IN, one colour per direction');
+        $this->assertSame(['#ff0000', '#ff0000'], $fills['cd'], 'no arrows: both halves in the busiest colour');
+        $this->assertSame(['#ff0000'], $fills['ef'], 'one way: the busiest colour, even when it is IN');
+
+        // the PNG: both halves of the flat link and the one-way link are red
+        $png = TESTS_OUTPUT . '/busiest.png';
+        $map = $this->load($file);
+        ob_start();
+        $map->DrawMap($png);
+        ob_end_clean();
+        $im = imagecreatefrompng($png);
+        $this->assertNotFalse($im);
+        $rgb = static function (int $x, int $y) use ($im): array {
+            $c = imagecolorsforindex($im, (int) imagecolorat($im, $x, $y));
+            return [$c['red'], $c['green'], $c['blue']];
+        };
+        // between the nodes and the bandwidth labels (at 25 % and 75 %)
+        $this->assertSame([255, 0, 0], $rgb(95, 150));
+        $this->assertSame([255, 0, 0], $rgb(305, 150));
+        $this->assertSame([255, 0, 0], $rgb(95, 250));
+        $this->assertSame([255, 0, 0], $rgb(305, 250));
+        // the two-way link keeps a green OUT half and a red IN half
+        $this->assertSame([0, 255, 0], $rgb(95, 50));
+        $this->assertSame([255, 0, 0], $rgb(305, 50));
+    }
+
     private function load(string $file): \WeatherMap
     {
         $map = new \WeatherMap();

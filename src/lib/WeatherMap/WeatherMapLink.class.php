@@ -491,6 +491,46 @@ class WeatherMapLink extends WeatherMapItem {
 		return array(spine_cut($points, $cut_a, $total - $cut_b), $splitpos, array(OUT => $cut_a, IN => $cut_b));
 	}
 
+	/**
+	 * Whether the link shows a single colour: a one-way link, or a link
+	 * without arrow heads (ARROWSTYLE flat), does not show which half is
+	 * which direction, so it takes the colour of its busiest direction.
+	 */
+	function single_colour() {
+		return $this->linkstyle == 'oneway' || $this->arrowstyle == 'flat';
+	}
+
+	/**
+	 * The direction (IN or OUT) with the most traffic, measured the way the
+	 * scale colours the link: in percent, or in absolute values for
+	 * SCALETYPE absolute. OUT wins a tie.
+	 */
+	function busiest_direction() {
+		if ($this->scaletype == 'percent') {
+			$in = (float) $this->inpercent;
+			$out = (float) $this->outpercent;
+		} else {
+			$in = (float) $this->bandwidth_in;
+			$out = (float) $this->bandwidth_out;
+		}
+
+		return $in > $out ? IN : OUT;
+	}
+
+	/**
+	 * The fill colours of the IN and OUT halves: the scale colour of each
+	 * direction, or for a single-colour link the colour of
+	 * max(in, out) on both.
+	 */
+	function fill_colours() {
+		if ($this->single_colour()) {
+			$colour = $this->colours[$this->busiest_direction()];
+			return array($colour, $colour);
+		}
+
+		return array($this->colours[IN], $this->colours[OUT]);
+	}
+
 	function Draw($image, &$map) {
 		// Get the positions of the end-points
 		$x1 = $map->nodes[$this->a->name]->x;
@@ -574,8 +614,7 @@ class WeatherMapLink extends WeatherMapItem {
 		# list($link_in_colour,$link_in_scalekey, $link_in_scaletag) = $map->NewColourFromPercent($this->inpercent,$this->usescale,$this->name);
 		# list($link_out_colour,$link_out_scalekey, $link_out_scaletag) = $map->NewColourFromPercent($this->outpercent,$this->usescale,$this->name);
 
-		$link_in_colour  = $this->colours[IN];
-		$link_out_colour = $this->colours[OUT];
+		list($link_in_colour, $link_out_colour) = $this->fill_colours();
 
 		$gd_in_colour  = $link_in_colour->gdallocate($image);
 		$gd_out_colour = $link_out_colour->gdallocate($image);
