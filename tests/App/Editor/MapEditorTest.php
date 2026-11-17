@@ -1067,8 +1067,9 @@ final class MapEditorTest extends TestCase
         $this->assertSame('legend 0 20', $map->get_hint('box_2'), 'placed inside the map');
 
         $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['text' => "Amsterdam | 68\nParis | 37", 'width' => '220', 'rows' => '']]]);
-        $this->editor->apply([['op' => 'set_box', 'name' => '2', 'props' => ['style' => 'list', 'title' => '']]]);
+        $this->editor->apply([['op' => 'set_box', 'name' => '2', 'props' => ['style' => 'list', 'title' => '', 'note' => 'Source: Observium']]]);
         $conf = (string) file_get_contents($this->file);
+        $this->assertStringContainsString('SET box_2_note Source: Observium', $conf, 'the small note line');
         $this->assertStringContainsString('SET box_1_text Amsterdam | 68\\nParis | 37', $conf);
         $this->assertStringContainsString('SET box_1_width 220', $conf);
         $this->assertStringNotContainsString('box_1_rows', $conf);
@@ -1078,7 +1079,7 @@ final class MapEditorTest extends TestCase
         $this->assertSame([200, 150], $boxes['1']['pos']);
         $this->assertSame('text', $boxes['1']['props']['type']);
         $this->assertSame("Amsterdam | 68\nParis | 37", $boxes['1']['props']['text']);
-        $this->assertSame(['list', ''], [$boxes['2']['props']['style'], $boxes['2']['props']['title']]);
+        $this->assertSame(['list', '', 'Source: Observium'], [$boxes['2']['props']['style'], $boxes['2']['props']['title'], $boxes['2']['props']['note']]);
 
         $this->editor->apply([['op' => 'move', 'furniture' => ['box:1' => [40, 60]]]]);
         $this->assertSame('text 40 60', $this->editor->load()->get_hint('box_1'));

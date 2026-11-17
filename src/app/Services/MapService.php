@@ -1296,8 +1296,8 @@ SCALE DEFAULT 55 70   240 240 0
 SCALE DEFAULT 70 85   255 192 0
 SCALE DEFAULT 85 100  255 0 0
 
-# Legend position
-KEYPOS DEFAULT 10 10
+# Map items (Add panel of the editor): the traffic legend card
+SET box_1 legend 10 10
 
 # Default node settings
 NODE DEFAULT
