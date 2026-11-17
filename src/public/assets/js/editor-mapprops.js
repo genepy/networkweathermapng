@@ -287,7 +287,8 @@
             field(t('Zoom level'), zoom, t('0 shows the whole world, 5 a country, 11 a city.')),
             fit,
             field(t('Credit'), credit, t('Shown on the map. Styles carry their own; raster tiles default to OpenStreetMap.')),
-            field(t('Clusters'), clusters, t('Located nodes too close to tell apart merge into one badge with their number in the live view; zooming in splits them. With your own groups, only nodes of the same group merge (the Cluster group of a node, or its site).'))
+            field(t('Clusters'), clusters, t('Located nodes too close to tell apart merge into one badge with their number in the live view; zooming in splits them. With your own groups, only nodes of the same group merge (the Cluster group of a node, or its site).'),
+                t('Group nearby nodes: nodes too close together at the current zoom merge, whatever their group. No grouping: every node always shows, even on top of another. Groups I define: only the nodes of one group merge, the whole group at once (the Cluster group of a node, or else its site).'))
         ];
     }
 
@@ -402,8 +403,11 @@
         return h('div', { 'class': 'pair' }, [input, h('label', { 'class': 'inline' }, [none, ' ' + t('None')])]);
     }
 
-    function field(label, control, help) {
-        return h('label', {}, [label, control].concat(help ? [h('span', { 'class': 'hint', text: help })] : []));
+    /** A labelled control, with a hint under it and an i button that explains its choices (tip) */
+    function field(label, control, help, tip) {
+        var el = h('label', {}, [tip ? ed.tipName(label, control, tip) : label, control].concat(help ? [h('span', { 'class': 'hint', text: help })] : []));
+        if (tip && control.id) { el.htmlFor = control.id; }
+        return el;
     }
 
     function check(name, checked, label) {
@@ -504,7 +508,7 @@
                     // every legend is a card now: the older bar styles show the bar, the others the list
                     field(t('Style'), choice('key_style', { horizontal: 'modern', vertical: 'classic', inverted: 'classic' }[p.key_style] || p.key_style, [
                         ['modern', t('Gradient bar')], ['classic', t('List of colours')], ['tags', t('List with the step tags')]
-                    ])),
+                    ]), null, t('Gradient bar: one bar from 0 to 100 % with the colours of the scale. List of colours: one row per step, with its range. List with the step tags: one row per step, with the tag you gave it.')),
                     field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the gradient bar.'))
                 ] : []);
             case 'timestamp':
@@ -530,14 +534,14 @@
                     field(t('Width (px)'), h('input', { name: 'link_width', value: p.link_width, autocomplete: 'off' }), t('A number, or auto to follow the bandwidth.')),
                     field(t('Label'), choice('link_labelstyle', p.link_labelstyle, [
                         ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
-                    ])),
+                    ]), null, ed.tips.labelstyle),
                     field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
                     field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
                         ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
-                    ])),
+                    ]), null, ed.tips.bwstyle),
                     field(t('Arrow heads'), choice('link_arrowstyle', p.link_arrowstyle, [
                         ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
-                    ].concat(/^\d+ \d+$/.test(p.link_arrowstyle) ? [[p.link_arrowstyle, t('Custom size') + ' (' + p.link_arrowstyle + ')']] : [])), t('With no arrow heads, pill labels still show which way the traffic goes.'))
+                    ].concat(/^\d+ \d+$/.test(p.link_arrowstyle) ? [[p.link_arrowstyle, t('Custom size') + ' (' + p.link_arrowstyle + ')']] : [])), t('With no arrow heads, pill labels still show which way the traffic goes.'), ed.tips.arrowstyle)
                 ];
             case 'scale':
                 return scalePane(m.scale).concat([

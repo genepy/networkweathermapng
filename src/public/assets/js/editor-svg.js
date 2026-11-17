@@ -2868,9 +2868,111 @@
         return { value: mixed ? '' : v, mixed: mixed };
     }
 
-    function row(label, input, full) {
-        return h('label', { 'class': 'row' + (full ? ' full' : '') }, [h('span', { text: label }), input]);
+    function row(label, input, full, tip) {
+        var el = h('label', { 'class': 'row' + (full ? ' full' : '') }, [tip ? tipName(label, input, tip) : h('span', { text: label }), input]);
+        if (tip && input && input.id) { el.htmlFor = input.id; }
+        return el;
     }
+
+    // ------------------------------------------------------------------
+    // Info bubbles: an i button after the name of an option explains its
+    // choices, on hover, on keyboard focus and on a tap. One bubble for the
+    // whole page, fixed over everything so the panel does not clip it.
+
+    var tipSeq = 0, bubble = null, bubbleFor = null;
+
+    /**
+     * The name of an option with its i button. The control (a select or an
+     * input) keeps the name as its label and gets the explanation as its
+     * description, for screen readers; a label around both must point to
+     * the control (`for`), or the button would become what it labels.
+     */
+    function tipName(label, control, tip) {
+        var n = ++tipSeq, nameId = 'tip-name-' + n, textId = 'tip-text-' + n;
+        if (control && /^(INPUT|SELECT|TEXTAREA)$/.test(control.tagName)) {
+            if (!control.id) { control.id = 'tip-field-' + n; }
+            control.setAttribute('aria-labelledby', nameId);
+            control.setAttribute('aria-describedby', textId);
+        }
+        return h('span', { 'class': 'tip-name' }, [
+            h('span', { id: nameId, text: label }),
+            h('button', { type: 'button', 'class': 'info-tip', 'data-tip': textId, 'aria-label': t('About :name', { name: label }), 'aria-describedby': textId, text: 'i' }),
+            h('span', { id: textId, 'class': 'tip-text', hidden: true, text: tip })
+        ]);
+    }
+
+    /**
+     * What the choices of the options mean (F24), shared with the map
+     * properties (Link defaults) through WMEditor.tips.
+     */
+    var TIPS = {
+        traffic_total: t('Counted: the traffic of the link adds to the total traffic of the map, in the side panel of the live view. Left out: for a link whose traffic is already counted on other links, such as a backbone link.'),
+        viastyle: t('Curved: the link bends smoothly through its bend points. Straight segments: straight lines from point to point, with sharp corners.'),
+        linkstyle: t('Both ways: each half of the link shows one direction, with its own colour, label and arrow toward the node the traffic goes to. One way: a single arrow from the first node to the second, with one label, in the colour of the busiest direction.'),
+        arrowstyle: t('Classic: the usual arrow heads where the two halves meet. Small: shorter, narrower heads. None, square ends: no heads, each half ends square; the link then takes the colour of its busiest direction, and pill labels still show where the traffic goes. Custom size: the length and width of the heads, in link widths.'),
+        splitpos: t('Where the two halves of the link meet, in % of its length from the first node: 50 is the middle.'),
+        zorder: t('Items on a higher layer are drawn over those on a lower one.'),
+        labelstyle: t('Load in %: the traffic as a percentage of the link bandwidth. Traffic in bits/s: the rate, such as 450M. Raw value: the number as the data source gives it. No label: nothing is written on the link. Custom text: a format of your own, from the map file.'),
+        bwstyle: t('Level box: a box that stays level whatever the angle of the link. Box along the link: the box turns with the link. Pill along the link, with an arrow: a rounded label that turns with the link, with a small arrow toward where the traffic goes.'),
+        commentcurve: t('Straight: the comment is written on a straight line. Follow the curve: the comment bends with the link where it bends gently.'),
+        node_style: t('Box with the label: the icon and the label are drawn on the map. Round badge: a disc with the icon or the initials of the label; the name shows on hover and in Find a node.'),
+        label_position: t('Where the label sits around the icon: above it, on its top, centre or bottom, or below it. Only for nodes with an icon; drag the label to put it anywhere else.'),
+        background_sizing: t('Natural size: the picture keeps its size in the top left corner, cut at the edges of the map. Fit, keep the ratio: scaled to the map without distortion and centred; the background colour fills the rest. Stretch to the map: scaled to the whole map, its ratio may change.'),
+        zone_labelpos: t('Which corner or side of the zone its label sits in. Drag the label of a single zone to put it anywhere else.')
+    };
+
+    function showTip(btn) {
+        var src = document.getElementById(btn.getAttribute('data-tip'));
+        if (!src) { return; }
+        if (!bubble) {
+            bubble = h('div', { id: 'info-bubble', role: 'tooltip', hidden: true });
+            document.body.appendChild(bubble);
+        }
+        bubble.textContent = src.textContent;
+        bubble.hidden = false;
+        bubbleFor = btn;
+        var r = btn.getBoundingClientRect(), b = bubble.getBoundingClientRect();
+        var left = Math.max(8, Math.min(r.left + r.width / 2 - b.width / 2, window.innerWidth - b.width - 8));
+        var top = r.bottom + 6;
+        if (top + b.height > window.innerHeight - 8) { top = r.top - b.height - 6; }
+        bubble.style.left = left + 'px';
+        bubble.style.top = Math.max(8, top) + 'px';
+    }
+
+    function hideTip() {
+        if (bubble) { bubble.hidden = true; }
+        bubbleFor = null;
+    }
+
+    function tipButton(target) {
+        return target && target.closest ? target.closest('.info-tip') : null;
+    }
+
+    document.addEventListener('mouseover', function (evt) {
+        var b = tipButton(evt.target);
+        if (b && b !== bubbleFor) { showTip(b); }
+    });
+    document.addEventListener('mouseout', function (evt) {
+        var b = tipButton(evt.target);
+        if (b && b === bubbleFor && !b.contains(evt.relatedTarget) && document.activeElement !== b) { hideTip(); }
+    });
+    document.addEventListener('focusin', function (evt) {
+        var b = tipButton(evt.target);
+        if (b) { showTip(b); } else if (bubbleFor) { hideTip(); }
+    });
+    document.addEventListener('focusout', function (evt) {
+        if (bubbleFor && evt.target === bubbleFor) { hideTip(); }
+    });
+    // a tap shows it too (touch screens have no hover); never a label click
+    document.addEventListener('click', function (evt) {
+        var b = tipButton(evt.target);
+        if (b) { evt.preventDefault(); showTip(b); }
+    });
+    // the panel scrolls (also when focus brings the button into view): follow the button
+    document.addEventListener('scroll', function () {
+        if (!bubbleFor || bubble.hidden) { return; }
+        if (document.contains(bubbleFor)) { showTip(bubbleFor); } else { hideTip(); }
+    }, true);
 
     function field(items, name, kind, opts) {
         opts = opts || {};
@@ -2922,6 +3024,7 @@
             return;
         }
         inspector.dataset.stale = '';
+        hideTip();
         var nodes = selected('node'), links = selected('link'), zones = selected('zone'), furniture = selectedFurniture();
         var parts = [];
 
@@ -2988,7 +3091,7 @@
             row(t('Map name'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
-            m.background ? row(t('Background size'), sizing) : null,
+            m.background ? row(t('Background size'), sizing, false, TIPS.background_sizing) : null,
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) })
         ].concat(window.WMEditor.mapSections ? window.WMEditor.mapSections() : []).concat([
             h('button', { type: 'button', 'class': 'shortcuts-hint', onclick: openShortcuts }, [
@@ -3170,7 +3273,7 @@
             iconSizeRow(nodes),
             labelPositionRow(nodes),
             h('h3', { text: t('Label style') }),
-            row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')]] })),
+            row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')]] }), false, TIPS.node_style),
             badgeSizeRow(nodes),
             row(t('Font'), fontField(nodes, 'labelfont', 'node')),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
@@ -3313,7 +3416,7 @@
         var same = withIcon.every(function (n) { return current(n) === first; });
         var ns = 'http://www.w3.org/2000/svg';
         return h('div', { 'class': 'row' }, [
-            h('span', { text: t('Label position') }),
+            tipName(t('Label position'), null, TIPS.label_position),
             h('div', { 'class': 'label-presets', role: 'group', 'aria-label': t('Label position') }, presets.map(function (p) {
                 var on = same && first === p[0];
                 // a small picture: the icon as a square, the label as a bar
@@ -3539,7 +3642,7 @@
             row(t('Placement'), field(zones, 'labelpos', 'zone', { options: [
                 ['NW', t('Top left')], ['N', t('Top centre')], ['NE', t('Top right')],
                 ['SW', t('Bottom left')], ['S', t('Bottom centre')], ['SE', t('Bottom right')]
-            ] })),
+            ] }), false, TIPS.zone_labelpos),
             h('p', { 'class': 'help', text: t('Zones are drawn under links and nodes. Dragging a zone by its edge or label moves the zone alone; group it with nodes (Ctrl+G) to move them together.') })
         );
         if (single && single.label_box) {
@@ -3637,11 +3740,11 @@
             h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
-            row(t('Total traffic'), field(links, 'traffic_total', 'link', { options: [['1', t('Counted')], ['0', t('Left out')]] })),
+            row(t('Total traffic'), field(links, 'traffic_total', 'link', { options: [['1', t('Counted')], ['0', t('Left out')]] }), false, TIPS.traffic_total),
             row(t('Info URL'), field(links, 'infourl', 'link')),
             row(t('Hover graph'), field(links, 'hover_url', 'link', { placeholder: t('Picture address') })),
             h('h3', { text: t('Shape') }),
-            row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] })),
+            row(t('Style'), field(links, 'viastyle', 'link', { options: [['curved', t('Curved')], ['angled', t('Straight segments')]] }), false, TIPS.viastyle),
             row(t('Route'), h('div', { 'class': 'pair' }, [
                 ['straight', '─', t('Straight: no bend points')],
                 ['hv', '┐', t('Across, then up or down')],
@@ -3650,16 +3753,16 @@
             ].map(function (r) {
                 return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
             }))),
-            row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] })),
-            row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: arrowChoices(links) })),
+            row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] }), false, TIPS.linkstyle),
+            row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: arrowChoices(links) }), false, TIPS.arrowstyle),
             arrowSizeRow(links),
-            row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true })),
-            row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true })),
+            row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true }), false, TIPS.splitpos),
+            row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }), false, TIPS.zorder),
             h('h3', { text: t('Bandwidth labels') }),
             row(t('Labels'), field(links, 'labelstyle', 'link', { options: withCurrent(links, 'labelstyle', [
                 ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
-            ], t('Custom text')) })),
-            row(t('Label box'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] })),
+            ], t('Custom text')) }), false, TIPS.labelstyle),
+            row(t('Label box'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] }), false, TIPS.bwstyle),
             row(t('Label font'), fontField(links, 'bwfont', 'link'))
         );
 
@@ -3683,7 +3786,7 @@
             );
         }
         out.push(
-            row(t('Along the link'), field(links, 'commentcurve', 'link', { options: [['0', t('Straight')], ['1', t('Follow the curve')]] })),
+            row(t('Along the link'), field(links, 'commentcurve', 'link', { options: [['0', t('Straight')], ['1', t('Follow the curve')]] }), false, TIPS.commentcurve),
             row(t('Font'), fontField(links, 'commentfont', 'link')),
             h('p', { 'class': 'help', text: t('Comments follow the curve where it bends gently, in a TrueType font.') })
         );
@@ -4931,11 +5034,12 @@
 
     /**
      * Esc leaves what is going on, one thing at a time: a drag, a menu or
-     * panel, a field being typed in (its change is dropped), the link tool,
+     * panel or info bubble, a field being typed in (its change is dropped), the link tool,
      * then the selection. Dialogs close themselves; text mode has its own.
      */
     function escape(target) {
         if (cancelDrag()) { return true; }
+        if (bubble && !bubble.hidden) { hideTip(); return true; }
         if (stopPlacing()) { return true; }
         // the interface and icon search boxes handle Escape themselves
         if (target.closest && target.closest('.ds-search, .icon-pick')) { return false; }
@@ -5108,7 +5212,7 @@
         openText: openText, closeText: closeText,
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, keyHint: keyHint, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
-        selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, fontPicker: fontPicker, addNodeHere: addNodeHere, renderInspector: renderInspector,
+        selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, fontPicker: fontPicker, tipName: tipName, tips: TIPS, addNodeHere: addNodeHere, renderInspector: renderInspector,
         // for the contextual bar and the command palette (editor-selbar.js, editor-palette.js)
         selectionBox: selectionBox, toCanvas: toCanvas, hasClip: hasClip, menuOpen: menuOpen,
         alignCount: function () { return alignUnits(selectedObjects()).length; },
