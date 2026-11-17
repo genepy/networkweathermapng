@@ -720,7 +720,8 @@ final class MapEditorTest extends TestCase
         $this->assertSame([680, 20], $furniture['legend']['pos']);
         $this->assertSame([10, 490], $furniture['timestamp']['pos']);
         $this->assertSame([10, 20], $furniture['title']['pos']);
-        $this->assertSame(490, $furniture['timestamp']['box'][3]);
+        $this->assertLessThan(490, $furniture['timestamp']['box'][1], 'the card is around the text');
+        $this->assertGreaterThanOrEqual(490, $furniture['timestamp']['box'][3]);
 
         $this->editor->apply([
             ['op' => 'move', 'furniture' => ['legend:DEFAULT' => [600, 40], 'timestamp:' => [20, 470], 'title:' => [30, 25]]],

@@ -2188,8 +2188,9 @@ class MapEditor
             $box = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
             $pos = match ($kind) {
                 'legend' => [(int) ($map->keyx[$item] ?? $box[0]), (int) ($map->keyy[$item] ?? $box[1])],
-                // text is placed by the left end of its baseline
-                'timestamp', 'title' => [$box[0], $box[3]],
+                // text is placed by the left end of its baseline (a timestamp in its card)
+                'timestamp' => self::timestampPosition($map, $item, $box),
+                'title' => [$box[0], $box[3]],
                 default => [$box[0], $box[1]],
             };
 
@@ -2212,6 +2213,17 @@ class MapEditor
         }
 
         return array_values($found);
+    }
+
+    /**
+     * Where TIMEPOS (MINTIMEPOS, MAXTIMEPOS) puts a timestamp: its keyword
+     * when set, else the start of the text in the card (the top right corner)
+     */
+    private static function timestampPosition(\WeatherMap $map, string $which, array $box): array
+    {
+        $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$which] ?? '';
+        [$x, $y] = [(int) $map->{$prefix . 'timex'}, (int) $map->{$prefix . 'timey'}];
+        return $x > 0 && $y > 0 ? [$x, $y] : \WeatherMapBoxes::timestampAnchor($box);
     }
 
     // ------------------------------------------------------------------

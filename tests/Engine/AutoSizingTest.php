@@ -114,11 +114,17 @@ CONF);
             $png = TESTS_OUTPUT . '/width-legend-' . md5($hint) . '.png';
             $map->DrawMap($png);
             $image = imagecreatefrompng($png);
-            // middle of the 10G bar: second row, bottom left corner
-            $pixels[] = imagecolorat($image, 30, 200 - 10 - 12);
+            // the bars of the card in the bottom left corner: some dark pixels in their column
+            $dark = 0;
+            for ($y = 120; $y < 190; $y++) {
+                $c = imagecolorsforindex($image, imagecolorat($image, 40, $y));
+                $dark += (int) ($c['red'] + $c['green'] + $c['blue'] < 200);
+            }
+            $pixels[] = $dark;
         }
 
-        $this->assertNotSame($pixels[0], $pixels[1]);
+        $this->assertSame(0, $pixels[0]);
+        $this->assertGreaterThan(5, $pixels[1]);
         $this->assertSame(['1G', '10G'], array_column(wm_link_width_steps('10G:6 1G:2'), 2));
     }
 

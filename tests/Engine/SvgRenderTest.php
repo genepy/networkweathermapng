@@ -72,11 +72,14 @@ final class SvgRenderTest extends TestCase
         $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
 
         foreach (['DEFAULT' => [10, 40], 'other' => [400, 40]] as $scale => [$x, $y]) {
-            $box = $xpath->query('//s:g[@data-kind="legend"][@data-name="' . $scale . '"]/s:rect')->item(0);
-            $this->assertNotNull($box, "legend $scale");
-            $this->assertSame([(string) $x, (string) $y], [$box->getAttribute('x'), $box->getAttribute('y')], "legend $scale is drawn at its KEYPOS");
+            $card = $xpath->query('//s:g[@data-kind="legend"][@data-name="' . $scale . '"]/s:polygon')->item(0);
+            $this->assertNotNull($card, "legend $scale");
+            $this->assertSame([$x, $y], self::topLeft($card->getAttribute('points')), "the card of legend $scale is drawn at its KEYPOS");
         }
-        $this->assertGreaterThan(0, $xpath->query('//s:g[@data-kind="legend"][@data-name="DEFAULT"]/s:line')->length, 'tick marks');
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="legend"][@data-name="DEFAULT"]/s:rect[@class="wm-scale-bar"]')->length, 'horizontal: the bar');
+        $this->assertSame(['Other', '0-50%', '50-100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query('//s:g[@data-kind="legend"][@data-name="other"]/s:text'))), 'vertical: the list of colours');
+        $card = $xpath->query('//s:g[@data-kind="widthlegend"]/s:polygon')->item(0);
+        $this->assertSame([200, 300], self::topLeft($card->getAttribute('points')), 'the link speed card');
         $this->assertSame('Legends', $xpath->query('//s:g[@data-kind="title"]/s:text')->item(0)->textContent);
         $this->assertSame(1, $xpath->query('//s:g[@data-kind="widthlegend"]')->length);
         $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
@@ -98,9 +101,11 @@ final class SvgRenderTest extends TestCase
 
         $legend = '//s:g[@data-kind="legend"][@data-name="DEFAULT"]';
         $this->assertSame(1, $xpath->query($legend . '/s:polygon')->length, 'the rounded card');
-        $this->assertSame(2, $xpath->query($legend . '/s:rect')->length, 'one bar piece per colour');
-        $this->assertSame(['Traffic load', '0%', '25%', '50%', '75%', '100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query($legend . '/s:text'))));
-        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"]/s:polygon')->length, 'the pill');
+        $this->assertSame(1, $xpath->query($legend . '/s:rect[@class="wm-scale-bar"]')->length, 'the bar');
+        $this->assertSame('240', $xpath->query($legend . '/s:rect')->item(0)->getAttribute('width'), 'as long as KEYSTYLE says');
+        $this->assertSame(['Traffic load', '0%', '100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query($legend . '/s:text'))));
+        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"]/s:polygon')->length, 'the timestamp card');
+        $this->assertStringStartsWith('Created: ', $xpath->query('//s:g[@data-kind="timestamp"]/s:text')->item(0)->textContent);
         $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
     }
 
@@ -150,7 +155,7 @@ final class SvgRenderTest extends TestCase
 
         $im = imagecreatefrompng($png);
         $this->assertNotFalse($im);
-        // the bar runs from x = 10 to 210 in the card: blue on the left, red on the right, purple between
+        // the bar runs from x = 12 to 212 in the card: blue on the left, red on the right, purple between
         $y = 0;
         for ($yy = 0; $yy < 60; $yy++) {
             $c = imagecolorsforindex($im, imagecolorat($im, 110, $yy));
@@ -160,8 +165,8 @@ final class SvgRenderTest extends TestCase
             }
         }
         $this->assertGreaterThan(0, $y, 'a purple column in the middle of the bar');
-        $left = imagecolorsforindex($im, imagecolorat($im, 12, $y));
-        $right = imagecolorsforindex($im, imagecolorat($im, 208, $y));
+        $left = imagecolorsforindex($im, imagecolorat($im, 14, $y));
+        $right = imagecolorsforindex($im, imagecolorat($im, 210, $y));
         $this->assertGreaterThan($left['red'], $left['blue']);
         $this->assertGreaterThan($right['blue'], $right['red']);
     }
@@ -809,5 +814,17 @@ final class SvgRenderTest extends TestCase
         $map->ReadData();
         ob_end_clean();
         return $map;
+    }
+
+    /** [x, y] of the top left corner of a polygon's points */
+    private static function topLeft(string $points): array
+    {
+        $xs = $ys = [];
+        foreach (preg_split('/\s+/', trim($points)) as $p) {
+            [$x, $y] = explode(',', $p);
+            $xs[] = (int) round((float) $x);
+            $ys[] = (int) round((float) $y);
+        }
+        return [min($xs), min($ys)];
     }
 }
