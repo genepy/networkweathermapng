@@ -499,13 +499,13 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   and ends the selected links on the facing sides of their nodes, so they run
   straight, and spreads the links between the same two nodes
   (`NODES a:24:0 b:-24:0`); *Untangle labels* moves bandwidth labels that
-  overlap another label or a node, as they are drawn (`BWLABELPOS`, and a
-  few pixels to one side with `SET bwlabel_offset_in` / `bwlabel_offset_out`):
-  only the labels of the selected links when links are selected (button in
-  the selection bar, the right-click menu or Ctrl+K), every label otherwise.
-  Each label slides along its own half of the link or steps aside; several
-  passes let the labels make room for each other, and the labels that found
-  no free place are named. *Spread apart* in the selection bar does the same
+  overlap another label or a node, as they are drawn (`BWLABELPOS`): only
+  the labels of the selected links when links are selected (button in the
+  selection bar, the right-click menu or Ctrl+K), every label otherwise.
+  Each label only slides along its own half of the link and stays on it,
+  where it fits between the two nodes; on a link too short for that it is
+  left in place. Several passes let the labels make room for each other,
+  and the labels that found no free place are named. *Spread apart* in the selection bar does the same
   for the selected nodes that overlap.
 - **Link data**: *Bandwidth* sets both directions; *Out, if different* sets
   the outbound one alone (`BANDWIDTH 1G 100M`). *Info URL* is the page a
