@@ -504,8 +504,9 @@
     // Its boxes in the model shrink with it, so picking and the selection
     // follow what is drawn.
 
-    var geo = { k: 1, nodes: [], arrows: [], labelFont: 0 };
-    // above this on-screen size, bandwidth labels are hidden on a basemap (as in the viewer)
+    var geo = { k: 1, nodes: [], arrows: [], labels: [], labelFont: 0 };
+    // past the zoom where they would be this big on the screen at their
+    // size at 100 %, bandwidth labels are hidden on a basemap (as in the viewer)
     var GEO_LABEL_MAX_PX = 40;
     var GEO_BOXES = ['box', 'icon_box', 'label_box'];
 
@@ -518,9 +519,12 @@
         geo.k = 1;
         geo.nodes = [];
         geo.arrows = [];
+        geo.labels = [];
         geo.labelFont = 0;
         if (!geoOn()) { return; }
         geo.arrows = window.WMGeo.arrows(mapLayer);
+        // the bandwidth labels shrink with them, around their centre
+        geo.labels = window.WMGeo.labels(mapLayer);
         mapLayer.querySelectorAll('text.wm-bwlabel-in, text.wm-bwlabel-out').forEach(function (n) {
             var f = parseFloat(n.getAttribute('font-size'));
             if (f > 0 && (!geo.labelFont || f < geo.labelFont)) { geo.labelFont = f; }
@@ -563,6 +567,7 @@
         // the hover glow shrinks with them (editor-svg.css)
         canvas.style.setProperty('--wm-geo-k', String(k));
         window.WMGeo && window.WMGeo.thin(geo.arrows, k);
+        window.WMGeo && window.WMGeo.scaleLabels(geo.labels, k);
         computeOverlaps();
     }
 
@@ -963,7 +968,14 @@
             });
             if (!box) { return; }
             var bb = box.getBBox();
-            out.push({ dir: dir, w: bb.width, h: bb.height, rect: [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height] });
+            var rect = [bb.x, bb.y, bb.x + bb.width, bb.y + bb.height];
+            // deep in a basemap the label is drawn smaller around its centre
+            var at = (box.getAttribute('data-at') || '').split(' ').map(Number);
+            var k = geo.k;
+            if (k < 1 && at.length === 2 && isFinite(at[0]) && isFinite(at[1])) {
+                rect = [at[0] + (rect[0] - at[0]) * k, at[1] + (rect[1] - at[1]) * k, at[0] + (rect[2] - at[0]) * k, at[1] + (rect[3] - at[1]) * k];
+            }
+            out.push({ dir: dir, w: rect[2] - rect[0], h: rect[3] - rect[1], rect: rect });
         });
         return out;
     }

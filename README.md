@@ -356,14 +356,17 @@ and nodes on the very same point are listed instead. Hovering a site, a
 cluster or a row of the side panel shows its city in a small web map in the
 top right corner, with the located nodes and their links (a node with
 `SET site` shows its whole site); the city of the focused node stays there.
-Bandwidth labels are hidden when they would grow over 40 pixels.
+Bandwidth labels shrink as much as the links, around their centre, so
+past 100 % they keep their 100 % size on the screen and never grow over the
+nodes they belong to; they are hidden past the zoom where they would have
+grown over 40 pixels.
 A located node shrinks around the spot where it is drawn (its point rounded
 to whole map pixels), where its links end, so links still end on their
 nodes deep in the map.
 
 The editor zooms into a basemap the same way (up to 64×): located nodes
-keep their 100 % size on the screen, links get thinner and bandwidth labels
-go when they would cover the city, so the sites of a city can be split and
+keep their 100 % size on the screen, links get thinner, bandwidth labels
+keep their 100 % size too and go deep in, as in the viewer, so the sites of a city can be split and
 edited, and they look the same size as in the viewer. *Map properties >
 Basemap > Clusters* picks how close located nodes merge in the viewer:
 

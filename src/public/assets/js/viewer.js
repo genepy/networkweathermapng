@@ -376,11 +376,14 @@
     // the city with huge arrows. Each arrow of the SVG carries its spine,
     // its half width, the half width and the length of its head
     // (data-spine, data-w, data-aw, data-as): it is drawn again from them
-    // at 1 / zoom of its width. Its outline stays one pixel wide.
-    const L = {arrows: [], k: 1};
+    // at 1 / zoom of its width. Its outline stays one pixel wide. The
+    // bandwidth labels shrink as much around their centre (data-at), so
+    // they keep their size at 100 % next to the nodes and the links.
+    const L = {arrows: [], labels: [], k: 1};
 
     function setupLinks(svg) {
         L.arrows = window.WMGeo ? window.WMGeo.arrows(svg) : [];
+        L.labels = window.WMGeo ? window.WMGeo.labels(svg) : [];
         L.k = 1;
         root.classList.remove('wmv-links-thin');
         root.style.removeProperty('--wm-geo-k');
@@ -394,7 +397,10 @@
         root.classList.toggle('wmv-links-thin', k < 1);
         // the hover and focus glows shrink with them (viewer.css)
         root.style.setProperty('--wm-geo-k', String(k));
-        if (window.WMGeo) window.WMGeo.thin(L.arrows, k);
+        if (window.WMGeo) {
+            window.WMGeo.thin(L.arrows, k);
+            window.WMGeo.scaleLabels(L.labels, k);
+        }
     }
 
     // ---- Traffic flow (SET link_flow 1) ----
@@ -702,7 +708,8 @@
     // map in the top right corner.
 
     const INSET_ZOOM = 11;
-    // above this on-screen size, bandwidth labels are hidden on a basemap
+    // past the zoom where they would be this big on the screen at their size
+    // at 100 % (they keep that size), bandwidth labels are hidden on a basemap
     const LABEL_MAX_PX = 40;
 
     function geoOn() {

@@ -5,6 +5,8 @@
  * - a node with a point (SET geo) keeps, past 100 %, the size it has at
  *   100 %: zooming in pulls close sites apart;
  * - the links get thinner by as much (WMGeo.arrowOutline, WMGeo.reachNodes);
+ * - so do the bandwidth labels, around their centre (WMGeo.labels,
+ *   WMGeo.scaleLabels): they keep their size at 100 % on the screen;
  * - located nodes too close to tell apart merge into a cluster, as the map
  *   says with SET cluster_mode (WMGeo.clusters):
  *     nearby  any nodes too close at the current zoom (the default)
@@ -195,6 +197,35 @@
         });
     }
 
+    /**
+     * The shapes of the bandwidth labels of an SVG drawing: each says where
+     * the centre of its label is (data-at), to draw it smaller around it.
+     */
+    function labels(svg) {
+        var out = [];
+        svg.querySelectorAll('.wm-bwlabel-in[data-at], .wm-bwlabel-out[data-at]').forEach(function (el) {
+            var at = el.getAttribute('data-at').split(' ').map(Number);
+            if (at.length !== 2 || !isFinite(at[0]) || !isFinite(at[1])) { return; }
+            out.push({ el: el, x: at[0], y: at[1], transform: el.getAttribute('transform') });
+        });
+        return out;
+    }
+
+    /** Draw labels (from labels()) at k times their size around their centre; 1 puts them back */
+    function scaleLabels(list, k) {
+        list.forEach(function (l) {
+            if (k < 1) {
+                // the shape's own transform (a turned text) comes first
+                l.el.setAttribute('transform', 'translate(' + l.x + ' ' + l.y + ') scale(' + k + ') translate(' + (-l.x) + ' ' + (-l.y) + ')'
+                    + (l.transform ? ' ' + l.transform : ''));
+            } else if (l.transform) {
+                l.el.setAttribute('transform', l.transform);
+            } else {
+                l.el.removeAttribute('transform');
+            }
+        });
+    }
+
     window.WMGeo = {
         CLUSTER_PX: CLUSTER_PX,
         MAX_ZOOM: MAX_ZOOM,
@@ -207,6 +238,8 @@
         arrowOutline: arrowOutline,
         reachNodes: reachNodes,
         arrows: arrows,
-        thin: thin
+        thin: thin,
+        labels: labels,
+        scaleLabels: scaleLabels
     };
 })();
