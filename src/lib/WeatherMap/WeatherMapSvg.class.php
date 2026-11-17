@@ -205,7 +205,7 @@ class WeatherMapSvg {
 	}
 
 	/**
-	 * SET link_flow 1: the viewer moves glowing dots along the links, in
+	 * SET link_flow 1: the viewer moves a spot of light along each link, in
 	 * the direction of the traffic. The SVG only carries the path of each
 	 * direction (invisible); the motion is left to the viewer script, so
 	 * the editor, the PNG and a downloaded SVG stay still.
@@ -217,9 +217,10 @@ class WeatherMapSvg {
 	/**
 	 * Record the paths the traffic of $link follows: OUT from A to the
 	 * split point and IN from B back to it, or OUT over the whole link
-	 * for a one-way link.
+	 * for a one-way link. Each carries the half width of its arrow, so
+	 * the viewer draws a spot exactly as wide as the link.
 	 */
-	function flow($link, $width) {
+	function flow($link, $in_width, $out_width) {
 		if ($this->owner === null || !self::hasFlow($this->map)) {
 			return;
 		}
@@ -234,9 +235,9 @@ class WeatherMapSvg {
 		$oneway = $link->linkstyle == 'oneway';
 		$split = $oneway ? $total : $total * max(0, min(100, (float) $link->splitpos)) / 100;
 
-		$runs = array(array('out', 0, $split, $link->outpercent));
+		$runs = array(array('out', 0, $split, $link->outpercent, $out_width));
 		if (!$oneway) {
-			$runs[] = array('in', $total, $split, $link->inpercent);
+			$runs[] = array('in', $total, $split, $link->inpercent, $in_width);
 		}
 		foreach ($runs as $run) {
 			$spine = self::spine($points, $run[1], $run[2]);
@@ -249,7 +250,7 @@ class WeatherMapSvg {
 				'dir'    => $run[0],
 				'points' => $spine,
 				'load'   => max(0, (float) $run[3]),
-				'width'  => (float) $width,
+				'width'  => (float) $run[4],
 			);
 		}
 	}
