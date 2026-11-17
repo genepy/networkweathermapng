@@ -170,8 +170,7 @@ LINK router1-switch1
 | `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium, or Zabbix for links picked in the editor: the `net.if.speed[...]` item of the SNMP templates, or the sysfs speed of the Linux agent); an aggregated link adds up its members. Falls back to 1G when unknown |
 | `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge); no hint, no legend |
 | `SET width_legend_title Speed` | Title of that legend (default `Link speed`) |
-| `KEYSTYLE DEFAULT modern 240` | Legend as a rounded card with a colour bar 240 px long and the 0 to 100% marks under it (other styles: `classic`, `horizontal`, `vertical`, `inverted`, `tags`) |
-| `SET timestamp_style pill` | Draws the timestamps on a rounded label in the legend colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`) |
+| `KEYSTYLE DEFAULT modern 240` | The legend card shows a gradient bar 240 px long (`horizontal` too); `classic`, `vertical` and `inverted` show the list of colours, `tags` the list with the step tags. See [Map items](#map-items) |
 | `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
 
 Resizing a map in the editor (by dragging its border, or in Map Properties)
@@ -234,12 +233,13 @@ the SVG. In the SVG editor, the **Note** button (or **Add a note here** in the
 right-click menu) adds one; the inspector edits its text, where Enter starts a
 new line, its alignment and its style.
 
-### Boxes on the map
+### Map items
 
-Boxes are cards placed on the map, in the style of the viewer's side panel,
-drawn in the PNG and the SVG, so the live view, the kiosk and the downloads
-show them. Each box is a set of map hints (engines that do not know them
-skip them):
+Map items are cards placed on the map: a rounded card in the legend colours
+with a title, the content and an optional small note line in a softer
+colour. They are drawn in the PNG and the SVG, so the live view, the kiosk
+and the downloads show them. Each item is a set of map hints (engines that
+do not know them skip them):
 
 ```
 SET box_1 total 10 10              # type and position: total, legend, speed, updated or text
@@ -253,15 +253,27 @@ SET box_3_rows sites               # rows from the map: sites (nodes per site) o
 SET box_3_width 240                # least width of the content
 SET box_4 speed 10 300             # the link widths by speed (link width table)
 SET box_5 updated 10 460           # the time of the last data
+SET box_2_note Data: Observium     # a small line under the content (credits, a source...)
 ```
+
+The older keywords are read as the same items and drawn as the same cards;
+they stay as they are in the `.conf`: `KEYPOS` (with `KEYSTYLE`) is a
+traffic legend, `TIMEPOS`, `MINTIMEPOS` and `MAXTIMEPOS` are update time
+cards with their own text, font and colour (TIMEPOS still places the start
+of the text; without it the card sits in the top right corner), and
+`SET width_legend` is a link speed card. `SET timestamp_style` no longer
+changes anything. A card that would go past the edge of the map is drawn
+inside it.
 
 *Total traffic* sums the IN and OUT rates of the links that count in the
 total (not `SET traffic_total 0`); its graph comes from the map's
-recordings and appears when the map is recorded. Boxes take the legend
-colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`, `KEYTEXTCOLOR`) and `KEYFONT`. In
-the editor, the *Boxes* tiles of the *Add* panel add one in the middle of
-the view; it moves like the legends, its panel edits the title, style, rows
-and width, and Delete removes it.
+recordings and appears when the map is recorded. Every card takes the legend
+colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`, `KEYTEXTCOLOR`) and `KEYFONT`
+(*Map items* in the map panel); an update time card of `TIMEPOS` keeps
+`TIMEFONT` and `TIMECOLOR`. In the editor, the *Map items* tiles of the
+*Add* panel add one in the middle of the view; it moves like the other
+furniture, its panel edits the title, style, rows, width and note, and
+Delete removes it.
 
 ### Focus areas
 
@@ -517,19 +529,17 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   library (themes that fold, a search; click an icon to add a node with it,
   or drag it) and *Backgrounds* (click one to set the background of the map,
   one undo step). Ctrl+click on an empty spot also adds a node. *Map items*
-  puts the *Link load* legend (`KEYPOS`), the *Link speed* legend
-  (`SET width_legend`) or the *Timestamp* (`TIMEPOS`) in the middle of the
-  view, or selects it when it is already on the map. *Boxes* adds a box
-  (see [Boxes on the map](#boxes-on-the-map)): *Total traffic*, *Traffic
-  legend*, *Link speed*, *Updated at* or *Text box*.
+  adds a card (see [Map items](#map-items)) in the middle of the view:
+  *Traffic legend*, *Link speed*, *Updated at*, *Total traffic* or *Text
+  box*. Under the tiles, the items on the map are listed: a click on one
+  selects it and shows it, its bin removes it from the map (one undo step).
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection
   bar, of the right panel or of the context menu) removes the selection. A
   legend or a timestamp is hidden rather than removed: it stays in the
   `.conf` at a negative position (`KEYPOS DEFAULT -681 -21`,
   `TIMEPOS -11 -491 ...`, kept as -x - 1, -y - 1 so it comes back where it
   was) and the link speed legend loses its `SET width_legend`. Ctrl+Z
-  undoes it; the *Add* panel or the box of its section in the map panel
-  shows it again. The title stays: it shows the map name.
+  undoes it. The title stays: it shows the map name.
 - **Edit**: the right panel changes every selected item at once.
 - **Map properties**: with nothing selected, the right panel shows the map:
   name, size, background, then sections that fold, each with its value on

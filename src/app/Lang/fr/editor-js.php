@@ -505,7 +505,6 @@ return [
     'Link load legend' => 'Légende de charge des liens',
     'Link speed legend' => 'Légende de débit des liens',
     'The link speed legend shows how wide a link is drawn for each bandwidth, for links whose width is auto (Link defaults).' => 'La légende de débit montre l’épaisseur d’un lien selon sa bande passante, pour les liens dont l’épaisseur est auto (Liens par défaut).',
-    'It uses the font and the colours of the link load legend.' => 'Elle reprend la police et les couleurs de la légende de charge.',
     'The title is not deleted: it shows the map name.' => 'Le titre n’est pas supprimé : il affiche le nom de la carte.',
     // Link labels in the editor (F4)
     'Arrow heads' => 'Pointes de flèche',
@@ -544,10 +543,6 @@ return [
     'Traffic' => 'Trafic',
     'Updated at' => 'Mis à jour à',
     'Points of presence' => 'Points de présence',
-    'Total traffic box' => 'Encadré trafic total',
-    'Traffic legend box' => 'Encadré légende du trafic',
-    'Link speed box' => 'Encadré débit des liens',
-    'Update time box' => 'Encadré heure de mise à jour',
     'Text box' => 'Encadré libre',
     'No title' => 'Sans titre',
     'Gradient bar' => 'Barre en dégradé',
@@ -655,4 +650,9 @@ return [
     'Every map item takes the colours and font of the legends (Map properties).' => 'Chaque élément de carte prend les couleurs et la police des légendes (Propriétés de la carte).',
     'For the gradient bar.' => 'Pour la barre en dégradé.',
     'Add it to the map or remove it in the Map items of the Add panel.' => 'Ajoutez-le à la carte ou retirez-le dans les Éléments de la carte du panneau Ajouter.',
+    'Legends, the update time, the total traffic and text boxes are cards with this font and these colours. Add them or remove them in the Map items of the Add panel.' => 'Les légendes, l’heure de mise à jour, le trafic total et les encadrés sont des cartes avec cette police et ces couleurs. Ajoutez-les ou retirez-les dans les Éléments de la carte du panneau Ajouter.',
+    'It uses the font and the colours of the map items.' => 'Elle utilise la police et les couleurs des éléments de la carte.',
+    'Map item' => 'Élément de la carte',
+    'Traffic legend' => 'Légende du trafic',
+    'Link speed' => 'Débit des liens',
 ];

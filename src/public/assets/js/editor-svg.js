@@ -3348,11 +3348,12 @@
     }
 
     function furnitureName(f) {
-        if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Link load legend') : t('Legend :name', { name: f.name }); }
-        if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Timestamp'); }
+        // the same names for a card and for the older keyword it stands for
+        if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Traffic legend') : t('Legend :name', { name: f.name }); }
+        if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Updated at'); }
         if (f.kind === 'title') { return t('Title'); }
         if (f.kind === 'box') { return boxTypeName(f.props ? f.props.type : ''); }
-        return t('Link speed legend');
+        return t('Link speed');
     }
 
     /**
@@ -3371,7 +3372,7 @@
         items.sort(function (a, b) { return a[1].box[1] - b[1].box[1] || a[1].box[0] - b[1].box[0]; });
         list.replaceChildren.apply(list, items.map(function (it) {
             var k = it[0], f = it[1], name = furnitureName(f);
-            var sub = f.kind === 'box' && f.props && f.props.title ? f.props.title : '';
+            var sub = f.kind === 'box' && f.props && f.props.title && f.props.title !== name ? f.props.title : '';
             return h('li', { 'class': 'map-item' + (state.selection.has(k) ? ' selected' : '') }, [
                 h('button', {
                     type: 'button', 'class': 'map-item-name', title: t('Select it on the map'),
@@ -3394,7 +3395,7 @@
     }
 
     function boxTypeName(type) {
-        return { total: t('Total traffic box'), legend: t('Traffic legend box'), speed: t('Link speed box'), updated: t('Update time box'), text: t('Text box') }[type] || t('Box');
+        return { total: t('Total traffic'), legend: t('Traffic legend'), speed: t('Link speed'), updated: t('Updated at'), text: t('Text box') }[type] || t('Map item');
     }
 
     /** The fields of one box (SET box_<id>_...): saved when a field is left */
