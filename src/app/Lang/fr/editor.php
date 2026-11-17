@@ -262,11 +262,7 @@ return [
     // map items in the Add panel
     'The title cannot be hidden: it shows the map name.' => 'Le titre ne peut pas être masqué : il affiche le nom de la carte.',
     'Map items' => 'Éléments de la carte',
-    'Show the legend of the link colours by load, in the middle of the view' => 'Afficher la légende des couleurs des liens selon leur charge, au milieu de la vue',
-    'Show the legend of the link widths by speed, in the middle of the view' => 'Afficher la légende des épaisseurs des liens selon leur débit, au milieu de la vue',
     'Link speed' => 'Débit des liens',
-    'Show the time the map was drawn, in the middle of the view' => 'Afficher l’heure à laquelle la carte a été dessinée, au milieu de la vue',
-    'Timestamp' => 'Horodatage',
     'Move the overlapping bandwidth labels of the selected links apart' => 'Écarter les étiquettes de débit superposées des liens sélectionnés',
     'Move the selected nodes that overlap apart' => 'Écarter les nœuds sélectionnés qui se superposent',
 
@@ -285,14 +281,8 @@ return [
     'Unknown box rows: :rows' => 'Lignes d’encadré inconnues : :rows',
     'Unknown box property: :key' => 'Propriété d’encadré inconnue : :key',
     'Unknown box: :name' => 'Encadré inconnu : :name',
-    'Boxes' => 'Encadrés',
-    'A box with the total traffic of the map and its graph' => 'Un encadré avec le trafic total de la carte et son graphe',
-    'A box with the link load colours, as a bar or a list' => 'Un encadré avec les couleurs de charge des liens, en barre ou en liste',
     'Traffic legend' => 'Légende du trafic',
-    'A box with the link widths by speed' => 'Un encadré avec les largeurs de liens par débit',
-    'A box with the time of the last data' => 'Un encadré avec l’heure des dernières données',
     'Updated at' => 'Mis à jour à',
-    'A box with a title and rows, typed or taken from the map sites' => 'Un encadré avec un titre et des lignes, saisies ou tirées des sites de la carte',
     'Text box' => 'Encadré libre',
 
     // History and savepoints (timeline of saved versions)
@@ -321,4 +311,11 @@ return [
     'A focus area must be at least 10 pixels wide and high' => 'Une zone de focus doit faire au moins 10 pixels de large et de haut',
     // F15: geographic maps in the editor
     'The badge size must be between :min and :max pixels' => 'La taille du badge doit être comprise entre :min et :max pixels',
+    // F19: map items
+    'A card with the link load colours, as a gradient bar or a list' => 'Une carte avec les couleurs de charge des liens, en barre en dégradé ou en liste',
+    'A card with the link widths by speed' => 'Une carte avec l’épaisseur des liens selon leur débit',
+    'A card with the time of the last data' => 'Une carte avec l’heure des dernières données',
+    'A card with the total traffic of the map and its graph' => 'Une carte avec le trafic total de la carte et son graphique',
+    'A card with a title and rows, typed or taken from the map sites' => 'Une carte avec un titre et des lignes, saisies ou tirées des sites de la carte',
+    'Map items on this map' => 'Éléments présents sur la carte',
 ];

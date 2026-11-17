@@ -976,6 +976,7 @@
         renderOverlay();
         renderInspector();
         updateToolbar();
+        renderMapItems();
         $$('#map g[data-kind]').forEach(function (g) {
             g.classList.toggle('selected', state.selection.has(key(g.dataset.kind, g.dataset.name)));
             if (g.dataset.kind === 'link') {
@@ -2005,31 +2006,12 @@
         return selectedFurniture().filter(function (f) { return f.kind !== 'title'; }).length;
     }
 
-    /**
-     * The Add panel's map items: the link load legend, the link speed
-     * legend and the timestamp. Shown in the middle of the view when hidden,
-     * then selected; selected only when already on the map.
-     */
-    function addFurniture(k) {
-        if (!state.model) { return; }
-        if (state.furniture.has(k)) {
-            state.selection = new Set([k]);
-            refresh();
-            toast(t('It is already on the map: it is now selected.'));
-            return;
-        }
-        var c = viewCentre(), m = state.model.map || {};
-        var x = Math.max(10, Math.min(snap(c.x), (m.width || 200) - 150));
-        var y = Math.max(20, Math.min(snap(c.y), (m.height || 200) - 40));
-        send([{ op: 'show_furniture', keys: [k], at: [x, y] }], [k]);
-    }
-
     /** Default titles of new boxes, written in the .conf in the editor's language */
     function boxTitle(type) {
         return { total: t('Total traffic'), legend: t('Traffic'), speed: t('Link speed'), updated: t('Updated at'), text: t('Points of presence') }[type] || '';
     }
 
-    /** The Add panel's boxes: a new one in the middle of the view, then selected */
+    /** The Add panel's map items: a new card in the middle of the view, then selected */
     function addBox(type) {
         if (!state.model) { return; }
         var c = viewCentre(), m = state.model.map || {};
@@ -2119,7 +2101,7 @@
         }
         var ops = boxes.map(function (f) {
             var p = f.props;
-            return { op: 'add_box', type: p.type, at: [f.box[0] + 20, f.box[1] + 20], title: p.title, style: p.style, text: p.text, rows: p.rows, width: p.width || '' };
+            return { op: 'add_box', type: p.type, at: [f.box[0] + 20, f.box[1] + 20], title: p.title, style: p.style, text: p.text, rows: p.rows, width: p.width || '', note: p.note || '' };
         });
         if (nodes.length) {
             ops.unshift({ op: 'clone', nodes: nodes.map(function (n) { return n.name; }), dx: 20, dy: 20 });
@@ -3366,15 +3348,54 @@
     }
 
     function furnitureName(f) {
-        if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Link load legend') : t('Legend :name', { name: f.name }); }
-        if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Timestamp'); }
+        // the same names for a card and for the older keyword it stands for
+        if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Traffic legend') : t('Legend :name', { name: f.name }); }
+        if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Updated at'); }
         if (f.kind === 'title') { return t('Title'); }
         if (f.kind === 'box') { return boxTypeName(f.props ? f.props.type : ''); }
-        return t('Link speed legend');
+        return t('Link speed');
+    }
+
+    /**
+     * The map items on the map, listed under the Add panel's tiles: a click
+     * on the name selects the item and shows it, the bin removes it from the
+     * map (a card is deleted; a legend or timestamp of the older keywords is
+     * hidden and stays in the .conf). One undo step each.
+     */
+    function renderMapItems() {
+        var list = $('#map-items');
+        if (!list) { return; }
+        var items = [];
+        state.furniture.forEach(function (f, k) {
+            if (f.kind !== 'title') { items.push([k, f]); }
+        });
+        items.sort(function (a, b) { return a[1].box[1] - b[1].box[1] || a[1].box[0] - b[1].box[0]; });
+        list.replaceChildren.apply(list, items.map(function (it) {
+            var k = it[0], f = it[1], name = furnitureName(f);
+            var sub = f.kind === 'box' && f.props && f.props.title && f.props.title !== name ? f.props.title : '';
+            return h('li', { 'class': 'map-item' + (state.selection.has(k) ? ' selected' : '') }, [
+                h('button', {
+                    type: 'button', 'class': 'map-item-name', title: t('Select it on the map'),
+                    onclick: function () {
+                        state.selection = new Set([k]);
+                        centerOn((f.box[0] + f.box[2]) / 2, (f.box[1] + f.box[3]) / 2);
+                        refresh();
+                    }
+                }, [h('span', { text: name }), sub ? h('small', { text: sub }) : null].filter(Boolean)),
+                h('button', {
+                    type: 'button', 'class': 'map-item-remove', title: t('Remove from the map'), 'aria-label': t('Remove :name from the map', { name: name }),
+                    onclick: function () {
+                        state.selection.delete(k);
+                        send([{ op: 'hide_furniture', keys: [k] }], []);
+                    }
+                }, [icon('trash')])
+            ]);
+        }));
+        list.hidden = !items.length;
     }
 
     function boxTypeName(type) {
-        return { total: t('Total traffic box'), legend: t('Traffic legend box'), speed: t('Link speed box'), updated: t('Update time box'), text: t('Text box') }[type] || t('Box');
+        return { total: t('Total traffic'), legend: t('Traffic legend'), speed: t('Link speed'), updated: t('Updated at'), text: t('Text box') }[type] || t('Map item');
     }
 
     /** The fields of one box (SET box_<id>_...): saved when a field is left */
@@ -3416,6 +3437,11 @@
         width.addEventListener('change', function () { save({ width: width.value }); });
         out.push(row(t('Width'), width));
 
+        var note = h('input', { name: 'box_note', value: p.note || '', placeholder: t('None') });
+        note.addEventListener('change', function () { save({ note: note.value }); });
+        out.push(row(t('Small note'), note));
+        out.push(h('p', { 'class': 'help', text: t('A small line under the content, for example a source or credits.') }));
+
         if (p.type === 'total') {
             out.push(h('p', { 'class': 'help', text: t('The sum of the links that count in the total traffic. The graph shows the last 24 hours when the map is recorded.') }));
         } else if (p.type === 'speed') {
@@ -3425,7 +3451,7 @@
         } else if (p.type === 'legend') {
             out.push(h('p', { 'class': 'help', text: t('The colours of the link load scale.') }));
         }
-        out.push(h('p', { 'class': 'help', text: t('The box takes the colours and font of the legends (Map properties).') }));
+        out.push(h('p', { 'class': 'help', text: t('Every map item takes the colours and font of the legends (Map properties).') }));
         return out;
     }
 
@@ -4769,9 +4795,6 @@
         'zoom-reset': zoomReset,
         'zoom-fit': zoomFit,
         'add-node': function () { addNodeHere(); },
-        'add-load-legend': function () { addFurniture('legend:DEFAULT'); },
-        'add-speed-legend': function () { addFurniture('widthlegend:'); },
-        'add-timestamp': function () { addFurniture('timestamp:'); },
         'add-box-total': function () { addBox('total'); },
         'add-box-legend': function () { addBox('legend'); },
         'add-box-speed': function () { addBox('speed'); },

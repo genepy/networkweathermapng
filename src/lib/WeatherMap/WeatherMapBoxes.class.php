@@ -1,10 +1,14 @@
 <?php
 /**
- * Boxes placed on the map: total traffic, traffic legend, link speed,
+ * Map items drawn as cards: total traffic, traffic legend, link speed,
  * update time and free text boxes. They are drawn by DrawMap like the other
  * map furniture, so the PNG, the SVG, the live viewer and the kiosk show
- * them alike. Each box is a set of map hints, so the .conf stays readable
- * by engines that do not know them:
+ * them alike, with one design: a rounded card in the legend colours
+ * (KEYBGCOLOR, KEYOUTLINECOLOR, KEYTEXTCOLOR), a title, the content and an
+ * optional small note line in a softer colour.
+ *
+ * Each box is a set of map hints, so the .conf stays readable by engines
+ * that do not know them:
  *
  *   SET box_<id> <type> <x> <y>    type: total, legend, speed, updated, text
  *                                  (negative x or y count from the right or bottom edge)
@@ -16,6 +20,14 @@
  *   SET box_<id>_rows <source>     text box rows taken from the map: sites (nodes per
  *                                  site) or sites_load (busiest link load per site)
  *   SET box_<id>_width <px>        least width of the content (default per type)
+ *   SET box_<id>_note <text>       small line under the content (credits, a source...)
+ *
+ * The older keywords are read as the same items and drawn as the same cards,
+ * and stay as they are in the .conf: KEYPOS and KEYSTYLE (a legend card:
+ * horizontal and modern give the bar, the other styles the list),
+ * TIMEPOS, MINTIMEPOS and MAXTIMEPOS (an update time card with the
+ * timestamp text, its font and colour) and SET width_legend (a link speed
+ * card). See fromLegend(), fromTimestamp() and fromWidthLegend().
  *
  * The total traffic graph needs a series that the map does not hold: the
  * application sets WeatherMap::$box_series (a list of [time, in, out]) from
@@ -24,8 +36,22 @@
 class WeatherMapBoxes {
 	const TYPES = array('total', 'legend', 'speed', 'updated', 'text');
 	const ROW_SOURCES = array('sites', 'sites_load');
-	const PAD = 10;
-	const RADIUS = 8;
+	const PAD = 12;
+	const RADIUS = 10;
+	/** Padding of a card that holds one line and no title (a timestamp) */
+	const COMPACT_PAD = 7;
+
+	/** What every card may set, beyond the hints of a box */
+	const DEFAULTS = array(
+		'id' => '', 'type' => 'text', 'x' => 0, 'y' => 0, 'title' => '', 'style' => '', 'text' => '', 'rows' => '', 'width' => 0, 'note' => '',
+		'scale' => 'DEFAULT',  // the scale of a legend
+		'tags' => false,       // a legend list shows the tags of the scale instead of the ranges
+		'stamp' => null,       // the text of an update time card (default: the map's datestamp)
+		'font' => null,        // font number (default: KEYFONT)
+		'colour' => null,      // gd colour of the text (default: KEYTEXTCOLOR)
+		'anchor' => null,      // [x, y]: the left end of the first line's baseline, instead of x and y
+		'area' => null,        // image map area name (default: BOX:<id>)
+	);
 
 	/** Colours of the IN and OUT series of the total traffic graph (as in the viewer's panel) */
 	const IN_COLOUR = array(79, 143, 247);
@@ -86,7 +112,71 @@ class WeatherMapBoxes {
 			'text'  => self::decode((string) $hint('text')),
 			'rows'  => in_array($rows, self::ROW_SOURCES, true) ? $rows : '',
 			'width' => max(0, min(2000, (int) $hint('width'))),
+			'note'  => self::decode((string) $hint('note')),
 		);
+	}
+
+	/**
+	 * The legend of a scale placed by KEYPOS, as a legend card: KEYSTYLE
+	 * horizontal and modern give the bar (their size is its length), the
+	 * other styles the list of colours (tags shows the tags of the scale).
+	 */
+	static function fromLegend($map, $scalename) {
+		$style = isset($map->keystyle[$scalename]) ? (string) $map->keystyle[$scalename] : 'classic';
+		$bar = in_array($style, array('horizontal', 'modern'), true);
+		$size = isset($map->keysize[$scalename]) ? (int) $map->keysize[$scalename] : 0;
+		return array(
+			'id' => (string) $scalename,
+			'type' => 'legend',
+			'x' => (int) $map->keyx[$scalename],
+			'y' => (int) $map->keyy[$scalename],
+			'title' => isset($map->keytext[$scalename]) ? trim((string) $map->keytext[$scalename]) : '',
+			'style' => $bar ? 'bar' : 'list',
+			'width' => $bar ? max(80, min(2000, $size)) : 0,
+			'scale' => (string) $scalename,
+			'tags' => $style === 'tags',
+			'area' => 'LEGEND:' . $scalename,
+		) + self::DEFAULTS;
+	}
+
+	/**
+	 * A timestamp (TIMEPOS, MINTIMEPOS, MAXTIMEPOS) as an update time card
+	 * without a title. Its position stays the left end of the baseline of
+	 * the text, as for the other engines; 0 0 is the top right corner.
+	 */
+	static function fromTimestamp($map, $which, $stamp, $x, $y, $font, $colour) {
+		$corner = $x == 0 || $y == 0;
+		return array(
+			'id' => (string) $which,
+			'type' => 'updated',
+			'x' => $corner ? -10 : 0,
+			'y' => $corner ? 10 : 0,
+			'stamp' => (string) $stamp,
+			'font' => $font,
+			'colour' => $colour,
+			'anchor' => $corner ? null : array((int) $x, (int) $y),
+			'area' => $which . 'TIMESTAMP',
+		) + self::DEFAULTS;
+	}
+
+	/** SET width_legend <x> <y> as a link speed card, null when it is not shown */
+	static function fromWidthLegend($map) {
+		$where = trim((string) $map->get_hint('width_legend'));
+		if ($where === '' || !preg_match('/^(-?\d+)[\s,]+(-?\d+)$/', $where, $m)) {
+			return null;
+		}
+		if (count(wm_link_width_steps($map->get_hint('link_width_table'), $map->kilo)) == 0) {
+			return null;
+		}
+		$title = trim((string) $map->get_hint('width_legend_title'));
+		return array(
+			'id' => 'widthlegend',
+			'type' => 'speed',
+			'x' => (int) $m[1],
+			'y' => (int) $m[2],
+			'title' => $title === '' ? 'Link speed' : $title,
+			'area' => 'WIDTHLEGEND',
+		) + self::DEFAULTS;
 	}
 
 	static function defaultTitle($type) {
@@ -132,15 +222,23 @@ class WeatherMapBoxes {
 		}
 	}
 
+	/** Draw one card; returns its [x1, y1, x2, y2] */
 	static function draw($map, $image, $box) {
-		$font = $map->keyfont;
+		$box += self::DEFAULTS;
+		$font = $box['font'] === null ? $map->keyfont : $box['font'];
 		list($junk, $lineheight) = $map->myimagestringsize($font, 'Ag');
 		$lineheight = max(8, (int) $lineheight);
 
 		// the content: a list of blocks, each [kind, height, width, data]
 		$blocks = self::content($map, $box, $font, $lineheight);
+		$notes = $box['note'] === '' ? array() : explode("\n", $box['note']);
 
-		$pad = self::PAD;
+		// one line and no title: a compact card, as the timestamps
+		$compact = $box['title'] === '' && !$notes && count($blocks) == 1 && $blocks[0][0] === 'line';
+		if ($compact) {
+			$blocks[0][1] = $lineheight + 6;
+		}
+		$pad = $compact ? self::COMPACT_PAD : self::PAD;
 		$width = $box['width'] > 0 ? $box['width'] : array('total' => 200, 'legend' => 180, 'speed' => 0, 'updated' => 0, 'text' => 0)[$box['type']];
 		$height = 0;
 		if ($box['title'] !== '') {
@@ -152,28 +250,46 @@ class WeatherMapBoxes {
 			$width = max($width, $b[2]);
 			$height += $b[1];
 		}
-		if (!$blocks && $box['title'] === '') {
+		foreach ($notes as $note) {
+			list($nw) = $map->myimagestringsize($font, $note === '' ? ' ' : $note);
+			$width = max($width, $nw);
+		}
+		if ($notes) {
+			$height += 6 + count($notes) * ($lineheight + 4);
+		}
+		if (!$blocks && !$notes && $box['title'] === '') {
 			$height = $lineheight;
 			$width = max($width, 40);
 		}
 		$width = (int) ceil($width);
 		$boxw = $width + 2 * $pad;
-		$boxh = (int) ceil($height) + 2 * $pad - ($blocks ? 0 : ($box['title'] !== '' ? 8 : 0));
+		$boxh = (int) ceil($height) + 2 * $pad - ($blocks || $notes ? 0 : ($box['title'] !== '' ? 8 : 0));
 
-		$x = $box['x'];
-		$y = $box['y'];
-		if ($x < 0) {
-			$x += $map->width - $boxw;
-		}
-		if ($y < 0) {
-			$y += $map->height - $boxh;
+		if (is_array($box['anchor'])) {
+			// the first line's baseline at the anchor, the card inside the map
+			$first = $box['title'] !== '' ? $lineheight : ($compact ? $lineheight + 2 : $lineheight + 4);
+			$x = max(0, min($box['anchor'][0] - $pad, $map->width - $boxw));
+			$y = max(0, min($box['anchor'][1] - $pad - $first, $map->height - $boxh));
+		} else {
+			$x = $box['x'];
+			$y = $box['y'];
+			if ($x < 0) {
+				$x += $map->width - $boxw;
+			}
+			if ($y < 0) {
+				$y += $map->height - $boxh;
+			}
+			// a card that grew past the edge (an older legend placed for a smaller one) stays on the map
+			$x = max(0, min($x, $map->width - $boxw));
+			$y = max(0, min($y, $map->height - $boxh));
 		}
 
 		$bg = $map->colours['DEFAULT']['KEYBG'];
 		$outline = $map->colours['DEFAULT']['KEYOUTLINE'];
-		$text = $map->colours['DEFAULT']['KEYTEXT']['gdref1'];
+		$text = $box['colour'] === null ? $map->colours['DEFAULT']['KEYTEXT']['gdref1'] : $box['colour'];
+		$muted = self::muted($image, $text, $bg);
 
-		$card = wm_rounded_rect_points($x, $y, $x + $boxw, $y + $boxh, self::RADIUS);
+		$card = wm_rounded_rect_points($x, $y, $x + $boxw, $y + $boxh, min(self::RADIUS, $boxh / 2));
 		if (!is_none($bg)) {
 			wimagefilledpolygon($image, $card, count($card) / 2, $bg['gdref1']);
 		}
@@ -189,11 +305,42 @@ class WeatherMapBoxes {
 		}
 
 		foreach ($blocks as $b) {
-			self::drawBlock($map, $image, $b, $cx, $cy, $width, $font, $lineheight, $text);
+			self::drawBlock($map, $image, $b, $cx, $cy, $width, $font, $lineheight, $text, $muted, $box['scale']);
 			$cy += $b[1];
 		}
 
-		$map->imap->addArea('Rectangle', 'BOX:' . $box['id'], '', array($x, $y, $x + $boxw, $y + $boxh));
+		if ($notes) {
+			$cy += 6;
+			foreach ($notes as $note) {
+				$cy += $lineheight + 4;
+				if ($note !== '') {
+					$map->myimagestring($image, $font, $cx, $cy - 2, $note, $muted);
+				}
+			}
+		}
+
+		$area = $box['area'] === null ? 'BOX:' . $box['id'] : $box['area'];
+		$map->imap->addArea('Rectangle', $area, '', array($x, $y, $x + $boxw, $y + $boxh));
+		return array($x, $y, $x + $boxw, $y + $boxh);
+	}
+
+	/**
+	 * Where the text of a timestamp card starts, from its area [x1, y1, x2,
+	 * y2]: the position TIMEPOS gives (the left end of the baseline).
+	 */
+	static function timestampAnchor($area) {
+		return array((int) $area[0] + self::COMPACT_PAD, (int) $area[3] - self::COMPACT_PAD - 4);
+	}
+
+	/** The softer colour of the small texts: the text colour, 40% towards the card colour */
+	static function muted($image, $text, $bg) {
+		$c = imagecolorsforindex($image, $text);
+		$to = is_none($bg) || !isset($bg['red1']) ? array(128, 128, 128) : array((int) $bg['red1'], (int) $bg['green1'], (int) $bg['blue1']);
+		return self::allocate($image, array(
+			(int) round($c['red'] * 0.6 + $to[0] * 0.4),
+			(int) round($c['green'] * 0.6 + $to[1] * 0.4),
+			(int) round($c['blue'] * 0.6 + $to[2] * 0.4),
+		));
 	}
 
 	/** What a box shows, as blocks: [kind, height, least width, data] */
@@ -201,7 +348,7 @@ class WeatherMapBoxes {
 		$rowh = $lineheight + 10;
 		switch ($box['type']) {
 			case 'updated':
-				$stamp = (string) $map->datestamp;
+				$stamp = $box['stamp'] === null ? (string) $map->datestamp : (string) $box['stamp'];
 				list($w) = $map->myimagestringsize($font, $stamp);
 				return array(array('line', $rowh, $w, $stamp));
 
@@ -217,13 +364,13 @@ class WeatherMapBoxes {
 			case 'legend':
 				if ($box['style'] === 'list') {
 					$blocks = array();
-					foreach (self::scaleBands($map) as $band) {
+					foreach (self::scaleBands($map, $box['scale'], $box['tags']) as $band) {
 						list($w) = $map->myimagestringsize($font, $band[2]);
 						$blocks[] = array('band', $rowh, 24 + $w, $band);
 					}
 					return $blocks;
 				}
-				return array(array('bar', 14 + 6 + $lineheight + 2, 120, null));
+				return array(array('bar', 12 + 6 + $lineheight + 2, 120, null));
 
 			case 'total':
 				list($in, $out) = self::trafficTotal($map);
@@ -264,13 +411,14 @@ class WeatherMapBoxes {
 		return array();
 	}
 
-	static function drawBlock($map, $image, $b, $x, $y, $width, $font, $lineheight, $text) {
+	static function drawBlock($map, $image, $b, $x, $y, $width, $font, $lineheight, $text, $muted, $scale = 'DEFAULT') {
 		list($kind, $height, $junk, $data) = $b;
 		$outline = $map->colours['DEFAULT']['KEYOUTLINE'];
 
 		switch ($kind) {
 			case 'line':
-				$map->myimagestring($image, $font, $x, $y + $lineheight + 4, $data, $text);
+				// in a compact card the row is 4 px lower than the text
+				$map->myimagestring($image, $font, $x, $y + $height - ($height == $lineheight + 6 ? 4 : 6), $data, $text);
 				return;
 
 			case 'row':
@@ -307,12 +455,12 @@ class WeatherMapBoxes {
 				return;
 
 			case 'bar':
-				self::drawBar($map, $image, $x, $y + 2, $width, 14);
+				self::drawBar($map, $image, $x, $y + 2, $width, 12, $scale);
 				$labels = array('0%', '100%');
-				$base = $y + 2 + 14 + 6 + $lineheight;
-				$map->myimagestring($image, $font, $x, $base, $labels[0], $text);
+				$base = $y + 2 + 12 + 6 + $lineheight;
+				$map->myimagestring($image, $font, $x, $base, $labels[0], $muted);
 				list($w) = $map->myimagestringsize($font, $labels[1]);
-				$map->myimagestring($image, $font, $x + $width - $w, $base, $labels[1], $text);
+				$map->myimagestring($image, $font, $x + $width - $w, $base, $labels[1], $muted);
 				return;
 
 			case 'total':
@@ -321,7 +469,7 @@ class WeatherMapBoxes {
 					$vx = $x + $i * $col;
 					$dot = self::allocate($image, $v[2]);
 					wimagefilledrectangle($image, $vx, $y + $lineheight / 2 - 2, $vx + 6, $y + $lineheight / 2 + 4, $dot);
-					$map->myimagestring($image, $font, $vx + 10, $y + $lineheight, $v[0], $text);
+					$map->myimagestring($image, $font, $vx + 10, $y + $lineheight, $v[0], $muted);
 					$map->myimagestring($image, $font, $vx, $y + 2 * $lineheight + 4, $v[1], $text);
 				}
 				return;
@@ -333,8 +481,8 @@ class WeatherMapBoxes {
 	}
 
 	/** The scale as a bar, smooth in the SVG (a linear gradient) */
-	static function drawBar($map, $image, $x, $y, $width, $height) {
-		$map->DrawScaleBar($image, $x, $y, $x + $width - 1, $y + $height - 1, 'DEFAULT');
+	static function drawBar($map, $image, $x, $y, $width, $height, $scale = 'DEFAULT') {
+		$map->DrawScaleBar($image, $x, $y, $x + $width - 1, $y + $height - 1, $scale);
 	}
 
 	/** IN above the middle line and OUT under it, both on the same scale */
@@ -369,19 +517,33 @@ class WeatherMapBoxes {
 		}
 	}
 
-	/** Bands of the DEFAULT scale: [colour, colour2 or null, "10-50%"] from the lowest */
-	static function scaleBands($map) {
+	/**
+	 * Bands of a scale: [colour, colour2 or null, "10-50%", bottom] from the
+	 * lowest. $tags labels them with their tag (KEYSTYLE tags). SET
+	 * key_hidezero_<scale> 1 leaves out the 0 to 0 band and
+	 * key_hidepercent_<scale> 1 the % signs, as the classic legend did.
+	 */
+	static function scaleBands($map, $scale = 'DEFAULT', $tags = false) {
+		$hidezero = intval($map->get_hint('key_hidezero_' . $scale)) == 1;
+		$percent = intval($map->get_hint('key_hidepercent_' . $scale)) == 1 ? '' : '%';
 		$bands = array();
-		foreach ((array) ($map->colours['DEFAULT'] ?? array()) as $band) {
+		foreach ((array) ($map->colours[$scale] ?? array()) as $band) {
 			if (!is_array($band) || !empty($band['special']) || !isset($band['bottom'], $band['top'], $band['red1']) || (int) $band['red1'] < 0) {
+				continue;
+			}
+			if ($hidezero && $band['bottom'] == 0 && $band['top'] == 0) {
 				continue;
 			}
 			$two = isset($band['red2']) && (int) $band['red2'] >= 0
 				? array((int) $band['red2'], (int) $band['green2'], (int) $band['blue2']) : null;
+			$label = ($band['bottom'] == $band['top'] ? '' : self::num($band['bottom']) . '-') . self::num($band['top']) . $percent;
+			if ($tags && isset($band['tag']) && trim((string) $band['tag']) !== '') {
+				$label = (string) $band['tag'];
+			}
 			$bands[] = array(
 				array((int) $band['red1'], (int) $band['green1'], (int) $band['blue1']),
 				$two,
-				($band['bottom'] == $band['top'] ? '' : self::num($band['bottom']) . '-') . self::num($band['top']) . '%',
+				$label,
 				(float) $band['bottom'],
 			);
 		}

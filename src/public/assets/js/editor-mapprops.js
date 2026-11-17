@@ -214,7 +214,7 @@
     }
 
     var SECTIONS = [
-        ['general', t('General')], ['title', t('Title')], ['legend', t('Link load legend')], ['scale', t('Link colours')],
+        ['general', t('General')], ['title', t('Title')], ['legend', t('Map items')], ['scale', t('Link colours')],
         ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
         ['focus', t('Focus areas')]
     ];
@@ -490,38 +490,37 @@
                     field(t('Colour'), colour('title_colour', p.title_colour, false))
                 ]);
             case 'legend':
+                // the look of every map item card, then the legend of KEYPOS while it is on the map
                 return [
-                    h('p', { 'class': 'mapprops-explain', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth. A 1G link carrying 450M is at 45%, so that half of the link takes the colour of the 45% step.') }),
-                    check('key_shown', p.key_shown, t('Show the legend on the map')),
-                    field(t('Legend text'), h('input', { name: 'key_text', value: p.key_text, autocomplete: 'off' })),
-                    field(t('Style'), choice('key_style', p.key_style, [
-                        ['classic', t('Classic: a list of colours')], ['horizontal', t('Horizontal bar')], ['vertical', t('Vertical bar')],
-                        ['inverted', t('Vertical bar, 100% at the top')], ['tags', t('List with the step tags')],
-                        ['modern', t('Modern: a rounded card with a colour bar')]
-                    ])),
-                    field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the horizontal, vertical and modern bars.')),
+                    h('p', { 'class': 'mapprops-explain', text: t('Legends, the update time, the total traffic and text boxes are cards with this font and these colours. Add them or remove them in the Map items of the Add panel.') }),
                     field(t('Font'), fontSelect('key_font', p.key_font)),
                     field(t('Text colour'), colour('key_text_colour', p.key_text_colour, false)),
                     field(t('Box colour'), colour('key_bg_colour', p.key_bg_colour, true)),
                     field(t('Box outline'), colour('key_outline_colour', p.key_outline_colour, true))
-                ];
+                ].concat(p.key_shown ? [
+                    h('h4', { text: t('Link load legend') }),
+                    h('p', { 'class': 'mapprops-explain', text: t('The legend gives the colour of a link by its load: the traffic in each direction as a percentage of the link bandwidth. A 1G link carrying 450M is at 45%, so that half of the link takes the colour of the 45% step.') }),
+                    field(t('Legend text'), h('input', { name: 'key_text', value: p.key_text, autocomplete: 'off' })),
+                    // every legend is a card now: the older bar styles show the bar, the others the list
+                    field(t('Style'), choice('key_style', { horizontal: 'modern', vertical: 'classic', inverted: 'classic' }[p.key_style] || p.key_style, [
+                        ['modern', t('Gradient bar')], ['classic', t('List of colours')], ['tags', t('List with the step tags')]
+                    ])),
+                    field(t('Bar length (px)'), h('input', { type: 'number', name: 'key_size', min: 50, max: 2000, value: p.key_size }), t('For the gradient bar.'))
+                ] : []);
             case 'timestamp':
                 return [
-                    check('stamp_shown', p.stamp_shown, t('Show the timestamp on the map')),
+                    itemsHint(),
                     field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
                         t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
-                    field(t('Style'), choice('stamp_style', p.stamp_style, [
-                        ['plain', t('Plain text')], ['pill', t('On a rounded label, in the legend colours')]
-                    ])),
                     field(t('Font'), fontSelect('time_font', p.time_font)),
                     field(t('Colour'), colour('time_colour', p.time_colour, false))
                 ];
             case 'widthlegend':
                 return [
                     h('p', { 'class': 'mapprops-explain', text: t('The link speed legend shows how wide a link is drawn for each bandwidth, for links whose width is auto (Link defaults).') }),
-                    check('width_legend_shown', p.width_legend_shown, t('Show the link speed legend on the map')),
+                    itemsHint(),
                     field(t('Legend text'), h('input', { name: 'width_legend_title', value: p.width_legend_title, autocomplete: 'off' })),
-                    h('span', { 'class': 'hint', text: t('It uses the font and the colours of the link load legend.') })
+                    h('span', { 'class': 'hint', text: t('It uses the font and the colours of the map items.') })
                 ];
             case 'links':
                 return [
@@ -562,12 +561,17 @@
         return [];
     }
 
+    /** Map items are added and removed in one place: the Add panel */
+    function itemsHint() {
+        return h('span', { 'class': 'hint', text: t('Add it to the map or remove it in the Map items of the Add panel.') });
+    }
+
     /** What a folded section shows on its row */
     function summary(id, p, m) {
         switch (id) {
             case 'appearance': return p.bg_colour;
             case 'title': return ed.fontName(p.title_font);
-            case 'legend': return p.key_shown ? t('Shown') : t('Hidden');
+            case 'legend': return ed.fontName(p.key_font);
             case 'scale': return t(':n steps', { n: (m.scale || []).length });
             case 'timestamp': return p.stamp_shown === false ? t('Hidden') : p.stamp_text;
             case 'widthlegend': return p.width_legend_shown ? t('Shown') : t('Hidden');
@@ -582,7 +586,7 @@
     }
 
     var SECTIONS = [
-        ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Link load legend')], ['scale', t('Link colours')],
+        ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Map items')], ['scale', t('Link colours')],
         ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
         ['focus', t('Focus areas')]
     ];
@@ -652,7 +656,11 @@
 
     /** Every section, for the map panel */
     function sections() {
-        return SECTIONS.map(function (s) { return section(s[0], false); }).filter(Boolean);
+        var p = ed.state.model && ed.state.model.map && ed.state.model.map.props;
+        return SECTIONS.filter(function (s) {
+            // the link speed legend of SET width_legend has its section while it is on the map
+            return s[0] !== 'widthlegend' || !!(p && p.width_legend_shown);
+        }).map(function (s) { return section(s[0], false); }).filter(Boolean);
     }
 
     /** Selects nothing, so the panel shows the map; opens a section if asked */

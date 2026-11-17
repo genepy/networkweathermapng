@@ -408,7 +408,7 @@ class MapEditor
     }
 
     /**
-     * {op: add_box, type, at: [x, y], title?, style?, text?, rows?} - a box
+     * {op: add_box, type, at: [x, y], title?, style?, text?, rows?, width?, note?} - a box
      * on the map (WeatherMapBoxes): total, legend, speed, updated or text.
      * The title is written as given, so a box keeps the language of the
      * editor that added it.
@@ -426,12 +426,12 @@ class MapEditor
             $id++;
         }
         $map->add_hint('box_' . $id, $type . ' ' . max(0, $x) . ' ' . max(0, $y));
-        $this->setBox($map, (string) $id, array_intersect_key($op, array_flip(['title', 'style', 'text', 'rows', 'width'])));
+        $this->setBox($map, (string) $id, array_intersect_key($op, array_flip(['title', 'style', 'text', 'rows', 'width', 'note'])));
 
         return ['furniture' => ['box:' . $id]];
     }
 
-    /** {op: set_box, name, props: {title, style, text, rows, width, x, y}} - an empty value takes the default */
+    /** {op: set_box, name, props: {title, style, text, rows, width, note, x, y}} - an empty value takes the default */
     private function setBox(\WeatherMap $map, string $id, array $props): void
     {
         $box = $this->box($map, $id);
@@ -445,6 +445,7 @@ class MapEditor
                         $value = '-';
                     }
                     break;
+                case 'note':
                 case 'text':
                     $value = \WeatherMapBoxes::encode(str_replace("\r", '', (string) $value));
                     $value = trim(str_replace('\\n', '', $value)) === '' ? '' : $value;
@@ -2188,8 +2189,9 @@ class MapEditor
             $box = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
             $pos = match ($kind) {
                 'legend' => [(int) ($map->keyx[$item] ?? $box[0]), (int) ($map->keyy[$item] ?? $box[1])],
-                // text is placed by the left end of its baseline
-                'timestamp', 'title' => [$box[0], $box[3]],
+                // text is placed by the left end of its baseline (a timestamp in its card)
+                'timestamp' => self::timestampPosition($map, $item, $box),
+                'title' => [$box[0], $box[3]],
                 default => [$box[0], $box[1]],
             };
 
@@ -2206,12 +2208,24 @@ class MapEditor
                         'text' => $b['text'],
                         'rows' => $b['rows'],
                         'width' => $b['width'],
+                        'note' => $b['note'],
                     ];
                 }
             }
         }
 
         return array_values($found);
+    }
+
+    /**
+     * Where TIMEPOS (MINTIMEPOS, MAXTIMEPOS) puts a timestamp: its keyword
+     * when set, else the start of the text in the card (the top right corner)
+     */
+    private static function timestampPosition(\WeatherMap $map, string $which, array $box): array
+    {
+        $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$which] ?? '';
+        [$x, $y] = [(int) $map->{$prefix . 'timex'}, (int) $map->{$prefix . 'timey'}];
+        return $x > 0 && $y > 0 ? [$x, $y] : \WeatherMapBoxes::timestampAnchor($box);
     }
 
     // ------------------------------------------------------------------

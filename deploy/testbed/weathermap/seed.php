@@ -77,7 +77,7 @@ if (in_array(MAP_NAME, $names, true)) {
     $id = $maps->createMap(['name' => MAP_NAME, 'width' => 900, 'height' => 560]);
     $content = (string) $maps->getMapConfig($id);
     $content = substr($content, 0, (int) strpos($content, '# Add your nodes and links below'));
-    $content = str_replace('KEYPOS DEFAULT 10 10', 'KEYPOS DEFAULT 10 40', $content);
+    $content = str_replace('SET box_1 legend 10 10', 'SET box_1 legend 10 40', $content);
     $content .= (string) file_get_contents(__DIR__ . '/demo-map.conf');
     $maps->saveMapConfig($id, $content);
     echo "Map added: " . MAP_NAME . "\n";

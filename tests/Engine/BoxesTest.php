@@ -141,4 +141,72 @@ final class BoxesTest extends TestCase
         $rows = \WeatherMapBoxes::siteRows($map, 'sites_load');
         $this->assertSame(['Lyon', '75%'], $rows[0]);
     }
+
+    /** The older keywords are the same map items, drawn as the same cards, and stay in the .conf */
+    public function testOlderKeywordsAreReadAsMapItems(): void
+    {
+        $map = new \WeatherMap();
+        ob_start();
+        $map->ReadConfig(implode("\n", [
+            'WIDTH 600', 'HEIGHT 400',
+            'KEYPOS DEFAULT 20 30 Load', 'KEYSTYLE DEFAULT modern 250',
+            'KEYPOS other 300 30 Other', 'KEYSTYLE other tags',
+            'SCALE other 0 50 0 255 0 low', 'SCALE other 50 100 255 0 0 high',
+            'TIMEPOS 100 380 At %H:%M',
+            'SET width_legend 10 -10', 'SET width_legend_title Speeds', 'SET link_width_table 1G:2 10G:6',
+            'SET key_hidezero_DEFAULT 1',
+        ]) . "\n");
+        ob_end_clean();
+
+        $legend = \WeatherMapBoxes::fromLegend($map, 'DEFAULT');
+        $this->assertSame(['legend', 20, 30, 'Load', 'bar', 250, 'LEGEND:DEFAULT'], [$legend['type'], $legend['x'], $legend['y'], $legend['title'], $legend['style'], $legend['width'], $legend['area']]);
+        $other = \WeatherMapBoxes::fromLegend($map, 'other');
+        $this->assertSame(['list', true], [$other['style'], $other['tags']], 'the other styles give the list');
+        $this->assertSame(['low', 'high'], array_column(\WeatherMapBoxes::scaleBands($map, 'other', true), 2), 'KEYSTYLE tags: the tags of the scale');
+        $this->assertNotContains('0%', array_column(\WeatherMapBoxes::scaleBands($map, 'DEFAULT'), 2), 'key_hidezero leaves out the 0 to 0 band');
+
+        $speed = \WeatherMapBoxes::fromWidthLegend($map);
+        $this->assertSame(['speed', 10, -10, 'Speeds', 'WIDTHLEGEND'], [$speed['type'], $speed['x'], $speed['y'], $speed['title'], $speed['area']]);
+
+        $svg = $this->svg($map);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        foreach (['legend' => 'DEFAULT', 'legend ' => 'other', 'widthlegend' => 'widthlegend', 'timestamp' => ''] as $kind => $name) {
+            $this->assertSame(1, $xpath->query('//s:g[@data-kind="' . trim($kind) . '"][@data-name="' . $name . '"]/s:polygon')->length, "$kind $name is a card");
+        }
+        $this->assertSame(['Other', 'low', 'high'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query('//s:g[@data-kind="legend"][@data-name="other"]/s:text'))));
+        $this->assertStringStartsWith('At ', $xpath->query('//s:g[@data-kind="timestamp"]/s:text')->item(0)->textContent);
+
+        $areas = [];
+        foreach ($map->imap->shapes as $area) {
+            if ($area instanceof \HTML_ImageMap_Area_Rectangle) {
+                $areas[(string) $area->name] = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
+            }
+        }
+        $this->assertSame([20, 30], array_slice($areas['LEGEND:DEFAULT'], 0, 2), 'the card at KEYPOS');
+        $this->assertSame([100, 380], \WeatherMapBoxes::timestampAnchor($areas['TIMESTAMP']), 'the text of the timestamp card starts at TIMEPOS');
+        $this->assertSame(390, $areas['WIDTHLEGEND'][3], 'negative positions count from the far edge');
+    }
+
+    public function testCardsHaveASmallNoteLineAndStayOnTheMap(): void
+    {
+        $map = $this->load(implode("\n", [
+            'SET box_1 legend 790 10',
+            'SET box_1_note Data: Observium\nDemo',
+        ]));
+        $this->assertSame("Data: Observium\nDemo", \WeatherMapBoxes::all($map)['1']['note']);
+        $svg = $this->svg($map);
+        $this->assertStringContainsString('>Data: Observium<', $svg);
+        $this->assertStringContainsString('>Demo<', $svg);
+
+        $areas = [];
+        foreach ($map->imap->shapes as $area) {
+            if ($area instanceof \HTML_ImageMap_Area_Rectangle) {
+                $areas[(string) $area->name] = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
+            }
+        }
+        $this->assertSame((int) $map->width, $areas['BOX:1'][2], 'a card placed past the edge is drawn inside the map');
+    }
 }
