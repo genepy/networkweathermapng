@@ -629,10 +629,10 @@ class WeatherMapLink extends WeatherMapItem {
 		}
 		WeatherMapSvg::$cuts = null;
 
-		// SET link_flow 1: the paths the viewer moves its dots along
+		// SET link_flow 1: the paths the viewer moves its spots along
 		$svg = WeatherMapSvg::$active;
 		if ($svg && $svg->accepts($image)) {
-			$svg->flow($this, $link_width);
+			$svg->flow($this, $link_in_width, $link_out_width);
 		}
 
 		if (!$commentcol->is_none()) {

@@ -399,9 +399,11 @@
 
     // ---- Traffic flow (SET link_flow 1) ----
     // The SVG carries an invisible path per direction of each link
-    // (path.wm-flow, from where the traffic leaves to the arrow head) and
-    // its load in %. Glowing dots run along it, faster on busier links.
-    // No dots under prefers-reduced-motion; paused while the tab is hidden.
+    // (path.wm-flow, from where the traffic leaves to the arrow head), its
+    // load in % and the half width of its arrow. One light spot crosses
+    // each of them at a time, as wide as the link and faster on busier
+    // links; deep in a basemap it gets as much thinner as the link.
+    // No spots under prefers-reduced-motion; paused while the tab is hidden.
     const SVG_NS = 'http://www.w3.org/2000/svg';
     const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
     const F = {dots: [], frame: 0, t0: performance.now()};
@@ -421,11 +423,12 @@
         return pts;
     }
 
+    /** A band of light, clear at both ends and bright in the middle, the whole height of the spot */
     function flowGradient(svg) {
         const defs = document.createElementNS(SVG_NS, 'defs');
-        const g = document.createElementNS(SVG_NS, 'radialGradient');
+        const g = document.createElementNS(SVG_NS, 'linearGradient');
         g.id = 'wmv-flow-glow';
-        [['0', '1'], ['0.3', '0.9'], ['0.6', '0.35'], ['1', '0']].forEach(function (s) {
+        [['0', '0'], ['0.3', '0.45'], ['0.5', '0.85'], ['0.7', '0.45'], ['1', '0']].forEach(function (s) {
             const stop = document.createElementNS(SVG_NS, 'stop');
             stop.setAttribute('offset', s[0]);
             stop.setAttribute('stop-color', '#fff');
@@ -448,24 +451,22 @@
             const pts = flowPoints(path.getAttribute('d') || '');
             const len = pts.length ? pts[pts.length - 1][2] : 0;
             if (len < 12) return;
-            const width = parseFloat(path.getAttribute('data-width')) || 4;
-            // a short comet, stretched along the link
-            const r = Math.max(3, Math.min(10, width * 0.8));
+            // the half width of the arrow: the spot covers the whole link
+            const half = parseFloat(path.getAttribute('data-width')) || 2;
+            // stretched along the link, never longer than a third of it
+            const long = Math.min(len / 3, Math.max(16, half * 6));
             // px per second: a quiet link crawls, a full one runs
             const speed = 18 + 1.6 * Math.min(load, 100);
-            const count = Math.max(1, Math.round(len / 160));
-            let after = path;
-            for (let i = 0; i < count; i++) {
-                const dot = document.createElementNS(SVG_NS, 'ellipse');
-                dot.setAttribute('class', 'wmv-flow-dot');
-                dot.setAttribute('rx', String(r * 2));
-                dot.setAttribute('ry', String(r));
-                dot.setAttribute('fill', 'url(#wmv-flow-glow)');
-                dot.setAttribute('pointer-events', 'none');
-                after.after(dot);
-                after = dot;
-                F.dots.push({el: dot, pts: pts, len: len, speed: speed, phase: (i / count + k * 0.618) % 1, at: 1});
-            }
+            const dot = document.createElementNS(SVG_NS, 'rect');
+            dot.setAttribute('class', 'wmv-flow-dot');
+            dot.setAttribute('x', String(-long / 2));
+            dot.setAttribute('y', String(-half));
+            dot.setAttribute('width', String(long));
+            dot.setAttribute('height', String(half * 2));
+            dot.setAttribute('fill', 'url(#wmv-flow-glow)');
+            dot.setAttribute('pointer-events', 'none');
+            path.after(dot);
+            F.dots.push({el: dot, pts: pts, len: len, fade: long / 2, speed: speed, phase: (k * 0.618) % 1, at: 1});
         });
         startFlow();
     }
@@ -488,7 +489,7 @@
             dot.el.setAttribute('transform', 'translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ') rotate(' + p[2].toFixed(1) + ')'
                 + (L.k < 1 ? ' scale(' + L.k + ')' : ''));
             // fade in out of the node, fade out at the arrow head
-            dot.el.setAttribute('opacity', Math.max(0, Math.min(1, d / 14, (dot.len - d) / 14)).toFixed(2));
+            dot.el.setAttribute('opacity', Math.max(0, Math.min(1, d / dot.fade, (dot.len - d) / dot.fade)).toFixed(2));
         });
         F.frame = requestAnimationFrame(flowTick);
     }

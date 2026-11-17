@@ -486,6 +486,15 @@ final class SvgRenderTest extends TestCase
         $this->assertStringStartsWith('M350 50', $paths['ab:in']->getAttribute('d'));
         $this->assertStringEndsWith('L200 50', $paths['ab:in']->getAttribute('d'));
         $this->assertStringEndsWith('L350 150', $paths['cd:out']->getAttribute('d'), 'a one-way link flows to its end');
+        // the half width of each arrow, for a spot as wide as the link
+        $this->assertSame('7', $paths['ab:out']->getAttribute('data-width'));
+        $this->assertSame('7', $paths['ab:in']->getAttribute('data-width'));
+
+        // SET link_bulge 1: each direction is as wide as its own load makes it
+        file_put_contents($file, "SET link_flow 1\nSET link_bulge 1\n" . $conf);
+        $svg = \WeatherMapSvg::render($this->load($file));
+        $this->assertMatchesRegularExpression('/class="wm-flow" data-dir="out" data-load="10" data-width="2\\.0\d*"/', $svg);
+        $this->assertMatchesRegularExpression('/class="wm-flow" data-dir="in" data-load="30" data-width="4\\.1\d*"/', $svg);
 
         file_put_contents($file, $conf);
         $this->assertStringNotContainsString('wm-flow', \WeatherMapSvg::render($this->load($file)));

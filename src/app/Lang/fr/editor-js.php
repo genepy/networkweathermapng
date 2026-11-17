@@ -399,7 +399,7 @@ return [
     'Light up the link under the pointer with a soft glow, in its own colour' => 'Faire briller doucement le lien sous le pointeur, dans sa propre couleur',
     'In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.' => 'Dans la carte en direct et l’éditeur ; l’image PNG garde des liens simples. Plus joli sur un fond sombre.',
     'Traffic flow' => 'Flux du trafic',
-    'Move glowing dots along the links, in the direction of the traffic' => 'Faire avancer des points lumineux le long des liens, dans le sens du trafic',
+    'Move a spot of light along each link, in the direction of the traffic' => 'Faire avancer un point lumineux le long de chaque lien, dans le sens du trafic',
     'Only on the live map. Busier links move faster. No motion for a visitor who asked their system for less motion.' => 'Seulement sur la carte en direct. Plus un lien est chargé, plus ses points vont vite. Aucune animation pour un visiteur qui a demandé moins d’animations à son système.',
     // Pill link labels
     'Bandwidth labels' => 'Étiquettes de débit',

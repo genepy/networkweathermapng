@@ -549,7 +549,7 @@
                     check('link_glow', p.link_glow, t('Light up the link under the pointer with a soft glow, in its own colour')),
                     h('span', { 'class': 'hint', text: t('In the live map and the editor; the PNG image keeps plain links. Looks best on a dark background.') }),
                     h('h4', { text: t('Traffic flow') }),
-                    check('link_flow', p.link_flow, t('Move glowing dots along the links, in the direction of the traffic')),
+                    check('link_flow', p.link_flow, t('Move a spot of light along each link, in the direction of the traffic')),
                     h('span', { 'class': 'hint', text: t('Only on the live map. Busier links move faster. No motion for a visitor who asked their system for less motion.') })
                 ]);
             case 'basemap':
