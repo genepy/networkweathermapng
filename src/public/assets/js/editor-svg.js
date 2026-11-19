@@ -1195,7 +1195,10 @@
             // Ctrl+click on empty space adds a node. A drag with the key of
             // "move the view" (Ctrl by default) moves the view; otherwise a
             // drag selects an area, added to the selection with Shift or Ctrl.
-            if (KEYS.held(evt, 'editor.drag-pan')) {
+            // Shift wins over the key of "move the view" (Ctrl+Shift+drag
+            // adds an area), unless that key is Shift itself.
+            var addArea = evt.shiftKey && KEYS.dragKey('editor.drag-pan') !== 'Shift';
+            if (KEYS.held(evt, 'editor.drag-pan') && !addArea) {
                 startDrag(evt, { type: 'pan', client: { x: evt.clientX, y: evt.clientY }, view: { x: state.view.x, y: state.view.y }, create: ctrl && !evt.shiftKey });
                 stage.classList.add('panning');
                 return;
@@ -2913,6 +2916,7 @@
         splitpos: t('Where the two halves of the link meet, in % of its length from the first node: 50 is the middle.'),
         zorder: t('Items on a higher layer are drawn over those on a lower one.'),
         labelstyle: t('Load in %: the traffic as a percentage of the link bandwidth. Traffic in bits/s: the rate, such as 450M. Raw value: the number as the data source gives it. No label: nothing is written on the link. Custom text: a format of your own, from the map file.'),
+        label_text: t('What the label writes, with values in braces: {link:this:bandwidth_in:%2k} is the traffic in, {link:this:inpercent:%.2f} the load in % (bandwidth_out and outpercent for the other way).'),
         bwstyle: t('Level box: a box that stays level whatever the angle of the link. Box along the link: the box turns with the link. Pill along the link, with an arrow: a rounded label that turns with the link, with a small arrow toward where the traffic goes.'),
         commentcurve: t('Straight: the comment is written on a straight line. Follow the curve: the comment bends with the link where it bends gently.'),
         node_style: t('Box with the label: the icon and the label are drawn on the map. Round badge: a disc with the icon or the initials of the label; the name shows on hover and in Find a node.'),
@@ -3724,6 +3728,13 @@
         return row(t('Head size'), h('div', { 'class': 'pair' }, [length, width]));
     }
 
+    /** The text of a custom label (INBWFORMAT, OUTBWFORMAT), when the links all have custom text */
+    function labelTextRow(links, dir) {
+        var c = common(links, 'labelstyle');
+        if (c.mixed || String(c.value) !== '--') { return null; }
+        return row(dir === 'in' ? t('Text in') : t('Text out'), field(links, 'label_' + dir, 'link'), false, TIPS.label_text);
+    }
+
     function linkPanel(links) {
         var single = links.length === 1 ? links[0] : null;
         var out = [h('h2', { text: single ? t('Link :name', { name: single.name }) : t(':n links', { n: links.length }) })];
@@ -3762,6 +3773,8 @@
             row(t('Labels'), field(links, 'labelstyle', 'link', { options: withCurrent(links, 'labelstyle', [
                 ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
             ], t('Custom text')) }), false, TIPS.labelstyle),
+            labelTextRow(links, 'in'),
+            labelTextRow(links, 'out'),
             row(t('Label box'), field(links, 'bwstyle', 'link', { options: [['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]] }), false, TIPS.bwstyle),
             row(t('Label font'), fontField(links, 'bwfont', 'link'))
         );

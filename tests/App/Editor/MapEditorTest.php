@@ -507,6 +507,66 @@ final class MapEditorTest extends TestCase
         $this->assertSame('6 3', $this->editor->load()->links['core-paris']->arrowstyle);
     }
 
+    public function testCustomLabelText(): void
+    {
+        $custom = "\tINBWFORMAT {link:this:bandwidth_in:%2k} in\n\tOUTBWFORMAT {link:this:bandwidth_out:%2k} out\n";
+        file_put_contents($this->file, str_replace("LINK core-paris\n", "LINK core-paris\n" . $custom, (string) file_get_contents($this->file)));
+        $links = array_column(MapEditor::model($this->editor->load())['links'], null, 'name');
+        $this->assertSame('--', $links['core-paris']['labelstyle']);
+        $this->assertSame('{link:this:bandwidth_in:%2k} in', $links['core-paris']['label_in']);
+        $this->assertSame('{link:this:bandwidth_out:%2k} out', $links['core-paris']['label_out']);
+
+        // choosing the value the panel shows again keeps the texts
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['labelstyle' => '--']]]);
+        $this->assertStringContainsString('INBWFORMAT {link:this:bandwidth_in:%2k} in', (string) file_get_contents($this->file));
+
+        // a mixed selection: the other links take the custom texts
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon', 'core-paris'], 'props' => ['labelstyle' => '--']]]);
+        $map = $this->editor->load();
+        $this->assertSame('--', $map->links['core-lyon']->labelstyle);
+        $this->assertSame('{link:this:bandwidth_out:%2k} out', $map->links['core-lyon']->bwlabelformats[OUT]);
+
+        // the texts can be changed
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['label_in' => "{link:this:inpercent:%d}%\nup"]]]);
+        $map = $this->editor->load();
+        $this->assertSame('{link:this:inpercent:%d}% up', $map->links['core-lyon']->bwlabelformats[IN]);
+        $this->assertSame('{link:this:bandwidth_in:%2k} in', $map->links['core-paris']->bwlabelformats[IN], 'the other link keeps its text');
+
+        // a named style again
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['labelstyle' => 'bits']]]);
+        $this->assertSame('bits', $this->editor->load()->links['core-lyon']->labelstyle);
+
+        // links without custom text cannot take it from nowhere
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['labelstyle' => '--']]]);
+    }
+
+    public function testCustomLabelTextAsTheLinkDefault(): void
+    {
+        $custom = "\tINBWFORMAT {link:this:bandwidth_in:%2k} in\n\tOUTBWFORMAT {link:this:bandwidth_out:%2k} out\n";
+        file_put_contents($this->file, preg_replace('/^LINK DEFAULT\n/m', "LINK DEFAULT\n" . $custom, (string) file_get_contents($this->file), 1));
+        $map = $this->editor->load();
+        $this->assertSame('--', MapEditor::model($map)['map']['props']['link_labelstyle']);
+
+        // choosing the value Link defaults shows again keeps the texts
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_labelstyle' => '--']]]);
+        $map = $this->editor->load();
+        $this->assertSame('{link:this:bandwidth_in:%2k} in', $map->links['DEFAULT']->bwlabelformats[IN]);
+        $this->assertSame('{link:this:bandwidth_in:%2k} in', $map->links['core-paris']->bwlabelformats[IN]);
+
+        // a link with texts of its own keeps them when the default changes
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['label_out' => 'mine']]]);
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_labelstyle' => 'bits']]]);
+        $map = $this->editor->load();
+        $this->assertSame('bits', $map->links['core-paris']->labelstyle);
+        $this->assertSame('--', $map->links['core-lyon']->labelstyle);
+        $this->assertSame('mine', $map->links['core-lyon']->bwlabelformats[OUT]);
+
+        // no custom text as the default from nowhere
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_labelstyle' => '--']]]);
+    }
+
     public function testBadgeNodeStyleFollowsItsTemplate(): void
     {
         $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'badge']]]);

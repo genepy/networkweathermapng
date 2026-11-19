@@ -536,7 +536,7 @@
                     field(t('Width (px)'), h('input', { name: 'link_width', value: p.link_width, autocomplete: 'off' }), t('A number, or auto to follow the bandwidth.')),
                     field(t('Label'), choice('link_labelstyle', p.link_labelstyle, [
                         ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]
-                    ]), null, ed.tips.labelstyle),
+                    ].concat(p.link_labelstyle === '--' ? [['--', t('Custom text')]] : [])), null, ed.tips.labelstyle),
                     field(t('Label font'), fontSelect('link_bwfont', p.link_bwfont)),
                     field(t('Label box'), choice('link_bwstyle', p.link_bwstyle, [
                         ['classic', t('Level box')], ['angled', t('Box along the link')], ['pill', t('Pill along the link, with an arrow')]
