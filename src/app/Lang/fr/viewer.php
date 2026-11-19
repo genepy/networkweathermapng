@@ -59,4 +59,10 @@ return [
     'Side panel: sites, total traffic, legend' => 'Panneau latéral : sites, trafic total, légende',
     'Play or pause' => 'Lecture ou pause',
     'Focus areas' => 'Zones de focus',
+
+    // F28: the total traffic graph on every map
+    'Switch on recording in the map settings to see the graph.' => 'Activez l’enregistrement dans les réglages de la carte pour voir le graphique.',
+    'The graph appears once a few images are recorded.' => 'Le graphique apparaît dès que quelques images sont enregistrées.',
+    'Recording settings' => 'Réglages d’enregistrement',
+    'Demo data' => 'Données de démonstration',
 ];

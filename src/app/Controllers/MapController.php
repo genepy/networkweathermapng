@@ -14,6 +14,7 @@ use App\Services\CommandPalette;
 use App\Services\KioskService;
 use App\Services\RecordingService;
 use App\Services\TimezoneService;
+use App\Services\TotalTrafficSeries;
 use App\Services\TrafficSeries;
 
 class MapController extends BaseController
@@ -163,6 +164,8 @@ class MapController extends BaseController
             'zoom' => $kiosk ? max(0, min(400, (int) $this->getInput('zoom', 0))) : 0,
             'autoRefresh' => $autoRefresh,
             'history' => !$kiosk && $this->historyAvailable($mapId),
+            // where the total traffic graph comes from (TotalTrafficSeries)
+            'totalsSource' => $this->totalsSource($mapId),
             'historyHours' => $this->recording()->getRetention(),
             'title' => $map['title_cache'] ?: $map['name'],
         ], !($fullscreen || $kiosk));
@@ -251,17 +254,44 @@ class MapController extends BaseController
         $this->json(['frames' => $recording->frames($mapId), 'interval' => $recording->getInterval() * 60]);
     }
 
-    /** GET: the total traffic of each recorded frame: {frames: [[time, in, out]...]} */
+    /**
+     * GET: the total traffic graph of a map, {source, frames: [[time, in, out]...]}:
+     * the recorded frames, or for a map of static data a demo day that
+     * ends on its current totals (TotalTrafficSeries).
+     */
     public function totals(array $params): void
     {
         $mapId = (int) ($params['id'] ?? 0);
-        $recording = $this->recording();
-        if (!$this->canView($mapId) || !$recording->canPlay($mapId)) {
-            $this->json(['error' => __('This map is not recorded')], 404);
+        if (!$this->canView($mapId)) {
+            $this->json(['error' => 'Forbidden'], 403);
             return;
         }
+        $recording = $this->recording();
         header('Cache-Control: no-store');
-        $this->json(['frames' => $recording->totals($mapId)]);
+        if ($recording->canPlay($mapId)) {
+            $this->json(['source' => TotalTrafficSeries::RECORDED, 'frames' => $recording->totals($mapId)]);
+            return;
+        }
+        $live = $this->totalsSource($mapId) === TotalTrafficSeries::DEMO ? $this->mapService->liveRender($mapId) : null;
+        if ($live === null) {
+            $this->json(['source' => TotalTrafficSeries::NONE, 'frames' => []]);
+            return;
+        }
+        $total = (array) ($live['summary']['total'] ?? []);
+        $in = is_numeric($total['in'] ?? null) ? (float) $total['in'] : null;
+        $out = is_numeric($total['out'] ?? null) ? (float) $total['out'] : null;
+        $this->json(['source' => TotalTrafficSeries::DEMO, 'frames' => TotalTrafficSeries::demo($in, $out)]);
+    }
+
+    /** Where the total traffic graph of a map comes from: recorded, demo or none */
+    private function totalsSource(int $mapId): string
+    {
+        $recorded = $this->recording()->canPlay($mapId);
+        $config = $recorded ? null : $this->mapService->getMapConfig($mapId);
+        return TotalTrafficSeries::source(
+            $recorded,
+            $config !== null && TotalTrafficSeries::staticOnly(TotalTrafficSeries::configTargets($config))
+        );
     }
 
     /** GET: one recorded frame, as /map/{id}/svg gives the live map */

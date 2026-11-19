@@ -51,7 +51,8 @@
          data-normal-url="<?= htmlspecialchars($normalUrl) ?>"
          data-kiosk-url="<?= htmlspecialchars($svgFsUrl) ?>"
          data-png-url="/map/<?= $mapId ?>/image"
-         data-history="<?= !empty($history) ? '1' : '0' ?>"<?php if ($isKiosk): ?>
+         data-history="<?= !empty($history) ? '1' : '0' ?>"
+         data-totals="<?= htmlspecialchars((string) ($totalsSource ?? 'none')) ?>"<?php if ($isKiosk): ?>
          data-kiosk="1" data-zoom="<?= (int) ($zoom ?? 0) ?>"<?php endif; ?>>
         <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
             <div class="wmv-basemap" hidden></div>
@@ -163,6 +164,15 @@
                 </dl>
                 <svg class="wmv-total-graph" viewBox="0 0 260 64" preserveAspectRatio="none" role="img" hidden></svg>
                 <p class="wmv-total-stats" hidden></p>
+                <?php if (!$isKiosk): ?>
+                <p class="wmv-total-note" hidden>
+                    <span class="wmv-total-note-off"><?= e__('Switch on recording in the map settings to see the graph.') ?></span>
+                    <span class="wmv-total-note-wait" hidden><?= e__('The graph appears once a few images are recorded.') ?></span>
+                    <?php if ($canEdit): ?>
+                    <a class="wmv-total-note-link" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode($normalUrl) ?>#ms-recording" data-map-settings data-tab="recording"><?= e__('Recording settings') ?></a>
+                    <?php endif; ?>
+                </p>
+                <?php endif; ?>
             </section>
             <section class="wmv-panel-sec wmv-panel-legend" aria-labelledby="wmv-legend-title" hidden>
                 <header class="wmv-panel-head"><h2 id="wmv-legend-title"><?= e__('Link load') ?></h2></header>

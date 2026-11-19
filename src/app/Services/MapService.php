@@ -533,9 +533,15 @@ class MapService
                     $wmap->ReadData();
                 }
 
-                // the graph of the total traffic boxes: the recorded totals of the last day
+                // the graph of the total traffic boxes: the recorded totals of
+                // the last day, or a demo day for a map of static data (F28)
                 if (\WeatherMapBoxes::wantsSeries($wmap)) {
                     $wmap->box_series = $this->recordedTotals($id);
+                    if (!$this->isRecorded($id) && TotalTrafficSeries::staticOnly(TotalTrafficSeries::mapTargets($wmap))) {
+                        $total = self::linkTotals($wmap);
+                        $wmap->box_series = TotalTrafficSeries::demo($total['in'], $total['out']);
+                        $wmap->box_series_note = __('Demo data');
+                    }
                 }
             
                 // Write the image
@@ -607,6 +613,19 @@ class MapService
             return [];
         }
         return array_values(array_filter($rows, static fn (array $r) => $r[0] >= $since));
+    }
+
+    /** Whether the viewer can play the map's recordings back (RecordingService::canPlay) */
+    private function isRecorded(int $id): bool
+    {
+        if (!$this->db instanceof \App\Core\Database) {
+            return false;
+        }
+        try {
+            return (new RecordingService($this->db, $this->config))->canPlay($id);
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**
@@ -921,6 +940,29 @@ class MapService
     {
         $site = $node->hints['site'] ?? '';
         return is_scalar($site) ? trim(preg_replace('/\s+/u', ' ', (string) $site) ?? '') : '';
+    }
+
+    /**
+     * The total traffic of the links of a map once its data is read, as
+     * trafficTotal() works it out from the summary items.
+     *
+     * @return array{in: float|null, out: float|null, links: int}
+     */
+    public static function linkTotals(\WeatherMap $wmap): array
+    {
+        $items = [];
+        foreach ($wmap->links as $link) {
+            if (!isset($link->a, $link->b) || $link->name === 'DEFAULT') {
+                continue;
+            }
+            $items[] = [
+                'kind' => 'link',
+                'in' => is_numeric($link->bandwidth_in ?? null) ? (float) $link->bandwidth_in : null,
+                'out' => is_numeric($link->bandwidth_out ?? null) ? (float) $link->bandwidth_out : null,
+                'total' => self::countsInTotal($link),
+            ];
+        }
+        return self::trafficTotal($items);
     }
 
     /** Whether a link counts in the total traffic: always, unless SET traffic_total 0 */

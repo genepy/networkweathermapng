@@ -101,7 +101,15 @@ final class BoxesTest extends TestCase
         $this->assertSame([$map->width - 10, $map->height - 10], [$legend[2], $legend[3]], 'negative positions count from the far edges');
     }
 
-    public function testTotalSumsTheLinksThatCount(): void
+    public function testTotalGraphCanCarryANote(): void
+    {
+        $map = $this->load('SET box_2 total 10 10');
+        $map->box_series = [[0, 1e9, 5e8], [300, 2e9, 1e9]];
+        $map->box_series_note = 'Demo data';
+        $this->assertStringContainsString('>Demo data<', $this->svg($map), 'a generated series says so under the graph');
+    }
+
+        public function testTotalSumsTheLinksThatCount(): void
     {
         $map = $this->load('SET box_1 total 10 10');
         $names = array_values(array_filter(array_keys($map->links), fn ($n) => $n !== 'DEFAULT'));
