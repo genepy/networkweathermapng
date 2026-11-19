@@ -45,8 +45,9 @@ The README documents the user-facing config format.
   folder). `fr` is the reference language; see [TRANSLATING.md](TRANSLATING.md)
   to add a language (copy the folder, edit `_meta.php`).
 - PHP: `__('Text :name', ['name' => $x])`, `e__()` to echo escaped.
-- JS: strings come from the `*-js.php` files (`I18n::forScript()` exposes
-  them as `window.WM_T`); scripts call `t('Text')`.
+- JS: strings live in the `*-js.php` files; views inject a section into
+  `window.WM_T` (`I18n::section('ui-js')` in `Views/layouts/main.php`,
+  `editor-js` in `Views/editor/svg.php`) and scripts call `t('Text')`.
 - Every new or changed string gets its French entry in the same change.
   Check: `php src/bin/i18n-check.php fr` (CI runs `--strict`, informative).
 
