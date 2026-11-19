@@ -217,7 +217,7 @@ class WeatherMapNode extends WeatherMapItem {
 		$lineheight = (int) ceil($lineheight);
 		$font = isset($map->fonts[$this->labelfont]) ? $map->fonts[$this->labelfont] : null;
 		if ($font !== null && $font->type == 'truetype') {
-			$bounds = imagettfbbox($font->size, 0, $font->file, 'Ág');
+			$bounds = imagettfbbox($font->size, 0, wm_ttf_path($font->file), 'Ág');
 			$ascent = -$bounds[5];
 			$descent = $bounds[1];
 			// myimagestringsize() gives 1.2 times the glyph height: share the gap

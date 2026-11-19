@@ -25,10 +25,37 @@ class SvgEditorController extends BaseController
 {
     private MapService $mapService;
 
+    /** Output buffer level when the request reached this controller */
+    private int $bufferLevel;
+
     public function __construct(array $context)
     {
         parent::__construct($context);
         $this->mapService = new MapService($this->database, $this->config);
+
+        // Anything printed while the request runs (an engine warning, a PHP
+        // notice with display_errors on) would break the JSON answer: it is
+        // caught here and dropped by json(), so the answer stays readable.
+        $this->bufferLevel = ob_get_level();
+        ob_start();
+    }
+
+    /** The JSON answer, without the stray output printed before it */
+    protected function json(mixed $data, int $status = 200): void
+    {
+        $this->dropStrayOutput();
+        parent::json($data, $status);
+    }
+
+    private function dropStrayOutput(): void
+    {
+        $stray = '';
+        while (ob_get_level() > $this->bufferLevel) {
+            $stray = (string) ob_get_clean() . $stray;
+        }
+        if (trim($stray) !== '') {
+            error_log('SVG editor: output dropped from the answer: ' . substr(trim($stray), 0, 500));
+        }
     }
 
     public function edit(array $params): void
@@ -187,8 +214,7 @@ class SvgEditorController extends BaseController
             return;
         }
 
-        $body = json_decode((string) file_get_contents('php://input'), true);
-        $ops = is_array($body) ? ($body['ops'] ?? null) : null;
+        $ops = $this->body()['ops'] ?? null;
         if (!is_array($ops) || $ops === []) {
             $this->json(['error' => __('No operations')], 422);
             return;
@@ -200,7 +226,7 @@ class SvgEditorController extends BaseController
         $before = is_file($file) ? (string) file_get_contents($file) : null;
 
         try {
-            $result = (new MapEditor($file))->apply($ops);
+            $result = $this->engine(static fn () => (new MapEditor($file))->apply($ops));
         } catch (InvalidArgumentException $e) {
             $this->json(['error' => $e->getMessage()], 422);
             return;
@@ -233,8 +259,11 @@ class SvgEditorController extends BaseController
         $this->loadEngine();
 
         try {
-            $wmap = (new MapEditor($this->configFile($map)))->load();
-            $clip = MapClipboard::copy($wmap, array_map('strval', (array) ($body['nodes'] ?? [])));
+            $file = $this->configFile($map);
+            $clip = $this->engine(static fn () => MapClipboard::copy(
+                (new MapEditor($file))->load(),
+                array_map('strval', (array) ($body['nodes'] ?? []))
+            ));
         } catch (InvalidArgumentException $e) {
             $this->json(['error' => $e->getMessage()], 422);
             return;
@@ -361,18 +390,25 @@ class SvgEditorController extends BaseController
             return;
         }
 
-        $this->loadEngine();
-        $wmap = (new MapEditor($this->configFile($map)))->load();
-        $font = $wmap->fonts[$n] ?? null;
+        $file = $this->configFile($map);
+        // font paths are relative to the web root
+        $path = $this->engine(static function () use ($file, $n): ?string {
+            $font = (new MapEditor($file))->load()->fonts[$n] ?? null;
+            if (!$font || $font->type !== 'truetype' || !is_readable($font->file)) {
+                return null;
+            }
+            return realpath($font->file) ?: null;
+        });
 
-        if (!$font || $font->type !== 'truetype' || !is_readable($font->file)) {
+        $this->dropStrayOutput();
+        if ($path === null) {
             http_response_code(404);
             return;
         }
 
         header('Content-Type: font/ttf');
         header('Cache-Control: private, max-age=86400');
-        readfile($font->file);
+        readfile($path);
     }
 
     /** GET: the saved versions of the map, newest first (the timeline) */
@@ -572,13 +608,16 @@ class SvgEditorController extends BaseController
     private function respond(array $map, bool $withData, array $result = []): void
     {
         $file = $this->configFile($map);
-        [$svg, $wmap] = $this->draw($map, $file, $withData);
+        [$svg, $model] = $this->engine(function () use ($map, $file, $withData): array {
+            [$svg, $wmap] = $this->draw($map, $file, $withData);
+            return [$svg, MapEditor::model($wmap)];
+        });
 
         clearstatcache(true, $file);
 
         $this->json([
             'svg' => $svg,
-            'model' => MapEditor::model($wmap),
+            'model' => $model,
             'history' => $this->history($map)->counts() + ['outside' => $this->history($map)->changedOutside()],
             'version' => $this->version($file),
             'name' => (string) ($this->mapService->getMap((int) $map['id'])['name'] ?? $map['name']),
@@ -601,24 +640,20 @@ class SvgEditorController extends BaseController
             ['WMWARN41']
         )));
 
-        // a warning printed by the engine would make the answer unreadable JSON
-        ob_start();
-        try {
+        $timezone = TimezoneService::fromConfig($this->database, $this->config)->forMap($mapId);
+
+        // from the web root (font and icon paths are relative to it), with
+        // the engine warnings logged instead of printed
+        return $this->engine(static function () use ($file, $withData, $mapId, $timezone): array {
             $wmap = (new MapEditor($file))->load();
             if ($withData) {
                 $wmap->ReadData();
             }
-            $svg = TimezoneService::using(
-                TimezoneService::fromConfig($this->database, $this->config)->forMap($mapId),
-                static fn () => \WeatherMapSvg::render($wmap, [
-                    'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
-                ])
-            );
-        } finally {
-            ob_end_clean();
-        }
-
-        return [$svg, $wmap];
+            $svg = TimezoneService::using($timezone, static fn () => \WeatherMapSvg::render($wmap, [
+                'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
+            ]));
+            return [$svg, $wmap];
+        });
     }
 
     /** The map's name follows its TITLE when this save changed it (name and title are one) */
@@ -655,8 +690,14 @@ class SvgEditorController extends BaseController
 
     private function body(): array
     {
-        $body = json_decode((string) file_get_contents('php://input'), true);
+        $body = json_decode($this->rawBody(), true);
         return is_array($body) ? $body : [];
+    }
+
+    /** The request body (a test gives its own) */
+    protected function rawBody(): string
+    {
+        return (string) file_get_contents('php://input');
     }
 
     private function findMap(array $params): ?array
@@ -673,6 +714,20 @@ class SvgEditorController extends BaseController
     private function history(array $map): ConfigHistory
     {
         return new ConfigHistory($this->config->getDataRoot() . '/history/' . (int) $map['id'], $this->configFile($map));
+    }
+
+    /**
+     * Runs engine work as the viewer does (MapService::engine()): from the
+     * web root, where the font and icon paths of a map are relative to, and
+     * with the engine warnings logged rather than printed into the answer.
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    private function engine(callable $fn): mixed
+    {
+        return $this->mapService->engine($fn);
     }
 
     private function loadEngine(): void

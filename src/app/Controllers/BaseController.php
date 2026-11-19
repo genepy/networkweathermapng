@@ -86,10 +86,18 @@ abstract class BaseController
 
     protected function json(mixed $data, int $status = 200): void
     {
+        // invalid UTF-8 must not turn the whole answer into an empty body
+        $body = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($body === false) {
+            // a NAN or INF number, too deep data: an empty answer the browser
+            // cannot read; say what failed instead
+            error_log('JSON answer of ' . ($_SERVER['REQUEST_URI'] ?? '?') . ' could not be encoded: ' . json_last_error_msg());
+            $status = 500;
+            $body = (string) json_encode(['error' => __('The server could not write its answer. The details are in the server log.')]);
+        }
         http_response_code($status);
         header('Content-Type: application/json');
-        // invalid UTF-8 must not turn the whole answer into an empty body
-        echo json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
+        echo $body;
     }
     
     protected function redirect(string $url): void

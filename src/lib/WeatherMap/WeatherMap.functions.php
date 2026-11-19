@@ -2242,7 +2242,21 @@ function wimagecreatetruecolor($width, $height) {
 	return imagecreatetruecolor($width, $height);
 }
 
+/**
+ * The path to give GD for a TrueType font. Maps name their fonts relative to
+ * the web root (fonts/FiraSans-Regular.ttf), but the GD bundled with PHP (the
+ * Docker image) does not look for a relative path in the current directory,
+ * so the font would not load there: it gets the full path instead.
+ */
+function wm_ttf_path($file) {
+	$file = (string) $file;
+	$full = $file === '' ? false : realpath($file);
+
+	return $full === false ? $file : $full;
+}
+
 function wimagettftext($image, $size, $angle, $x, $y, $color, $file, $string) {
+	$file = wm_ttf_path($file);
 	if ($color === null) {
 		return;
 	}

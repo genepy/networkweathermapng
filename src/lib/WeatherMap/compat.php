@@ -19,7 +19,9 @@ if (!function_exists('cacti_log')) {
     function cacti_log($message, $output = false, $environ = 'WEATHERMAP') {
         $logMessage = date('Y-m-d H:i:s') . " [$environ] $message";
         error_log($logMessage);
-        if ($output) {
+        // only on the command line: in a web request the text would land in
+        // the middle of the answer (a JSON body, a PNG picture)
+        if ($output && PHP_SAPI === 'cli') {
             echo $logMessage . "\n";
         }
     }

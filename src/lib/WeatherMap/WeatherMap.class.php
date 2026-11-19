@@ -695,7 +695,7 @@ class WeatherMap extends WeatherMapBase {
 					$xsize = 0;
 
 					foreach($lines as $line) {
-						$bounds = imagettfbbox($this->fonts[$fontnumber]->size, 0, $this->fonts[$fontnumber]->file, $line);
+						$bounds = imagettfbbox($this->fonts[$fontnumber]->size, 0, wm_ttf_path($this->fonts[$fontnumber]->file), $line);
 
 						$cx = $bounds[4] - $bounds[0];
 						$cy = $bounds[1] - $bounds[5];
@@ -2945,7 +2945,7 @@ class WeatherMap extends WeatherMapBase {
 				if (preg_match('/^\s*FONTDEFINE\s+(\d+)\s+(\S+)\s+(\d+)\s*$/i', $buffer, $matches)) {
 					if (function_exists('imagettfbbox')) {
 						// test if this font is valid, before adding it to the font table...
-						$bounds = imagettfbbox($matches[3], 0, $matches[2], 'Ignore me');
+						$bounds = imagettfbbox($matches[3], 0, wm_ttf_path($matches[2]), 'Ignore me');
 
 						if (isset($bounds[0])) {
 							$this->fonts[$matches[1]] = new WMFont();
