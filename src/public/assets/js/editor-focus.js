@@ -80,10 +80,12 @@
         var title = h('input', { type: 'text', value: a.title, placeholder: t('Area :id', { id: a.id }), autocomplete: 'off', 'aria-label': t('Name') });
         title.addEventListener('change', function () { setArea(a.id, { title: title.value }); });
 
-        var style = h('select', { 'aria-label': t('How it stands out') }, STYLES.map(function (s) {
+        var style = h('select', {}, STYLES.map(function (s) {
             return h('option', { value: s[0], text: s[1], selected: s[0] === a.style });
         }));
         style.addEventListener('change', function () { setArea(a.id, { style: style.value }); });
+        var styleLabel = h('label', {}, [ed.tipName(t('How it stands out'), style, t('Dim the rest and zoom onto it: the view zooms onto the area and the rest of the map dims. Dim the rest: the view stays where it is, the rest of the map dims. Zoom onto it: the view zooms onto the area, nothing dims.')), style]);
+        styleLabel.htmlFor = style.id;
 
         var def = h('input', { type: 'checkbox', checked: !!a['default'] });
         def.addEventListener('change', function () { setArea(a.id, { 'default': def.checked }); });
@@ -111,7 +113,7 @@
 
         return h('div', { 'class': 'focus-area', 'data-id': a.id }, [
             h('label', {}, [t('Name'), title]),
-            h('label', {}, [t('How it stands out'), style]),
+            styleLabel,
             h('label', { 'class': 'inline' }, [def, ' ' + t('Open the map on this area, also in the kiosk')]),
             numBox,
             actions

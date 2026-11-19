@@ -592,6 +592,11 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   and the animation pauses while the tab is hidden. The editor, the PNG
   and a downloaded SVG stay still: the SVG only carries the invisible paths
   (`path.wm-flow`, with the load in `data-load`).
+- **Info bubbles**: in the editor, an *i* button after the name of an
+  option whose choices are not obvious (link shape, arrows, arrow heads,
+  bandwidth labels, label position, clusters, focus area style, background
+  size...) explains each choice, on hover, on keyboard focus or on a tap;
+  `Esc` closes it. The texts are in the translation files.
 - **Pill link labels**: *Bandwidth labels* in the link panel (or *Label
   box* in *Link defaults* for every link) draws the label on a level box
   (`BWSTYLE classic`), a box along the link (`angled`) or a pill along the

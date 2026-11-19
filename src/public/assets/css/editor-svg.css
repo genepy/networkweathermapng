@@ -427,6 +427,19 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #inspector .label-presets .lp-icon { fill: none; stroke: currentColor; stroke-width: 1.2; opacity: .6; }
 #inspector .label-presets .lp-label { fill: currentColor; }
 #inspector .label-presets button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+/* Info bubbles (F24): an i button after an option name explains its choices */
+#inspector .tip-name { display: inline-flex; align-items: center; gap: 4px; }
+#inspector button.info-tip {
+    flex: 0 0 auto; width: 16px; height: 16px; padding: 0; border-radius: 50%;
+    font: italic 600 11px/14px Georgia, serif; color: var(--muted); background: transparent; cursor: help;
+}
+#inspector button.info-tip:hover, #inspector button.info-tip:focus-visible { color: var(--accent); border-color: var(--accent); }
+#info-bubble {
+    position: fixed; z-index: 1000; max-width: 280px; padding: 6px 9px; border-radius: 6px;
+    background: var(--text); color: var(--panel); font-size: 12px; line-height: 1.4;
+    box-shadow: 0 4px 14px #0003; pointer-events: none;
+}
+#info-bubble[hidden] { display: none; }
 #inspector .anchors { display: grid; grid-template-columns: repeat(3, 24px); gap: 2px; }
 #inspector .anchors button { padding: 0; height: 22px; font-size: 10px; }
 #inspector .anchors button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
