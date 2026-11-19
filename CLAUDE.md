@@ -1,14 +1,111 @@
-# Instructions
+# Instructions for Claude
 
-Read [AGENTS.md](AGENTS.md) first: project rules, architecture, dev/test/deploy notes, and how to coordinate with other agents through the [GitHub issues](https://github.com/genepy/networkweathermapng/issues). It applies to Claude too.
+Read [AGENTS.md](AGENTS.md) first: project rules, architecture table,
+dev/test/deploy notes and the issue workflow. It applies to Claude too. This
+file adds the facts a new Claude thread needs so it does not have to
+re-explore the repository. Keep it short and up to date.
+
+## Where things are
+
+- Entry point: `src/public/index.php` → `src/app/Core/Application.php`
+  (all routes are declared there, e.g. `/map/{id}`, `/map/{id}/image`,
+  `/admin/kiosk`).
+- Map engine (php-weathermap fork): `src/lib/WeatherMap/`.
+  `WeatherMap.class.php` (config parser, PNG render), `WeatherMapSvg.class.php`
+  (SVG render), `WeatherMapNode/Link/Zone/Boxes.class.php`,
+  `WeatherMap.functions.php` (helpers, colours, fonts), `geo.php`.
+- Viewer: `MapController` + `src/app/Views/maps/view.php`,
+  `src/public/assets/js/viewer.js`, `geo-view.js`, `basemap.js`.
+- Editor (SVG): `SvgEditorController` + `src/app/Views/editor/svg.php`,
+  `src/app/Services/Editor/MapEditor.php` (config edits),
+  `ConfigHistory.php` (savepoints), `src/public/assets/js/editor-*.js`.
+- Kiosk / cycle: `KioskService`, `Views/maps/cycle.php`, `assets/js/kiosk.js`,
+  admin page `Views/admin/kiosk.php`.
+- Maps page: `MapManagementController`, `Views/maps/index.php`, `maplist.js`.
+- Demo maps: `src/examples/maps/*.conf`, installed by `Services/DemoMaps.php`.
+- Data sources: `Services/Observium/`, `ZabbixService.php`, `src/lib/Zabbix/`.
+
+## Map config hints (`SET <name> <value>` in a `.conf`)
+
+App features store their settings as map hints, each parsed by one service:
+
+| Hint | Service |
+|------|---------|
+| `viewer_panels` (e.g. `sites:side total:top-right legend:side:hidden`) | `Services/ViewerPanels.php` |
+| `focus_<id>`, `focus_default` | `Services/FocusAreas.php` |
+| `basemap`, `basemap_dark`, `basemap_center`, `basemap_zoom`, `basemap_attribution` | `Services/Basemap.php` |
+| `kiosk_duration`, `kiosk_zoom` | `Services/KioskService.php` |
+| `link_glow`, `node_style`, `link_flow`, `traffic_*`, `cluster*`, `geo`, `site`, `box_*`, `editor_note*` | grep `SET <name>` in `src/app/Services` and `src/lib/WeatherMap` |
+
+The README documents the user-facing config format.
+
+## Translations
+
+- Catalogues: `src/app/Lang/<code>/*.php` (English text is the key, no `en`
+  folder). `fr` is the reference language; see [TRANSLATING.md](TRANSLATING.md)
+  to add a language (copy the folder, edit `_meta.php`).
+- PHP: `__('Text :name', ['name' => $x])`, `e__()` to echo escaped.
+- JS: strings live in the `*-js.php` files; views inject a section into
+  `window.WM_T` (`I18n::section('ui-js')` in `Views/layouts/main.php`,
+  `editor-js` in `Views/editor/svg.php`) and scripts call `t('Text')`.
+- Every new or changed string gets its French entry in the same change.
+  Check: `php src/bin/i18n-check.php fr` (CI runs `--strict`, informative).
+
+## Checks
+
+CI (`.github/workflows/ci.yml`, PHP 8.5.12+) runs on every PR:
+`php -l` on `src` and `tests`, `vendor/bin/phpstan analyse`,
+`vendor/bin/phpunit`, then the informative translation check. Rendered maps
+are uploaded as an artifact when a test fails.
+
+Locally: `composer install`, then the same commands (see AGENTS.md).
+Render tests compare `tests/fixtures/maps/` to `tests/fixtures/reference/`;
+regenerate with `UPDATE_REFERENCE=1 vendor/bin/phpunit` after an intended
+visual change.
+
+## Environment limits in Claude threads
+
+- The thread container usually has an older PHP (8.3) and `composer install`
+  may fail (PHP 8.5 required, network). Do not spend time on it: run
+  `php -l` and `php src/bin/i18n-check.php fr` locally, and rely on CI for
+  phpstan and phpunit.
+- Do not try browser tests when no browser or running app is available. List
+  instead what the maintainer should check on the testbed (light and dark
+  themes, phone width).
+
+## Docker and testbed gotchas
+
+- Production image: `docker/` (nginx + PHP-FPM + supervisor). Testbed:
+  `deploy/testbed/` (Observium, MariaDB, rrdcached, snmpsim), deployed to a
+  Raspberry Pi on every merge to `main`.
+- GD needs absolute TrueType font paths: fonts live in `src/public/fonts/`,
+  and code that hands a font to GD resolves it with `realpath()` (see
+  `MapService` font lookup). Relative paths break when PHP-FPM runs from
+  another working directory.
+- GD bitmap fonts (1-5) cannot rotate; curved or rotated text needs a
+  `FONTDEFINE` TrueType font.
+
+## Workflow for a Claude thread
+
+1. Take the next issue (lowest task number, unclaimed). Issues are the todo:
+   each one names the files concerned and the expected result.
+2. Branch, push, open a draft PR with `Closes #<issue>`.
+3. Implement, keep the PR description current, mark it ready.
+4. Wait for green CI, review your own diff, merge it yourself, check the
+   issue is closed, delete the branch. No separate review thread.
+5. Small related issues (2 or 3) may share one PR.
+6. Only one thread works at a time.
+
+Conversations with the maintainer are in French; code, commits, PRs, issues
+and docs are in English.
 
 ## graphify
 
-This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
-
-Rules:
-- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
-- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+When `graphify-out/graph.json` exists, run `graphify query "<question>"`
+before the first grep or source read for a codebase question (and put this
+rule in every subagent prompt that explores code). Use `graphify path "<A>"
+"<B>"` for relationships and `graphify explain "<concept>"` for a concept.
+Use `graphify-out/wiki/index.md` for navigation when present, and
+`graphify-out/GRAPH_REPORT.md` only for broad architecture review. After
+changing code, run `graphify update .`. A large diff of
+`graphify-out/graph.json` in a PR is expected; do not flag it.
