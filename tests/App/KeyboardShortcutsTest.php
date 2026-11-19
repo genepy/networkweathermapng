@@ -149,6 +149,21 @@ final class KeyboardShortcutsTest extends TestCase
         $this->assertLessThan(strpos($layout, 'palette.js'), strpos($layout, 'shortcuts.js'));
         $this->assertStringContainsString('href="/account/shortcuts"', $layout);
         $this->assertStringContainsString('href="/account/shortcuts"', $editor);
+
+        // the fullscreen viewer has no layout: it loads them in its own head (F26, P54)
+        $viewer = self::read('src/app/Views/maps/view.php');
+        $head = substr($viewer, 0, (int) strpos($viewer, '</head>'));
+        $this->assertStringContainsString('$keysScript', $head);
+        $this->assertStringContainsString('/assets/js/shortcuts.js', $head);
+        $this->assertLessThan(strpos($viewer, 'viewer.js'), strpos($viewer, 'shortcuts.js'));
+    }
+
+    /** Ctrl+Shift+drag on empty space adds an area to the selection, it does not move the view (F26, P53) */
+    public function testShiftDragOnEmptySpaceAddsAnArea(): void
+    {
+        $editor = self::read('src/public/assets/js/editor-svg.js');
+        $this->assertStringContainsString("var addArea = evt.shiftKey && KEYS.dragKey('editor.drag-pan') !== 'Shift';", $editor);
+        $this->assertStringContainsString("if (KEYS.held(evt, 'editor.drag-pan') && !addArea) {", $editor);
     }
 
     public function testScriptsAskForTheUsersKeys(): void

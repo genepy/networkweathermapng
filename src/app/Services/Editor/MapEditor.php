@@ -908,8 +908,10 @@ class MapEditor
     private function setLinks(\WeatherMap $map, array $op): void
     {
         $props = (array) ($op['props'] ?? []);
+        $names = (array) ($op['names'] ?? []);
+        $customText = ($props['labelstyle'] ?? null) === '--' ? $this->customLabelTexts($map, $names) : null;
 
-        foreach ((array) ($op['names'] ?? []) as $name) {
+        foreach ($names as $name) {
             $link = $this->link($map, (string) $name);
 
             foreach ($props as $key => $value) {
@@ -924,6 +926,19 @@ class MapEditor
                     }
                 } elseif ($key === 'arrowstyle') {
                     $link->arrowstyle = self::arrowStyle($value);
+                } elseif ($key === 'labelstyle' && $value === '--') {
+                    // custom text: links that have one keep it, the others take it
+                    if ((string) $link->labelstyle !== '--' && $customText !== null) {
+                        $link->labelstyle = '--';
+                        $link->bwlabelformats[IN] = $customText[0];
+                        $link->bwlabelformats[OUT] = $customText[1];
+                    }
+                } elseif ($key === 'label_in' || $key === 'label_out') {
+                    // INBWFORMAT / OUTBWFORMAT: a label text of one's own
+                    if ((string) $link->labelstyle !== '--') {
+                        $link->labelstyle = '--';
+                    }
+                    $link->bwlabelformats[$key === 'label_in' ? IN : OUT] = $this->text($value);
                 } elseif (isset(self::LINK_CHOICES[$key])) {
                     if (!in_array($value, self::LINK_CHOICES[$key], true)) {
                         throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
@@ -1816,13 +1831,18 @@ class MapEditor
         $new = match ($key) {
             'link_bandwidth' => $this->bandwidth((string) $value),
             'link_width' => strtolower((string) $value) === 'auto' ? 'auto' : max(1, (int) $value),
-            'link_labelstyle' => in_array($value, self::LINK_CHOICES['labelstyle'], true) ? $value
+            // custom text stays as it is: there is no field for the default's texts
+            'link_labelstyle' => in_array($value, self::LINK_CHOICES['labelstyle'], true) || ($value === '--' && (string) $default->labelstyle === '--') ? $value
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
             'link_bwfont' => $this->fontNumber($map, $value),
             'link_bwstyle' => in_array($value, self::LINK_CHOICES['bwstyle'], true) ? $value
                 : throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value])),
             'link_arrowstyle' => self::arrowStyle($value, $key),
         };
+
+        if ($key === 'link_labelstyle' && $new === '--') {
+            return;
+        }
 
         foreach ($fields as $field) {
             // find all the followers first: changing one would hide its children
@@ -1851,17 +1871,47 @@ class MapEditor
      */
     private static function inheritsFromDefault(\WeatherMap $map, object $link, string $field): bool
     {
-        $value = (string) $link->$field;
+        $value = self::defaultableValue($link, $field);
         $seen = [];
         while (($template = (string) $link->template) !== 'DEFAULT') {
             $parent = $map->links[$template] ?? null;
-            if ($parent === null || isset($seen[$template]) || (string) $parent->$field !== $value) {
+            if ($parent === null || isset($seen[$template]) || self::defaultableValue($parent, $field) !== $value) {
                 return false;
             }
             $seen[$template] = true;
             $link = $parent;
         }
-        return $value === (string) $map->links['DEFAULT']->$field;
+        return $value === self::defaultableValue($map->links['DEFAULT'], $field);
+    }
+
+    /** A link's $field as inheritsFromDefault compares it: custom label text counts with its texts */
+    private static function defaultableValue(object $link, string $field): string
+    {
+        $value = (string) $link->$field;
+        if ($field === 'labelstyle' && $value === '--') {
+            $value .= "\n" . ($link->bwlabelformats[IN] ?? '') . "\n" . ($link->bwlabelformats[OUT] ?? '');
+        }
+        return $value;
+    }
+
+    /**
+     * The custom label texts (INBWFORMAT, OUTBWFORMAT) that BWLABEL "--"
+     * gives the links: those of the first of them that has some. A link
+     * cannot get custom text when none of them has any: the label texts
+     * fields set it.
+     *
+     * @param array<mixed> $names
+     * @return array{0: string, 1: string}
+     */
+    private function customLabelTexts(\WeatherMap $map, array $names): array
+    {
+        foreach ($names as $name) {
+            $link = $this->link($map, (string) $name);
+            if ((string) $link->labelstyle === '--') {
+                return [(string) $link->bwlabelformats[IN], (string) $link->bwlabelformats[OUT]];
+            }
+        }
+        throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => 'labelstyle', 'value' => '--']));
     }
 
     /** The label texts BWLABEL $style stands for, as the config reader sets them */
@@ -2101,6 +2151,8 @@ class MapEditor
                 'commentfont' => (int) $link->commentfont,
                 'bwstyle' => self::bwStyle($link),
                 'labelstyle' => (string) $link->labelstyle,
+                'label_in' => (string) ($link->bwlabelformats[IN] ?? ''),
+                'label_out' => (string) ($link->bwlabelformats[OUT] ?? ''),
                 'arrowstyle' => (string) $link->arrowstyle,
                 'labelshift_in' => (int) round((float) ($link->hints['bwlabel_offset_in'] ?? 0)),
                 'labelshift_out' => (int) round((float) ($link->hints['bwlabel_offset_out'] ?? 0)),

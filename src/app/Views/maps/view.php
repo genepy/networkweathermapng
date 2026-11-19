@@ -32,6 +32,10 @@
     <script>window.WM_T = Object.assign(window.WM_T || {}, <?= json_encode((object) \App\Core\I18n::section('ui-js'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?>);</script>
     <script src="<?= asset('/assets/js/ui.js') ?>" defer></script>
     <script src="<?= asset('/assets/js/weathermap.js') ?>" data-uplot="<?= asset('/assets/vendor/uplot/uPlot.iife.min.js') ?>" data-uplot-css="<?= asset('/assets/vendor/uplot/uPlot.min.css') ?>" defer></script>
+    <?php if (isset($keysScript)): ?>
+    <?= $keysScript ?>
+    <script src="<?= asset('/assets/js/shortcuts.js') ?>" defer></script>
+    <?php endif; ?>
 </head>
 <body class="wmv-noc">
 <?php else: ?>
