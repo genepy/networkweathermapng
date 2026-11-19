@@ -10,6 +10,7 @@ return [
     'Theme: light' => 'Thème : clair',
     'Theme: dark' => 'Thème : sombre',
     'Change password' => 'Changer le mot de passe',
+    'The server could not write its answer. The details are in the server log.' => 'Le serveur n’a pas pu écrire sa réponse. Les détails sont dans le journal du serveur.',
     'Log out' => 'Se déconnecter',
     'Login' => 'Connexion',
     'Breadcrumb' => 'Fil d’Ariane',
