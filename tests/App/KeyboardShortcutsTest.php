@@ -155,7 +155,7 @@ final class KeyboardShortcutsTest extends TestCase
         $head = substr($viewer, 0, (int) strpos($viewer, '</head>'));
         $this->assertStringContainsString('$keysScript', $head);
         $this->assertStringContainsString('/assets/js/shortcuts.js', $head);
-        $this->assertLessThan(strpos($viewer, 'viewer.js'), strpos($viewer, 'shortcuts.js'));
+        $this->assertLessThan(strpos($viewer, '/assets/js/viewer.js'), strpos($viewer, '/assets/js/shortcuts.js'));
     }
 
     /** Ctrl+Shift+drag on empty space adds an area to the selection, it does not move the view (F26, P53) */

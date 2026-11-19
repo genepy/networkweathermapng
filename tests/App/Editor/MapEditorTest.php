@@ -527,7 +527,7 @@ final class MapEditorTest extends TestCase
         $this->assertSame('{link:this:bandwidth_out:%2k} out', $map->links['core-lyon']->bwlabelformats[OUT]);
 
         // the texts can be changed
-        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['label_in' => "{link:this:inpercent:%d}%\n up"]]]);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-lyon'], 'props' => ['label_in' => "{link:this:inpercent:%d}%\nup"]]]);
         $map = $this->editor->load();
         $this->assertSame('{link:this:inpercent:%d}% up', $map->links['core-lyon']->bwlabelformats[IN]);
         $this->assertSame('{link:this:bandwidth_in:%2k} in', $map->links['core-paris']->bwlabelformats[IN], 'the other link keeps its text');
