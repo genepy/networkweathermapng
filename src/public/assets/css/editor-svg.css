@@ -493,7 +493,9 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .focus-add { margin-bottom: 4px; }
 /* Viewer panels (editor-mapprops.js): one row per panel, its switch, its place, up and down */
 #inspector .panel-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-#inspector .panel-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 6px; align-items: center; }
+#inspector .panel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+#inspector .panel-row:last-child { border-bottom: 0; }
+#inspector .panel-row .panel-name { grid-column: 1 / -1; }
 #inspector .panel-row .panel-name { display: flex; gap: 6px; align-items: center; min-width: 0; color: var(--text); }
 #inspector .panel-row.off .panel-name { color: var(--muted); }
 #inspector .panel-row select { min-width: 0; width: 100%; }
