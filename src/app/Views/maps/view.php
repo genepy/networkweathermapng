@@ -135,7 +135,7 @@
             <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" data-keys="viewer.fit" title="<?= e__('Fit the map to the window') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
         </div>
 
-        <?php if (!$isKiosk): ?>
+        <!-- in the kiosk too: the map may put some of its panels in a corner (SET viewer_panels) -->
         <aside class="wmv-panel wmv-fades" id="wmv-panel" hidden aria-label="<?= e__('Side panel') ?>">
             <section class="wmv-panel-sec wmv-sites" aria-labelledby="wmv-sites-title">
                 <header class="wmv-panel-head">
@@ -165,7 +165,6 @@
                 <div class="wmv-panel-scale"></div>
             </section>
         </aside>
-        <?php endif; ?>
 
         <aside class="wmv-card wmv-fades" hidden aria-label="<?= e__('Selected node') ?>">
             <header class="wmv-card-head">

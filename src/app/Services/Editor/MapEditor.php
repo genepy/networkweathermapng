@@ -13,6 +13,7 @@ namespace App\Services\Editor;
 
 use App\Services\Basemap;
 use App\Services\FocusAreas;
+use App\Services\ViewerPanels;
 
 use InvalidArgumentException;
 
@@ -1686,6 +1687,9 @@ class MapEditor
                 } else {
                     unset($map->hints['link_flow']);
                 }
+            } elseif ($key === ViewerPanels::HINT) {
+                // which panels the viewer and the kiosk show, and where
+                ViewerPanels::set($map, $value);
             } elseif ($key === 'background_sizing') {
                 // the PHP Weathermap 2.0 hint: natural size (image), fit or stretch
                 if (!in_array($value, \WeatherMap::BACKGROUND_SIZINGS, true)) {
@@ -1955,6 +1959,7 @@ class MapEditor
             'basemap_zoom' => (string) ($map->hints['basemap_zoom'] ?? ''),
             'basemap_attribution' => (string) ($map->hints['basemap_attribution'] ?? ''),
             'cluster_mode' => Basemap::clusterMode($map),
+            'viewer_panels' => ViewerPanels::of($map),
         ];
     }
 

@@ -783,7 +783,8 @@
     background: var(--wmv-in);
 }
 .wmv-total-out dt::before { background: var(--wmv-out); }
-.wmv-panel { --wmv-in: var(--wm-accent); --wmv-out: #d9922e; }
+.wmv-panel,
+.wmv-dock { --wmv-in: var(--wm-accent); --wmv-out: #d9922e; }
 .wmv-total-graph { display: block; width: 100%; height: 64px; }
 .wmv-total-graph[hidden] { display: none; }
 .wmv-total-area-in { fill: color-mix(in srgb, var(--wmv-in) 45%, transparent); stroke: var(--wmv-in); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -821,6 +822,71 @@
     .wmv-site-chevron { transition: none; }
 }
 
+/* Viewer panels placed by the map (SET viewer_panels, viewer.js): the
+   corners of the map hold cards, under the bar at the top, over the zoom
+   at the bottom right */
+.wmv-dock {
+    position: absolute;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: var(--wm-space-2);
+    width: 272px;
+    max-height: calc(100% - 68px - var(--wm-space-3));
+    pointer-events: none;
+}
+.wmv-dock[hidden],
+.wmv-dock-off { display: none; }
+.wmv-dock > * { pointer-events: auto; }
+.wmv-dock-top-left { left: var(--wm-space-3); top: 68px; }
+.wmv-dock-top-right { right: var(--wm-space-3); top: 68px; align-items: flex-end; }
+.wmv-dock-bottom-left { left: var(--wm-space-3); bottom: var(--wm-space-3); justify-content: flex-end; width: auto; max-width: calc(100% - 100px); }
+.wmv-dock-bottom-right { right: var(--wm-space-3); bottom: calc(var(--wm-space-3) + var(--wmv-zoombar-h, 0px) + var(--wm-space-2)); align-items: flex-end; }
+.wmv-dock-bottom-left > .wmv-panel-sec { width: 272px; }
+/* beside the open side panel, and beside the card of the focused node */
+.wmv-panel-open .wmv-dock-top-left { left: calc(var(--wm-space-3) + 272px + var(--wm-space-2)); }
+.wmv-card:not([hidden]) ~ .wmv-dock-top-right { right: calc(var(--wm-space-3) + 300px + var(--wm-space-2)); }
+.wmv-dock > .wmv-panel-sec,
+.wmv-dock > .wmv-inset {
+    width: 272px;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-y: auto;
+    padding: var(--wm-space-3);
+    background: color-mix(in srgb, var(--wm-surface) 92%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-card);
+    box-shadow: var(--wm-shadow-2);
+    color: var(--wm-text);
+    font-size: var(--wm-text-sm);
+}
+.wmv-dock > .wmv-inset { position: static; padding: 0; overflow: hidden; }
+.wmv-dock > .wmv-panel-sec[hidden],
+.wmv-dock > .wmv-inset[hidden] { display: none; }
+.wmv-dock > .wmv-status { position: static; max-width: 100%; }
+.wmv-dock > .wmv-sites { flex: 0 1 auto; min-height: 0; }
+.wmv-dock .wmv-site-list { min-height: 0; max-height: 36vh; }
+/* the update time in the side panel: a line of the panel, not a card */
+.wmv-panel > .wmv-status {
+    position: static;
+    max-width: none;
+    padding: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+.wmv-panel > .wmv-status:not(:first-child),
+.wmv-panel > .wmv-status + .wmv-panel-sec { padding-top: var(--wm-space-3); border-top: 1px solid var(--wm-border); }
+/* the side panel makes room for the cards of the bottom left corner */
+.wmv-panels-set .wmv-panel { max-height: calc(100% - 68px - max(64px, var(--wmv-dock-bl-h, 0px) + 2 * var(--wm-space-3))); }
+/* the small legend bar of the update time, only while the legend is in the side panel */
+.wmv-legend-bar-off .wmv-status .wmv-legend { display: none; }
+
 /* The page around: the "Last updated" line is in the state */
 .map-view-page.svg-view .map-meta { display: none; }
 
@@ -853,8 +919,13 @@ body.wmv-noc {
    kiosk bar is the toolbar */
 .wmv-kiosk .wmv-bar,
 .wmv-kiosk .wmv-zoombar,
-.wmv-kiosk .wmv-status,
+.wmv-kiosk > .wmv-status,
+.wmv-kiosk .wmv-panel,
 .wmv-kiosk .wmv-minimap { display: none !important; }
+/* the panels the map places in a corner (SET viewer_panels) */
+.wmv-kiosk .wmv-dock-top-left,
+.wmv-kiosk .wmv-dock-top-right { top: var(--wm-space-3); }
+.wmv-kiosk .wmv-dock-bottom-right { bottom: var(--wm-space-3); }
 .wmv-kiosk .wmv-viewport { cursor: default; }
 
 /* Narrow windows: the search and the labels shrink first */
@@ -909,6 +980,16 @@ body.wmv-noc {
     .wmv-status > span + span { margin-left: 0; padding-left: 0; border-left: 0; }
     .wmv-zoombar { right: var(--wm-space-2); bottom: var(--wm-space-2); }
     .wmv-history { bottom: 56px; }
+    /* only the update time stays in a corner on a phone (viewer.js) */
+    .wmv-dock-top-left,
+    .wmv-dock-top-right { top: 104px; }
+    .wmv-dock-top-left { left: var(--wm-space-2); }
+    .wmv-dock-top-right { right: var(--wm-space-2); }
+    .wmv-panel-open .wmv-dock-top-left { left: var(--wm-space-2); }
+    .wmv-dock-bottom-left { left: var(--wm-space-2); bottom: var(--wm-space-2); max-width: calc(100% - 84px); }
+    .wmv-dock-bottom-right { right: var(--wm-space-2); bottom: calc(var(--wm-space-2) + var(--wmv-zoombar-h, 0px) + var(--wm-space-2)); }
+    .wmv-dock { width: auto; max-width: calc(100% - 2 * var(--wm-space-2)); }
+    .wmv-panels-set .wmv-panel { max-height: calc(100% - 104px - 60px); }
 }
 
 /* ------------------------------------------------------------------

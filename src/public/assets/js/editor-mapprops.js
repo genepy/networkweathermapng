@@ -3,7 +3,9 @@
  * nothing is selected: sections that fold for the background colour and
  * theme, the title, legend and timestamp texts, fonts and colours, the
  * colour scale of the links (with presets), the link defaults (the DEFAULT
- * link), the basemap and the fonts. A selected legend, timestamp or title
+ * link), the basemap, the fonts, the focus areas and the viewer panels
+ * (which panels the viewer and the kiosk show, and where). A selected
+ * legend, timestamp or title
  * shows its own section. Each field is saved when it changes, as one step
  * that can be undone; the colour scale is saved with its Apply button.
  */
@@ -561,8 +563,88 @@
                 return fontsPane();
             case 'focus':
                 return ed.focusPane ? ed.focusPane() : [];
+            case 'panels':
+                return panelsPane(p);
         }
         return [];
+    }
+
+    /** The panels of the viewer and the kiosk (SET viewer_panels, see ViewerPanels.php) */
+    var PANEL_NAMES = {
+        sites: t('Sites'), total: t('Total traffic'), legend: t('Link load legend'), updated: t('Update time')
+    };
+    var PANEL_PLACES = [
+        ['side', t('Side panel')], ['top-left', t('Top left')], ['top-right', t('Top right')],
+        ['bottom-left', t('Bottom left')], ['bottom-right', t('Bottom right')]
+    ];
+
+    function panelName(id) {
+        return PANEL_NAMES[id] || id;
+    }
+
+    /**
+     * The Viewer panels section: one row per panel with its switch, its
+     * place and two buttons that move it up or down the list (its order in
+     * the side panel, or in a corner that holds more than one).
+     */
+    function panelsPane(p) {
+        var panels = (p.viewer_panels || []).map(function (x) { return { id: x.id, position: x.position, shown: !!x.shown }; });
+        var list = h('ol', { 'class': 'panel-rows' });
+
+        function save() {
+            var box = list.closest('.map-sec'), m = ed.state.model && ed.state.model.map;
+            if (box) { showSummary(box, Object.assign({}, m && m.props, { viewer_panels: panels })); }
+            sendProps({ viewer_panels: panels }).then(function () { if (box) { showSummary(box); } });
+        }
+
+        function move(i, by) {
+            var j = i + by;
+            if (j < 0 || j >= panels.length) { return; }
+            var x = panels[i];
+            panels[i] = panels[j];
+            panels[j] = x;
+            render(panels[j].id, by < 0 ? 'up' : 'down');
+            save();
+        }
+
+        function render(focusId, focusDir) {
+            list.replaceChildren.apply(list, panels.map(function (x, i) {
+                var name = panelName(x.id);
+                var shown = h('input', { type: 'checkbox', checked: x.shown, 'aria-label': t('Show :name', { name: name }) });
+                var place = h('select', { 'aria-label': t('Place of :name', { name: name }), disabled: !x.shown }, PANEL_PLACES.map(function (o) {
+                    return h('option', { value: o[0], text: o[1], selected: o[0] === x.position });
+                }));
+                shown.addEventListener('change', function () {
+                    x.shown = shown.checked;
+                    place.disabled = !x.shown;
+                    save();
+                });
+                place.addEventListener('change', function () {
+                    x.position = place.value;
+                    save();
+                });
+                var up = h('button', { type: 'button', 'class': 'panel-move', 'data-dir': 'up', text: '↑', title: t('Move up'), 'aria-label': t('Move :name up', { name: name }), disabled: i === 0 });
+                var down = h('button', { type: 'button', 'class': 'panel-move', 'data-dir': 'down', text: '↓', title: t('Move down'), 'aria-label': t('Move :name down', { name: name }), disabled: i === panels.length - 1 });
+                up.addEventListener('click', function () { move(i, -1); });
+                down.addEventListener('click', function () { move(i, 1); });
+                return h('li', { 'class': 'panel-row' + (x.shown ? '' : ' off'), 'data-id': x.id }, [
+                    h('label', { 'class': 'inline panel-name' }, [shown, ' ' + name]), place, up, down
+                ]);
+            }));
+            if (focusId) {
+                // the moved panel keeps the focus, on the button it was moved with (or the other one at an end)
+                var row = list.querySelector('[data-id="' + focusId + '"]');
+                var btn = row && (row.querySelector('[data-dir="' + focusDir + '"]:not([disabled])') || row.querySelector('button:not([disabled])'));
+                if (btn) { btn.focus(); }
+            }
+        }
+        render();
+
+        return [
+            h('p', { 'class': 'mapprops-explain', text: t('The panels over the live map and the kiosk: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.') }),
+            list,
+            h('span', { 'class': 'hint', text: t('The kiosk has no side panel: it shows only the panels placed in a corner. The pictures (PNG, SVG) do not change.') })
+        ];
     }
 
     /** Map items are added and removed in one place: the Add panel */
@@ -585,6 +667,10 @@
                 try { return new URL(p.basemap, location.href).hostname; } catch (e) { return p.basemap; }
             case 'fonts': return String(Object.keys(ed.state.model.font_info || {}).length);
             case 'focus': return ed.focusSummary ? ed.focusSummary() : '';
+            case 'panels': {
+                var shown = (p.viewer_panels || []).filter(function (x) { return x.shown; }).length;
+                return t(':shown of :total shown', { shown: shown, total: (p.viewer_panels || []).length });
+            }
         }
         return '';
     }
@@ -592,7 +678,7 @@
     var SECTIONS = [
         ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Map items')], ['scale', t('Link colours')],
         ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
-        ['focus', t('Focus areas')]
+        ['focus', t('Focus areas')], ['panels', t('Viewer panels')]
     ];
 
     function loadFolds() {

@@ -156,6 +156,7 @@ return [
     'the upload failed' => 'l’envoi a échoué',
     'Invalid font: :value' => 'Police invalide : :value',
     'Unknown map property: :key' => 'Propriété de carte inconnue : :key',
+    'Unknown viewer panel: :id' => 'Panneau du visualiseur inconnu : :id',
     'Unknown theme: :name' => 'Thème inconnu : :name',
     'This map has no DEFAULT link' => 'Cette carte n’a pas de lien DEFAULT',
     'The file is too big (2 MB at most)' => 'Le fichier est trop gros (2 Mo au plus)',
