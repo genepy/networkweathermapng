@@ -1335,7 +1335,9 @@
     // Side panel: sites, total traffic, legend
 
     const PANEL_KEY = 'wmv-panel';
-    const P = {open: {}, rows: {}, hover: null, totals: null, totalsAt: 0, totalsBusy: false, total: null};
+    const P = {open: {}, rows: {}, hover: null, totals: null, totalsDemo: false, totalsAt: 0, totalsBusy: false, total: null};
+    // where the total traffic graph comes from: recorded, demo or none (TotalTrafficSeries.php)
+    const totalsSource = root.dataset.totals || 'none';
 
     // Every site open or closed at once (the button in the panel heading),
     // remembered in this browser; a site opened or closed by hand stays so
@@ -1643,15 +1645,21 @@
         drawTotals();
     }
 
-    /** The totals of the recorded frames, at most once per refresh interval */
+    /**
+     * The graph data, at most once per refresh interval: the recorded
+     * frames, or a demo day for a map of static data (data-totals, see
+     * TotalTrafficSeries.php). Without either, a note says how to get it.
+     */
     function loadTotals() {
-        if (!panel || !inView(root.querySelector('.wmv-total')) || root.dataset.history !== '1' || P.totalsBusy) return;
+        if (!panel || !inView(root.querySelector('.wmv-total')) || P.totalsBusy) return;
+        if (totalsSource === 'none') return;
         if (P.totals && Date.now() - P.totalsAt < refreshMs) return;
         P.totalsBusy = true;
         fetch('/map/' + mapId + '/totals', {cache: 'no-store', credentials: 'same-origin'})
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 P.totals = data && Array.isArray(data.frames) ? data.frames : [];
+                P.totalsDemo = !!data && data.source === 'demo';
                 P.totalsAt = Date.now();
                 drawTotals();
             })
@@ -1676,8 +1684,11 @@
             // an <svg> has no hidden property: set the attribute
             graph.setAttribute('hidden', '');
             stats.hidden = true;
+            // why there is no graph: recording is off, or it has only just started
+            showTotalsNote(totalsSource === 'none' ? 'off' : (totalsSource === 'recorded' && P.totals ? 'wait' : null));
             return;
         }
+        showTotalsNote(null);
         const W = 260, H = 64, mid = H / 2;
         const ins = frames.map(function (f) { return f[1] || 0; });
         const outs = frames.map(function (f) { return f[2] || 0; });
@@ -1711,8 +1722,21 @@
         stats.replaceChildren.apply(stats, []
             .concat(statLine(t('Peak'), peakIn, peakOut))
             .concat(statLine(t('95th percentile'), percentile(ins, 0.95), percentile(outs, 0.95)))
-            .concat([cell('wmv-total-span', fmt('Last :hours h', {hours: hours}))]));
+            .concat([cell('wmv-total-span', P.totalsDemo
+                ? fmt('Demo data, last :hours h', {hours: hours})
+                : fmt('Last :hours h', {hours: hours}))]));
         stats.hidden = false;
+    }
+
+    /** The note under the totals: 'off' (recording is off), 'wait' (too few images yet) or null */
+    function showTotalsNote(kind) {
+        const note = root.querySelector('.wmv-total-note');
+        if (!note) return;
+        note.hidden = kind === null;
+        note.querySelector('.wmv-total-note-off').hidden = kind !== 'off';
+        note.querySelector('.wmv-total-note-wait').hidden = kind !== 'wait';
+        const link = note.querySelector('.wmv-total-note-link');
+        if (link) link.hidden = kind !== 'off';
     }
 
     function cell(cls, text, title) {

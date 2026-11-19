@@ -66,4 +66,6 @@ return [
     'Focus areas' => 'Zones de focus',
     // F15: geographic maps in the editor
     ':group, :n nodes: :names' => ':group, :n nœuds : :names',
+    // F28: the total traffic graph on every map
+    'Demo data, last :hours h' => 'Données de démonstration, dernières :hours h',
 ];

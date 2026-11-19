@@ -24,6 +24,9 @@ re-explore the repository. Keep it short and up to date.
 - Maps page: `MapManagementController`, `Views/maps/index.php`, `maplist.js`.
 - Demo maps: `src/examples/maps/*.conf`, installed by `Services/DemoMaps.php`.
 - Data sources: `Services/Observium/`, `ZabbixService.php`, `src/lib/Zabbix/`.
+- Total traffic graph (side panel, total box, kiosk): `Services/TotalTrafficSeries.php`
+  decides its source (recorded frames, demo day for static data, or none),
+  served by `/map/{id}/totals`.
 
 ## Map config hints (`SET <name> <value>` in a `.conf`)
 

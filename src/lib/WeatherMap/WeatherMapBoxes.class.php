@@ -387,6 +387,10 @@ class WeatherMapBoxes {
 				$series = is_array($map->box_series) ? $map->box_series : array();
 				if ($box['style'] === 'graph' && count($series) >= 2) {
 					$blocks[] = array('graph', 48, 120, $series);
+					if (is_string($map->box_series_note) && $map->box_series_note !== '') {
+						list($nw) = $map->myimagestringsize($font, $map->box_series_note);
+						$blocks[] = array('note', $lineheight + 6, $nw, $map->box_series_note);
+					}
 				}
 				return $blocks;
 
@@ -472,6 +476,10 @@ class WeatherMapBoxes {
 					$map->myimagestring($image, $font, $vx + 10, $y + $lineheight, $v[0], $muted);
 					$map->myimagestring($image, $font, $vx, $y + 2 * $lineheight + 4, $v[1], $text);
 				}
+				return;
+
+			case 'note':
+				$map->myimagestring($image, $font, $x, $y + $height - 4, $data, $muted);
 				return;
 
 			case 'graph':

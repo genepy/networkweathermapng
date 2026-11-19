@@ -220,6 +220,8 @@ class WeatherMap extends WeatherMapBase {
 	var $zones = array(); // an array of WeatherMapZones, drawn under everything else
 	/** The total traffic over time, [[time, in, out], ...], for the total traffic boxes (see WeatherMapBoxes) */
 	var $box_series = null;
+	/** A short muted line under that graph (the application sets "Demo data" for a generated series) */
+	var $box_series_note = null;
 	var $texts = array(); // an array containing all the extraneous text bits
 
 	var $used_images  = array(); // an array of image filenames referred to (used by editor)
