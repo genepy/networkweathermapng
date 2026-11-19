@@ -295,6 +295,27 @@ areas* in the map properties adds, names and deletes them, sets their
 rectangle (numbers, or *Use the view*) and the one the map opens on; the
 context menu adds one around the selection.
 
+### Viewer panels
+
+The live view shows the sites of the map, its total traffic, the link load
+legend and the update time (with the most loaded link). The map chooses
+which ones are shown and where: in the side panel, or in a corner of the
+map, in their order. The PNG and SVG pictures do not change.
+
+```
+SET viewer_panels total:top-right sites:side legend:side:hidden updated:bottom-left
+```
+
+Each panel is `<id>:<position>`, with `:hidden` when it is not shown. The
+ids are `sites`, `total`, `legend` and `updated`; the positions are `side`,
+`top-left`, `top-right`, `bottom-left` and `bottom-right`. The order is the
+order in the side panel, and in a corner that holds more than one. A panel
+left out takes its usual place. Without the hint the sites, the total and
+the legend are in the side panel and the update time at the bottom left.
+The kiosk has no side panel: it shows only the panels placed in a corner
+(none without the hint). On a phone the corner cards go in the side panel
+sheet. In the editor, *Viewer panels* in the map properties sets them.
+
 ### Comments along curved links
 
 `INCOMMENT` and `OUTCOMMENT` are drawn straight, along the link where they

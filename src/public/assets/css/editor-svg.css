@@ -491,6 +491,15 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .focus-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 #inspector .focus-actions .danger { color: var(--danger); }
 #inspector .focus-add { margin-bottom: 4px; }
+/* Viewer panels (editor-mapprops.js): one row per panel, its switch, its place, up and down */
+#inspector .panel-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+#inspector .panel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+#inspector .panel-row:last-child { border-bottom: 0; }
+#inspector .panel-row .panel-name { grid-column: 1 / -1; }
+#inspector .panel-row .panel-name { display: flex; gap: 6px; align-items: center; min-width: 0; color: var(--text); }
+#inspector .panel-row.off .panel-name { color: var(--muted); }
+#inspector .panel-row select { min-width: 0; width: 100%; }
+#inspector .panel-row .panel-move { min-width: 28px; padding: 2px 6px; }
 #focus-areas .focus-frame { fill: color-mix(in srgb, var(--accent) 8%, transparent); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 10 5; vector-effect: non-scaling-stroke; }
 #focus-areas .focus-frame.default { stroke-dasharray: none; }
 #focus-areas .focus-label { fill: var(--accent); font-weight: 600; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }

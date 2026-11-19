@@ -17,7 +17,9 @@
  * site (SET site), the total traffic of the map with a graph of the
  * recorded hours, and the colour legend; hovering a node on the map
  * highlights it in the list, hovering it in the list frames it on the map
- * and in the minimap. The saved map is never changed.
+ * and in the minimap. A map may show only some of these panels, in the
+ * side panel or in the corners, in its own order (SET viewer_panels). The
+ * saved map is never changed.
  * With ?kiosk=1 the page is the bare map that the kiosk (kiosk.js) shows in
  * a frame: fitted (or at the kiosk's fixed zoom), no toolbar, no keys.
  */
@@ -551,6 +553,7 @@
                 if (data.status) setBasemap(data.status.basemap || null);
                 setAreas(data.focus || null);
                 installSvg(data.svg, data.items);
+                setPanels(data.panels || null);
                 startArea();
                 showState(data.status);
                 if (data.version) S.version = data.version;
@@ -600,7 +603,7 @@
         const box = statusBox.querySelector('.wmv-legend');
         if (!Array.isArray(scale) || !scale.length) {
             box.hidden = true;
-            if (panel) panel.querySelector('.wmv-panel-legend').hidden = true;
+            if (panel) root.querySelector('.wmv-panel-legend').hidden = true;
             return;
         }
         let lo = Infinity, hi = -Infinity;
@@ -620,7 +623,7 @@
         box.hidden = false;
         // the same legend, larger, in the side panel: one row per band
         if (panel) {
-            const sec = panel.querySelector('.wmv-panel-legend');
+            const sec = root.querySelector('.wmv-panel-legend');
             // a smooth scale: one gradient bar from the lowest to the highest load
             const smooth = scale.some(function (b) { return b.colour2 && b.top > b.bottom; });
             const bands = smooth ? scale.filter(function (b) { return b.top <= b.bottom; }).reverse() : scale.slice().reverse();
@@ -1080,6 +1083,7 @@
         }
         showLegend(status.scale);
         showTotal(status.total);
+        dockSizes();
     }
 
     // ------------------------------------------------------------------
@@ -1352,9 +1356,9 @@
 
     /** The heading button: collapse when a site is open, expand when all are closed */
     function updateSitesAll() {
-        const btn = panel && panel.querySelector('[data-act="sites-all"]');
+        const btn = panel && root.querySelector('[data-act="sites-all"]');
         if (!btn) return;
-        const toggles = panel.querySelectorAll('.wmv-site-toggle');
+        const toggles = root.querySelectorAll('.wmv-sites .wmv-site-toggle');
         btn.hidden = toggles.length < 2;
         const anyOpen = Array.prototype.some.call(toggles, function (b) { return b.getAttribute('aria-expanded') === 'true'; });
         const label = anyOpen ? btn.dataset.collapse : btn.dataset.expand;
@@ -1366,7 +1370,7 @@
     }
 
     function setAllSites() {
-        const toggles = panel ? panel.querySelectorAll('.wmv-site-toggle') : [];
+        const toggles = panel ? root.querySelectorAll('.wmv-sites .wmv-site-toggle') : [];
         const open = !Array.prototype.some.call(toggles, function (b) { return b.getAttribute('aria-expanded') === 'true'; });
         P.open = {};
         try { localStorage.setItem(SITES_KEY, open ? 'all' : 'none'); } catch (e) { /* private mode */ }
@@ -1499,9 +1503,10 @@
 
     /** Fill the list of nodes by site (again after each new drawing of the map) */
     function fillSites() {
-        if (!panel || panel.hidden || !S.el || !S.el.querySelectorAll) return;
-        const list = panel.querySelector('.wmv-site-list');
-        const title = panel.querySelector('#wmv-sites-title');
+        const sites = panel ? root.querySelector('.wmv-sites') : null;
+        if (!inView(sites) || !S.el || !S.el.querySelectorAll) return;
+        const list = sites.querySelector('.wmv-site-list');
+        const title = sites.querySelector('#wmv-sites-title');
         const scroll = list.scrollTop;
         const info = siteGroups();
         P.rows = {};
@@ -1513,7 +1518,7 @@
             info.groups.forEach(function (grp) {
                 grp.nodes.forEach(function (n) { items.push(nodeRow(n)); count++; });
             });
-            panel.querySelector('.wmv-sites .wmv-panel-count').textContent = String(count);
+            sites.querySelector('.wmv-panel-count').textContent = String(count);
         } else {
             title.textContent = title.dataset.sites;
             info.groups.forEach(function (grp) {
@@ -1577,7 +1582,7 @@
                 items.push(li);
                 count++;
             });
-            panel.querySelector('.wmv-sites .wmv-panel-count').textContent = String(count);
+            sites.querySelector('.wmv-panel-count').textContent = String(count);
         }
         list.replaceChildren.apply(list, items);
         list.scrollTop = scroll;
@@ -1596,15 +1601,16 @@
     /** The node hovered on the map stands out in the list */
     function markRow(name) {
         P.hover = name;
-        if (!panel || panel.hidden) return;
-        panel.querySelectorAll('.wmv-row-hover').forEach(function (el) { el.classList.remove('wmv-row-hover'); });
+        const sites = panel ? root.querySelector('.wmv-sites') : null;
+        if (!inView(sites)) return;
+        sites.querySelectorAll('.wmv-row-hover').forEach(function (el) { el.classList.remove('wmv-row-hover'); });
         const row = name !== null ? P.rows[name] : null;
         if (!row) return;
         const nodes = row.closest('.wmv-site-nodes');
         // in a closed site, its heading stands out
         const target = nodes && nodes.hidden ? nodes.parentNode.querySelector('.wmv-site-toggle') : row;
         target.classList.add('wmv-row-hover');
-        const list = panel.querySelector('.wmv-site-list');
+        const list = sites.querySelector('.wmv-site-list');
         const lr = list.getBoundingClientRect(), r = target.getBoundingClientRect();
         if (r.top < lr.top) list.scrollTop -= lr.top - r.top + 4;
         else if (r.bottom > lr.bottom) list.scrollTop += r.bottom - lr.bottom + 4;
@@ -1624,7 +1630,7 @@
     function showTotal(total) {
         P.total = total || null;
         if (!panel) return;
-        const sec = panel.querySelector('.wmv-total');
+        const sec = root.querySelector('.wmv-total');
         if (!total || (total.in === null && total.out === null)) {
             sec.hidden = true;
             return;
@@ -1639,7 +1645,7 @@
 
     /** The totals of the recorded frames, at most once per refresh interval */
     function loadTotals() {
-        if (!panel || panel.hidden || root.dataset.history !== '1' || P.totalsBusy) return;
+        if (!panel || !inView(root.querySelector('.wmv-total')) || root.dataset.history !== '1' || P.totalsBusy) return;
         if (P.totals && Date.now() - P.totalsAt < refreshMs) return;
         P.totalsBusy = true;
         fetch('/map/' + mapId + '/totals', {cache: 'no-store', credentials: 'same-origin'})
@@ -1662,7 +1668,7 @@
     /** IN above the line, OUT below it, over the recorded hours; peak and 95th percentile */
     function drawTotals() {
         if (!panel) return;
-        const sec = panel.querySelector('.wmv-total');
+        const sec = root.querySelector('.wmv-total');
         const graph = sec.querySelector('.wmv-total-graph');
         const stats = sec.querySelector('.wmv-total-stats');
         const frames = (P.totals || []).filter(function (f) { return f[1] !== null || f[2] !== null; });
@@ -1727,11 +1733,176 @@
         try { return H.on; } catch (e) { return false; }
     }
 
-    if (panel) {
+    /** Open the panel as the user left it: open on a wide screen until they say otherwise */
+    function restorePanel() {
         const stored = storedPanel();
-        // open on a wide screen until the user says otherwise
         setPanel(stored !== null ? stored === '1' : vpSize().w >= 1100, false);
     }
+
+    // the kiosk has no side panel: its panels are only the ones placed in a corner
+    if (panel && !kioskFrame) restorePanel();
+
+    // ------------------------------------------------------------------
+    // Viewer panels (SET viewer_panels, see ViewerPanels.php): which of
+    // the sites, the total traffic, the legend and the update time are
+    // shown, and where: in the side panel, in a corner of the map, in their
+    // order. A map without the hint keeps the usual layout untouched.
+
+    const DOCKS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    const D = {
+        applied: false,     // the panels were moved from their usual places
+        list: null,         // the panels of the map: [{id, position, shown}], null for the usual layout
+        docks: {},          // corner => its box
+        off: null,          // the box that keeps the hidden panels
+        home: null,         // where the update time, the inset and the panel close button sit in the usual layout
+        sideEmpty: false,   // the map puts nothing in the side panel
+        wasPhone: false,
+        timer: 0
+    };
+
+    function panelEl(id) {
+        switch (id) {
+            case 'sites': return root.querySelector('.wmv-sites');
+            case 'total': return root.querySelector('.wmv-total');
+            case 'legend': return root.querySelector('.wmv-panel-legend');
+            case 'updated': return statusBox;
+        }
+        return null;
+    }
+
+    /** Whether a panel is in view: in a corner, or in the open side panel */
+    function inView(el) {
+        if (!el) return false;
+        if (el.closest('.wmv-dock')) return true;
+        return !!(panel && !panel.hidden && panel.contains(el));
+    }
+
+    function makeDocks() {
+        if (D.off) return;
+        const before = root.querySelector('.wmv-minimap');
+        DOCKS.forEach(function (where) {
+            const box = document.createElement('div');
+            // no fading in fullscreen: a wall screen keeps the panels the map placed
+            box.className = 'wmv-dock wmv-dock-' + where;
+            box.hidden = true;
+            root.insertBefore(box, before);
+            D.docks[where] = box;
+        });
+        D.off = document.createElement('div');
+        D.off.className = 'wmv-dock-off';
+        D.off.hidden = true;
+        root.appendChild(D.off);
+        const close = panel ? panel.querySelector('[data-act="panel-close"]') : null;
+        D.home = {
+            status: {parent: statusBox.parentNode, next: statusBox.nextSibling},
+            inset: insetBox ? {parent: insetBox.parentNode, next: insetBox.nextSibling} : null,
+            close: close ? {el: close, parent: close.parentNode, next: close.nextSibling} : null
+        };
+    }
+
+    /** Back to the usual layout, as the page was drawn */
+    function resetPanels() {
+        if (!D.applied) return;
+        ['sites', 'total', 'legend'].forEach(function (id) {
+            const el = panelEl(id);
+            if (el && panel) panel.appendChild(el);
+        });
+        const h = D.home;
+        h.status.parent.insertBefore(statusBox, h.status.next);
+        if (h.inset) h.inset.parent.insertBefore(insetBox, h.inset.next);
+        if (h.close) h.close.parent.insertBefore(h.close.el, h.close.next);
+        DOCKS.forEach(function (where) { D.docks[where].hidden = true; });
+        root.classList.remove('wmv-panels-set', 'wmv-legend-bar-off');
+        if (panelButton) panelButton.hidden = false;
+        D.applied = false;
+        if (D.sideEmpty && !kioskFrame) restorePanel();
+        D.sideEmpty = false;
+    }
+
+    /** Put each panel where the map says, or back to the usual layout */
+    function layoutPanels() {
+        if (!D.list) {
+            resetPanels();
+            return;
+        }
+        makeDocks();
+        D.applied = true;
+        root.classList.add('wmv-panels-set');
+        const phone = isPhone();
+        const side = [];
+        D.list.forEach(function (p) {
+            const el = panelEl(p.id);
+            if (!el) return;
+            let where = p.shown ? p.position : 'off';
+            // a phone has no room for cards in the corners: they go in the panel sheet, the update time stays small
+            if (phone && where !== 'off' && where !== 'side' && p.id !== 'updated') where = 'side';
+            // no side panel in the kiosk
+            if (where === 'side' && (kioskFrame || !panel)) where = 'off';
+            if (where === 'off') D.off.appendChild(el);
+            else if (where === 'side') side.push(el);
+            else D.docks[where].appendChild(el);
+        });
+        side.forEach(function (el) { panel.appendChild(el); });
+        // the city inset stays at the top right, under the panels placed there
+        if (insetBox) {
+            if (D.docks['top-right'].querySelector('.wmv-panel-sec, .wmv-status')) D.docks['top-right'].appendChild(insetBox);
+            else D.home.inset.parent.insertBefore(insetBox, D.home.inset.next);
+        }
+        // the close button of the side panel heads its first panel
+        const close = D.home.close;
+        if (close) {
+            const first = panel.firstElementChild;
+            const head = first ? first.querySelector('.wmv-panel-head') : null;
+            if (head) head.appendChild(close.el);
+            else if (first) first.appendChild(close.el);
+            else close.parent.insertBefore(close.el, close.next);
+        }
+        // the small legend bar of the update time, while the legend is in the side panel
+        const legend = D.list.filter(function (p) { return p.id === 'legend'; })[0];
+        root.classList.toggle('wmv-legend-bar-off', !legend || !legend.shown || legend.position !== 'side' || kioskFrame);
+        DOCKS.forEach(function (where) { D.docks[where].hidden = !D.docks[where].children.length; });
+        // nothing left for the side panel: no panel and no button for it
+        if (panel && !kioskFrame) {
+            if (panelButton) panelButton.hidden = !side.length;
+            if (!side.length) {
+                if (!panel.hidden) setPanel(false, false);
+            } else if (D.sideEmpty) {
+                restorePanel();
+            }
+            D.sideEmpty = !side.length;
+        }
+        D.wasPhone = phone;
+        dockSizes();
+        fillSites();
+        loadTotals();
+        drawTotals();
+    }
+
+    /** The zoom buttons and the bottom left corner, measured, so the corners and the side panel make room */
+    function dockSizes() {
+        if (!D.applied) return;
+        const zoom = root.querySelector('.wmv-zoombar');
+        root.style.setProperty('--wmv-zoombar-h', (zoom && zoom.getClientRects().length ? zoom.offsetHeight : 0) + 'px');
+        const bl = D.docks['bottom-left'];
+        root.style.setProperty('--wmv-dock-bl-h', (bl.hidden ? 0 : bl.offsetHeight) + 'px');
+    }
+
+    function setPanels(list) {
+        const next = Array.isArray(list) && list.length ? list : null;
+        if (JSON.stringify(next) === JSON.stringify(D.list) && D.applied === !!next) return;
+        D.list = next;
+        layoutPanels();
+    }
+
+    window.addEventListener('resize', function () {
+        if (!D.list) return;
+        clearTimeout(D.timer);
+        D.timer = setTimeout(function () {
+            // the corners change between a phone and a wider window
+            if (isPhone() !== D.wasPhone) layoutPanels();
+            else dockSizes();
+        }, 150);
+    });
 
     // ------------------------------------------------------------------
     // Find a node
@@ -2153,7 +2324,9 @@
         function rect(el) {
             return el && !el.hidden && el.getClientRects().length ? el.getBoundingClientRect() : null;
         }
-        const pb = rect(panel), bb = rect(root.querySelector('.wmv-bar')), sb = rect(statusBox);
+        // with the viewer panels placed by the map, the bottom left corner is the line at the bottom
+        const bottom = D.applied ? D.docks['bottom-left'] : statusBox;
+        const pb = rect(panel), bb = rect(root.querySelector('.wmv-bar')), sb = rect(bottom);
         let x0 = 0, y0 = 0, x1 = vr.width, y1 = vr.height;
         if (pb && vr.width > 640) x0 = Math.max(0, pb.right - vr.left + 8);
         if (bb) y0 = Math.max(0, bb.bottom - vr.top + 8);
@@ -2310,7 +2483,7 @@
         ['viewer.pan-up', function () { S.ty += 60; userMoved(); }],
         ['viewer.pan-down', function () { S.ty -= 60; userMoved(); }],
         ['viewer.find', function () { findInput.focus(); }],
-        ['viewer.panel', function () { if (!panel) return false; setPanel(panel.hidden, true); }],
+        ['viewer.panel', function () { if (!panel || (panelButton && panelButton.hidden)) return false; setPanel(panel.hidden, true); }],
         ['viewer.fullscreen', function () { toggleFullscreen(); }],
         ['viewer.edit', function () {
             const edit = root.querySelector('.wmv-edit');
@@ -2459,7 +2632,7 @@
         if (!el || !el.closest || viewport.contains(el)) return;
         if (!el.closest('.wm-hovercard')) hidePanel();
         closeClusterMenu();
-        if (S.focus !== null && !el.closest('.wmv-card, .wmv-bar, .wmv-zoombar, .wmv-panel, .wmv-minimap, .wmv-history')) unfocus();
+        if (S.focus !== null && !el.closest('.wmv-card, .wmv-bar, .wmv-zoombar, .wmv-panel, .wmv-dock, .wmv-minimap, .wmv-history')) unfocus();
     }, true);
 
     /** Address of the fullscreen page on the current view, for a wall screen */

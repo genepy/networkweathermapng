@@ -201,6 +201,8 @@ class MapController extends BaseController
             'status' => self::publicStatus($summary),
             // the focus areas of the map (SET focus_*), null when it has none
             'focus' => $summary['focus'] ?? null,
+            // the viewer panels and where they go (SET viewer_panels), null for the usual layout
+            'panels' => $summary['panels'] ?? null,
             'version' => $this->configVersion($mapId),
         ]);
     }

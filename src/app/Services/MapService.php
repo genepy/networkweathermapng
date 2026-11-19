@@ -886,6 +886,8 @@ class MapService
             'basemap' => Basemap::of($wmap),
             // the parts of the map the viewer and the kiosk can put forward, or null
             'focus' => FocusAreas::forViewer($wmap),
+            // which viewer panels are shown and where (SET viewer_panels), null for the usual layout
+            'panels' => ViewerPanels::forViewer($wmap),
             'items' => $items,
         ];
     }
