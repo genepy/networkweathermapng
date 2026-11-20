@@ -164,7 +164,7 @@
                     <div class="wmv-total-in"><dt><?= e__('IN') ?></dt><dd></dd></div>
                     <div class="wmv-total-out"><dt><?= e__('OUT') ?></dt><dd></dd></div>
                 </dl>
-                <div class="segmented wmv-total-periods" role="group" aria-label="<?= e__('Period') ?>" data-short="<?= e__('Not enough history yet') ?>" hidden>
+                <div class="segmented wmv-total-periods" role="group" aria-label="<?= e__('Period') ?>" hidden>
                     <?php foreach (['day' => __('1 day'), 'week' => __('1 week'), 'month' => __('1 month')] as $period => $label): ?>
                     <button type="button" data-period="<?= $period ?>" aria-pressed="<?= $period === 'day' ? 'true' : 'false' ?>"><?= htmlspecialchars($label) ?></button>
                     <?php endforeach; ?>

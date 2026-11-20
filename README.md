@@ -290,9 +290,10 @@ In the side panel and the kiosk the total traffic card reads like a peering
 exchange dashboard: tabs for *Total* and each link group (`SET
 traffic_group Peering` on a link, *Traffic group* in the link panel; a link
 in a group counts in its tab even with `SET traffic_total 0`), a *1 day* /
-*1 week* / *1 month* switch (a period is offered once the kept history goes
-back further than the period before it, so raise the retention in Admin >
-Recording, up to 31 days, to get a month; demo maps have all three), IN
+*1 week* / *1 month* switch (every period can be picked, as in the zoomed
+graph: when the kept history is shorter, the graph spans the whole period,
+shows what exists and says since when it is recorded; raise the retention in
+Admin > Recording, up to 31 days, to keep a month; demo maps have all three), IN
 above and OUT below the line, and the 95th percentile and peak of each
 direction worked out on every point of the period. Long periods are
 averaged down for the small graph ("Aggregated data"); a click on the graph

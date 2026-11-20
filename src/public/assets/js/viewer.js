@@ -1737,6 +1737,9 @@
                 P.totals = data && Array.isArray(data.frames) ? data.frames : [];
                 P.totalsDemo = !!data && data.source === 'demo';
                 P.periods = data && data.periods ? data.periods : null;
+                // the period the graph spans, and the start of the recording
+                P.span = data && typeof data.from === 'number' && typeof data.to === 'number' && data.to > data.from ? [data.from, data.to] : null;
+                P.since = data && typeof data.since === 'number' ? data.since : null;
                 P.groups = data && Array.isArray(data.groups) ? data.groups : [];
                 P.stats = data && data.stats ? data.stats : null;
                 P.aggregated = !!(data && data.aggregated);
@@ -1747,14 +1750,6 @@
                     P.group = data.group;
                     P.totalsKey = totalsQuery();
                     showNow();
-                }
-                if (P.periods && !P.periods[P.period] && P.period !== 'day') {
-                    // not enough history for this period (any more): back to a day
-                    P.period = 'day';
-                    P.totalsAt = 0;
-                    P.totalsBusy = false;
-                    loadTotals();
-                    return;
                 }
                 drawTotals();
             })
@@ -1794,12 +1789,10 @@
         const box = sec.querySelector('.wmv-total-periods');
         if (!box) return;
         box.hidden = totalsSource === 'none' || !P.periods;
+        // every period can be chosen, as in the zoomed graph: a short
+        // history shows what exists, with since when it is recorded
         box.querySelectorAll('[data-period]').forEach(function (b) {
-            const p = b.getAttribute('data-period');
-            const ok = !P.periods || !!P.periods[p];
-            b.setAttribute('aria-pressed', p === P.period ? 'true' : 'false');
-            b.disabled = !ok;
-            b.title = ok ? '' : (box.dataset.short || '');
+            b.setAttribute('aria-pressed', b.getAttribute('data-period') === P.period ? 'true' : 'false');
         });
     }
 
@@ -1829,14 +1822,15 @@
         const ins = frames.map(function (f) { return f[1] || 0; });
         const outs = frames.map(function (f) { return f[2] || 0; });
         const top = Math.max.apply(null, ins.concat(outs)) || 1;
-        const t0 = frames[0][0], t1 = frames[frames.length - 1][0];
-        const x = function (time) { return t1 > t0 ? (time - t0) / (t1 - t0) * W : 0; };
+        // the time axis spans the whole period, also when the history is shorter
+        const t0 = P.span ? P.span[0] : frames[0][0], t1 = P.span ? P.span[1] : frames[frames.length - 1][0];
+        const x = function (time) { return t1 > t0 ? Math.max(0, Math.min(W, (time - t0) / (t1 - t0) * W)) : 0; };
         const area = function (vals, sign) {
-            let d = 'M0 ' + mid;
+            let d = 'M' + x(frames[0][0]).toFixed(1) + ' ' + mid;
             frames.forEach(function (f, i) {
                 d += ' L' + x(f[0]).toFixed(1) + ' ' + (mid - sign * vals[i] / top * (mid - 2)).toFixed(1);
             });
-            return d + ' L' + W + ' ' + mid + ' Z';
+            return d + ' L' + x(frames[frames.length - 1][0]).toFixed(1) + ' ' + mid + ' Z';
         };
         const mk = function (cls, d) {
             const p = document.createElementNS(SVG_NS, 'path');
@@ -1865,6 +1859,9 @@
         stats.hidden = false;
         const line = [];
         if (P.totalsDemo) line.push(t('Demo data'));
+        if (P.since && P.span && P.since > P.span[0] + (P.span[1] - P.span[0]) / 100) {
+            line.push(fmt('Recorded since :date', {date: new Date(P.since * 1000).toLocaleDateString(document.documentElement.lang || undefined, {day: 'numeric', month: 'short'})}));
+        }
         if (P.aggregated) line.push(plot.dataset.zoom ? t('Aggregated data, click to zoom') : t('Aggregated data'));
         else if (plot.dataset.zoom) line.push(t('Click to zoom'));
         foot.textContent = line.join(' · ');
@@ -1922,7 +1919,7 @@
             const per = e.target.closest('[data-period]');
             if (per && sec.contains(per)) {
                 const p = per.getAttribute('data-period');
-                if (per.disabled || p === P.period) return;
+                if (p === P.period) return;
                 P.period = p;
                 try { localStorage.setItem(PERIOD_KEY, p); } catch (err) { /* private mode */ }
                 drawPeriods(sec);

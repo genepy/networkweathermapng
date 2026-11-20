@@ -81,16 +81,19 @@ class TotalTrafficSeriesTest extends TestCase
         $this->assertCount(97, TotalTrafficSeries::demo(4e9, 2e9, $now, 'bogus'), 'an unknown period is a day');
     }
 
-    public function testPeriodsNeedEnoughHistory(): void
+    /** F39: every period can be chosen once there is a graph; a short history shows what exists, with its start */
+    public function testEveryPeriodOnceThereIsAGraph(): void
     {
         $now = 1_800_000_000;
         $none = ['day' => false, 'week' => false, 'month' => false];
+        $all = ['day' => true, 'week' => true, 'month' => true];
         $this->assertSame($none, TotalTrafficSeries::periods([], $now));
-        $this->assertSame($none, TotalTrafficSeries::periods([[$now, 1.0, 1.0], [$now - 60, null, null]], $now), 'one point with data');
-        $hours = static fn (int $h) => [[$now - $h * 3600, 1.0, 1.0], [$now, 2.0, 2.0]];
-        $this->assertSame(['day' => true, 'week' => false, 'month' => false], TotalTrafficSeries::periods($hours(23), $now));
-        $this->assertSame(['day' => true, 'week' => true, 'month' => false], TotalTrafficSeries::periods($hours(25), $now), 'more than a day of history');
-        $this->assertSame(['day' => true, 'week' => true, 'month' => true], TotalTrafficSeries::periods($hours(24 * 7 + 1), $now), 'more than a week');
+        $this->assertSame($none, TotalTrafficSeries::periods([[$now - 60, null, null], [$now, 1.0, 1.0]], $now), 'one point with data');
+        $hours = static fn (int $h) => [[$now - $h * 3600, null, null], [$now - $h * 3600 + 60, 1.0, 1.0], [$now, 2.0, 2.0]];
+        $this->assertSame($all, TotalTrafficSeries::periods($hours(2), $now), 'two hours of history: a week shows them');
+        $this->assertSame($all, TotalTrafficSeries::periods($hours(24 * 7 + 1), $now));
+        $this->assertSame($now - 2 * 3600 + 60, TotalTrafficSeries::since($hours(2)), 'the first point with data');
+        $this->assertNull(TotalTrafficSeries::since([]));
     }
 
     /** The 95th percentile and the peak come from every point of the period, before they are averaged down */

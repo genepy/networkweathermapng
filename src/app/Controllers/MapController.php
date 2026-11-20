@@ -258,7 +258,8 @@ class MapController extends BaseController
      * GET: the total traffic graph of a map for ?period= (day, week or
      * month) and ?group= (a link group, SET traffic_group; none for the
      * total): {source, period, periods: {day, week, month: bool}, groups,
-     * group, frames: [[time, in, out]...], aggregated, stats: {in, out:
+     * group, from, to (the period), since (the first recorded point, or
+     * null), frames: [[time, in, out]...], aggregated, stats: {in, out:
      * {p95, peak}}}. The frames are the recorded ones, or for a map of
      * static data a demo period that ends on its current totals
      * (TotalTrafficSeries).
@@ -286,7 +287,11 @@ class MapController extends BaseController
             $this->json(TotalTrafficSeries::series($rows, $period, $now) + ['tz' => $this->timezones()->forMap($mapId)]);
             return;
         }
-        $this->json(['source' => $source, 'period' => $period, 'periods' => $periods, 'groups' => $groups, 'group' => $group]
+        // the graph spans the whole period (from, to), and says since when it
+        // is recorded when the history is shorter (F39)
+        $this->json(['source' => $source, 'period' => $period, 'periods' => $periods, 'groups' => $groups, 'group' => $group,
+            'from' => $now - TotalTrafficSeries::PERIODS[$period], 'to' => $now,
+            'since' => $source === TotalTrafficSeries::RECORDED ? TotalTrafficSeries::since($rows) : null]
             + TotalTrafficSeries::view($rows, $period, $now));
     }
 

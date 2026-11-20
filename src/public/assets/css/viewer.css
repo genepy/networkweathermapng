@@ -857,8 +857,6 @@
 .wmv-total-periods { align-self: flex-start; }
 .wmv-total-periods[hidden] { display: none; }
 .wmv-total-periods.segmented button { padding: 2px 8px; font-size: 0.92em; }
-.wmv-total-periods.segmented button:disabled,
-.wmv-total-periods.segmented button:disabled:hover { color: var(--wm-disabled); cursor: default; background: none; }
 .wmv-total-plot {
     padding: 4px;
     border-radius: var(--wm-radius-control);
