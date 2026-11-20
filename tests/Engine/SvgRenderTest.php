@@ -890,6 +890,7 @@ final class SvgRenderTest extends TestCase
         $file = TESTS_OUTPUT . '/labelpos.conf';
         file_put_contents($file, (string) file_get_contents(TESTS_ROOT . '/fixtures/maps/link-ends.conf') . "\tBWLABELPOS 80 20\n");
         $map = $this->load($file);
+        \WeatherMapSvg::render($map);
         $this->assertEqualsWithDelta(20, $map->links['wide']->drawn_labelpos[OUT], 0.01);
         $this->assertEqualsWithDelta(80, $map->links['wide']->drawn_labelpos[IN], 0.01);
     }
