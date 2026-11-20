@@ -590,7 +590,6 @@ final class SvgRenderTest extends TestCase
         $im = imagecreatetruecolor(100, 50);
         imagefill($im, 0, 0, imagecolorallocate($im, 255, 0, 0));
         imagepng($im, $bg);
-        imagedestroy($im);
 
         $draw = function (string $sizing) use ($bg): array {
             $file = TESTS_OUTPUT . '/sizing.conf';

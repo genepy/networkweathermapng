@@ -3800,7 +3800,6 @@ class WeatherMap extends WeatherMapBase {
 				} else {
 					imagecopyresampled($image, $bgimage, $bx, $by, 0, 0, $bw, $bh, $bg_w, $bg_h);
 				}
-				imagedestroy($bgimage);
 			}
 
 			// Now it's time to draw a map
@@ -4057,8 +4056,6 @@ class WeatherMap extends WeatherMapBase {
 
 					$result = imagepng($imagethumb, $thumbnailfile);
 
-					imagedestroy($imagethumb);
-
 					if (($result == false)) {
 						if (file_exists($filename)) {
 							wm_warn("Failed to overwrite existing image file $filename - permissions of existing file are wrong? [WMWARN15]");
@@ -4070,8 +4067,6 @@ class WeatherMap extends WeatherMapBase {
 			} else {
 				wm_warn("Skipping thumbnail creation, since we don't have the necessary function. [WMWARN17]");
 			}
-
-			imagedestroy ($image);
 		}
 	}
 
@@ -4092,10 +4087,8 @@ class WeatherMap extends WeatherMapBase {
 		}
 
 		foreach ($this->nodes as $node) {
-			// destroy all the images we created, to prevent memory leaks
-			if (isset($node->image)) {
-				imagedestroy($node->image);
-			}
+			// drop the images we created so GD can free them
+			$node->image = null;
 
 			$node->owner = null;
 
