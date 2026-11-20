@@ -629,8 +629,6 @@ class WeatherMapNode extends WeatherMapItem {
 
 							imagealphablending($scaled, false);
 							imagecopyresampled($scaled, $icon_im, 0, 0, 0, 0, $new_width, $new_height, intval(round($icon_w)), intval(round($icon_h)));
-							imagedestroy($icon_im);
-
 							$icon_im = $scaled;
 						}
 					} else {
@@ -665,9 +663,6 @@ class WeatherMapNode extends WeatherMapItem {
 		if ($this->is_badge() && !$this->is_note()) {
 			$inner = isset($icon_im) && $icon_im ? $icon_im : null;
 			$this->badge = $this->make_badge($map, $inner, $col, isset($icon_vector) ? $icon_vector : null);
-			if ($inner) {
-				imagedestroy($inner);
-			}
 			$icon_im = $this->badge['image'];
 			$icon_w = imagesx($icon_im);
 			$icon_h = imagesy($icon_im);
@@ -799,7 +794,6 @@ class WeatherMapNode extends WeatherMapItem {
 			}
 
 			imagecopy($node_im, $icon_im, $icon_x1, $icon_y1, 0, 0, imagesx($icon_im), imagesy($icon_im));
-			imagedestroy($icon_im);
 		}
 
 		// Draw the label, if any
@@ -997,7 +991,6 @@ class WeatherMapNode extends WeatherMapItem {
 				imagecopyresampled($scaled, $inner, 0, 0, 0, 0, $nw, $nh, $iw, $ih);
 				imagealphablending($scaled, true);
 				$inner = $scaled;
-				$resized = true;
 				$iw = $nw;
 				$ih = $nh;
 			}
@@ -1034,7 +1027,6 @@ class WeatherMapNode extends WeatherMapItem {
 		imagesavealpha($im, true);
 		imagefill($im, 0, 0, imagecolorallocatealpha($im, 0, 0, 0, 127));
 		imagecopyresampled($im, $big, 0, 0, 0, 0, $size, $size, $size * $k, $size * $k);
-		imagedestroy($big);
 		imagealphablending($im, true);
 
 		$innerinfo = null;
@@ -1047,9 +1039,6 @@ class WeatherMapNode extends WeatherMapItem {
 			imagesavealpha($copy, true);
 			imagecopy($copy, $inner, 0, 0, 0, 0, $iw, $ih);
 			$innerinfo = array('w' => $iw, 'h' => $ih, 'image' => $copy, 'vector' => $vector);
-			if (!empty($resized)) {
-				imagedestroy($inner);
-			}
 		} elseif ($text !== '') {
 			// the baseline, as for a node label: centred in the disc
 			$tx = -$tw / 2;

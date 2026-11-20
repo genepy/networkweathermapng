@@ -736,7 +736,6 @@ class MapController extends BaseController
             ob_start();
             imagepng($im);
             $out = ob_get_clean();
-            imagedestroy($im);
             return $out;
         }
 
@@ -841,7 +840,6 @@ class MapController extends BaseController
         ob_start();
         imagepng($im);
         $out = ob_get_clean();
-        imagedestroy($im);
         return $out;
     }
 
