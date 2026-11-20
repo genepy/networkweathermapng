@@ -31,7 +31,10 @@
  *
  * The total traffic graph needs a series that the map does not hold: the
  * application sets WeatherMap::$box_series (a list of [time, in, out]) from
- * the map's recordings before drawing.
+ * the map's recordings before drawing. Under the graph the card gives the
+ * 95th percentile and the peak of each direction over the series and a
+ * line naming the period (WeatherMap::$box_series_labels translates them),
+ * a still version of the viewer's total traffic card.
  */
 class WeatherMapBoxes {
 	const TYPES = array('total', 'legend', 'speed', 'updated', 'text');
@@ -56,6 +59,9 @@ class WeatherMapBoxes {
 	/** Colours of the IN and OUT series of the total traffic graph (as in the viewer's panel) */
 	const IN_COLOUR = array(79, 143, 247);
 	const OUT_COLOUR = array(232, 163, 61);
+
+	/** The texts of the total traffic graph, in English unless WeatherMap::$box_series_labels says otherwise */
+	const SERIES_LABELS = array('p95' => '95th percentile', 'peak' => 'Peak', 'period' => 'Last 24 h');
 
 	/**
 	 * The boxes of a map, in the order of their ids:
@@ -386,11 +392,35 @@ class WeatherMapBoxes {
 				$blocks = array(array('total', 2 * $lineheight + 8, 2 * $w + 16, $values));
 				$series = is_array($map->box_series) ? $map->box_series : array();
 				if ($box['style'] === 'graph' && count($series) >= 2) {
-					$blocks[] = array('graph', 48, 120, $series);
-					if (is_string($map->box_series_note) && $map->box_series_note !== '') {
-						list($nw) = $map->myimagestringsize($font, $map->box_series_note);
-						$blocks[] = array('note', $lineheight + 6, $nw, $map->box_series_note);
+					$labels = (is_array($map->box_series_labels) ? $map->box_series_labels : array()) + self::SERIES_LABELS;
+					$blocks[] = array('graph', 56, 120, $series);
+					// the 95th percentile and the peak of each direction over the series
+					$rows = array();
+					foreach (array('p95' => 0.95, 'peak' => 1.0) as $key => $p) {
+						$row = array((string) $labels[$key]);
+						foreach (array(1, 2) as $k) {
+							$v = self::seriesPercentile($series, $k, $p);
+							$row[] = $v === null ? '-' : self::rate($v, $map->kilo);
+						}
+						$rows[] = $row;
 					}
+					$lw = 0;
+					$col = 0;
+					foreach ($rows as $row) {
+						list($w) = $map->myimagestringsize($font, $row[0]);
+						$lw = max($lw, $w);
+						foreach (array(1, 2) as $k) {
+							list($w) = $map->myimagestringsize($font, $row[$k]);
+							$col = max($col, $w + 12);
+						}
+					}
+					$blocks[] = array('stats', 2 * ($lineheight + 6) + 2, $lw + 2 * $col, array($rows, $col));
+					// the period on the left, a note on the data (demo data) on the right
+					$period = (string) $labels['period'];
+					$note = is_string($map->box_series_note) ? $map->box_series_note : '';
+					list($pw) = $map->myimagestringsize($font, $period);
+					list($nw) = $map->myimagestringsize($font, $note === '' ? ' ' : $note);
+					$blocks[] = array('caption', $lineheight + 6, $pw + ($note === '' ? 0 : $nw + 16), array($period, $note));
 				}
 				return $blocks;
 
@@ -482,6 +512,28 @@ class WeatherMapBoxes {
 				$map->myimagestring($image, $font, $x, $y + $height - 4, $data, $muted);
 				return;
 
+			case 'caption':
+				$map->myimagestring($image, $font, $x, $y + $height - 4, $data[0], $muted);
+				if ($data[1] !== '') {
+					list($nw) = $map->myimagestringsize($font, $data[1]);
+					$map->myimagestring($image, $font, $x + $width - $nw, $y + $height - 4, $data[1], $muted);
+				}
+				return;
+
+			case 'stats':
+				// label on the left, the IN and OUT values in two right aligned columns
+				list($rows, $col) = $data;
+				$base = $y + 2;
+				foreach ($rows as $row) {
+					$base += $lineheight + 6;
+					$map->myimagestring($image, $font, $x, $base - 3, $row[0], $muted);
+					foreach (array(2 => $x + $width, 1 => $x + $width - $col) as $k => $right) {
+						list($vw) = $map->myimagestringsize($font, $row[$k]);
+						$map->myimagestring($image, $font, (int) round($right - $vw), $base - 3, $row[$k], $text);
+					}
+				}
+				return;
+
 			case 'graph':
 				self::drawGraph($map, $image, $data, $x, $y + 4, $width, $height - 8, $outline);
 				return;
@@ -523,6 +575,25 @@ class WeatherMapBoxes {
 		if (!is_none($outline)) {
 			wimageline($image, $x, (int) round($mid), $x + $width, (int) round($mid), $outline['gdref1']);
 		}
+	}
+
+	/**
+	 * The value under which a share $p of the points of one direction of a
+	 * series lie (nearest rank; 1 gives the peak), null without data
+	 */
+	static function seriesPercentile($series, $k, $p) {
+		$values = array();
+		foreach ($series as $row) {
+			if (isset($row[$k]) && is_numeric($row[$k])) {
+				$values[] = (float) $row[$k];
+			}
+		}
+		if (!$values) {
+			return null;
+		}
+		sort($values);
+		$rank = (int) ceil($p * count($values)) - 1;
+		return $values[max(0, min(count($values) - 1, $rank))];
 	}
 
 	/**

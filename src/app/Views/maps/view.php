@@ -158,12 +158,22 @@
                     <h2 id="wmv-total-title"><?= e__('Total traffic') ?></h2>
                     <span class="wmv-panel-count wmv-total-links"></span>
                 </header>
+                <!-- Total, then the link groups of the map (SET traffic_group), filled by viewer.js -->
+                <div class="wmv-total-tabs" role="tablist" aria-label="<?= e__('Link groups') ?>" data-total="<?= e__('Total') ?>" hidden></div>
                 <dl class="wmv-total-now">
                     <div class="wmv-total-in"><dt><?= e__('IN') ?></dt><dd></dd></div>
                     <div class="wmv-total-out"><dt><?= e__('OUT') ?></dt><dd></dd></div>
                 </dl>
-                <svg class="wmv-total-graph" viewBox="0 0 260 64" preserveAspectRatio="none" role="img" hidden></svg>
+                <div class="segmented wmv-total-periods" role="group" aria-label="<?= e__('Period') ?>" data-short="<?= e__('Not enough history yet') ?>" hidden>
+                    <?php foreach (['day' => __('1 day'), 'week' => __('1 week'), 'month' => __('1 month')] as $period => $label): ?>
+                    <button type="button" data-period="<?= $period ?>" aria-pressed="<?= $period === 'day' ? 'true' : 'false' ?>"><?= htmlspecialchars($label) ?></button>
+                    <?php endforeach; ?>
+                </div>
+                <div class="wmv-total-plot"<?php if (!$isKiosk): ?> data-zoom="<?= e__('Zoom the graph') ?>"<?php endif; ?>>
+                    <svg class="wmv-total-graph" viewBox="0 0 260 64" preserveAspectRatio="none" role="img" hidden></svg>
+                </div>
                 <p class="wmv-total-stats" hidden></p>
+                <p class="wmv-total-foot" hidden></p>
                 <?php if (!$isKiosk): ?>
                 <p class="wmv-total-note" hidden>
                     <span class="wmv-total-note-off"><?= e__('Switch on recording in the map settings to see the graph.') ?></span>
@@ -179,6 +189,17 @@
                 <div class="wmv-panel-scale"></div>
             </section>
         </aside>
+
+        <?php if (!$isKiosk): ?>
+        <!-- the total traffic graph zoomed in, drawn by WM.trafficPanel (weathermap.js) -->
+        <dialog class="wmv-total-dialog" aria-labelledby="wmv-total-dialog-title">
+            <header class="wmv-total-dialog-head">
+                <h2 id="wmv-total-dialog-title"></h2>
+                <button type="button" class="wmv-icon-btn" data-act="total-close" title="<?= e__('Close (Esc)') ?>" aria-label="<?= e__('Close') ?>"><?= icon('x') ?></button>
+            </header>
+            <div class="wmv-total-dialog-plot"></div>
+        </dialog>
+        <?php endif; ?>
 
         <aside class="wmv-card wmv-fades" hidden aria-label="<?= e__('Selected node') ?>">
             <header class="wmv-card-head">

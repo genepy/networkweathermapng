@@ -692,4 +692,9 @@ return [
     ':shown of :total shown' => ':shown sur :total affichés',
     'The panels over the live map and the kiosk: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.' => 'Les panneaux au-dessus de la carte en direct et du kiosque : affichez ou masquez chacun d’eux, et placez-le dans le panneau latéral ou dans un coin de la carte. L’ordre est leur ordre dans le panneau latéral, et dans un coin qui en contient plusieurs.',
     'The kiosk has no side panel: it shows only the panels placed in a corner. The pictures (PNG, SVG) do not change.' => 'Le kiosque n’a pas de panneau latéral : il n’affiche que les panneaux placés dans un coin. Les images (PNG, SVG) ne changent pas.',
+
+    // F29: link groups of the total traffic graph
+    'Traffic group' => 'Groupe de trafic',
+    'none, or Peering, Transit...' => 'aucun, ou Peering, Transit…',
+    'Links of the same group get their own tab in the total traffic graph of the live view, next to Total.' => 'Les liens d’un même groupe ont leur propre onglet dans le graphique du trafic total de la vue en direct, à côté de Total.',
 ];

@@ -2910,6 +2910,7 @@
      */
     var TIPS = {
         traffic_total: t('Counted: the traffic of the link adds to the total traffic of the map, in the side panel of the live view. Left out: for a link whose traffic is already counted on other links, such as a backbone link.'),
+        traffic_group: t('Links of the same group get their own tab in the total traffic graph of the live view, next to Total.'),
         viastyle: t('Curved: the link bends smoothly through its bend points. Straight segments: straight lines from point to point, with sharp corners.'),
         linkstyle: t('Both ways: each half of the link shows one direction, with its own colour, label and arrow toward the node the traffic goes to. One way: a single arrow from the first node to the second, with one label, in the colour of the busiest direction.'),
         arrowstyle: t('Classic: the usual arrow heads where the two halves meet. Small: shorter, narrower heads. None, square ends: no heads, each half ends square; the link then takes the colour of its busiest direction, and pill labels still show where the traffic goes. Custom size: the length and width of the heads, in link widths.'),
@@ -3752,6 +3753,7 @@
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
             row(t('Total traffic'), field(links, 'traffic_total', 'link', { options: [['1', t('Counted')], ['0', t('Left out')]] }), false, TIPS.traffic_total),
+            row(t('Traffic group'), field(links, 'traffic_group', 'link', { placeholder: t('none, or Peering, Transit...') }), false, TIPS.traffic_group),
             row(t('Info URL'), field(links, 'infourl', 'link')),
             row(t('Hover graph'), field(links, 'hover_url', 'link', { placeholder: t('Picture address') })),
             h('h3', { text: t('Shape') }),

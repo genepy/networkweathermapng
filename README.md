@@ -272,7 +272,20 @@ its recorded hours; a map that is not recorded and whose links all read the
 static data source (`TARGET static:...`, as the demo maps do) shows a
 generated 24 h curve that ends on its current totals, marked *Demo data*;
 any other map shows no graph, and the side panel says to switch on
-recording in the map settings (with a link to that tab for editors). Every card takes the legend
+recording in the map settings (with a link to that tab for editors).
+In the side panel and the kiosk the total traffic card reads like a peering
+exchange dashboard: tabs for *Total* and each link group (`SET
+traffic_group Peering` on a link, *Traffic group* in the link panel; a link
+in a group counts in its tab even with `SET traffic_total 0`), a *1 day* /
+*1 week* / *1 month* switch (a period is offered once the kept history goes
+back further than the period before it, so raise the retention in Admin >
+Recording, up to 31 days, to get a month; demo maps have all three), IN
+above and OUT below the line, and the 95th percentile and peak of each
+direction worked out on every point of the period. Long periods are
+averaged down for the small graph ("Aggregated data"); a click on the graph
+opens it larger, where dragging across it zooms in. The PNG and SVG card
+keeps a still version: the last day, with its 95th percentile and peak.
+Every card takes the legend
 colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`, `KEYTEXTCOLOR`) and `KEYFONT`
 (*Map items* in the map panel); an update time card of `TIMEPOS` keeps
 `TIMEFONT` and `TIMECOLOR`. In the editor, the *Map items* tiles of the
@@ -650,8 +663,9 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   of the map view. Every link counts in the map's total traffic shown
   there; *Total traffic: Left out* in the link panel (`SET traffic_total 0`)
   leaves one out, for example a backbone link whose traffic is already
-  counted on the access links. Both hints can go in `NODE DEFAULT` /
-  `LINK DEFAULT`.
+  counted on the access links. *Traffic group* (`SET traffic_group
+  <name>`) gives the link a tab of its own in the total traffic card, next
+  to *Total*. These hints can go in `NODE DEFAULT` / `LINK DEFAULT`.
 - **Fonts**: every text (node, note and zone labels, link labels and
   comments, title, legend, timestamp) has a *Font* field that offers every
   font shipped in `src/public/fonts` at any size, plus the built-in pixel

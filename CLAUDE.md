@@ -26,7 +26,9 @@ re-explore the repository. Keep it short and up to date.
 - Data sources: `Services/Observium/`, `ZabbixService.php`, `src/lib/Zabbix/`.
 - Total traffic graph (side panel, total box, kiosk): `Services/TotalTrafficSeries.php`
   decides its source (recorded frames, demo day for static data, or none),
-  served by `/map/{id}/totals`.
+  served by `/map/{id}/totals` (`?period=day|week|month&group=<name>`, or
+  `?format=series` for the zoomed graph). Link groups: `SET traffic_group`;
+  per-frame totals are cached in `recordings/<id>/totals.json`.
 
 ## Map config hints (`SET <name> <value>` in a `.conf`)
 
@@ -38,6 +40,7 @@ App features store their settings as map hints, each parsed by one service:
 | `focus_<id>`, `focus_default` | `Services/FocusAreas.php` |
 | `basemap`, `basemap_dark`, `basemap_center`, `basemap_zoom`, `basemap_attribution` | `Services/Basemap.php` |
 | `kiosk_duration`, `kiosk_zoom` | `Services/KioskService.php` |
+| `traffic_group`, `traffic_total` (link) | `Services/TotalTrafficSeries.php`, `MapService::trafficTotal()` |
 | `link_glow`, `node_style`, `link_flow`, `traffic_*`, `cluster*`, `geo`, `site`, `box_*`, `editor_note*` | grep `SET <name>` in `src/app/Services` and `src/lib/WeatherMap` |
 
 The README documents the user-facing config format.

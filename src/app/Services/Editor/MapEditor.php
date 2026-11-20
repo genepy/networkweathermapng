@@ -992,6 +992,10 @@ class MapEditor
                     }
                     $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
                     $this->setHint($link, $template, 'traffic_total', (string) $value, '1');
+                } elseif ($key === 'traffic_group') {
+                    // SET traffic_group <name>: its tab in the total traffic graph of the viewer
+                    $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
+                    $this->setHint($link, $template, 'traffic_group', \App\Services\TotalTrafficSeries::group($value), '');
                 } else {
                     throw new InvalidArgumentException(__('Unknown link property: :key', ['key' => $key]));
                 }
@@ -2157,6 +2161,7 @@ class MapEditor
                 'labelshift_in' => (int) round((float) ($link->hints['bwlabel_offset_in'] ?? 0)),
                 'labelshift_out' => (int) round((float) ($link->hints['bwlabel_offset_out'] ?? 0)),
                 'traffic_total' => \App\Services\MapService::countsInTotal($link) ? '1' : '0',
+                'traffic_group' => \App\Services\TotalTrafficSeries::groupOf($link),
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),

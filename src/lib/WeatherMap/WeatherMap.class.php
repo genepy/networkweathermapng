@@ -222,6 +222,8 @@ class WeatherMap extends WeatherMapBase {
 	var $box_series = null;
 	/** A short muted line under that graph (the application sets "Demo data" for a generated series) */
 	var $box_series_note = null;
+	/** The texts of the total traffic graph: p95, peak and period (WeatherMapBoxes::SERIES_LABELS) */
+	var $box_series_labels = null;
 	var $texts = array(); // an array containing all the extraneous text bits
 
 	var $used_images  = array(); // an array of image filenames referred to (used by editor)

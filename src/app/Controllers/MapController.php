@@ -255,9 +255,18 @@ class MapController extends BaseController
     }
 
     /**
-     * GET: the total traffic graph of a map, {source, frames: [[time, in, out]...]}:
-     * the recorded frames, or for a map of static data a demo day that
-     * ends on its current totals (TotalTrafficSeries).
+     * GET: the total traffic graph of a map for ?period= (day, week or
+     * month) and ?group= (a link group, SET traffic_group; none for the
+     * total): {source, period, periods: {day, week, month: bool}, groups,
+     * group, frames: [[time, in, out]...], aggregated, stats: {in, out:
+     * {p95, peak}}}. The frames are the recorded ones, or for a map of
+     * static data a demo period that ends on its current totals
+     * (TotalTrafficSeries).
+     *
+     * With ?format=series (the zoomed graph, drawn by WM.trafficPanel):
+     * every point of the period as the link traffic route gives them,
+     * {from, to, units, tz, in: [[time, value]...], out}; ?range= then
+     * names the period.
      */
     public function totals(array $params): void
     {
@@ -266,21 +275,49 @@ class MapController extends BaseController
             $this->json(['error' => 'Forbidden'], 403);
             return;
         }
-        $recording = $this->recording();
+        $series = $this->getInput('format', '') === 'series';
+        $period = $this->getInput($series ? 'range' : 'period', 'day');
+        $period = TotalTrafficSeries::period(is_string($period) ? $period : 'day');
+        $group = TotalTrafficSeries::group($this->getInput('group', ''));
+        $now = time();
+        [$source, $rows, $groups, $group, $periods] = $this->totalRows($mapId, $period, $group, $now);
         header('Cache-Control: no-store');
-        if ($recording->canPlay($mapId)) {
-            $this->json(['source' => TotalTrafficSeries::RECORDED, 'frames' => $recording->totals($mapId)]);
+        if ($series) {
+            $this->json(TotalTrafficSeries::series($rows, $period, $now) + ['tz' => $this->timezones()->forMap($mapId)]);
             return;
         }
+        $this->json(['source' => $source, 'period' => $period, 'periods' => $periods, 'groups' => $groups, 'group' => $group]
+            + TotalTrafficSeries::view($rows, $period, $now));
+    }
+
+    /**
+     * The rows of the total traffic graph of a map: [source, rows, the link
+     * groups, the group shown ('' for the total, or an unknown group),
+     * which periods have data]
+     *
+     * @return array{0: string, 1: list<array{0: int, 1: float|null, 2: float|null}>, 2: list<string>, 3: string, 4: array<string, bool>}
+     */
+    private function totalRows(int $mapId, string $period, string $group, int $now): array
+    {
+        $recording = $this->recording();
+        if ($recording->canPlay($mapId)) {
+            $groups = $recording->totalGroups($mapId, $now);
+            $group = in_array($group, $groups, true) ? $group : '';
+            $rows = $recording->totals($mapId, $now, $group === '' ? null : $group);
+            return [TotalTrafficSeries::RECORDED, $rows, $groups, $group, TotalTrafficSeries::periods($rows, $now)];
+        }
+        $none = array_fill_keys(array_keys(TotalTrafficSeries::PERIODS), false);
         $live = $this->totalsSource($mapId) === TotalTrafficSeries::DEMO ? $this->mapService->liveRender($mapId) : null;
         if ($live === null) {
-            $this->json(['source' => TotalTrafficSeries::NONE, 'frames' => []]);
-            return;
+            return [TotalTrafficSeries::NONE, [], [], '', $none];
         }
-        $total = (array) ($live['summary']['total'] ?? []);
-        $in = is_numeric($total['in'] ?? null) ? (float) $total['in'] : null;
-        $out = is_numeric($total['out'] ?? null) ? (float) $total['out'] : null;
-        $this->json(['source' => TotalTrafficSeries::DEMO, 'frames' => TotalTrafficSeries::demo($in, $out)]);
+        $items = (array) ($live['items'] ?? []);
+        $groups = MapService::trafficGroups($items);
+        $group = in_array($group, $groups, true) ? $group : '';
+        $total = MapService::trafficTotal($items, $group === '' ? null : $group);
+        $rows = TotalTrafficSeries::demo($total['in'], $total['out'], $now, $period);
+        // a demo has every period
+        return [TotalTrafficSeries::DEMO, $rows, $groups, $group, $rows === [] ? $none : array_fill_keys(array_keys($none), true)];
     }
 
     /** Where the total traffic graph of a map comes from: recorded, demo or none */

@@ -68,4 +68,75 @@ class TotalTrafficSeriesTest extends TestCase
         $this->assertNull($rows[0][2]);
         $this->assertSame([], TotalTrafficSeries::demo(null, null));
     }
+
+    /** F29: a week and a month of demo data, every point within the period */
+    public function testDemoWeekAndMonth(): void
+    {
+        $now = 1_699_999_200;
+        $week = TotalTrafficSeries::demo(4e9, 2e9, $now, 'week');
+        $this->assertCount(7 * 24 + 1, $week, 'a point every hour');
+        $month = TotalTrafficSeries::demo(4e9, 2e9, $now, 'month');
+        $this->assertSame(30 * 86400, end($month)[0] - $month[0][0]);
+        $this->assertSame([4e9, 2e9], [end($month)[1], end($month)[2]], 'the month ends on the current totals too');
+        $this->assertCount(97, TotalTrafficSeries::demo(4e9, 2e9, $now, 'bogus'), 'an unknown period is a day');
+    }
+
+    public function testPeriodsNeedEnoughHistory(): void
+    {
+        $now = 1_800_000_000;
+        $none = ['day' => false, 'week' => false, 'month' => false];
+        $this->assertSame($none, TotalTrafficSeries::periods([], $now));
+        $this->assertSame($none, TotalTrafficSeries::periods([[$now, 1.0, 1.0], [$now - 60, null, null]], $now), 'one point with data');
+        $hours = static fn (int $h) => [[$now - $h * 3600, 1.0, 1.0], [$now, 2.0, 2.0]];
+        $this->assertSame(['day' => true, 'week' => false, 'month' => false], TotalTrafficSeries::periods($hours(23), $now));
+        $this->assertSame(['day' => true, 'week' => true, 'month' => false], TotalTrafficSeries::periods($hours(25), $now), 'more than a day of history');
+        $this->assertSame(['day' => true, 'week' => true, 'month' => true], TotalTrafficSeries::periods($hours(24 * 7 + 1), $now), 'more than a week');
+    }
+
+    /** The 95th percentile and the peak come from every point of the period, before they are averaged down */
+    public function testViewAveragesDownAndKeepsTheStats(): void
+    {
+        $now = 1_800_000_000;
+        $rows = [];
+        for ($i = 0; $i < 1000; $i++) {
+            $rows[] = [$now - 86400 + $i * 86, $i === 500 ? 1e9 : 100.0, 50.0];
+        }
+        $rows[] = [$now - 2 * 86400, 7e9, 7e9];   // before the day: left out
+        usort($rows, static fn ($a, $b) => $a[0] <=> $b[0]);
+        $view = TotalTrafficSeries::view($rows, 'day', $now);
+        $this->assertTrue($view['aggregated']);
+        $this->assertLessThanOrEqual(TotalTrafficSeries::POINTS, count($view['frames']));
+        $this->assertSame(1e9, $view['stats']['in']['peak'], 'the peak of one point survives the averaging');
+        $this->assertSame(100.0, $view['stats']['in']['p95']);
+        $this->assertSame(50.0, $view['stats']['out']['peak']);
+        $this->assertLessThan(1e9, max(array_column($view['frames'], 1)), 'the graph draws averages');
+
+        $short = TotalTrafficSeries::view([[$now - 60, 1.0, null], [$now, 3.0, null]], 'day', $now);
+        $this->assertFalse($short['aggregated']);
+        $this->assertSame(['p95' => null, 'peak' => null], $short['stats']['out']);
+    }
+
+    public function testPercentile(): void
+    {
+        $this->assertNull(TotalTrafficSeries::percentile([], 0.95));
+        $this->assertSame(19.0, TotalTrafficSeries::percentile(array_map('floatval', range(20, 1)), 0.95));
+        $this->assertSame(5.0, TotalTrafficSeries::percentile([5.0], 0.95));
+    }
+
+    /** The zoomed graph gets the points of the period as the link traffic route gives them */
+    public function testSeries(): void
+    {
+        $now = 1_800_000_000;
+        $series = TotalTrafficSeries::series([[$now - 90000, 9.0, 9.0], [$now - 60, 1.0, null], [$now, 2.0, 3.0]], 'day', $now);
+        $this->assertSame(['from' => $now - 86400, 'to' => $now, 'units' => 'bps',
+            'in' => [[$now - 60, 1.0], [$now, 2.0]], 'out' => [[$now, 3.0]]], $series);
+    }
+
+    public function testGroupNames(): void
+    {
+        $this->assertSame('Peering links', TotalTrafficSeries::group("  Peering\t links "));
+        $this->assertSame('', TotalTrafficSeries::group(null));
+        $this->assertSame(40, mb_strlen(TotalTrafficSeries::group(str_repeat('é', 60))));
+        $this->assertSame('day', TotalTrafficSeries::period('year'));
+    }
 }

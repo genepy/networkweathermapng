@@ -109,6 +109,26 @@ final class BoxesTest extends TestCase
         $this->assertStringContainsString('>Demo data<', $this->svg($map), 'a generated series says so under the graph');
     }
 
+    /** F29: the still version of the viewer's card: 95th percentile and peak of each direction, and the period */
+    public function testTotalGraphGivesThePercentileAndThePeak(): void
+    {
+        $map = $this->load('SET box_2 total 10 10');
+        $map->box_series = [];
+        for ($i = 1; $i <= 20; $i++) {
+            $map->box_series[] = [$i * 300, $i * 1e8, $i * 1e7];
+        }
+        $map->box_series_labels = ['period' => 'Dernières 24 h'];
+        $svg = $this->svg($map);
+        $this->assertStringContainsString('>95th percentile<', $svg);
+        $this->assertStringContainsString('>Peak<', $svg);
+        $this->assertStringContainsString('>2 Gbps<', $svg, 'the peak IN');
+        $this->assertStringContainsString('>1.9 Gbps<', $svg, 'the 95th percentile IN (19th of 20 values)');
+        $this->assertStringContainsString('>Dernières 24 h<', $svg, 'the labels can be translated');
+        $this->assertSame(1.9e9, \WeatherMapBoxes::seriesPercentile($map->box_series, 1, 0.95));
+        $this->assertSame(2e8, \WeatherMapBoxes::seriesPercentile($map->box_series, 2, 1.0));
+        $this->assertNull(\WeatherMapBoxes::seriesPercentile([[0, null, null]], 1, 0.95));
+    }
+
         public function testTotalSumsTheLinksThatCount(): void
     {
         $map = $this->load('SET box_1 total 10 10');

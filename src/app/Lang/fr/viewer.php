@@ -65,4 +65,16 @@ return [
     'The graph appears once a few images are recorded.' => 'Le graphique apparaît dès que quelques images sont enregistrées.',
     'Recording settings' => 'Réglages d’enregistrement',
     'Demo data' => 'Données de démonstration',
+
+    // F29: the total traffic card in the style of the Nine IX one
+    'Link groups' => 'Groupes de liens',
+    'Total' => 'Total',
+    'Period' => 'Période',
+    'Not enough history yet' => 'Pas encore assez d’historique',
+    '1 day' => '1 jour',
+    '1 week' => '1 semaine',
+    '1 month' => '1 mois',
+    'Zoom the graph' => 'Agrandir le graphique',
+    '95th percentile' => '95e centile',
+    'Peak' => 'Pic',
 ];
