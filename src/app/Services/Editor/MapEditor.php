@@ -933,6 +933,9 @@ class MapEditor
                         throw new InvalidArgumentException(__('The badge size must be between :min and :max pixels', ['min' => self::BADGE_SIZE_MIN, 'max' => self::BADGE_SIZE_MAX]));
                     }
                     $this->setHint($node, $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null, 'badge_size', $size === 0 ? '' : (string) $size, '');
+                } elseif ($key === 'icon_spin') {
+                    // SET icon_spin 1: the viewer turns the icon with the traffic
+                    $this->setHint($node, $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null, 'icon_spin', $value ? '1' : '0', '0');
                 } elseif ($key === 'labelshift') {
                     // where the label sits from its default place, in pixels; null puts it back
                     $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
@@ -2227,6 +2230,8 @@ class MapEditor
                 'cluster' => is_scalar($node->hints['cluster'] ?? null) ? trim((string) $node->hints['cluster']) : '',
                 // SET badge_size: the diameter of its badge, 0 for its own size
                 'badge_size' => $node->badgeSize(),
+                // SET icon_spin 1: its icon turns with the traffic in the viewer
+                'icon_spin' => \App\Services\MapService::spinsWithTraffic($node),
                 'icon' => (string) $node->iconfile,
                 'iconscalew' => (int) $node->iconscalew,
                 'iconscaleh' => (int) $node->iconscaleh,

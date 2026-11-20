@@ -535,16 +535,26 @@ class WeatherMapSvg {
 	/**
 	 * The vector version of an icon, if there is one: the .svg itself, or
 	 * an .svg next to the .png. The SVG output uses it instead of the bitmap.
+	 * With $still, an animated SVG is left out (the editor draws its PNG twin).
 	 */
-	static function vectorFor($file) {
+	static function vectorFor($file, $still = false) {
+		$svg = null;
 		if (preg_match('/\.svg$/i', $file)) {
-			return is_readable($file) ? $file : null;
-		}
-		if (preg_match('/\.(png|gif|jpe?g)$/i', $file)) {
+			$svg = is_readable($file) ? $file : null;
+		} elseif (preg_match('/\.(png|gif|jpe?g)$/i', $file)) {
 			$svg = preg_replace('/\.(png|gif|jpe?g)$/i', '.svg', $file);
-			return is_readable($svg) ? $svg : null;
+			$svg = is_readable($svg) ? $svg : null;
 		}
-		return null;
+		if ($svg !== null && $still && self::isAnimated($svg)) {
+			return null;
+		}
+		return $svg;
+	}
+
+	/** Whether an SVG file moves by itself: SMIL animations or CSS keyframes */
+	static function isAnimated($file) {
+		$text = @file_get_contents($file);
+		return is_string($text) && preg_match('/<(animate|animateTransform|animateMotion|set)\b|@keyframes/i', $text) === 1;
 	}
 
 	static function dataUri($file) {

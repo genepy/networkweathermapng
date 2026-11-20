@@ -3433,6 +3433,7 @@
             h('h3', { text: t('Label style') }),
             row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')], ['icon', t('Icon only, name on hover')]] }), false, TIPS.node_style),
             badgeSizeRow(nodes),
+            iconSpinRow(nodes),
             row(t('Font'), fontField(nodes, 'labelfont', 'node')),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
             row(t('Text'), colourField(nodes, 'labelfontcolour', 'node', true)),
@@ -3552,6 +3553,22 @@
             h('p', { 'class': 'help', text: t('The diameter of the badge on the map at 100 %. On a basemap, located nodes keep this size on the screen when zooming in, in the live view and here.') }),
             badges.some(function (n) { return n.style === 'icon'; })
                 ? h('p', { 'class': 'help', text: t('An icon alone takes this size on its longest side.') }) : null
+        ]);
+    }
+
+    /** SET icon_spin 1: the viewer turns the icon with the load of the busiest link of the node */
+    function iconSpinRow(nodes) {
+        var withIcon = nodes.filter(function (n) { return n.icon; });
+        if (!withIcon.length) { return null; }
+        var c = common(withIcon, 'icon_spin');
+        var box = h('input', { type: 'checkbox', checked: !c.mixed && !!c.value });
+        box.indeterminate = c.mixed;
+        box.addEventListener('change', function () {
+            send([{ op: 'set_node', names: withIcon.map(function (n) { return n.name; }), props: { icon_spin: box.checked } }]);
+        });
+        return h('div', {}, [
+            h('label', { 'class': 'row' }, [h('span', { text: t('Spin with traffic') }), box]),
+            h('p', { 'class': 'help', text: t('In the live view and the kiosk the icon turns, faster as its busiest link is loaded: still at 0 %, one turn a second at 100 %. Best for a round icon such as a fan. Here it stays still.') })
         ]);
     }
 

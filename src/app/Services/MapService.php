@@ -810,10 +810,20 @@ class MapService
      * links read from a data source get the traffic graph of
      * /map/{id}/link/{linkId}/graph when they have no OVERLIBGRAPH.
      */
+    /** SET icon_spin 1 on a node with an icon: the viewer turns it with the traffic */
+    public static function spinsWithTraffic(\WeatherMapNode $node): bool
+    {
+        $hint = $node->hints['icon_spin'] ?? '';
+        return is_scalar($hint) && in_array(strtolower(trim((string) $hint)), ['1', 'yes', 'true', 'on'], true)
+            && trim((string) $node->iconfile) !== '';
+    }
+
     public static function summarize(\WeatherMap $wmap, ?int $mapId = null): array
     {
         $max = null;
         $items = [];
+        // the load of the busiest link of each node, for SET icon_spin
+        $nodeLoad = [];
 
         foreach ($wmap->links as $link) {
             if (!isset($link->a, $link->b) || $link->name === 'DEFAULT') {
@@ -823,6 +833,9 @@ class MapService
             $out = (float) ($link->outpercent ?? 0);
             $dir = $out > $in ? OUT : IN;
             $pct = max($in, $out);
+            foreach ([(string) $link->a->name, (string) $link->b->name] as $end) {
+                $nodeLoad[$end] = max($nodeLoad[$end] ?? 0.0, $pct);
+            }
 
             if ($max === null || $pct > $max['pct']) {
                 $colour = $link->colours[$dir] ?? null;
@@ -897,6 +910,10 @@ class MapService
                     // its group when the map merges only groups (SET cluster_mode groups)
                     $urls['cluster'] = $cluster;
                 }
+            }
+            if (self::spinsWithTraffic($node)) {
+                // SET icon_spin 1: the viewer turns the icon, faster as its busiest link is loaded (in %)
+                $urls['spin'] = round(min(100.0, $nodeLoad[(string) $node->name] ?? 0.0), 1);
             }
             if ($urls) {
                 $items['N' . $node->id] = ['kind' => 'node', 'name' => (string) $node->name] + $urls;

@@ -1478,3 +1478,16 @@ body.wmv-noc {
     .kiosk-count { display: none; }
     .kiosk-name { max-width: 34vw; }
 }
+
+/* SET icon_spin 1: a node icon turning with the load of its busiest link
+   (viewer.js sets --wmv-spin, the time of one turn) */
+.wmv-svg .wm-icon.wmv-spin {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: wmv-spin var(--wmv-spin, 1s) linear infinite;
+}
+.wmv-tab-hidden .wmv-svg .wm-icon.wmv-spin { animation-play-state: paused; }
+@keyframes wmv-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .wmv-svg .wm-icon.wmv-spin { animation: none; }
+}

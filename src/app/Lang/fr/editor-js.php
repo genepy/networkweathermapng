@@ -725,4 +725,8 @@ return [
     'The double tick where the two halves of a traffic bar meet; none hides it. A one-way link has none.' => 'La double coche où se rejoignent les deux moitiés d’une barre de trafic ; aucune la masque. Un lien à sens unique n’en a pas.',
     'Separator' => 'Séparateur',
     'Bar' => 'Barre',
+
+    // F43: animated icons
+    'Spin with traffic' => 'Tourner avec le trafic',
+    'In the live view and the kiosk the icon turns, faster as its busiest link is loaded: still at 0 %, one turn a second at 100 %. Best for a round icon such as a fan. Here it stays still.' => 'Dans la vue en direct et le kiosque, l’icône tourne, d’autant plus vite que son lien le plus chargé l’est : immobile à 0 %, un tour par seconde à 100 %. Idéal pour une icône ronde comme un ventilateur. Ici elle reste immobile.',
 ];
