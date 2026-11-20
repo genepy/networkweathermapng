@@ -403,6 +403,37 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(50 + 6, $map->nodes['a']->width);
     }
 
+    /** F33: SET node_style icon draws the icon alone (label as tooltip, sized by badge_size); without an icon, a badge */
+    public function testIconOnlyNodes(): void
+    {
+        $map = $this->load(TESTS_ROOT . '/fixtures/maps/node-looks.conf');
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        $g = '//s:g[@data-kind="node"][@data-name="icon"]';
+        $this->assertSame(0, $xpath->query($g . '/s:circle')->length, 'no disc');
+        $this->assertSame(0, $xpath->query($g . '/s:rect')->length, 'no label box');
+        $this->assertSame(0, $xpath->query($g . '/s:text')->length, 'no label on the map');
+        $this->assertSame('Icon node', $xpath->query($g . '/s:title')->item(0)?->textContent, 'the label on hover');
+        $image = $xpath->query($g . '/s:image')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $image);
+        $this->assertEqualsWithDelta(40, max((float) $image->getAttribute('width'), (float) $image->getAttribute('height')), 0.5, 'badge_size sets the longest side');
+        $this->assertSame('icon', $map->nodes['icon']->look());
+        $this->assertTrue($map->nodes['icon']->label_hidden());
+        // links end at the icon box
+        $shapes = $map->nodes['icon']->cover_shapes();
+        $this->assertCount(1, $shapes);
+        $this->assertSame('rect', $shapes[0][0]);
+        $this->assertEqualsWithDelta(40, max($shapes[0][3] - $shapes[0][1], $shapes[0][4] - $shapes[0][2]), 1);
+
+        // without an icon: a badge with the initials
+        $this->assertSame(1, $xpath->query('//s:g[@data-name="noicon"]/s:circle[@class="wm-badge"]')->length);
+        // a box keeps its label
+        $this->assertGreaterThan(0, $xpath->query('//s:g[@data-name="box"]/s:text')->length);
+    }
+
     /** BWSTYLE pill: a rounded box along the link and an arrow toward where the traffic goes */
     public function testPillLinkLabels(): void
     {

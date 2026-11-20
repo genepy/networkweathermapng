@@ -444,6 +444,17 @@
             g.appendChild(stop);
         });
         defs.appendChild(g);
+        // the glow around the spot: fades out across the link and along it
+        const halo = document.createElementNS(SVG_NS, 'radialGradient');
+        halo.id = 'wmv-flow-halo';
+        [['0', '0.5'], ['0.6', '0.3'], ['1', '0']].forEach(function (s) {
+            const stop = document.createElementNS(SVG_NS, 'stop');
+            stop.setAttribute('offset', s[0]);
+            stop.setAttribute('stop-color', '#fff');
+            stop.setAttribute('stop-opacity', s[1]);
+            halo.appendChild(stop);
+        });
+        defs.appendChild(halo);
         svg.insertBefore(defs, svg.firstChild);
     }
 
@@ -465,14 +476,21 @@
             const long = Math.min(len / 3, Math.max(16, half * 6));
             // px per second: a quiet link crawls, a full one runs
             const speed = 18 + 1.6 * Math.min(load, 100);
-            const dot = document.createElementNS(SVG_NS, 'rect');
+            // a bar as wide as the link, and a soft glow a little past its
+            // edges so the link looks less flat
+            const extra = Math.max(1.5, half * 0.2);
+            const dot = document.createElementNS(SVG_NS, 'g');
             dot.setAttribute('class', 'wmv-flow-dot');
-            dot.setAttribute('x', String(-long / 2));
-            dot.setAttribute('y', String(-half));
-            dot.setAttribute('width', String(long));
-            dot.setAttribute('height', String(half * 2));
-            dot.setAttribute('fill', 'url(#wmv-flow-glow)');
             dot.setAttribute('pointer-events', 'none');
+            [[half + extra, 'url(#wmv-flow-halo)'], [half, 'url(#wmv-flow-glow)']].forEach(function (r) {
+                const rect = document.createElementNS(SVG_NS, 'rect');
+                rect.setAttribute('x', String(-long / 2));
+                rect.setAttribute('y', String(-r[0]));
+                rect.setAttribute('width', String(long));
+                rect.setAttribute('height', String(r[0] * 2));
+                rect.setAttribute('fill', r[1]);
+                dot.appendChild(rect);
+            });
             path.after(dot);
             F.dots.push({el: dot, pts: pts, len: len, fade: long / 2, speed: speed, phase: (k * 0.618) % 1, at: 1});
         });

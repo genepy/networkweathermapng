@@ -740,16 +740,17 @@ class MapEditor
     }
 
     /**
-     * A box with its label, or a round badge (SET node_style badge). The
-     * hint is written only where the node differs from its template.
+     * A box with its label, a round badge (SET node_style badge) or the
+     * icon alone (SET node_style icon). The hint is written only where the
+     * node differs from its template.
      */
     private function setNodeStyle(\WeatherMap $map, \WeatherMapNode $node, string $style): void
     {
-        if (!in_array($style, ['box', 'badge'], true)) {
+        if (!in_array($style, ['box', 'badge', 'icon'], true)) {
             throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => 'style', 'value' => $style]));
         }
         $template = $map->nodes[$node->template] ?? $map->nodes['DEFAULT'] ?? null;
-        $inherited = $template !== null && $template->is_badge() ? 'badge' : 'box';
+        $inherited = $template !== null ? $template->look() : 'box';
         if ($style === $inherited) {
             unset($node->hints['node_style']);
         } else {
@@ -2068,7 +2069,7 @@ class MapEditor
                 'label_shift' => array_map(static fn ($v) => (int) round((float) $v), (array) $node->labelshift),
                 // the preset the label sits at, '' when none or moved by hand
                 'label_position' => self::labelPresetOf($node),
-                'style' => $node->is_badge() ? 'badge' : 'box',
+                'style' => $node->look(),
                 'site' => \App\Services\MapService::siteOf($node),
                 // its point on the basemap, [lat, lon], or null
                 'geo' => \WeatherMapGeo::nodePoint($node),

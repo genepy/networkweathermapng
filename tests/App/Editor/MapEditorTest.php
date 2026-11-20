@@ -414,6 +414,24 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('link_flow', (string) file_get_contents($this->file));
     }
 
+    /** F33: the node look takes box, badge or icon; the hint is written only where it differs from the template */
+    public function testNodeLookIconOnly(): void
+    {
+        $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'icon']]]);
+        $this->assertStringContainsString('SET node_style icon', (string) file_get_contents($this->file));
+        $map = $this->editor->load();
+        $this->assertSame('icon', $map->nodes['paris']->look());
+        $nodes = array_column(MapEditor::model($map)['nodes'], null, 'name');
+        $this->assertSame('icon', $nodes['paris']['style']);
+        $this->assertSame('box', $nodes['lyon']['style']);
+
+        $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'box']]]);
+        $this->assertStringNotContainsString('node_style', (string) file_get_contents($this->file));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_node', 'names' => ['paris'], 'props' => ['style' => 'round']]]);
+    }
+
     public function testPillLinkLabelsPerLinkAndByDefault(): void
     {
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['bwstyle' => 'pill']]]);

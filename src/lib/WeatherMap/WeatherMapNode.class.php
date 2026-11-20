@@ -95,6 +95,8 @@ class WeatherMapNode extends WeatherMapItem {
 	var $svgparts = array();
 	/** The badge drawn by pre_render (SET node_style badge), or null */
 	var $badge = null;
+	/** Whether pre_render drew the icon alone (SET node_style icon) */
+	var $iconalone = false;
 	var $template;
 	var $polar;
 	var $boundingboxes=array();
@@ -660,7 +662,33 @@ class WeatherMapNode extends WeatherMapItem {
 		// SET node_style badge: a round badge with the icon or the initials;
 		// the label is not drawn on the map (it is the badge's tooltip)
 		$this->badge = null;
-		if ($this->is_badge() && !$this->is_note()) {
+		$this->iconalone = false;
+		$has_icon = isset($icon_im) && $icon_im;
+		if ($this->is_icon_only() && $has_icon && !$this->is_note()) {
+			// SET node_style icon: the icon alone, without disc nor label
+			// box; the label is its tooltip, as for a badge. SET badge_size
+			// sets its longest side.
+			$this->iconalone = true;
+			$want = $this->badgeSize();
+			if ($want > 0) {
+				$icon_im = self::scale_image($icon_im, $want);
+			}
+			$icon_w = imagesx($icon_im);
+			$icon_h = imagesy($icon_im);
+			$icon_x1 = $this->x - $icon_w / 2;
+			$icon_y1 = $this->y - $icon_h / 2;
+			$icon_x2 = $this->x + $icon_w / 2;
+			$icon_y2 = $this->y + $icon_h / 2;
+			$map->nodes[$this->name]->width = $icon_w;
+			$map->nodes[$this->name]->height = $icon_h;
+			$map->nodes[$this->name]->boundingboxes = array(array($icon_x1, $icon_y1, $icon_x2, $icon_y2));
+			$this->iconcover = array($icon_x1, $icon_y1, $icon_x2, $icon_y2);
+			$boxwidth = 0;
+			$boxheight = 0;
+			$label_x1 = $label_x2 = $this->x;
+			$label_y1 = $label_y2 = $this->y;
+		} elseif (($this->is_badge() || $this->is_icon_only()) && !$this->is_note()) {
+			// a badge, or an icon-only node without an icon: a badge with its initials
 			$inner = isset($icon_im) && $icon_im ? $icon_im : null;
 			$this->badge = $this->make_badge($map, $inner, $col, isset($icon_vector) ? $icon_vector : null);
 			$icon_im = $this->badge['image'];
@@ -689,7 +717,7 @@ class WeatherMapNode extends WeatherMapItem {
 		// compass value of its own
 		$compass = $this->labeloffset != '' ? $this->labeloffset : self::label_preset((string) ($this->hints['editor_label_position'] ?? ''));
 
-		if ($compass != '' && $this->iconfile != '' && $this->badge === null) {
+		if ($compass != '' && $this->iconfile != '' && !$this->label_hidden()) {
 			$this->labeloffsetx = 0;
 			$this->labeloffsety = 0;
 
@@ -707,12 +735,12 @@ class WeatherMapNode extends WeatherMapItem {
 		$label_x2 += ($this->labeloffsetx + $dx);
 		$label_y1 += ($this->labeloffsety + $dy);
 		$label_y2 += ($this->labeloffsety + $dy);
-		if ($this->badge !== null) {
+		if ($this->label_hidden()) {
 			$label_x1 = $label_x2 = $this->x;
 			$label_y1 = $label_y2 = $this->y;
 		}
 
-		if ($this->label != '' && $this->badge === null) {
+		if ($this->label != '' && !$this->label_hidden()) {
 			// $map->imap->addArea("Rectangle", "NODE:" . $this->name .':1', '', array($label_x1, $label_y1, $label_x2, $label_y2));
 			$map->nodes[$this->name]->boundingboxes[] = array($label_x1, $label_y1, $label_x2, $label_y2);
 			// a label without a background does not hide a link end
@@ -791,13 +819,17 @@ class WeatherMapNode extends WeatherMapItem {
 					'w' => imagesx($icon_im), 'h' => imagesy($icon_im),
 					'href' => !empty($icon_vector) ? WeatherMapSvg::dataUri($icon_vector) : WeatherMapSvg::gdToDataUri($icon_im),
 				);
+				// an icon alone: its label is the tooltip
+				if ($this->iconalone) {
+					$this->svgparts['icon']['title'] = $this->proclabel;
+				}
 			}
 
 			imagecopy($node_im, $icon_im, $icon_x1, $icon_y1, 0, 0, imagesx($icon_im), imagesy($icon_im));
 		}
 
 		// Draw the label, if any
-		if ($this->label != '' && $this->badge === null) {
+		if ($this->label != '' && !$this->label_hidden()) {
 			$txt_x -= $bbox_x1;
 			$txt_x += ($this->labeloffsetx + $dx);
 			$txt_y -= $bbox_y1;
@@ -931,6 +963,37 @@ class WeatherMapNode extends WeatherMapItem {
 		}
 		$v = (int) round((float) $v);
 		return $v >= self::BADGE_SIZE_MIN ? min($v, self::BADGE_SIZE_MAX) : 0;
+	}
+
+	/** SET node_style icon: the icon alone, the label on hover (a badge with initials without an icon) */
+	function is_icon_only() {
+		return isset($this->hints['node_style']) && strtolower(trim((string) $this->hints['node_style'])) === 'icon';
+	}
+
+	/** The look of the node: box (icon and label box), badge or icon */
+	function look() {
+		return $this->is_badge() ? 'badge' : ($this->is_icon_only() ? 'icon' : 'box');
+	}
+
+	/** Whether the label is left off the map (shown on hover): a badge or an icon alone */
+	function label_hidden() {
+		return $this->badge !== null || $this->iconalone;
+	}
+
+	/** A copy of a GD image whose longest side is $size pixels */
+	static function scale_image($im, $size) {
+		$w = imagesx($im);
+		$h = imagesy($im);
+		$f = $size / max($w, $h, 1);
+		$nw = max(1, (int) round($w * $f));
+		$nh = max(1, (int) round($h * $f));
+		$scaled = imagecreatetruecolor($nw, $nh);
+		imagealphablending($scaled, false);
+		imagesavealpha($scaled, true);
+		imagefill($scaled, 0, 0, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
+		imagecopyresampled($scaled, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
+		imagealphablending($scaled, true);
+		return $scaled;
 	}
 
 	/** SET node_style badge (our hint; DEFAULT passes it on to every node) */

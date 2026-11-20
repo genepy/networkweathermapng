@@ -723,6 +723,9 @@ class WeatherMapSvg {
 
 		if (!empty($n['icon'])) {
 			$i = $n['icon'];
+			if (isset($i['title']) && $i['title'] !== '') {
+				$s .= '<title>' . self::esc($i['title']) . '</title>';
+			}
 			$s .= sprintf('<image class="wm-icon" x="%s" y="%s" width="%s" height="%s" href="%s"/>',
 				self::num($i['x']), self::num($i['y']), self::num($i['w']), self::num($i['h']), $i['href']);
 		}

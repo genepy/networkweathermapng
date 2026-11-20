@@ -632,7 +632,8 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 - **Traffic flow**: a third switch of that section makes a spot of light
   cross the links on the live map (`SET link_flow 1`), one at a time on
   each half of a link, from where its traffic leaves to its arrow head (the
-  whole link for a one-way link). The spot is as wide as the link, also
+  whole link for a one-way link). The spot is as wide as the link, with a
+  soft glow a little past its edges so the link looks less flat, also
   when a basemap zoom makes the links thinner. Busier links run faster; a
   link with no traffic has no spot. Under the system's *reduce motion* setting there is no motion,
   and the animation pauses while the tab is hidden. The editor, the PNG
@@ -676,6 +677,12 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   their icon or initials, which then shrinks or grows to fit), in the PNG
   and the SVG; on a basemap it is also their size on the screen when
   zooming in, in the viewer and the editor alike.
+- **Icon only**: the third choice of *Look* (`SET node_style icon`) draws
+  the icon alone, without disc, ring or label box; as for a badge, the
+  label shows on hover and in *Find a node*, and links end at the edge of
+  the icon. *Badge size* sets the longest side of the icon, so switching
+  between badge and icon keeps the same footprint. A node without an icon
+  is drawn as a badge with its initials.
 - **Sites and total traffic**: *Site* in the node panel (`SET site <name>`,
   offered from the sites already on the map) groups nodes in the side panel
   of the map view. Every link counts in the map's total traffic shown
