@@ -385,7 +385,6 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #overlay .label-ghost { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .connector { fill: var(--accent); stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: crosshair; }
 #overlay .link-source { fill: none; stroke: #2e7d32; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
-#resize-handle { fill: var(--accent); cursor: nwse-resize; }
 
 #minimap {
     position: absolute; right: 10px; bottom: 10px;
@@ -628,6 +627,7 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #overlay .node-trace { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .scale-box { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; pointer-events: none; }
 #overlay .scale-handle { fill: var(--panel); stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+#overlay .size-readout { fill: var(--accent); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; vector-effect: non-scaling-stroke; font-weight: 600; pointer-events: none; }
 #overlay .h-nw, #overlay .h-se { cursor: nwse-resize; }
 #overlay .h-ne, #overlay .h-sw { cursor: nesw-resize; }
 #overlay .h-n, #overlay .h-s { cursor: ns-resize; }

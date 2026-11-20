@@ -35,7 +35,6 @@ return [
     'Label' => 'Étiquette',
     'Node' => 'Nœud',
     'Icons' => 'Icônes',
-    'Drag to resize the map' => 'Faire glisser pour redimensionner la carte',
 
     // Select by criteria
     'Select by criteria' => 'Sélectionner selon des critères',
@@ -312,6 +311,7 @@ return [
     'A focus area must be at least 10 pixels wide and high' => 'Une zone de focus doit faire au moins 10 pixels de large et de haut',
     // F15: geographic maps in the editor
     'The badge size must be between :min and :max pixels' => 'La taille du badge doit être comprise entre :min et :max pixels',
+    'The map size must be between :min and :max pixels' => 'La taille de la carte doit être comprise entre :min et :max pixels',
     // F19: map items
     'A card with the link load colours, as a gradient bar or a list' => 'Une carte avec les couleurs de charge des liens, en barre en dégradé ou en liste',
     'A card with the link widths by speed' => 'Une carte avec l’épaisseur des liens selon leur débit',

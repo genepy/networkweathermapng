@@ -207,7 +207,6 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <g id="map"></g>
             <rect id="grid-layer" x="0" y="0" width="0" height="0" fill="url(#grid)" pointer-events="none"/>
             <g id="overlay"></g>
-            <rect id="resize-handle" width="12" height="12"><title><?= e__('Drag to resize the map') ?></title></rect>
         </svg>
         <div id="minimap">
             <svg id="minimap-svg" xmlns="http://www.w3.org/2000/svg">

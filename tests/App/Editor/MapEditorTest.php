@@ -414,6 +414,37 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('link_flow', (string) file_get_contents($this->file));
     }
 
+    /** F34: growing the canvas on its left and top sides moves everything with it, one operation */
+    public function testResizeCanvasOnTheLeftAndTop(): void
+    {
+        // map-wide hints go before the first NODE or LINK section
+        $conf = (string) file_get_contents($this->file);
+        $conf = preg_replace('/^SET nowarn_clipping 1$/m', "SET nowarn_clipping 1\nSET box_1 note 30 40\nSET focus_a 10 20 110 120\nSET width_legend 500 400", $conf, 1);
+        file_put_contents($this->file, (string) $conf);
+        $before = $this->editor->load();
+        $vias = $before->links['paris-backup']->vialist;
+        $this->assertSame('note 30 40', $before->hints['box_1']);
+
+        $this->editor->apply([['op' => 'resize_canvas', 'left' => 100, 'top' => 50, 'right' => 20, 'bottom' => -10]]);
+        $map = $this->editor->load();
+
+        $this->assertSame(800 + 120, (int) $map->width);
+        $this->assertSame(500 + 40, (int) $map->height);
+        $this->assertEquals([400 + 100, 120 + 50], [$map->nodes['core']->x, $map->nodes['core']->y]);
+        $this->assertEquals([150 + 100, 320 + 50], [$map->nodes['paris']->x, $map->nodes['paris']->y]);
+        foreach ($map->links['paris-backup']->vialist as $i => $via) {
+            $this->assertEquals([$vias[$i][0] + 100, $vias[$i][1] + 50], [$via[0], $via[1]]);
+        }
+        $this->assertEquals([110, 70], [$map->titlex, $map->titley]);
+        $this->assertEquals([780, 70], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
+        $this->assertSame('note 130 90', $map->hints['box_1']);
+        $this->assertSame('110 70 210 170', $map->hints['focus_a']);
+        $this->assertSame('600 450', $map->hints['width_legend']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'resize_canvas', 'left' => -900]]);
+    }
+
     /** F33: the node look takes box, badge or icon; the hint is written only where it differs from the template */
     public function testNodeLookIconOnly(): void
     {
