@@ -811,6 +811,22 @@ output and the editor use the vector file, so icons stay sharp when zoomed.
 Any icon with an `.svg` next to it gets the same treatment, unless it is
 coloured by `USEICONSCALE`.
 
+**Animated icons.** An SVG icon may move by itself, with SMIL
+(`animate`, `animateTransform`, `animateMotion`, `set`) or CSS `@keyframes`:
+it plays in the live view and the kiosk. The PNG output, exports and
+thumbnails use the still PNG twin, and so does the editor, so nothing moves
+while editing. `objects/net/fan` and `objects/net/wind-turbine` are shipped
+examples. Uploaded SVG icons keep their animations, but an animation of a
+link (`href`), of a `style` or of an event attribute is removed. An
+animation inside an icon cannot be slowed by the page: a visitor who asked
+for less motion still sees it, so keep such icons calm.
+
+**Icons turning with the traffic.** `SET icon_spin 1` on a node (*Spin with
+traffic* in the node panel) makes the live view and the kiosk turn its
+icon, faster as its busiest link is loaded: still at 0 %, about one turn a
+second at 100 %. It stops for visitors who asked for less motion and while
+the tab is hidden. Best for a round icon such as the fan.
+
 ### Backgrounds
 
 The *Background* field of the map panel (shown when nothing is selected)

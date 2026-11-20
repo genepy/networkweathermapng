@@ -43,6 +43,11 @@ final class SvgSanitizerTest extends TestCase
             'foreignObject' => ['<foreignObject><body xmlns="http://www.w3.org/1999/xhtml"><iframe src="x"/></body></foreignObject>', 'iframe'],
             'iframe embed object' => ['<iframe src="x"/><embed src="y"/><object data="z"/>', 'src='],
             'animate set to href' => ['<a><set attributeName="href" to="javascript:alert(1)"/></a><animate attributeName="href" values="javascript:x"/>', 'javascript'],
+            'animate xlink:href' => ['<use xlink:href="#a"><animate attributeName="xlink:href" values="#b;#c" dur="1s"/></use>', 'attributeName'],
+            'set an event attribute' => ['<rect width="1" height="1"><set attributeName="onclick" to="alert(1)"/></rect>', 'alert'],
+            'animate a style' => ['<rect width="1" height="1"><animate attributeName="style" to="fill:url(#a)" dur="1s"/></rect>', 'attributeName'],
+            'animate without a target' => ['<rect width="1" height="1"><animate to="1" dur="1s"/></rect>', '<animate'],
+            'mpath outside the file' => ['<animateMotion dur="1s"><mpath href="http://evil.example/p.svg#a"/></animateMotion>', 'evil'],
             'style import' => ['<style>@import url(http://evil.example/a.css); rect{fill:red}</style>', 'evil'],
             'style external url' => ['<style>rect{background:url("http://evil.example/t")}</style>', 'evil'],
             'style attribute url' => ['<rect width="1" height="1" style="fill:url(http://evil.example/p)"/>', 'evil'],
@@ -60,6 +65,25 @@ final class SvgSanitizerTest extends TestCase
         $this->assertStringNotContainsStringIgnoringCase($gone, $out);
         $this->assertStringNotContainsStringIgnoringCase('<script', $out);
         $this->assertStringStartsWith('<svg', $out);
+    }
+
+    /** F43: an icon that moves by itself (SMIL or CSS keyframes) keeps its animation */
+    public function testAnimationsAreKept(): void
+    {
+        $out = $this->clean('<defs><path id="p" d="M0 0L10 10"/></defs>'
+            . '<g id="blades"><path d="M24 24L24 4"/>'
+            . '<animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 24 24" to="360 24 24" dur="2s" repeatCount="indefinite"/></g>'
+            . '<circle r="2"><animateMotion dur="3s" repeatCount="indefinite" rotate="auto" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#p"/></animateMotion></circle>'
+            . '<rect width="1" height="1"><animate attributeName="opacity" values="1;0.2;1" dur="1s" begin="0s" repeatCount="indefinite"/>'
+            . '<set attributeName="fill" to="#f00" begin="1s"/></rect>'
+            . '<style>@keyframes spin{to{transform:rotate(360deg)}} .r{animation:spin 2s linear infinite;transform-origin:center}</style>');
+
+        $this->assertStringContainsString('<animateTransform attributeName="transform" attributeType="XML" type="rotate" from="0 24 24" to="360 24 24" dur="2s" repeatCount="indefinite"/>', $out);
+        $this->assertStringContainsString('<animateMotion dur="3s" repeatCount="indefinite" rotate="auto" keyPoints="0;1" keyTimes="0;1" calcMode="linear"><mpath href="#p"/></animateMotion>', $out);
+        $this->assertStringContainsString('<animate attributeName="opacity" values="1;0.2;1" dur="1s" begin="0s" repeatCount="indefinite"/>', $out);
+        $this->assertStringContainsString('<set attributeName="fill" to="#f00" begin="1s"/>', $out);
+        $this->assertStringContainsString('@keyframes spin{to{transform:rotate(360deg)}}', $out);
+        $this->assertStringContainsString('animation:spin 2s linear infinite', $out);
     }
 
     public function testEmbeddedBitmapIsKept(): void

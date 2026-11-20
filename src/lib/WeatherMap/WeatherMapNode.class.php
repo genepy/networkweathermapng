@@ -598,7 +598,8 @@ class WeatherMapNode extends WeatherMapItem {
 					// draw the supplied icon, instead of the labelled box
 
 					$icon_im = imagecreatefromfile($icon_raster);
-					$icon_vector = isset($colicon) ? null : WeatherMapSvg::vectorFor($this->iconfile);
+					// the editor shows an animated icon still: its PNG twin
+					$icon_vector = isset($colicon) ? null : WeatherMapSvg::vectorFor($this->iconfile, $this->owner !== null && $this->owner->context == 'editor');
 					# $icon_im = imagecreatefrompng($this->iconfile);
 
 					if (function_exists('imagefilter') && isset($colicon) && $this->get_hint('use_imagefilter') == 1) {

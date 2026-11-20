@@ -8,6 +8,10 @@
  * DOCTYPE or ENTITY makes the file refused (XXE, "billion laughs"); href
  * may only point inside the file (#id) or to an embedded PNG/JPEG/GIF;
  * url() in styles may only point inside the file; @import is removed.
+ *
+ * SMIL animations (animate, animateTransform, animateMotion, set, mpath)
+ * and CSS @keyframes are kept, so an icon can move by itself in the
+ * viewer; an animation of href or of an event attribute is removed.
  */
 
 declare(strict_types=1);
@@ -30,7 +34,12 @@ class SvgSanitizer
         'feDropShadow', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR',
         'feGaussianBlur', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset',
         'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence',
+        // SMIL animations: they run without scripts
+        'animate', 'animateTransform', 'animateMotion', 'set', 'mpath',
     ];
+
+    /** The SMIL animation elements, whose attributeName is checked */
+    private const ANIMATIONS = ['animate', 'animateTransform', 'animateMotion', 'set'];
 
     private const ATTRIBUTES = [
         'id', 'class', 'style', 'transform', 'lang', 'xml:space',
@@ -60,6 +69,10 @@ class SvgSanitizer
         'z', 'pointsAtX', 'pointsAtY', 'pointsAtZ', 'limitingConeAngle',
         'tableValues', 'slope', 'intercept', 'amplitude', 'exponent',
         'href', 'xlink:href',
+        // timing of the SMIL animations
+        'attributeName', 'attributeType', 'from', 'to', 'by', 'dur', 'begin', 'end',
+        'repeatCount', 'repeatDur', 'keyTimes', 'keySplines', 'calcMode', 'additive',
+        'accumulate', 'path', 'keyPoints', 'restart', 'min', 'max',
     ];
 
     /**
@@ -120,7 +133,7 @@ class SvgSanitizer
             if ($child instanceof \DOMElement) {
                 $known = in_array($child->localName, self::ELEMENTS, true)
                     && in_array($child->namespaceURI, [self::SVG_NS, null], true);
-                if (!$known) {
+                if (!$known || (in_array($child->localName, self::ANIMATIONS, true) && !$this->safeAnimation($child))) {
                     $element->removeChild($child);
                     continue;
                 }
@@ -138,6 +151,19 @@ class SvgSanitizer
                 $element->removeChild($child); // comments, processing instructions, entity references
             }
         }
+    }
+
+    /**
+     * An animation may change how the icon looks, not where it links to
+     * nor what it runs: no href, no event attribute (on...), no style
+     * (whose values are not checked like a style attribute).
+     */
+    private function safeAnimation(\DOMElement $element): bool
+    {
+        $target = strtolower(trim($element->getAttribute('attributeName')));
+        $target = (string) preg_replace('/^[a-z]+:/', '', $target);
+        return $target === '' && $element->localName === 'animateMotion'
+            || $target !== '' && $target !== 'href' && $target !== 'style' && !str_starts_with($target, 'on');
     }
 
     private function safeValue(string $name, string $value): bool

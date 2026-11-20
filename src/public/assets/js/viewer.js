@@ -327,6 +327,22 @@
         draw();
     }
 
+    /**
+     * SET icon_spin 1: the icon of the node turns with the load of its
+     * busiest link (item.spin, in %): stopped at 0, one turn a second at
+     * 100 %. CSS stops it for less motion and while the tab is hidden.
+     */
+    function spinIcons(svg) {
+        svg.querySelectorAll('g[data-kind="node"]').forEach(function (g) {
+            const it = S.items[g.getAttribute('data-id')];
+            const load = it && typeof it.spin === 'number' ? it.spin : 0;
+            g.querySelectorAll('image.wm-icon').forEach(function (icon) {
+                icon.classList.toggle('wmv-spin', load > 0);
+                if (load > 0) icon.style.setProperty('--wmv-spin', Math.min(20, 100 / load).toFixed(2) + 's');
+            });
+        });
+    }
+
     function installSvg(text, items) {
         const tpl = document.createElement('template');
         tpl.innerHTML = text;
@@ -338,6 +354,7 @@
         svg.classList.add('wmv-svg');
 
         S.items = items || {};
+        spinIcons(svg);
         S.sites = {};
         Object.keys(S.items).forEach(function (id) {
             const d = S.items[id];
@@ -534,6 +551,8 @@
 
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) stopFlow(); else startFlow();
+        // the turning icons (SET icon_spin) rest too
+        root.classList.toggle('wmv-tab-hidden', document.hidden);
     });
     if (reduceMotion) {
         const onMotion = function () { stopFlow(); startFlow(); };
