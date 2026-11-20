@@ -42,6 +42,7 @@ App features store their settings as map hints, each parsed by one service:
 | `focus_<id>`, `focus_default` | `Services/FocusAreas.php` |
 | `basemap`, `basemap_dark`, `basemap_center`, `basemap_zoom`, `basemap_attribution` | `Services/Basemap.php` |
 | `kiosk_duration`, `kiosk_zoom` | `Services/KioskService.php` |
+| `link_look`, `link_bar_separator`, `link_bar_outline` (map or link) | `WeatherMapLink::look()` / `bar_colour()`, `MapEditor::setBarHint()` |
 | `traffic_group`, `traffic_total` (link) | `Services/TotalTrafficSeries.php`, `MapService::trafficTotal()` |
 | `link_glow`, `node_style`, `link_flow`, `traffic_*`, `cluster*`, `geo`, `site`, `box_*`, `editor_note*` | grep `SET <name>` in `src/app/Services` and `src/lib/WeatherMap` |
 

@@ -3044,6 +3044,8 @@
         traffic_group: t('Links of the same group get their own tab in the total traffic graph of the live view, next to Total.'),
         viastyle: t('Curved: the link bends smoothly through its bend points. Straight segments: straight lines from point to point, with sharp corners.'),
         linkstyle: t('Both ways: each half of the link shows one direction, with its own colour, label and arrow toward the node the traffic goes to. One way: a single arrow from the first node to the second, with one label, in the colour of the busiest direction.'),
+        look: t('Arrows: the usual arrow heads. Traffic bar: a thick bar with square ends and no heads, each half in the colour of the load of its direction, split by a double tick. Its width is the link width (12 is a good bar).'),
+        bar_separator: t('The double tick where the two halves of a traffic bar meet; none hides it. A one-way link has none.'),
         arrowstyle: t('Classic: the usual arrow heads where the two halves meet. Small: shorter, narrower heads. None, square ends: no heads, each half ends square; the link then takes the colour of its busiest direction, and pill labels still show where the traffic goes. Custom size: the length and width of the heads, in link widths.'),
         splitpos: t('Where the two halves of the link meet, in % of its length from the first node: 50 is the middle.'),
         zorder: t('Items on a higher layer are drawn over those on a lower one.'),
@@ -3882,6 +3884,16 @@
         return row(t('Head size'), h('div', { 'class': 'pair' }, [length, width]));
     }
 
+    /** The colours of the traffic bar look, when the links are all traffic bars */
+    function barRows(links) {
+        var c = common(links, 'look');
+        if (c.mixed || c.value !== 'bar') { return null; }
+        return h('div', {}, [
+            row(t('Separator'), colourField(links, 'bar_separator', 'link'), false, TIPS.bar_separator),
+            row(t('Bar outline'), colourField(links, 'bar_outline', 'link'))
+        ]);
+    }
+
     /** The text of a custom label (INBWFORMAT, OUTBWFORMAT), when the links all have custom text */
     function labelTextRow(links, dir) {
         var c = common(links, 'labelstyle');
@@ -3901,7 +3913,10 @@
             row(t('Width'), field(links, 'width', 'link', { placeholder: t('auto, or pixels'), list: 'width-options' })),
             row(t('Bandwidth'), field(links, 'bandwidth_in', 'link', { prop: single && single.bandwidth_out !== single.bandwidth_in ? 'bandwidth_in' : 'bandwidth', placeholder: t('auto, 1G, 10G...'), list: 'bw-options' })),
             single ? row(t('Out, if different'), bandwidthOutField(single)) : null,
-            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) { return h('option', { value: v }); })),
+            h('datalist', { id: 'width-options' }, ['auto', '2', '4', '6', '9', '12', '15'].map(function (v) {
+                // 12: the width of a traffic bar
+                return h('option', { value: v, label: v === '12' ? t('Bar') : null });
+            })),
             h('datalist', { id: 'bw-options' }, ['auto', '100M', '1G', '10G', '25G', '40G', '100G', '200G', '400G', '800G'].map(function (v) { return h('option', { value: v }); })),
             row(t('Target'), field(links, 'target', 'link')),
             interfacePicker(links),
@@ -3920,6 +3935,8 @@
                 return h('button', { type: 'button', text: r[1], title: r[2], 'aria-label': r[2], onclick: function () { rightAngles(links, r[0]); } });
             }))),
             row(t('Arrows'), field(links, 'linkstyle', 'link', { options: [['twoway', t('Both ways')], ['oneway', t('One way')]] }), false, TIPS.linkstyle),
+            row(t('Look'), field(links, 'look', 'link', { options: [['classic', t('Arrows')], ['bar', t('Traffic bar')]] }), false, TIPS.look),
+            barRows(links),
             row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: arrowChoices(links) }), false, TIPS.arrowstyle),
             arrowSizeRow(links),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true }), false, TIPS.splitpos),

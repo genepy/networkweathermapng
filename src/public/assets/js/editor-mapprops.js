@@ -543,7 +543,12 @@
                     ]), null, ed.tips.bwstyle),
                     field(t('Arrow heads'), choice('link_arrowstyle', p.link_arrowstyle, [
                         ['classic', t('Classic')], ['compact', t('Small')], ['flat', t('None, square ends')]
-                    ].concat(/^\d+ \d+$/.test(p.link_arrowstyle) ? [[p.link_arrowstyle, t('Custom size') + ' (' + p.link_arrowstyle + ')']] : [])), t('With no arrow heads, pill labels still show which way the traffic goes.'), ed.tips.arrowstyle)
+                    ].concat(/^\d+ \d+$/.test(p.link_arrowstyle) ? [[p.link_arrowstyle, t('Custom size') + ' (' + p.link_arrowstyle + ')']] : [])), t('With no arrow heads, pill labels still show which way the traffic goes.'), ed.tips.arrowstyle),
+                    field(t('Look'), choice('link_look', p.link_look || 'classic', [
+                        ['classic', t('Arrows')], ['bar', t('Traffic bar')]
+                    ]), t('A link can have a look of its own in its inspector.'), ed.tips.look),
+                    field(t('Bar separator'), colour('link_bar_separator', p.link_bar_separator || '#ffffff', true), null, ed.tips.bar_separator),
+                    field(t('Bar outline'), colour('link_bar_outline', p.link_bar_outline || 'none', true))
                 ];
             case 'scale':
                 return scalePane(m.scale).concat([

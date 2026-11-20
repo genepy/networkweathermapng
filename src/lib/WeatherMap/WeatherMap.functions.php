@@ -972,9 +972,39 @@ function fit_arrow_head($length, $size, $width, $arrowwidth) {
 	return array($fit, max($width, $arrowwidth * $fit / $size));
 }
 
-/** ARROWSTYLE flat: links end square, without an arrow head */
+/** ARROWSTYLE flat, or the traffic bar look: links end square, without an arrow head */
 function arrow_is_flat(&$map, $linkname) {
-	return $map !== null && isset($map->links[$linkname]) && $map->links[$linkname]->arrowstyle == 'flat';
+	return $map !== null && isset($map->links[$linkname])
+		&& ($map->links[$linkname]->arrowstyle == 'flat' || $map->links[$linkname]->look() == 'bar');
+}
+
+/**
+ * One of the two strokes of a traffic bar separator, as polygon points:
+ * centred on the split point ($x, $y) of a bar of half width $w running
+ * along ($ux, $uy), on the $side (-1 or 1) of it. Each stroke is slanted
+ * 20 degrees from the perpendicular and 1.4 bar widths long; the gap and
+ * the stroke width grow with the bar. geo-view.js draws the same.
+ */
+function bar_separator_stroke($x, $y, $ux, $uy, $w, $side) {
+	$t = max(1, 0.3 * $w);
+	$gap = max(1.5, 0.5 * $w);
+	$cx = $x + $side * $ux * ($gap + $t) / 2;
+	$cy = $y + $side * $uy * ($gap + $t) / 2;
+	// the normal, turned 20 degrees towards the line
+	$c = cos(deg2rad(20));
+	$s = sin(deg2rad(20));
+	$sx = -$uy * $c + $ux * $s;
+	$sy = $ux * $c + $uy * $s;
+	$hl = 1.4 * $w;
+	$hx = $ux * $t / 2;
+	$hy = $uy * $t / 2;
+
+	return array(
+		$cx + $sx * $hl + $hx, $cy + $sy * $hl + $hy,
+		$cx + $sx * $hl - $hx, $cy + $sy * $hl - $hy,
+		$cx - $sx * $hl - $hx, $cy - $sy * $hl - $hy,
+		$cx - $sx * $hl + $hx, $cy - $sy * $hl + $hy,
+	);
 }
 
 /** Whether a point is inside one of the shapes of WeatherMapNode::cover_shapes() */

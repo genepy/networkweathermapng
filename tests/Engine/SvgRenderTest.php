@@ -459,6 +459,61 @@ final class SvgRenderTest extends TestCase
         $this->assertEqualsWithDelta($boxes['plain'][3], $boxes['dragged'][3], 1);
     }
 
+    /**
+     * F41: SET link_look bar draws square bars without heads or outline,
+     * each half in the colour of its direction, with a double tick where
+     * they meet; not on a one-way link, and a link can keep the arrows.
+     */
+    public function testTrafficBars(): void
+    {
+        $map = $this->load(TESTS_ROOT . '/fixtures/maps/bar-links.conf');
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        $link = fn (string $name, string $path) => $xpath->query('//s:g[@data-kind="link"][@data-name="' . $name . '"]/' . $path);
+
+        $this->assertSame('bar', $map->links['twoloads']->look(), 'the map hint');
+        $this->assertSame('classic', $map->links['classic']->look(), 'the link hint wins');
+
+        // two colours, no heads (the head is one pixel long), no outline
+        $halves = $link('twoloads', 's:polygon[@data-spine]');
+        $this->assertSame(2, $halves->length);
+        $fills = [];
+        foreach ($halves as $half) {
+            $this->assertInstanceOf(\DOMElement::class, $half);
+            $this->assertLessThanOrEqual(1, (float) $half->getAttribute('data-as'), 'no arrow head');
+            $this->assertFalse($half->hasAttribute('stroke'), 'no outline');
+            $fills[] = $half->getAttribute('fill');
+        }
+        $this->assertNotSame($fills[0], $fills[1], 'each half has the colour of its own load');
+
+        // the separator: two white strokes at the split point, slanted, longer than the bar is wide
+        $seps = $link('twoloads', 's:polygon[@class="wm-link-sep"]');
+        $this->assertSame(2, $seps->length);
+        foreach ($seps as $sep) {
+            $this->assertInstanceOf(\DOMElement::class, $sep);
+            $this->assertSame('#ffffff', $sep->getAttribute('fill'));
+            $v = array_map('floatval', explode(' ', $sep->getAttribute('data-sep')));
+            $this->assertCount(7, $v);
+            $this->assertEqualsWithDelta(200, $v[0], 1.5, 'half way between the badges');
+            $pts = self::points($sep->getAttribute('points'));
+            $this->assertGreaterThan(2 * $v[4], abs($pts[0][1] - $pts[2][1]), 'longer than the bar is wide');
+            $this->assertGreaterThan(1, abs($pts[0][0] - $pts[2][0]), 'slanted');
+        }
+
+        // the colours of the look: separator and outline
+        $this->assertSame('#000000', $link('slanted', 's:polygon[@class="wm-link-sep"]')->item(0)?->getAttribute('fill'));
+        $this->assertSame('#ffffff', $link('slanted', 's:polygon[@data-spine]')->item(0)?->getAttribute('stroke'));
+
+        // a one-way bar has no separator; a classic link keeps its heads
+        $this->assertSame(0, $link('oneway', 's:polygon[@class="wm-link-sep"]')->length);
+        $this->assertSame(0, $link('classic', 's:polygon[@class="wm-link-sep"]')->length);
+        $head = $link('classic', 's:polygon[@data-spine]')->item(0);
+        $this->assertInstanceOf(\DOMElement::class, $head);
+        $this->assertGreaterThan(1, (float) $head->getAttribute('data-as'));
+    }
+
     /** BWSTYLE pill: a rounded box along the link and an arrow toward where the traffic goes */
     public function testPillLinkLabels(): void
     {

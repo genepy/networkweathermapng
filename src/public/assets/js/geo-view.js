@@ -211,9 +211,35 @@
         return out;
     }
 
-    /** The arrows of an SVG drawing (polygon[data-spine]), to draw them thinner */
+    /**
+     * One stroke of a traffic bar separator around the split point (x, y)
+     * of a bar of half width w along (ux, uy), on its side (-1 or 1):
+     * bar_separator_stroke() in PHP.
+     */
+    function separatorStroke(x, y, ux, uy, w, side) {
+        var t = Math.max(1, 0.3 * w), gap = Math.max(1.5, 0.5 * w);
+        var cx = x + side * ux * (gap + t) / 2, cy = y + side * uy * (gap + t) / 2;
+        var c = Math.cos(Math.PI / 9), s = Math.sin(Math.PI / 9);
+        var sx = -uy * c + ux * s, sy = ux * c + uy * s;
+        var hl = 1.4 * w, hx = ux * t / 2, hy = uy * t / 2;
+        return [
+            [cx + sx * hl + hx, cy + sy * hl + hy], [cx + sx * hl - hx, cy + sy * hl - hy],
+            [cx - sx * hl - hx, cy - sy * hl - hy], [cx - sx * hl + hx, cy - sy * hl + hy]
+        ].map(function (q) { return q[0].toFixed(3) + ',' + q[1].toFixed(3); }).join(' ');
+    }
+
+    /**
+     * The arrows of an SVG drawing (polygon[data-spine]), to draw them
+     * thinner, and the strokes of the traffic bar separators
+     * (polygon[data-sep]), drawn as thin as their bar
+     */
     function arrows(svg) {
         var out = [];
+        svg.querySelectorAll('polygon[data-sep]').forEach(function (el) {
+            var v = el.getAttribute('data-sep').split(' ').map(Number);
+            if (v.length < 7 || !v.every(isFinite) || !(v[4] > 0)) { return; }
+            out.push({el: el, points: el.getAttribute('points'), sep: v});
+        });
         svg.querySelectorAll('polygon[data-spine]').forEach(function (el) {
             var nums = (el.getAttribute('data-spine').match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/g) || []).map(Number);
             var pts = [];
@@ -234,6 +260,12 @@
     /** Draw arrows (from arrows()) at k times their width; 1 puts them back */
     function thin(list, k) {
         list.forEach(function (a) {
+            if (a.sep) {
+                // the split moves along the bar as its nodes shrink, like the arrow tips
+                var v = a.sep, m = v[5] * (1 - k);
+                a.el.setAttribute('points', k < 1 ? separatorStroke(v[0] + v[2] * m, v[1] + v[3] * m, v[2], v[3], v[4] * k, v[6]) : a.points);
+                return;
+            }
             var pts = k < 1 ? arrowOutline(reachNodes(a.pts, a.cut, k), a.w * k, a.aw * k, a.as * k) : null;
             a.el.setAttribute('points', pts || a.points);
         });
@@ -285,6 +317,7 @@
         clusters: clusters,
         splitZoom: splitZoom,
         arrowOutline: arrowOutline,
+        separatorStroke: separatorStroke,
         reachNodes: reachNodes,
         arrows: arrows,
         thin: thin,
