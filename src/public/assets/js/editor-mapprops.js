@@ -569,7 +569,7 @@
         return [];
     }
 
-    /** The panels of the viewer and the kiosk (SET viewer_panels, see ViewerPanels.php) */
+    /** The panels of the viewer and the kiosk (SET viewer_panels and kiosk_panels, see ViewerPanels.php) */
     var PANEL_NAMES = {
         sites: t('Sites'), total: t('Total traffic'), legend: t('Link load legend'), updated: t('Update time')
     };
@@ -582,20 +582,84 @@
         return PANEL_NAMES[id] || id;
     }
 
+    function copyPanels(list) {
+        return (list || []).map(function (x) { return { id: x.id, position: x.position, shown: !!x.shown }; });
+    }
+
     /**
-     * The Viewer panels section: one row per panel with its switch, its
+     * The Viewer panels section. A switch picks the layout it edits: the
+     * viewer's (SET viewer_panels) or the kiosk's (SET kiosk_panels). The
+     * kiosk keeps the viewer's corners, follows the viewer's layout with
+     * its side panel, or has its own.
+     */
+    function panelsPane(p) {
+        var viewer = copyPanels(p.viewer_panels);
+        var kp = p.kiosk_panels || {};
+        var kiosk = { mode: kp.mode || 'corners', panels: copyPanels(kp.panels || p.viewer_panels) };
+        var body = h('div', { 'class': 'panel-layout' });
+        var target = 'viewer';
+
+        function saved(props) {
+            var box = body.closest('.map-sec'), m = ed.state.model && ed.state.model.map;
+            if (box) { showSummary(box, Object.assign({}, m && m.props, props)); }
+            sendProps(props).then(function () { if (box) { showSummary(box); } });
+        }
+
+        function saveKiosk() {
+            saved({ kiosk_panels: { mode: kiosk.mode, panels: kiosk.panels } });
+        }
+
+        var switchName = 'panel-target-' + Math.random().toString(36).slice(2);
+        var targets = h('div', { 'class': 'panel-target', role: 'radiogroup', 'aria-label': t('Layout') }, [
+            ['viewer', t('Viewer')], ['kiosk', t('Kiosk')]
+        ].map(function (o) {
+            var input = h('input', { type: 'radio', name: switchName, value: o[0], checked: o[0] === target });
+            input.addEventListener('change', function () {
+                if (input.checked) { target = o[0]; show(); }
+            });
+            return h('label', { 'class': 'inline' }, [input, ' ' + o[1]]);
+        }));
+
+        function show() {
+            if (target === 'viewer') {
+                body.replaceChildren(
+                    h('p', { 'class': 'mapprops-explain', text: t('The panels over the live map: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.') }),
+                    panelRows(viewer, function () { saved({ viewer_panels: viewer }); }),
+                    h('span', { 'class': 'hint', text: t('The pictures (PNG, SVG) do not change.') })
+                );
+                return;
+            }
+            var mode = h('select', { 'aria-label': t('Kiosk panels') }, [
+                ['corners', t('The viewer\'s corners only, no side panel')],
+                ['same', t('Same as the viewer')],
+                ['own', t('A layout of its own')]
+            ].map(function (o) {
+                return h('option', { value: o[0], text: o[1], selected: o[0] === kiosk.mode });
+            }));
+            mode.addEventListener('change', function () {
+                kiosk.mode = mode.value;
+                saveKiosk();
+                show();
+                body.querySelector('select').focus();
+            });
+            body.replaceChildren(
+                h('p', { 'class': 'mapprops-explain', text: t('The panels of this map in the kiosk. With a layout of its own or the viewer\'s, the kiosk shows a side panel on the left and fits the map beside it.') }),
+                h('label', { 'class': 'panel-kiosk-mode' }, [t('Kiosk panels') + ' ', mode]),
+                kiosk.mode === 'own' ? panelRows(kiosk.panels, saveKiosk) : h('span', { 'class': 'hint', text: kiosk.mode === 'same' ? t('The kiosk shows the panels as the viewer does, side panel included.') : t('The kiosk shows only the panels the viewer puts in a corner.') })
+            );
+        }
+        show();
+
+        return [targets, body];
+    }
+
+    /**
+     * The rows of a panel layout: one row per panel with its switch, its
      * place and two buttons that move it up or down the list (its order in
      * the side panel, or in a corner that holds more than one).
      */
-    function panelsPane(p) {
-        var panels = (p.viewer_panels || []).map(function (x) { return { id: x.id, position: x.position, shown: !!x.shown }; });
+    function panelRows(panels, save) {
         var list = h('ol', { 'class': 'panel-rows' });
-
-        function save() {
-            var box = list.closest('.map-sec'), m = ed.state.model && ed.state.model.map;
-            if (box) { showSummary(box, Object.assign({}, m && m.props, { viewer_panels: panels })); }
-            sendProps({ viewer_panels: panels }).then(function () { if (box) { showSummary(box); } });
-        }
 
         function move(i, by) {
             var j = i + by;
@@ -639,12 +703,7 @@
             }
         }
         render();
-
-        return [
-            h('p', { 'class': 'mapprops-explain', text: t('The panels over the live map and the kiosk: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.') }),
-            list,
-            h('span', { 'class': 'hint', text: t('The kiosk has no side panel: it shows only the panels placed in a corner. The pictures (PNG, SVG) do not change.') })
-        ];
+        return list;
     }
 
     /** Map items are added and removed in one place: the Add panel */

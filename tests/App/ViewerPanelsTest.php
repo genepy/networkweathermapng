@@ -38,10 +38,10 @@ final class ViewerPanelsTest extends TestCase
         return $map;
     }
 
-    private function withHint(string $value): \WeatherMap
+    private function withHint(string $value, string $hint = 'viewer_panels'): \WeatherMap
     {
         $conf = (string) file_get_contents($this->file);
-        file_put_contents($this->file, preg_replace('/^(SET nowarn_clipping 1)$/m', "$1\nSET viewer_panels " . $value, $conf, 1));
+        file_put_contents($this->file, preg_replace('/^(SET nowarn_clipping 1)$/m', "$1\nSET " . $hint . ' ' . $value, $conf, 1));
         return $this->read();
     }
 
@@ -140,6 +140,77 @@ final class ViewerPanelsTest extends TestCase
 
         $editor = (string) file_get_contents($root . '/src/public/assets/js/editor-mapprops.js');
         $this->assertStringContainsString("['panels', t('Viewer panels')]", $editor);
-        $this->assertStringContainsString('viewer_panels: panels', $editor);
+        $this->assertStringContainsString('viewer_panels: viewer', $editor);
+        $this->assertStringContainsString('kiosk_panels: { mode: kiosk.mode', $editor, 'the Kiosk switch edits the kiosk layout');
+        $this->assertStringContainsString('data.kiosk_panels', $js, 'the kiosk takes its own panels');
+        $this->assertStringContainsString("'kiosk_panels' => \$summary['kiosk_panels']", $controller);
+
+        $admin = (string) file_get_contents($root . '/src/app/Views/admin/kiosk.php');
+        $this->assertStringContainsString('?open=panels', $admin, 'the kiosk page leads to the panels of each map');
+    }
+
+    public function testTheKioskKeepsTheViewerCornersWithoutItsHint(): void
+    {
+        $map = $this->withHint('total:top-right');
+        $this->assertSame('corners', ViewerPanels::kioskMode($map));
+        $this->assertNull(ViewerPanels::forKiosk($map), 'without SET kiosk_panels the kiosk does not change');
+        $this->assertNull(MapService::summarize($map)['kiosk_panels']);
+        $this->assertSame(['mode' => 'corners', 'panels' => ViewerPanels::of($map)], MapEditor::model($map)['map']['props']['kiosk_panels']);
+    }
+
+    public function testTheKioskHasItsOwnPanels(): void
+    {
+        $map = $this->withHint('total:side legend:bottom-right sites:side:hidden', 'kiosk_panels');
+        $own = [
+            ['id' => 'total', 'position' => 'side', 'shown' => true],
+            ['id' => 'legend', 'position' => 'bottom-right', 'shown' => true],
+            ['id' => 'sites', 'position' => 'side', 'shown' => false],
+            ['id' => 'updated', 'position' => 'bottom-left', 'shown' => true],
+        ];
+        $this->assertSame('own', ViewerPanels::kioskMode($map));
+        $this->assertSame($own, ViewerPanels::forKiosk($map));
+        $this->assertNull(ViewerPanels::forViewer($map), 'the viewer keeps its usual layout');
+        $this->assertSame($own, MapService::summarize($map)['kiosk_panels']);
+        $this->assertSame(['mode' => 'own', 'panels' => $own], MapEditor::model($map)['map']['props']['kiosk_panels']);
+    }
+
+    public function testTheKioskCanFollowTheViewer(): void
+    {
+        $this->withHint('same', 'kiosk_panels');
+        $map = $this->withHint('legend:top-left');
+        $this->assertSame('same', ViewerPanels::kioskMode($map));
+        $this->assertSame(ViewerPanels::of($map), ViewerPanels::forKiosk($map));
+
+        // the usual layout too: the kiosk then shows the side panel
+        copy(TESTS_ROOT . '/fixtures/maps/basic.conf', $this->file);
+        $map = $this->withHint('same', 'kiosk_panels');
+        $this->assertSame(self::defaults(), ViewerPanels::forKiosk($map));
+    }
+
+    public function testTheEditorWritesTheKioskPanels(): void
+    {
+        $editor = new MapEditor($this->file);
+        $editor->apply([['op' => 'set_map', 'props' => ['kiosk_panels' => ['mode' => 'own', 'panels' => self::defaults()]]]]);
+        $this->assertStringContainsString(
+            'SET kiosk_panels sites:side total:side legend:side updated:bottom-left',
+            (string) file_get_contents($this->file),
+            'its own layout is written even when it is the usual one'
+        );
+        $this->assertSame(self::defaults(), ViewerPanels::forKiosk($this->read()));
+
+        $editor->apply([['op' => 'set_map', 'props' => ['kiosk_panels' => ['mode' => 'same', 'panels' => []]]]]);
+        $this->assertStringContainsString('SET kiosk_panels same', (string) file_get_contents($this->file));
+
+        $editor->apply([['op' => 'set_map', 'props' => ['kiosk_panels' => ['mode' => 'corners']]]]);
+        $this->assertStringNotContainsString('kiosk_panels', (string) file_get_contents($this->file), 'back to the viewer\'s corners');
+
+        foreach ([['mode' => 'wall'], ['mode' => 'own', 'panels' => [['id' => 'clock', 'position' => 'side']]]] as $value) {
+            try {
+                $editor->apply([['op' => 'set_map', 'props' => ['kiosk_panels' => $value]]]);
+                $this->fail('refused: ' . json_encode($value));
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
     }
 }

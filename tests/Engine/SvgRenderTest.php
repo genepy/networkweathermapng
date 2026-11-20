@@ -434,6 +434,31 @@ final class SvgRenderTest extends TestCase
         $this->assertGreaterThan(0, $xpath->query('//s:g[@data-name="box"]/s:text')->length);
     }
 
+    /** F38: a node label dragged in the editor (LABELOFFSET x y) is drawn there in the SVG, the icon staying put */
+    public function testDraggedNodeLabel(): void
+    {
+        $conf = "WIDTH 300\nHEIGHT 200\nNODE a\n\tLABEL Router\n\tICON src/public/objects/net/router.png\n\tPOSITION 150 100\n";
+        $boxes = [];
+        foreach (['plain' => '', 'dragged' => "\tLABELOFFSET 40 -30\n"] as $key => $extra) {
+            $file = TESTS_OUTPUT . '/label-' . $key . '.conf';
+            file_put_contents($file, $conf . $extra);
+            $map = $this->load($file);
+            $doc = new \DOMDocument();
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+            $rect = $xpath->query('//s:g[@data-name="a"]/s:rect[@class="wm-labelbox"]')->item(0);
+            $image = $xpath->query('//s:g[@data-name="a"]/s:image')->item(0);
+            $this->assertInstanceOf(\DOMElement::class, $rect);
+            $this->assertInstanceOf(\DOMElement::class, $image);
+            $boxes[$key] = [(float) $rect->getAttribute('x'), (float) $rect->getAttribute('y'), (float) $image->getAttribute('x'), (float) $image->getAttribute('y')];
+        }
+        $this->assertEqualsWithDelta($boxes['plain'][0] + 40, $boxes['dragged'][0], 1, 'the label moved right');
+        $this->assertEqualsWithDelta($boxes['plain'][1] - 30, $boxes['dragged'][1], 1, 'and up');
+        $this->assertEqualsWithDelta($boxes['plain'][2], $boxes['dragged'][2], 1, 'the icon stays');
+        $this->assertEqualsWithDelta($boxes['plain'][3], $boxes['dragged'][3], 1);
+    }
+
     /** BWSTYLE pill: a rounded box along the link and an arrow toward where the traffic goes */
     public function testPillLinkLabels(): void
     {

@@ -300,6 +300,8 @@ return [
     'Fit to screen' => "Ajuster à l'écran",
     'Default (:seconds s)' => 'Par défaut (:seconds s)',
     'Fit to screen enlarges or shrinks the map to fill the screen. A percentage shows the map at that share of its size, centred; what does not fit is cut off. Leave the display time empty to use the one above. Inactive maps are not shown in kiosk mode.' => "« Ajuster à l'écran » agrandit ou réduit la carte pour remplir l'écran. Un pourcentage affiche la carte à cette proportion de sa taille, centrée ; ce qui dépasse est coupé. Laissez la durée vide pour utiliser celle du dessus. Les cartes inactives ne sont pas affichées en mode kiosque.",
+    'Kiosk panels' => 'Panneaux du kiosque',
+    'Kiosk panels opens the Viewer panels section of the map in the editor: switch it to Kiosk to give the kiosk a side panel with the sites, the total traffic or the link load.' => 'Panneaux du kiosque ouvre la section Panneaux du visualiseur de la carte dans l’éditeur : passez-la sur Kiosque pour donner au kiosque un panneau latéral avec les sites, le trafic total ou la charge des liens.',
 
     // Time zone
     'Time zone' => 'Fuseau horaire',

@@ -206,6 +206,8 @@ class MapController extends BaseController
             'focus' => $summary['focus'] ?? null,
             // the viewer panels and where they go (SET viewer_panels), null for the usual layout
             'panels' => $summary['panels'] ?? null,
+            // the kiosk's own panels (SET kiosk_panels), null when it follows the viewer's corners
+            'kiosk_panels' => $summary['kiosk_panels'] ?? null,
             'version' => $this->configVersion($mapId),
         ]);
     }

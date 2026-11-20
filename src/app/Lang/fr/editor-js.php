@@ -261,7 +261,7 @@ return [
     'Add a zone here' => 'Ajouter une zone ici',
 
     // Labels and map items (legends, timestamps, title)
-    'Drag the label of the selected node to move it away from the icon.' => 'Faites glisser l’étiquette du nœud sélectionné pour l’écarter de l’icône.',
+    'Drag the label of the selected node to put it anywhere: it snaps above, below, beside or on the icon (Alt: no snapping).' => 'Faites glisser l’étiquette du nœud sélectionné pour la placer où vous voulez : elle s’aligne au-dessus, au-dessous, à côté ou sur l’icône (Alt : sans alignement).',
     'Reset label position' => 'Replacer l’étiquette',
     'Label position' => 'Position de l’étiquette',
     'Above the icon' => 'Au-dessus de l’icône',
@@ -695,8 +695,18 @@ return [
     'Move :name up' => 'Monter :name',
     'Move :name down' => 'Descendre :name',
     ':shown of :total shown' => ':shown sur :total affichés',
-    'The panels over the live map and the kiosk: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.' => 'Les panneaux au-dessus de la carte en direct et du kiosque : affichez ou masquez chacun d’eux, et placez-le dans le panneau latéral ou dans un coin de la carte. L’ordre est leur ordre dans le panneau latéral, et dans un coin qui en contient plusieurs.',
-    'The kiosk has no side panel: it shows only the panels placed in a corner. The pictures (PNG, SVG) do not change.' => 'Le kiosque n’a pas de panneau latéral : il n’affiche que les panneaux placés dans un coin. Les images (PNG, SVG) ne changent pas.',
+    'The panels over the live map: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.' => 'Les panneaux au-dessus de la carte en direct : affichez ou masquez chacun d’eux, et placez-le dans le panneau latéral ou dans un coin de la carte. L’ordre est leur ordre dans le panneau latéral, et dans un coin qui en contient plusieurs.',
+    'The pictures (PNG, SVG) do not change.' => 'Les images (PNG, SVG) ne changent pas.',
+    'Layout' => 'Disposition',
+    'Viewer' => 'Visualiseur',
+    'Kiosk' => 'Kiosque',
+    'Kiosk panels' => 'Panneaux du kiosque',
+    'The viewer\'s corners only, no side panel' => 'Les coins du visualiseur seulement, sans panneau latéral',
+    'Same as the viewer' => 'Comme le visualiseur',
+    'A layout of its own' => 'Une disposition à lui',
+    'The panels of this map in the kiosk. With a layout of its own or the viewer\'s, the kiosk shows a side panel on the left and fits the map beside it.' => 'Les panneaux de cette carte dans le kiosque. Avec sa propre disposition ou celle du visualiseur, le kiosque affiche un panneau latéral à gauche et ajuste la carte à côté.',
+    'The kiosk shows the panels as the viewer does, side panel included.' => 'Le kiosque affiche les panneaux comme le visualiseur, panneau latéral compris.',
+    'The kiosk shows only the panels the viewer puts in a corner.' => 'Le kiosque n’affiche que les panneaux que le visualiseur place dans un coin.',
 
     // F29: link groups of the total traffic graph
     'Traffic group' => 'Groupe de trafic',

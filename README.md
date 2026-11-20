@@ -344,9 +344,23 @@ ids are `sites`, `total`, `legend` and `updated`; the positions are `side`,
 order in the side panel, and in a corner that holds more than one. A panel
 left out takes its usual place. Without the hint the sites, the total and
 the legend are in the side panel and the update time at the bottom left.
-The kiosk has no side panel: it shows only the panels placed in a corner
-(none without the hint). On a phone the corner cards go in the side panel
-sheet. In the editor, *Viewer panels* in the map properties sets them.
+On a phone the corner cards go in the side panel sheet. In the editor,
+*Viewer panels* in the map properties sets them.
+
+The kiosk can have a layout of its own, with the same syntax, or follow the
+viewer's layout:
+
+```
+SET kiosk_panels total:side legend:bottom-right sites:side:hidden
+SET kiosk_panels same
+```
+
+With either one the kiosk shows a side panel on the left, without its close
+button, for the panels set to `side`, and fits the map in the room beside
+it. Without `kiosk_panels` the kiosk has no side panel: it shows only the
+panels the viewer places in a corner (none without `viewer_panels`). In the
+editor, the *Viewer* / *Kiosk* switch of *Viewer panels* picks the layout
+it edits; the kiosk settings page links to it for each map.
 
 ### Comments along curved links
 

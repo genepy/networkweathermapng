@@ -501,6 +501,8 @@ dialog button.primary { background: var(--accent); border-color: var(--accent); 
 #inspector .focus-actions .danger { color: var(--danger); }
 #inspector .focus-add { margin-bottom: 4px; }
 /* Viewer panels (editor-mapprops.js): one row per panel, its switch, its place, up and down */
+#inspector .panel-target { display: flex; gap: 16px; margin: 0 0 8px; }
+#inspector .panel-kiosk-mode { display: flex; flex-direction: column; gap: 4px; margin: 0 0 8px; }
 #inspector .panel-rows { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 #inspector .panel-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 6px; align-items: center; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 #inspector .panel-row:last-child { border-bottom: 0; }

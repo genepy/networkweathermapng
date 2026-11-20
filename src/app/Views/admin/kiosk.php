@@ -35,6 +35,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
                         <th><?= e__('Group') ?></th>
                         <th><?= e__('Zoom') ?></th>
                         <th><?= e__('Display time (seconds)') ?></th>
+                        <th><?= e__('Panels') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -70,6 +71,9 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
                                    placeholder="<?= e__('Default (:seconds s)', ['seconds' => (int) $duration]) ?>"
                                    aria-label="<?= e__('Display time (seconds)') ?>: <?= $h($map['name']) ?>">
                         </td>
+                        <td>
+                            <a href="/editor/edit/<?= $id ?>?open=panels" aria-label="<?= e__('Kiosk panels') ?>: <?= $h($map['name']) ?>"><?= e__('Kiosk panels') ?></a>
+                        </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -77,6 +81,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
         </div>
         <p class="text-muted kiosk-help">
             <?= e__('Fit to screen enlarges or shrinks the map to fill the screen. A percentage shows the map at that share of its size, centred; what does not fit is cut off. Leave the display time empty to use the one above. Inactive maps are not shown in kiosk mode.') ?>
+            <?= e__('Kiosk panels opens the Viewer panels section of the map in the editor: switch it to Kiosk to give the kiosk a side panel with the sites, the total traffic or the link load.') ?>
         </p>
         <?php endif; ?>
 

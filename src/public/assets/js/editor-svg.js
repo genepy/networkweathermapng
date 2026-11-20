@@ -935,7 +935,14 @@
     function renderNodeLabelHandle(n, drag) {
         if (!n.label_box || n.locked) { return; }
         var b = n.label_box, dx = 0, dy = 0;
-        if (drag && drag.type === 'nodelabel' && drag.started) { dx = drag.dx; dy = drag.dy; }
+        if (drag && drag.type === 'nodelabel' && drag.started) {
+            dx = drag.dx; dy = drag.dy;
+            // snapped around the icon: the icon box shows what it lines up with
+            if (drag.snapAt && n.icon_box) {
+                var ib = n.icon_box;
+                el('rect', { 'class': 'lasso', x: ib[0], y: ib[1], width: ib[2] - ib[0], height: ib[3] - ib[1] }, overlay);
+            }
+        }
         el('rect', {
             'class': 'label-handle', x: b[0] - 1 + dx, y: b[1] - 1 + dy, width: b[2] - b[0] + 2, height: b[3] - b[1] + 2,
             'data-handle': 'nodelabel'
@@ -1562,6 +1569,8 @@
             case 'nodelabel':
                 d.dx = Math.round(p.x - d.start.x);
                 d.dy = Math.round(p.y - d.start.y);
+                d.snapAt = null;
+                if (!KEYS.held(evt, 'editor.drag-nosnap')) { nodeLabelSnap(d); }
                 previewLabel(d.node, d.dx, d.dy);
                 break;
 
@@ -1683,6 +1692,33 @@
                 if (dx || dy) { c.setAttribute('transform', 'translate(' + dx + ' ' + dy + ')'); } else { c.removeAttribute('transform'); }
             });
         });
+    }
+
+    /**
+     * A node label dragged near one of the places around its icon (above,
+     * below, beside, the corners or the centre) snaps there; the stored
+     * offset stays a pixel offset. d.snapAt names the place, null when free.
+     */
+    function nodeLabelSnap(d) {
+        var n = state.nodes.get(d.node), lb = n && n.label_box, ib = n && n.icon_box;
+        if (!lb || !ib) { return; }
+        var lw = lb[2] - lb[0], lh = lb[3] - lb[1];
+        var cx = (lb[0] + lb[2]) / 2 + d.dx, cy = (lb[1] + lb[3]) / 2 + d.dy;
+        var icx = (ib[0] + ib[2]) / 2, icy = (ib[1] + ib[3]) / 2;
+        var spots = {
+            N: [icx, ib[1] - lh / 2], S: [icx, ib[3] + lh / 2], E: [ib[2] + lw / 2, icy], W: [ib[0] - lw / 2, icy],
+            NE: [ib[2] + lw / 2, ib[1] - lh / 2], NW: [ib[0] - lw / 2, ib[1] - lh / 2],
+            SE: [ib[2] + lw / 2, ib[3] + lh / 2], SW: [ib[0] - lw / 2, ib[3] + lh / 2], C: [icx, icy]
+        };
+        var tol = 2 * GUIDE_SNAP / state.zoom, best = null;
+        Object.keys(spots).forEach(function (k) {
+            var s = spots[k], dist = Math.hypot(s[0] - cx, s[1] - cy);
+            if (dist <= tol && (!best || dist < best.dist)) { best = { dist: dist, at: k, s: s }; }
+        });
+        if (!best) { return; }
+        d.dx = Math.round(d.dx + best.s[0] - cx);
+        d.dy = Math.round(d.dy + best.s[1] - cy);
+        d.snapAt = best.at;
     }
 
     /** The nearest point of a polyline to p: {pct} of its length */
@@ -3412,7 +3448,7 @@
 
         if (single && single.label_box) {
             out.push(
-                h('p', { 'class': 'help', text: t('Drag the label of the selected node to move it away from the icon.') }),
+                h('p', { 'class': 'help', text: t('Drag the label of the selected node to put it anywhere: it snaps above, below, beside or on the icon (Alt: no snapping).') }),
                 h('div', { 'class': 'actions' }, [
                     h('button', {
                         type: 'button', text: t('Reset label position'), disabled: !single.label_shift[0] && !single.label_shift[1] && !single.label_position,

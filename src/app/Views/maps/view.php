@@ -140,7 +140,7 @@
             <button type="button" class="wmv-icon-btn" data-act="fit" aria-keyshortcuts="0" data-keys="viewer.fit" title="<?= e__('Fit the map to the window') ?>" aria-label="<?= e__('Fit') ?>"><?= icon('scan') ?></button>
         </div>
 
-        <!-- in the kiosk too: the map may put some of its panels in a corner (SET viewer_panels) -->
+        <!-- in the kiosk too: the map may put some of its panels in a corner (SET viewer_panels), or give the kiosk a side panel (SET kiosk_panels) -->
         <aside class="wmv-panel wmv-fades" id="wmv-panel" hidden aria-label="<?= e__('Side panel') ?>">
             <section class="wmv-panel-sec wmv-sites" aria-labelledby="wmv-sites-title">
                 <header class="wmv-panel-head">

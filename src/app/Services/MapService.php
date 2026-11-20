@@ -917,6 +917,8 @@ class MapService
             'focus' => FocusAreas::forViewer($wmap),
             // which viewer panels are shown and where (SET viewer_panels), null for the usual layout
             'panels' => ViewerPanels::forViewer($wmap),
+            // the kiosk's panels (SET kiosk_panels), null for the viewer's layout without its side panel
+            'kiosk_panels' => ViewerPanels::forKiosk($wmap),
             'items' => $items,
         ];
     }
