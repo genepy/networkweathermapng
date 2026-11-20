@@ -62,6 +62,20 @@ class MapEditor
         'arrowstyle' => ['classic', 'compact', 'flat'],
     ];
 
+    /** The traffic bar settings: editor key => hint (per link; the map-wide one is link_<key>) */
+    private const BAR_HINTS = [
+        'look' => 'link_look',
+        'bar_separator' => 'link_bar_separator',
+        'bar_outline' => 'link_bar_outline',
+    ];
+
+    /** What each traffic bar hint is without a value */
+    private const BAR_DEFAULTS = [
+        'link_look' => 'classic',
+        'link_bar_separator' => '#ffffff',
+        'link_bar_outline' => 'none',
+    ];
+
     /** Largest custom arrow head factor (ARROWSTYLE <length> <width>) */
     private const ARROW_FACTOR_MAX = 20;
 
@@ -767,6 +781,81 @@ class MapEditor
      * @param \WeatherMapNode|\WeatherMapLink $item
      * @param \WeatherMapNode|\WeatherMapLink|null $template
      */
+    /** A traffic bar hint as it is written: classic|bar, or a colour as #rrggbb or none */
+    private static function barValue(string $hint, mixed $value): string
+    {
+        $value = strtolower(trim((string) $value));
+        if ($hint === 'link_look') {
+            if (!in_array($value, ['classic', 'bar'], true)) {
+                throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $hint, 'value' => $value]));
+            }
+            return $value;
+        }
+        $colour = \WeatherMapLink::parse_colour_hint($value);
+        if ($colour === false) {
+            throw new InvalidArgumentException(__('Invalid colour: :value', ['value' => $value]));
+        }
+        return $colour === null ? 'none' : sprintf('#%02x%02x%02x', $colour[0], $colour[1], $colour[2]);
+    }
+
+    /** What a traffic bar hint of a link is: its own, its template's, the map's, or the default */
+    private static function barHintOf(\WeatherMap $map, object $item, string $hint): string
+    {
+        $value = trim((string) ($item->hints[$hint] ?? ''));
+        if ($value === '') {
+            $value = trim((string) ($map->hints[$hint] ?? ''));
+        }
+        if ($value === '') {
+            return self::BAR_DEFAULTS[$hint];
+        }
+        try {
+            return self::barValue($hint, $value);
+        } catch (InvalidArgumentException) {
+            return self::BAR_DEFAULTS[$hint];
+        }
+    }
+
+    /** A traffic bar hint of one link: written only when it differs from what the link would take */
+    private function setBarHint(\WeatherMap $map, \WeatherMapLink $link, string $hint, mixed $value): void
+    {
+        $value = self::barValue($hint, $value);
+        $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
+        $inherited = $template !== null && $template !== $link
+            ? self::barHintOf($map, $template, $hint)
+            : self::barHintOf($map, new \stdClass(), $hint);
+        if ($value === $inherited) {
+            unset($link->hints[$hint]);
+        } else {
+            $link->hints[$hint] = $value;
+        }
+    }
+
+    /**
+     * A traffic bar hint of the whole map (SET link_look bar...): the map
+     * hint, the default value removing it. The DEFAULT link stops setting
+     * it, and the links that took it from there follow the map.
+     */
+    private function setMapBarHint(\WeatherMap $map, string $hint, mixed $value): void
+    {
+        $value = self::barValue($hint, $value);
+        $default = $map->links['DEFAULT'] ?? null;
+        $old = $default !== null && isset($default->hints[$hint]) ? (string) $default->hints[$hint] : null;
+        if ($old !== null) {
+            foreach ($map->links as $name => $link) {
+                if ($name !== 'DEFAULT' && isset($link->hints[$hint]) && (string) $link->hints[$hint] === $old
+                    && (string) $link->template === 'DEFAULT') {
+                    unset($link->hints[$hint]);
+                }
+            }
+            unset($default->hints[$hint]);
+        }
+        if ($value === self::BAR_DEFAULTS[$hint]) {
+            unset($map->hints[$hint]);
+        } else {
+            $map->add_hint($hint, $value);
+        }
+    }
+
     private function setHint(object $item, ?object $template, string $key, string $value, string $empty): void
     {
         $inherited = $template !== null && isset($template->hints[$key]) ? trim((string) $template->hints[$key]) : $empty;
@@ -994,6 +1083,9 @@ class MapEditor
                     }
                     $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
                     $this->setHint($link, $template, 'traffic_total', (string) $value, '1');
+                } elseif ($key === 'look' || $key === 'bar_separator' || $key === 'bar_outline') {
+                    // SET link_look, link_bar_separator, link_bar_outline: the traffic bar look
+                    $this->setBarHint($map, $link, self::BAR_HINTS[$key], $value);
                 } elseif ($key === 'traffic_group') {
                     // SET traffic_group <name>: its tab in the total traffic graph of the viewer
                     $template = $map->links[$link->template] ?? $map->links['DEFAULT'] ?? null;
@@ -1770,6 +1862,9 @@ class MapEditor
                 } else {
                     $map->add_hint('background_sizing', $value);
                 }
+            } elseif (isset(self::BAR_DEFAULTS[$key])) {
+                // the traffic bar look of the whole map: a map hint
+                $this->setMapBarHint($map, $key, $value);
             } elseif (in_array($key, ['link_bandwidth', 'link_width', 'link_labelstyle', 'link_bwfont', 'link_bwstyle', 'link_arrowstyle'], true)) {
                 $this->setLinkDefault($map, $key, $value);
             } else {
@@ -2058,6 +2153,10 @@ class MapEditor
             'link_bwfont' => $default ? (int) $default->bwfont : 2,
             'link_bwstyle' => $default ? self::bwStyle($default) : 'classic',
             'link_arrowstyle' => $default ? (string) $default->arrowstyle : 'classic',
+            // the traffic bar look of the whole map (SET link_look bar...)
+            'link_look' => self::barHintOf($map, $default ?? new \stdClass(), 'link_look'),
+            'link_bar_separator' => self::barHintOf($map, $default ?? new \stdClass(), 'link_bar_separator'),
+            'link_bar_outline' => self::barHintOf($map, $default ?? new \stdClass(), 'link_bar_outline'),
             'basemap' => (string) ($map->hints['basemap'] ?? ''),
             'basemap_dark' => (string) ($map->hints['basemap_dark'] ?? ''),
             'basemap_center' => (string) ($map->hints['basemap_center'] ?? ''),
@@ -2219,6 +2318,9 @@ class MapEditor
                 'labelshift_out' => (int) round((float) ($link->hints['bwlabel_offset_out'] ?? 0)),
                 'traffic_total' => \App\Services\MapService::countsInTotal($link) ? '1' : '0',
                 'traffic_group' => \App\Services\TotalTrafficSeries::groupOf($link),
+                'look' => self::barHintOf($map, $link, 'link_look'),
+                'bar_separator' => self::barHintOf($map, $link, 'link_bar_separator'),
+                'bar_outline' => self::barHintOf($map, $link, 'link_bar_outline'),
                 'zorder' => (int) $link->zorder,
                 'group' => (string) ($link->hints['editor_group'] ?? ''),
                 'locked' => !empty($link->hints['editor_lock']),

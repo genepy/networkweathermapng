@@ -694,6 +694,24 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   it. A half too short for its arrow head gets a smaller head of the same
   shape (never narrower than the link), or a square end when even that
   does not fit. The same happens in the PNG, the SVG and deep in a basemap.
+- **Traffic bars**: *Look* in the link panel (or in *Link defaults* for
+  every link) draws a link as a thick bar instead of arrows: square ends,
+  no heads and no outline, each half in the colour of the load of its
+  direction, and a double tick (two short slanted strokes) where the halves
+  meet, at `SPLITPOS`. A one-way link has no tick. The bar is as wide as
+  the link (`WIDTH`, or the speed table with `auto`; 12 makes a good bar).
+  The tick colour (white by default, `none` hides it) and an outline
+  colour (none by default) are settings of the look. All are hints, on the
+  map for every link, or on a link (or `LINK DEFAULT`) for its own:
+
+  ```
+  SET link_look bar               # or classic, the arrows
+  SET link_bar_separator #ffffff  # or none
+  SET link_bar_outline none       # or a colour
+  ```
+
+  The PNG, the SVG, the viewer, the kiosk and the geo view draw the same,
+  the tick thinning with its bar deep in a basemap.
 - **Badge nodes**: *Look* in the node panel draws the selected nodes as
   round badges (`SET node_style badge`): their icon, or the initials of
   their label, on a disc in the label background colour with a ring in the

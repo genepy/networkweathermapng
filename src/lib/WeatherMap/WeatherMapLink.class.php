@@ -643,6 +643,83 @@ class WeatherMapLink extends WeatherMapItem {
 		return array($this->colours[IN], $this->colours[OUT]);
 	}
 
+	/**
+	 * The look of the link: 'bar' (SET link_look bar, on the link, its
+	 * template or the whole map) is a traffic bar: square ends, no heads,
+	 * no outline, the two halves split by a double tick. 'classic' is the
+	 * usual arrows. The link's own hint wins over the map's.
+	 */
+	function look() {
+		$look = isset($this->hints['link_look']) ? $this->hints['link_look'] : null;
+		if (($look === null || $look === '') && $this->owner !== null) {
+			$look = $this->owner->get_hint('link_look');
+		}
+		return strtolower(trim((string) $look)) == 'bar' ? 'bar' : 'classic';
+	}
+
+	/**
+	 * A colour of the bar look (SET link_bar_separator, link_bar_outline):
+	 * the link's own hint, else the map's, else $default. #rrggbb or
+	 * "r g b"; none gives null (not drawn).
+	 */
+	function bar_colour($name, $default) {
+		$value = isset($this->hints[$name]) ? $this->hints[$name] : null;
+		if (($value === null || $value === '') && $this->owner !== null) {
+			$value = $this->owner->get_hint($name);
+		}
+		$colour = self::parse_colour_hint($value);
+		return $colour === false ? $default : $colour;
+	}
+
+	/** #rrggbb or "r g b" as [r, g, b], null for none, false when empty or unreadable */
+	static function parse_colour_hint($value) {
+		$value = strtolower(trim((string) $value));
+		if ($value === 'none') {
+			return null;
+		}
+		if (preg_match('/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/', $value, $m)) {
+			return array(hexdec($m[1]), hexdec($m[2]), hexdec($m[3]));
+		}
+		if (preg_match('/^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})$/', $value, $m)) {
+			return array(min(255, (int) $m[1]), min(255, (int) $m[2]), min(255, (int) $m[3]));
+		}
+		return false;
+	}
+
+	/**
+	 * The separator of a traffic bar: two short strokes across the bar
+	 * where its halves meet, slanted 20 degrees from the perpendicular, a
+	 * bit longer than the bar is wide. $w is the half width of the bar.
+	 */
+	function draw_bar_separator($image, $w) {
+		if ($this->drawn_split === null || !is_array($this->curvepoints) || count($this->curvepoints) < 2) {
+			return;
+		}
+		$colour = $this->bar_colour('link_bar_separator', array(255, 255, 255));
+		if ($colour === null) {
+			return;
+		}
+		list($x, $y, $junk, $angle) = find_distance_coords_angle($this->curvepoints, $this->drawn_split);
+		if ($x === null) {
+			return;
+		}
+		$ux = cos(deg2rad($angle));
+		$uy = -sin(deg2rad($angle));
+		$gd = myimagecolorallocate($image, $colour[0], $colour[1], $colour[2]);
+
+		// the viewer moves the separator with the split as the nodes shrink
+		$move = 0;
+		if (is_array($this->drawn_cuts)) {
+			$pos = max(0, min(100, (float) $this->splitpos)) / 100;
+			$move = $pos * ($this->drawn_cuts[OUT] + $this->drawn_cuts[IN]) - $this->drawn_cuts[OUT];
+		}
+		foreach (array(-1, 1) as $side) {
+			WeatherMapSvg::separator($image, array($x, $y, $ux, $uy, $w, $move, $side));
+			wimagefilledpolygon($image, bar_separator_stroke($x, $y, $ux, $uy, $w, $side), 4, $gd);
+		}
+		WeatherMapSvg::separator(null);
+	}
+
 	function Draw($image, &$map) {
 		// Get the positions of the end-points
 		$x1 = $map->nodes[$this->a->name]->x;
@@ -701,6 +778,13 @@ class WeatherMapLink extends WeatherMapItem {
 		$commentcol = new Colour($this->commentfontcolour);
 
 		$outline_colour = $outlinecol->gdallocate($image);
+
+		// SET link_look bar: no outline, unless the look sets one
+		$bar = $this->look() == 'bar';
+		if ($bar) {
+			$barline = $this->bar_colour('link_bar_outline', null);
+			$outline_colour = $barline === null ? null : myimagecolorallocate($image, $barline[0], $barline[1], $barline[2]);
+		}
 
 		$xpoints = array();
 		$ypoints = array();
@@ -781,6 +865,11 @@ class WeatherMapLink extends WeatherMapItem {
 			);
 		}
 		WeatherMapSvg::$cuts = null;
+
+		// the double tick where the two halves of a traffic bar meet
+		if ($bar && !$oneway) {
+			$this->draw_bar_separator($image, max($link_in_width, $link_out_width));
+		}
 
 		// SET link_flow 1: the paths the viewer moves its spots along
 		$svg = WeatherMapSvg::$active;

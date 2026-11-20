@@ -715,4 +715,14 @@ return [
     // F31: the basemap one click away
     'Basemap (web map)' => 'Fond de carte (web)',
     'A web map such as OpenStreetMap under the map: Map properties > Basemap' => 'Un fond de carte web, comme OpenStreetMap, sous la carte : Propriétés de la carte > Fond de carte',
+
+    // F41: traffic bar link look
+    'Traffic bar' => 'Barre de trafic',
+    'A link can have a look of its own in its inspector.' => 'Un lien peut avoir sa propre apparence dans son inspecteur.',
+    'Bar separator' => 'Séparateur de la barre',
+    'Bar outline' => 'Contour de la barre',
+    'Arrows: the usual arrow heads. Traffic bar: a thick bar with square ends and no heads, each half in the colour of the load of its direction, split by a double tick. Its width is the link width (12 is a good bar).' => 'Flèches : les pointes de flèche habituelles. Barre de trafic : une barre épaisse aux bouts carrés, sans pointes, chaque moitié de la couleur de la charge de son sens, séparées par une double coche. Sa largeur est celle du lien (12 fait une bonne barre).',
+    'The double tick where the two halves of a traffic bar meet; none hides it. A one-way link has none.' => 'La double coche où se rejoignent les deux moitiés d’une barre de trafic ; aucune la masque. Un lien à sens unique n’en a pas.',
+    'Separator' => 'Séparateur',
+    'Bar' => 'Barre',
 ];

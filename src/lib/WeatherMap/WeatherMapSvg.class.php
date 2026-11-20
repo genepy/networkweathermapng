@@ -28,6 +28,9 @@ class WeatherMapSvg {
 	var $at = null;
 	// the geometry of the link arrow being drawn (see linkShape)
 	var $shape = null;
+
+	/** The traffic bar separator stroke being drawn (separator()), null otherwise */
+	var $sep = null;
 	/** Whether a saturated link was drawn: the pulse style is then added */
 	var $hasHot = false;
 	var $options = array();
@@ -362,6 +365,27 @@ class WeatherMapSvg {
 	}
 
 	/**
+	 * Record the next polygon as a stroke of a traffic bar separator:
+	 * [x, y, ux, uy, w, move, side], the split point, the direction of the
+	 * link, the half width of the bar, how far the split moves along the
+	 * link as the nodes shrink, and which of the two strokes. The viewer
+	 * draws it again thinner deep in a basemap. Null alone forgets it.
+	 */
+	static function separator($image, $sep = null) {
+		$svg = self::$active;
+		if (!$svg) {
+			return;
+		}
+		$svg->sep = null;
+		if ($image === null || !$svg->accepts($image) || !is_array($sep)) {
+			return;
+		}
+		$sep[0] += $svg->offset[0];
+		$sep[1] += $svg->offset[1];
+		$svg->sep = $sep;
+	}
+
+	/**
 	 * @param array|null $box x, y, width, height of the picture on the canvas
 	 *                        (WeatherMap::background_box), null for its natural place
 	 */
@@ -388,6 +412,7 @@ class WeatherMapSvg {
 			'at'     => $this->labelAt(),
 			'points' => $points,
 			'shape'  => $this->shape,
+			'sep'    => $this->sep,
 			'fill'   => $filled ? $rgba : null,
 			'stroke' => $filled ? null : $rgba,
 		);
@@ -607,6 +632,12 @@ class WeatherMapSvg {
 				$pts = array();
 				for ($i = 0; $i + 1 < count($item['points']); $i += 2) {
 					$pts[] = self::num($item['points'][$i]) . ',' . self::num($item['points'][$i + 1]);
+				}
+				if (!empty($item['sep'])) {
+					// a stroke of a traffic bar separator (geo-view.js draws it thinner)
+					return sprintf('<polygon class="wm-link-sep" pointer-events="none" points="%s"%s data-sep="%s"/>', implode(' ', $pts),
+						self::paint('fill', $item['fill']),
+						implode(' ', array_map(function ($v) { return rtrim(rtrim(sprintf('%.4F', $v), '0'), '.'); }, $item['sep'])));
 				}
 				return sprintf('<polygon%s points="%s"%s%s%s/>', self::roleClass($item), implode(' ', $pts),
 					$item['fill'] ? self::paint('fill', $item['fill']) : ' fill="none"',

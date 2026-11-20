@@ -679,6 +679,43 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('traffic_group', (string) file_get_contents($this->file), 'no group: no hint');
     }
 
+    /** F41: the traffic bar look, for the whole map and per link, with its colours */
+    public function testTrafficBarLook(): void
+    {
+        $model = MapEditor::model($this->editor->load());
+        $this->assertSame('classic', $model['map']['props']['link_look']);
+        $this->assertSame('#ffffff', $model['map']['props']['link_bar_separator']);
+        $this->assertSame('none', $model['map']['props']['link_bar_outline']);
+
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_look' => 'bar', 'link_bar_separator' => '#FFCC00']]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringContainsString('SET link_look bar', $conf);
+        $this->assertStringContainsString('SET link_bar_separator #ffcc00', $conf);
+        $map = $this->editor->load();
+        $this->assertSame('bar', $map->links['core-paris']->look(), 'every link follows the map');
+        $links = array_column(MapEditor::model($map)['links'], null, 'name');
+        $this->assertSame('bar', $links['core-paris']['look']);
+        $this->assertSame('#ffcc00', $links['core-paris']['bar_separator']);
+
+        // one link keeps the arrows, another has its own outline
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['look' => 'classic']]]);
+        $this->assertSame('classic', $this->editor->load()->links['core-paris']->look());
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['look' => 'bar', 'bar_outline' => '#000000']]]);
+        $map = $this->editor->load();
+        $this->assertSame('bar', $map->links['core-paris']->look());
+        $this->assertSame([0, 0, 0], $map->links['core-paris']->bar_colour('link_bar_outline', null));
+        $this->assertStringNotContainsString("\tSET link_look", (string) file_get_contents($this->file), 'the same look as the map is not written on the link');
+
+        // back to the arrows: no hints left on the map
+        $this->editor->apply([['op' => 'set_map', 'props' => ['link_look' => 'classic', 'link_bar_separator' => '#ffffff']]]);
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringNotContainsString('SET link_look', $conf);
+        $this->assertStringNotContainsString('link_bar_separator', $conf);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['look' => 'ribbon']]]);
+    }
+
     /** The Night theme: map colours, scale and the DEFAULT labels, in one batch; own values stay */
     public function testNightThemeInOneStep(): void
     {
