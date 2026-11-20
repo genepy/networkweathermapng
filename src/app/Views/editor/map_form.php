@@ -3,6 +3,7 @@
  * New map and Duplicate. The settings of an existing map are in the Map
  * settings panel (editor/map_settings.php).
  * @var string $action create or duplicate @var string $return the page to go back to
+ * @var bool $webMap New map can start on a web map (Basemap::starterAllowed())
  */
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
 $targets = ['create' => '/editor/maps/create', 'duplicate' => '/editor/maps/duplicate/'];
@@ -39,10 +40,14 @@ $name = match ($action) {
             <label for="template"><?= e__('Start from') ?></label>
             <select id="template" name="template" class="form-control">
                 <option value="0"><?= e__('An empty map') ?></option>
+                <?php if (!empty($webMap)): ?>
+                <option value="web"><?= e__('An empty map on a web map (OpenStreetMap)') ?></option>
+                <?php endif; ?>
                 <?php foreach ($maps as $m): ?>
                 <option value="<?= (int) $m['id'] ?>"><?= e__('A copy of :name', ['name' => $m['name']]) ?></option>
                 <?php endforeach; ?>
             </select>
+            <small class="text-muted" data-web-only hidden><?= e__('The editor opens on Map properties > Basemap: pick the area and the zoom, or another web map. Nodes you give a location sit on their point.') ?></small>
             <?php if ($auth->isAdmin()): ?>
             <small class="text-muted"><?= e__('To bring maps from another Weathermap, use') ?> <a href="/admin/migration"><?= e__('Migration') ?></a>.</small>
             <?php endif; ?>
@@ -73,7 +78,11 @@ $name = match ($action) {
 (function () {
     var t = document.getElementById('template');
     var size = document.querySelector('[data-empty-only]');
-    t.addEventListener('change', function () { size.hidden = t.value !== '0'; });
+    var web = document.querySelector('[data-web-only]');
+    t.addEventListener('change', function () {
+        size.hidden = t.value !== '0' && t.value !== 'web';
+        web.hidden = t.value !== 'web';
+    });
 })();
 </script>
 <?php endif; ?>

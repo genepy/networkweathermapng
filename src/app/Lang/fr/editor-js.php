@@ -697,4 +697,7 @@ return [
     'Traffic group' => 'Groupe de trafic',
     'none, or Peering, Transit...' => 'aucun, ou Peering, Transit…',
     'Links of the same group get their own tab in the total traffic graph of the live view, next to Total.' => 'Les liens d’un même groupe ont leur propre onglet dans le graphique du trafic total de la vue en direct, à côté de Total.',
+    // F31: the basemap one click away
+    'Basemap (web map)' => 'Fond de carte (web)',
+    'A web map such as OpenStreetMap under the map: Map properties > Basemap' => 'Un fond de carte web, comme OpenStreetMap, sous la carte : Propriétés de la carte > Fond de carte',
 ];

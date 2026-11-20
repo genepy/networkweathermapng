@@ -236,6 +236,16 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .pb-tile.on { outline: 2px solid var(--accent); outline-offset: 1px; }
 .pb-manage { width: 100%; margin: 2px 0 6px; padding: 4px 6px; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px; cursor: pointer; }
 .pb-manage:hover { border-color: var(--accent); }
+/* F31: one click to the Basemap section, from the Add panel, the layers menu and the background library */
+.pb-basemap, #layers-panel .layers-basemap, #bg-dialog .bg-basemap-open {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; font: inherit; font-size: 12px; cursor: pointer;
+    width: auto; height: auto; color: var(--text); background: var(--panel-2); border: 1px solid var(--field-border); border-radius: 4px;
+}
+.pb-basemap { display: flex; width: 100%; margin: 0 0 6px; }
+.pb-basemap:hover, #layers-panel .layers-basemap:hover, #bg-dialog .bg-basemap-open:hover { border-color: var(--accent); }
+.pb-basemap svg.i, #layers-panel .layers-basemap svg.i, #bg-dialog .bg-basemap-open svg.i, .basemap-pick svg.i { flex: 0 0 auto; width: 16px; height: 16px; }
+#layers-panel .layers-basemap { margin: 0 0 2px 22px; white-space: nowrap; }
+#bg-dialog .bg-basemap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .hint { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
 .palette-item {
     display: flex; align-items: center; gap: 8px;

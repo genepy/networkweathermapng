@@ -6,6 +6,7 @@ namespace Tests\App;
 
 use App\Core\Config;
 use App\Core\Database;
+use App\Services\Basemap;
 use App\Services\MapService;
 use App\Services\Migration\MigrationStore;
 use PHPUnit\Framework\TestCase;
@@ -43,6 +44,19 @@ final class MapServiceTest extends TestCase
         $this->assertStringContainsString('WIDTH 100', $conf);
 
         $this->assertSame('reseau_coeur_paris.conf', $this->maps->getMap($this->maps->createMap(['name' => 'Réseau cœur Paris']))['config_file']);
+    }
+
+    public function testNewMapOnAWebMap(): void
+    {
+        // F31: New map > On a web map starts with the starter basemap
+        $conf = (string) $this->maps->getMapConfig($this->maps->createMap(['name' => 'On tiles', 'basemap' => true]));
+        foreach (Basemap::STARTER as $hint => $value) {
+            $this->assertStringContainsString("SET {$hint} {$value}\n", $conf);
+        }
+        $this->assertTrue(Basemap::starterAllowed());
+
+        $plain = (string) $this->maps->getMapConfig($this->maps->createMap(['name' => 'Plain']));
+        $this->assertStringNotContainsString('SET basemap', $plain);
     }
 
     public function testRename(): void

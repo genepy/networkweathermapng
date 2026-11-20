@@ -374,11 +374,18 @@ NODE paris
 A node with `SET geo` is placed on its point whenever the map is read, so
 changing the centre or the zoom moves it with the basemap; nodes without it
 keep their position. In the editor: *Map properties > Basemap* (presets,
-addresses, centre, zoom, *Frame the located nodes*), and *Location* in the
+addresses, centre, zoom, *Frame the located nodes*), one click away from
+the *Basemap* row of the map panel (under *Background*), *⋯ > Basemap (web
+map)*, the *Layers* menu, the *Backgrounds* fold of the Add panel, the
+background library and Ctrl+K "basemap"; and *Location* in the
 node panel (latitude and longitude, *Locate where it is*, *Remove the
 location*). Nodes added on a basemap are located where they are dropped;
 moving a located node moves its point. The *Background* layer switch hides
-the tiles while editing.
+the tiles while editing. To start a map on a web map, pick *New map > Start
+from > An empty map on a web map (OpenStreetMap)*: the map gets the
+OpenFreeMap basemap (light and dark) and the editor opens on its *Basemap*
+section to choose the area and the zoom (offered when `BASEMAP_SERVERS`
+allows `https://tiles.openfreemap.org`).
 
 The tiles are drawn by the visitor's browser with MapLibre GL JS (shipped,
 loaded only for these maps; needs WebGL) and only from the servers of
@@ -585,7 +592,7 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   undoes it. The title stays: it shows the map name.
 - **Edit**: the right panel changes every selected item at once.
 - **Map properties**: with nothing selected, the right panel shows the map:
-  name, size, background, then sections that fold, each with its value on
+  name, size, background, basemap (a click opens its section), then sections that fold, each with its value on
   its row (*Background colour and theme*, *Title*, *Link load legend*,
   *Link colours*, *Link speed legend*, *Timestamp*, *Link defaults*,
   *Basemap*, *Fonts*). *Link load legend*, *Link speed legend* and

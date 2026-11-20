@@ -19,6 +19,8 @@ re-explore the repository. Keep it short and up to date.
 - Editor (SVG): `SvgEditorController` + `src/app/Views/editor/svg.php`,
   `src/app/Services/Editor/MapEditor.php` (config edits),
   `ConfigHistory.php` (savepoints), `src/public/assets/js/editor-*.js`.
+  Map properties sections live in `editor-mapprops.js`; `ed.openMapProperties('<id>')`
+  or `/editor/edit/<id>?open=<section>` opens one (e.g. `basemap`).
 - Kiosk / cycle: `KioskService`, `Views/maps/cycle.php`, `assets/js/kiosk.js`,
   admin page `Views/admin/kiosk.php`.
 - Maps page: `MapManagementController`, `Views/maps/index.php`, `maplist.js`.

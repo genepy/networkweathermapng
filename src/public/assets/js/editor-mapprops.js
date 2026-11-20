@@ -767,10 +767,33 @@
         }
     }
 
+    /** The Basemap section, from the layers menu, the Add panel, the background library or Ctrl+K */
+    function openBasemap() {
+        var layers = document.getElementById('layers-panel');
+        if (layers && !layers.hidden) {
+            layers.hidden = true;
+            var btn = document.querySelector('[data-cmd="layers"]');
+            if (btn) { btn.setAttribute('aria-expanded', 'false'); }
+        }
+        open('basemap');
+    }
+
     ed.commands['map-properties'] = function () { open(); };
+    ed.commands.basemap = openBasemap;
     ed.openMapProperties = open;
     ed.mapSections = sections;
     ed.mapSection = section;
     // the panel was drawn before this script was loaded
     if (ed.state.model) { ed.renderInspector(); }
+
+    // ?open=basemap (New map > On a web map): the Basemap section once the map is loaded
+    var ask = new URLSearchParams(location.search).get('open');
+    if (ask && SECTIONS.some(function (s) { return s[0] === ask; })) {
+        var once = function () {
+            document.removeEventListener('wm-editor-render', once);
+            open(ask);
+            history.replaceState(null, '', location.pathname + location.hash);
+        };
+        if (ed.state.model) { setTimeout(once, 0); } else { document.addEventListener('wm-editor-render', once); }
+    }
 })();

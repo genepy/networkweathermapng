@@ -230,6 +230,11 @@
         evt.stopPropagation();
     });
     fileInput.addEventListener('change', upload);
+    // a web map under the map is not a picture: the Basemap section of the map properties
+    dialog.querySelector('.bg-basemap-open').addEventListener('click', function () {
+        dialog.close();
+        if (ed.commands.basemap) { ed.commands.basemap(); }
+    });
     addLabel.addEventListener('keydown', function (evt) {
         if (evt.key === 'Enter' || evt.key === ' ') {
             fileInput.click();

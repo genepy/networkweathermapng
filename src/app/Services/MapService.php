@@ -1339,6 +1339,15 @@ class MapService
         // follow curved links and the SVG draws the same letters as the PNG
         $fontRegular = self::DEFAULT_FONT;
         $fontBold = self::DEFAULT_FONT_BOLD;
+
+        // New map > On a web map: the starter basemap under the canvas
+        $basemap = '';
+        if (!empty($data['basemap'])) {
+            $basemap = "\n# Web map under the map (editor: Map properties > Basemap)\n";
+            foreach (Basemap::STARTER as $hint => $value) {
+                $basemap .= "SET {$hint} {$value}\n";
+            }
+        }
         
         return <<<CONFIG
 # WeatherMap Configuration
@@ -1378,6 +1387,7 @@ SCALE DEFAULT 85 100  255 0 0
 
 # Map items (Add panel of the editor): the traffic legend card
 SET box_1 legend 10 10
+{$basemap}
 
 # Default node settings
 NODE DEFAULT
