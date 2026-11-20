@@ -536,6 +536,11 @@ class MapService
                 // the graph of the total traffic boxes: the recorded totals of
                 // the last day, or a demo day for a map of static data (F28)
                 if (\WeatherMapBoxes::wantsSeries($wmap)) {
+                    $wmap->box_series_labels = [
+                        'p95' => __('95th percentile'),
+                        'peak' => __('Peak'),
+                        'period' => __('Last :hours h', ['hours' => 24]),
+                    ];
                     $wmap->box_series = $this->recordedTotals($id);
                     if (!$this->isRecorded($id) && TotalTrafficSeries::staticOnly(TotalTrafficSeries::mapTargets($wmap))) {
                         $total = self::linkTotals($wmap);
@@ -849,6 +854,11 @@ class MapService
                 // left out of the total traffic of the viewer's side panel
                 $item['total'] = false;
             }
+            $group = TotalTrafficSeries::groupOf($link);
+            if ($group !== '') {
+                // its tab in the total traffic graph (SET traffic_group)
+                $item['group'] = $group;
+            }
             $speed = self::linkSpeed($link);
             if ($speed !== null) {
                 // the speed badge of the hover card: [in, out] in bit/s
@@ -948,7 +958,7 @@ class MapService
      *
      * @return array{in: float|null, out: float|null, links: int}
      */
-    public static function linkTotals(\WeatherMap $wmap): array
+    public static function linkTotals(\WeatherMap $wmap, ?string $group = null): array
     {
         $items = [];
         foreach ($wmap->links as $link) {
@@ -960,9 +970,10 @@ class MapService
                 'in' => is_numeric($link->bandwidth_in ?? null) ? (float) $link->bandwidth_in : null,
                 'out' => is_numeric($link->bandwidth_out ?? null) ? (float) $link->bandwidth_out : null,
                 'total' => self::countsInTotal($link),
+                'group' => TotalTrafficSeries::groupOf($link),
             ];
         }
-        return self::trafficTotal($items);
+        return self::trafficTotal($items, $group);
     }
 
     /** Whether a link counts in the total traffic: always, unless SET traffic_total 0 */
@@ -976,17 +987,22 @@ class MapService
      * The total traffic of a map: the sum of the IN and OUT rates (bits per
      * second) of its links that count in it ("total" => false leaves a link
      * out), from summary items. In and out are null when no link has data.
+     * With a group, the sum of the links of that group (SET traffic_group),
+     * whether they count in the total or not.
      *
      * @param array<string, mixed> $items
      * @return array{in: float|null, out: float|null, links: int}
      */
-    public static function trafficTotal(array $items): array
+    public static function trafficTotal(array $items, ?string $group = null): array
     {
         $in = null;
         $out = null;
         $links = 0;
         foreach ($items as $item) {
-            if (!is_array($item) || ($item['kind'] ?? '') !== 'link' || ($item['total'] ?? true) === false) {
+            if (!is_array($item) || ($item['kind'] ?? '') !== 'link') {
+                continue;
+            }
+            if ($group === null ? ($item['total'] ?? true) === false : (string) ($item['group'] ?? '') !== $group) {
                 continue;
             }
             $hasIn = is_numeric($item['in'] ?? null);
@@ -1003,6 +1019,26 @@ class MapService
             }
         }
         return ['in' => $in, 'out' => $out, 'links' => $links];
+    }
+
+    /**
+     * The link groups of summary items (SET traffic_group), sorted, each
+     * once
+     *
+     * @param array<string, mixed> $items
+     * @return list<string>
+     */
+    public static function trafficGroups(array $items): array
+    {
+        $groups = [];
+        foreach ($items as $item) {
+            if (is_array($item) && ($item['kind'] ?? '') === 'link' && (string) ($item['group'] ?? '') !== '') {
+                $groups[(string) $item['group']] = true;
+            }
+        }
+        $names = array_map('strval', array_keys($groups));
+        natcasesort($names);
+        return array_values($names);
     }
 
     /**

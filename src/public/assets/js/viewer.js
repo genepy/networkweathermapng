@@ -1335,7 +1335,12 @@
     // Side panel: sites, total traffic, legend
 
     const PANEL_KEY = 'wmv-panel';
-    const P = {open: {}, rows: {}, hover: null, totals: null, totalsDemo: false, totalsAt: 0, totalsBusy: false, total: null};
+    const P = {
+        open: {}, rows: {}, hover: null, total: null,
+        // the total traffic graph (F29): its answer from /map/{id}/totals, for which period and group
+        totals: null, totalsDemo: false, totalsAt: 0, totalsBusy: false, totalsKey: '',
+        period: storedPeriod(), group: '', groups: [], periods: null, stats: null, aggregated: false
+    };
     // where the total traffic graph comes from: recorded, demo or none (TotalTrafficSeries.php)
     const totalsSource = root.dataset.totals || 'none';
 
@@ -1628,6 +1633,45 @@
     }
 
     // ---- Total traffic ----
+    // Nine IX style card (F29): tabs for Total and the link groups (SET
+    // traffic_group), a period switch (1 day, 1 week, 1 month, the ones
+    // without history greyed out), IN above and OUT below the line, the
+    // 95th percentile and peak of the period, and a click on the graph
+    // opens it larger (WM.trafficPanel, drag to zoom in).
+
+    // (storedPeriod() runs when P is made, before these lines: no constants in it)
+    const PERIOD_KEY = 'wmv-total-period';
+
+    function storedPeriod() {
+        try {
+            const v = localStorage.getItem('wmv-total-period');
+            return v === 'week' || v === 'month' ? v : 'day';
+        } catch (e) { return 'day'; }
+    }
+
+    function periodText(p) {
+        return p === 'week' ? t('1 week') : p === 'month' ? t('1 month') : t('1 day');
+    }
+
+    /** A group name as a tab shows it: its first letter in capitals */
+    function groupText(g) {
+        return g === '' ? t('Total') : g.charAt(0).toLocaleUpperCase() + g.slice(1);
+    }
+
+    /** The traffic now of the links of a group, from the items of the map (as MapService::trafficTotal) */
+    function groupNow(group) {
+        let vin = null, vout = null, links = 0;
+        Object.keys(S.items).forEach(function (id) {
+            const it = S.items[id];
+            if (!it || it.kind !== 'link' || (it.group || '') !== group) return;
+            const hasIn = typeof it.in === 'number', hasOut = typeof it.out === 'number';
+            if (!hasIn && !hasOut) return;
+            links++;
+            if (hasIn) vin = (vin || 0) + it.in;
+            if (hasOut) vout = (vout || 0) + it.out;
+        });
+        return {in: vin, out: vout, links: links};
+    }
 
     function showTotal(total) {
         P.total = total || null;
@@ -1638,32 +1682,65 @@
             return;
         }
         sec.hidden = false;
-        sec.querySelector('.wmv-total-in dd').textContent = rate(total.in);
-        sec.querySelector('.wmv-total-out dd').textContent = rate(total.out);
-        sec.querySelector('.wmv-total-links').textContent = total.links === 1 ? t('1 link') : fmt(':n links', {n: total.links});
+        showNow();
         loadTotals();
         drawTotals();
     }
 
+    /** IN and OUT now, and the link count, of the tab shown */
+    function showNow() {
+        const sec = root.querySelector('.wmv-total');
+        const now = P.group === '' ? P.total : groupNow(P.group);
+        if (!sec || !now) return;
+        sec.querySelector('.wmv-total-in dd').textContent = rate(now.in);
+        sec.querySelector('.wmv-total-out dd').textContent = rate(now.out);
+        sec.querySelector('.wmv-total-links').textContent = now.links === 1 ? t('1 link') : fmt(':n links', {n: now.links});
+    }
+
+    function totalsQuery() {
+        return 'period=' + encodeURIComponent(P.period) + (P.group ? '&group=' + encodeURIComponent(P.group) : '');
+    }
+
     /**
-     * The graph data, at most once per refresh interval: the recorded
-     * frames, or a demo day for a map of static data (data-totals, see
-     * TotalTrafficSeries.php). Without either, a note says how to get it.
+     * The graph data of the period and group shown, again at most once per
+     * refresh interval: the recorded frames, or a demo period for a map of
+     * static data (data-totals, see TotalTrafficSeries.php). Without
+     * either, a note says how to get it.
      */
     function loadTotals() {
         if (!panel || !inView(root.querySelector('.wmv-total')) || P.totalsBusy) return;
         if (totalsSource === 'none') return;
-        if (P.totals && Date.now() - P.totalsAt < refreshMs) return;
+        const key = totalsQuery();
+        if (P.totals && P.totalsKey === key && Date.now() - P.totalsAt < refreshMs) return;
         P.totalsBusy = true;
-        fetch('/map/' + mapId + '/totals', {cache: 'no-store', credentials: 'same-origin'})
+        fetch('/map/' + mapId + '/totals?' + key, {cache: 'no-store', credentials: 'same-origin'})
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 P.totals = data && Array.isArray(data.frames) ? data.frames : [];
                 P.totalsDemo = !!data && data.source === 'demo';
+                P.periods = data && data.periods ? data.periods : null;
+                P.groups = data && Array.isArray(data.groups) ? data.groups : [];
+                P.stats = data && data.stats ? data.stats : null;
+                P.aggregated = !!(data && data.aggregated);
                 P.totalsAt = Date.now();
+                P.totalsKey = key;
+                if (data && typeof data.group === 'string' && data.group !== P.group) {
+                    // the group is gone from the map: back to the total
+                    P.group = data.group;
+                    P.totalsKey = totalsQuery();
+                    showNow();
+                }
+                if (P.periods && !P.periods[P.period] && P.period !== 'day') {
+                    // not enough history for this period (any more): back to a day
+                    P.period = 'day';
+                    P.totalsAt = 0;
+                    P.totalsBusy = false;
+                    loadTotals();
+                    return;
+                }
                 drawTotals();
             })
-            .catch(function () { P.totals = []; P.totalsAt = Date.now(); })
+            .catch(function () { P.totals = []; P.totalsAt = Date.now(); P.totalsKey = key; })
             .finally(function () { P.totalsBusy = false; });
     }
 
@@ -1673,23 +1750,64 @@
         return v[Math.min(v.length - 1, Math.ceil(p * v.length) - 1)];
     }
 
-    /** IN above the line, OUT below it, over the recorded hours; peak and 95th percentile */
+    /** The tabs Total and the link groups; none without groups */
+    function drawTotalTabs(sec) {
+        const tabs = sec.querySelector('.wmv-total-tabs');
+        if (!tabs) return;
+        const names = [''].concat(P.groups);
+        tabs.hidden = names.length < 2;
+        const sig = names.join('\n') + '\n' + P.group;
+        if (tabs.dataset.sig === sig) return;
+        tabs.dataset.sig = sig;
+        tabs.replaceChildren.apply(tabs, names.map(function (g) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.setAttribute('role', 'tab');
+            b.dataset.group = g;
+            b.textContent = g === '' ? (tabs.dataset.total || t('Total')) : groupText(g);
+            b.setAttribute('aria-selected', g === P.group ? 'true' : 'false');
+            b.tabIndex = g === P.group ? 0 : -1;
+            return b;
+        }));
+    }
+
+    /** The period switch: the period shown pressed, the ones without enough history greyed out */
+    function drawPeriods(sec) {
+        const box = sec.querySelector('.wmv-total-periods');
+        if (!box) return;
+        box.hidden = totalsSource === 'none' || !P.periods;
+        box.querySelectorAll('[data-period]').forEach(function (b) {
+            const p = b.getAttribute('data-period');
+            const ok = !P.periods || !!P.periods[p];
+            b.setAttribute('aria-pressed', p === P.period ? 'true' : 'false');
+            b.disabled = !ok;
+            b.title = ok ? '' : (box.dataset.short || '');
+        });
+    }
+
+    /** IN above the line, OUT below it, over the period shown; its 95th percentile and peak */
     function drawTotals() {
         if (!panel) return;
         const sec = root.querySelector('.wmv-total');
         const graph = sec.querySelector('.wmv-total-graph');
+        const plot = sec.querySelector('.wmv-total-plot');
         const stats = sec.querySelector('.wmv-total-stats');
+        const foot = sec.querySelector('.wmv-total-foot');
+        drawTotalTabs(sec);
+        drawPeriods(sec);
         const frames = (P.totals || []).filter(function (f) { return f[1] !== null || f[2] !== null; });
         if (frames.length < 2) {
             // an <svg> has no hidden property: set the attribute
             graph.setAttribute('hidden', '');
             stats.hidden = true;
+            foot.hidden = true;
+            zoomable(plot, false);
             // why there is no graph: recording is off, or it has only just started
             showTotalsNote(totalsSource === 'none' ? 'off' : (totalsSource === 'recorded' && P.totals ? 'wait' : null));
             return;
         }
         showTotalsNote(null);
-        const W = 260, H = 64, mid = H / 2;
+        const W = 260, GH = 64, mid = GH / 2;
         const ins = frames.map(function (f) { return f[1] || 0; });
         const outs = frames.map(function (f) { return f[2] || 0; });
         const top = Math.max.apply(null, ins.concat(outs)) || 1;
@@ -1712,21 +1830,118 @@
         if (H_on()) {
             // the frame shown during the playback
             const at = H.frames[H.i];
-            if (at >= t0 && at <= t1) parts.push(mk('wmv-total-now-mark', 'M' + x(at).toFixed(1) + ' 0 V' + H));
+            if (at >= t0 && at <= t1) parts.push(mk('wmv-total-now-mark', 'M' + x(at).toFixed(1) + ' 0 V' + GH));
         }
         graph.replaceChildren.apply(graph, parts);
-        const hours = Math.max(1, Math.round((t1 - t0) / 3600));
-        graph.setAttribute('aria-label', fmt('Total traffic over the last :hours h, IN above the line and OUT below', {hours: hours}));
+        graph.setAttribute('aria-label', fmt('Total traffic over :period, IN above the line and OUT below', {period: periodText(P.period)}));
         graph.removeAttribute('hidden');
-        const peakIn = Math.max.apply(null, ins), peakOut = Math.max.apply(null, outs);
+        zoomable(plot, true);
+        // worked out by the server on every point of the period, before they are averaged down
+        const st = P.stats || {};
+        const val = function (dir, key, values, p) {
+            return st[dir] && typeof st[dir][key] === 'number' ? st[dir][key] : (p === 1 ? Math.max.apply(null, values) : percentile(values, p));
+        };
         stats.replaceChildren.apply(stats, []
-            .concat(statLine(t('Peak'), peakIn, peakOut))
-            .concat(statLine(t('95th percentile'), percentile(ins, 0.95), percentile(outs, 0.95)))
-            .concat([cell('wmv-total-span', P.totalsDemo
-                ? fmt('Demo data, last :hours h', {hours: hours})
-                : fmt('Last :hours h', {hours: hours}))]));
+            .concat(statLine(t('95th percentile'), val('in', 'p95', ins, 0.95), val('out', 'p95', outs, 0.95)))
+            .concat(statLine(t('Peak'), val('in', 'peak', ins, 1), val('out', 'peak', outs, 1))));
         stats.hidden = false;
+        const line = [];
+        if (P.totalsDemo) line.push(t('Demo data'));
+        if (P.aggregated) line.push(plot.dataset.zoom ? t('Aggregated data, click to zoom') : t('Aggregated data'));
+        else if (plot.dataset.zoom) line.push(t('Click to zoom'));
+        foot.textContent = line.join(' · ');
+        foot.hidden = !line.length;
     }
+
+    /** The graph opens larger on a click, outside the kiosk */
+    function zoomable(plot, on) {
+        if (!plot || !plot.dataset.zoom) return;
+        if (on) {
+            plot.setAttribute('role', 'button');
+            plot.tabIndex = 0;
+            plot.title = plot.dataset.zoom;
+            plot.setAttribute('aria-label', plot.dataset.zoom);
+        } else {
+            plot.removeAttribute('role');
+            plot.removeAttribute('tabindex');
+            plot.removeAttribute('title');
+            plot.removeAttribute('aria-label');
+        }
+    }
+
+    let totalZoom = null;   // the WM.trafficPanel of the zoomed graph
+
+    /** The graph of the tab and period shown, larger, in a dialog: drag across it to zoom in */
+    function openTotalZoom() {
+        const dlg = root.querySelector('.wmv-total-dialog');
+        if (!dlg || !window.WM || !WM.trafficPanel || typeof dlg.showModal !== 'function') return;
+        dlg.querySelector('h2').textContent = t('Total traffic') + (P.group ? ' · ' + groupText(P.group) : '');
+        const box = dlg.querySelector('.wmv-total-dialog-plot');
+        if (totalZoom) totalZoom.clear();
+        totalZoom = WM.trafficPanel(box, {range: P.period});
+        if (!dlg.open) dlg.showModal();
+        totalZoom.show({info: {traffic: '/map/' + mapId + '/totals?format=series' + (P.group ? '&group=' + encodeURIComponent(P.group) : '')}, selection: null});
+    }
+
+    function closeTotalZoom() {
+        const dlg = root.querySelector('.wmv-total-dialog');
+        if (dlg && dlg.open) dlg.close();
+    }
+
+    (function wireTotal() {
+        const sec = root.querySelector('.wmv-total');
+        if (!sec) return;
+        sec.addEventListener('click', function (e) {
+            const tab = e.target.closest('[data-group]');
+            if (tab && sec.contains(tab)) {
+                if (tab.dataset.group === P.group) return;
+                P.group = tab.dataset.group;
+                showNow();
+                drawTotalTabs(sec);
+                loadTotals();
+                return;
+            }
+            const per = e.target.closest('[data-period]');
+            if (per && sec.contains(per)) {
+                const p = per.getAttribute('data-period');
+                if (per.disabled || p === P.period) return;
+                P.period = p;
+                try { localStorage.setItem(PERIOD_KEY, p); } catch (err) { /* private mode */ }
+                drawPeriods(sec);
+                loadTotals();
+                return;
+            }
+            const plot = e.target.closest('.wmv-total-plot[role="button"]');
+            if (plot) openTotalZoom();
+        });
+        sec.addEventListener('keydown', function (e) {
+            const plot = e.target.closest && e.target.closest('.wmv-total-plot[role="button"]');
+            if (plot && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                openTotalZoom();
+                return;
+            }
+            // the arrow keys move between the tabs
+            const tab = e.target.closest && e.target.closest('[role="tab"]');
+            if (!tab || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+            const list = Array.prototype.slice.call(tab.parentNode.children);
+            const next = list[(list.indexOf(tab) + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length];
+            e.preventDefault();
+            next.focus();
+            next.click();
+        });
+        const dlg = root.querySelector('.wmv-total-dialog');
+        if (dlg) {
+            dlg.addEventListener('click', function (e) {
+                // the close button, or a click on the backdrop
+                if (e.target === dlg || e.target.closest('[data-act="total-close"]')) closeTotalZoom();
+            });
+            dlg.addEventListener('close', function () {
+                if (totalZoom) totalZoom.clear();
+                totalZoom = null;
+            });
+        }
+    })();
 
     /** The note under the totals: 'off' (recording is off), 'wait' (too few images yet) or null */
     function showTotalsNote(kind) {
@@ -2633,6 +2848,8 @@
     fullscreenChanged();
 
     function keysForMap() {
+        // the zoomed total traffic graph keeps the keys (Esc closes it)
+        if (root.querySelector('.wmv-total-dialog[open]')) return false;
         const a = document.activeElement;
         return isFullscreen() || !a || a === document.body || root.contains(a);
     }

@@ -86,6 +86,25 @@ final class RecordingServiceTest extends TestCase
         $this->assertSame([], $this->recording->totals(9), 'a map without frames');
     }
 
+    /** F29: the totals of each link group (SET traffic_group), and a cache of the older format worked out again */
+    public function testTotalsOfTheLinkGroups(): void
+    {
+        $this->recording->setRecorded(5, true);
+        $t0 = 1_800_000_000;
+        $this->recording->save(5, ['svg' => '<svg/>', 'items' => [
+            'L1' => ['kind' => 'link', 'in' => 10.0, 'out' => 20.0, 'group' => 'peering'],
+            'L2' => ['kind' => 'link', 'in' => 1.0, 'out' => 2.0, 'group' => 'peering', 'total' => false],
+            'L3' => ['kind' => 'link', 'in' => 5.0, 'out' => 5.0, 'group' => 'Circuits'],
+            'L4' => ['kind' => 'link', 'in' => 7.0, 'out' => 7.0],
+        ], 'status' => []], $t0);
+        file_put_contents($this->data . '/recordings/5/totals.json', json_encode([(string) $t0 => [1, 1]]));
+
+        $this->assertSame([[$t0, 22.0, 32.0]], $this->recording->totals(5, $t0 + 60), 'the older cache row is worked out again');
+        $this->assertSame([[$t0, 11.0, 22.0]], $this->recording->totals(5, $t0 + 60, 'peering'), 'a group counts its links left out of the total too');
+        $this->assertSame([[$t0, null, null]], $this->recording->totals(5, $t0 + 60, 'transit'));
+        $this->assertSame(['Circuits', 'peering'], $this->recording->totalGroups(5, $t0 + 60));
+    }
+
     public function testOldFramesAreDeleted(): void
     {
         $this->recording->setRecorded(3, true);

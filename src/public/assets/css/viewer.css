@@ -808,6 +808,70 @@
 .wmv-total-stats > .wmv-total-key { text-align: left; color: var(--wm-text-muted); }
 .wmv-total-stats > .wmv-total-span { grid-column: 1 / -1; text-align: left; color: var(--wm-text-muted); }
 
+/* F29: the total traffic card in the style of the Nine IX one: tabs for
+   the link groups, a period switch, the graph on a soft inset, and a small
+   line under it; a click on the graph opens it larger */
+.wmv-total-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px var(--wm-space-3);
+    border-bottom: 1px solid var(--wm-border);
+}
+.wmv-total-tabs[hidden] { display: none; }
+.wmv-total-tabs [role="tab"] {
+    margin-bottom: -1px;
+    padding: 4px 0 5px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--wm-text-muted);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.wmv-total-tabs [role="tab"]:hover { color: var(--wm-text); }
+.wmv-total-tabs [role="tab"][aria-selected="true"] { color: var(--wm-text); border-bottom-color: var(--wm-accent); }
+.wmv-total-tabs [role="tab"]:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; }
+.wmv-total-periods { align-self: flex-start; }
+.wmv-total-periods[hidden] { display: none; }
+.wmv-total-periods.segmented button { padding: 2px 8px; font-size: 0.92em; }
+.wmv-total-periods.segmented button:disabled,
+.wmv-total-periods.segmented button:disabled:hover { color: var(--wm-disabled); cursor: default; background: none; }
+.wmv-total-plot {
+    padding: 4px;
+    border-radius: var(--wm-radius-control);
+    background: var(--wm-surface-2);
+}
+.wmv-total-plot:not(:has(svg:not([hidden]))) { display: none; }
+.wmv-total-plot[role="button"] { cursor: zoom-in; }
+.wmv-total-plot[role="button"]:hover { box-shadow: inset 0 0 0 1px var(--wm-border); }
+.wmv-total-plot:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; }
+.wmv-total-foot { margin: 0; color: var(--wm-text-muted); font-size: 0.85em; }
+.wmv-total-foot[hidden] { display: none; }
+
+.wmv-total-dialog {
+    width: min(900px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    box-sizing: border-box;
+    padding: 0;
+    border: 1px solid var(--wm-border);
+    border-radius: var(--wm-radius-card);
+    background: var(--wm-surface);
+    color: var(--wm-text);
+    box-shadow: var(--wm-shadow-2);
+}
+.wmv-total-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+.wmv-total-dialog-head {
+    display: flex;
+    align-items: center;
+    gap: var(--wm-space-2);
+    padding: var(--wm-space-3) var(--wm-space-3) 0 var(--wm-space-4);
+}
+.wmv-total-dialog-head h2 { flex: 1; margin: 0; font-size: var(--wm-text-md); font-weight: 600; }
+.wmv-total-dialog-plot { padding: var(--wm-space-2) var(--wm-space-4) var(--wm-space-4); }
+/* the colours of the card: IN in the accent colour, OUT in orange */
+.wmv-total-dialog .wm-traffic { --wm-hc-in: var(--wm-accent); --wm-hc-out: #d9922e; }
+
 .wmv-panel-scale { display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; }
 .wmv-scale-row { display: flex; align-items: center; gap: var(--wm-space-2); }
 .wmv-scale-swatch {

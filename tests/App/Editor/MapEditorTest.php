@@ -617,6 +617,19 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['traffic_total' => 'maybe']]]);
     }
 
+    /** F29: SET traffic_group gives a link its tab in the total traffic graph */
+    public function testTrafficGroup(): void
+    {
+        $links = array_column(MapEditor::model($this->editor->load())['links'], null, 'name');
+        $this->assertSame('', $links['core-paris']['traffic_group'], 'no group by default');
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['traffic_group' => "  Peering \n links "]]]);
+        $this->assertStringContainsString('SET traffic_group Peering links', (string) file_get_contents($this->file), 'one line, spaces folded');
+        $links = array_column(MapEditor::model($this->editor->load())['links'], null, 'name');
+        $this->assertSame('Peering links', $links['core-paris']['traffic_group']);
+        $this->editor->apply([['op' => 'set_link', 'names' => ['core-paris'], 'props' => ['traffic_group' => '']]]);
+        $this->assertStringNotContainsString('traffic_group', (string) file_get_contents($this->file), 'no group: no hint');
+    }
+
     /** The Night theme: map colours, scale and the DEFAULT labels, in one batch; own values stay */
     public function testNightThemeInOneStep(): void
     {

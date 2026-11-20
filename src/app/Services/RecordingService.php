@@ -25,7 +25,8 @@ class RecordingService
     public const MAX_INTERVAL = 60;
     public const DEFAULT_RETENTION = 24;
     public const MIN_RETENTION = 1;
-    public const MAX_RETENTION = 168;
+    // a month and a day, so the total traffic graph can show a month (F29)
+    public const MAX_RETENTION = 744;
 
     private const ALLOWED = 'recording_allowed';
     private const INTERVAL = 'recording_interval';
@@ -149,44 +150,90 @@ class RecordingService
 
     /**
      * The total traffic of each frame kept for a map, oldest first, as
-     * [time, in, out] (bits per second, null without data), for the graph
-     * of the viewer's side panel. Worked out once per frame and kept in
-     * totals.json next to the frames.
+     * [time, in, out] (bits per second, null without data), for the total
+     * traffic graph. With a group, the traffic of the links of that group
+     * (SET traffic_group) instead.
      *
      * @return list<array{0: int, 1: float|null, 2: float|null}>
      */
-    public function totals(int $mapId, ?int $now = null): array
+    public function totals(int $mapId, ?int $now = null, ?string $group = null): array
+    {
+        $out = [];
+        foreach ($this->frameTotals($mapId, $now) as $time => $row) {
+            $pair = $group === null ? $row : ($row[2][$group] ?? [null, null]);
+            $out[] = [$time, self::rateOrNull($pair[0] ?? null), self::rateOrNull($pair[1] ?? null)];
+        }
+        return $out;
+    }
+
+    /**
+     * The link groups found in the frames kept for a map, sorted
+     *
+     * @return list<string>
+     */
+    public function totalGroups(int $mapId, ?int $now = null): array
+    {
+        $groups = [];
+        foreach ($this->frameTotals($mapId, $now) as $row) {
+            foreach (array_keys($row[2]) as $name) {
+                $groups[(string) $name] = true;
+            }
+        }
+        $names = array_map('strval', array_keys($groups));
+        natcasesort($names);
+        return array_values($names);
+    }
+
+    /**
+     * The totals of each frame, by time: [in, out, [group => [in, out]]].
+     * Worked out once per frame and kept in totals.json next to the
+     * frames (rows of an older format are worked out again).
+     *
+     * @return array<int, array{0: mixed, 1: mixed, 2: array<string, array{0: mixed, 1: mixed}>}>
+     */
+    private function frameTotals(int $mapId, ?int $now = null): array
     {
         $file = $this->mapDir($mapId) . '/totals.json';
         $cache = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
         $cache = is_array($cache) ? $cache : [];
-        $out = [];
         $kept = [];
         $changed = false;
         foreach ($this->frames($mapId, $now) as $time) {
             $row = $cache[(string) $time] ?? null;
-            if (!is_array($row) || count($row) !== 2) {
+            if (!is_array($row) || count($row) !== 3 || !is_array($row[2])) {
                 $frame = $this->frame($mapId, $time);
                 if ($frame === null) {
                     continue;
                 }
-                $total = MapService::trafficTotal((array) ($frame['items'] ?? []));
-                $row = [$total['in'], $total['out']];
+                $items = (array) ($frame['items'] ?? []);
+                $total = MapService::trafficTotal($items);
+                $groups = [];
+                foreach (MapService::trafficGroups($items) as $name) {
+                    $g = MapService::trafficTotal($items, $name);
+                    $groups[$name] = [$g['in'], $g['out']];
+                }
+                $row = [$total['in'], $total['out'], $groups];
                 $changed = true;
             }
-            $in = is_numeric($row[0]) ? (float) $row[0] : null;
-            $o = is_numeric($row[1]) ? (float) $row[1] : null;
-            $kept[(string) $time] = [$in, $o];
-            $out[] = [$time, $in, $o];
+            $kept[$time] = [$row[0], $row[1], (array) $row[2]];
         }
         if ($changed || count($kept) !== count($cache)) {
             if (is_dir($this->mapDir($mapId))) {
                 $tmp = $file . '.' . getmypid() . '.tmp';
-                file_put_contents($tmp, (string) json_encode((object) $kept));
+                $json = [];
+                foreach ($kept as $time => $row) {
+                    $json[(string) $time] = [$row[0], $row[1], (object) $row[2]];
+                }
+                file_put_contents($tmp, (string) json_encode((object) $json));
                 rename($tmp, $file);
             }
         }
-        return $out;
+        return $kept;
+    }
+
+    private static function rateOrNull(mixed $v): ?float
+    {
+        return is_numeric($v) ? (float) $v : null;
     }
 
     /** @param array<string, mixed> $frame */

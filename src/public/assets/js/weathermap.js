@@ -665,13 +665,15 @@
      * 1 month, remembered in the browser), the graph and its peak and
      * average. options: {width: function giving the graph width in pixels
      * (else the graph follows the width of the box), changed: called when
-     * the content changed size}. show({info, selection}) draws the traffic
-     * of a link (see wmLoadTraffic), clear() empties the box.
+     * the content changed size, range: the period to start on, instead of
+     * the one remembered, and a period picked is then not remembered}.
+     * show({info, selection}) draws the traffic of a link (see
+     * wmLoadTraffic), clear() empties the box.
      */
     function wmTrafficPanel(box, options) {
         const o = options || {};
         let src = null;
-        let range = wmSavedRange();
+        let range = o.range || wmSavedRange();
         let chart = null;
         let data = null;
         let seq = 0;
@@ -690,7 +692,7 @@
             const r = b.getAttribute('data-range');
             if (r === range) return;
             range = r;
-            wmSaveRange(r);
+            if (!o.range) wmSaveRange(r);
             draw();
         });
 
@@ -776,7 +778,7 @@
         const panel = {
             show: function (source) {
                 src = source;
-                range = wmSavedRange();
+                if (!o.range) range = wmSavedRange();
                 wmPanels.add(panel);
                 draw();
             },

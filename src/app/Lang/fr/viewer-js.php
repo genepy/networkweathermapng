@@ -36,10 +36,8 @@ return [
     // Side panel
     'No site' => 'Sans site',
     'Show :site on the map' => 'Montrer :site sur la carte',
-    'Total traffic over the last :hours h, IN above the line and OUT below' => 'Trafic total sur les dernières :hours h, ENTRANT au-dessus de la ligne et SORTANT en dessous',
     'Peak' => 'Pic',
     '95th percentile' => '95e centile',
-    'Last :hours h' => 'Dernières :hours h',
     // clusters of close sites and the city inset (on a basemap)
     ':n nodes close together: :names' => ':n nœuds rapprochés : :names',
     ':n nodes at the same place' => ':n nœuds au même endroit',
@@ -66,6 +64,12 @@ return [
     'Focus areas' => 'Zones de focus',
     // F15: geographic maps in the editor
     ':group, :n nodes: :names' => ':group, :n nœuds : :names',
-    // F28: the total traffic graph on every map
-    'Demo data, last :hours h' => 'Données de démonstration, dernières :hours h',
+    // F29: the total traffic card in the style of the Nine IX one
+    'Total' => 'Total',
+    'Total traffic' => 'Trafic total',
+    'Total traffic over :period, IN above the line and OUT below' => 'Trafic total sur :period, ENTRANT au-dessus de la ligne et SORTANT en dessous',
+    'Demo data' => 'Données de démonstration',
+    'Aggregated data, click to zoom' => 'Données agrégées, cliquez pour agrandir',
+    'Aggregated data' => 'Données agrégées',
+    'Click to zoom' => 'Cliquez pour agrandir',
 ];
