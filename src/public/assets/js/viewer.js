@@ -571,7 +571,9 @@
                 if (data.status) setBasemap(data.status.basemap || null);
                 setAreas(data.focus || null);
                 installSvg(data.svg, data.items);
-                setPanels(data.panels || null);
+                // the kiosk has a layout of its own when the map sets one (SET kiosk_panels), with a side panel
+                if (kioskFrame && data.kiosk_panels) setPanels(data.kiosk_panels, true);
+                else setPanels(data.panels || null, false);
                 startArea();
                 showState(data.status);
                 if (data.version) S.version = data.version;
@@ -1993,7 +1995,7 @@
         setPanel(stored !== null ? stored === '1' : vpSize().w >= 1100, false);
     }
 
-    // the kiosk has no side panel: its panels are only the ones placed in a corner
+    // the kiosk has a side panel only when the map sets its kiosk panels (SET kiosk_panels)
     if (panel && !kioskFrame) restorePanel();
 
     // ------------------------------------------------------------------
@@ -2006,6 +2008,7 @@
     const D = {
         applied: false,     // the panels were moved from their usual places
         list: null,         // the panels of the map: [{id, position, shown}], null for the usual layout
+        kioskSide: false,   // the kiosk's own layout (SET kiosk_panels): it has a side panel
         docks: {},          // corner => its box
         off: null,          // the box that keeps the hidden panels
         home: null,         // where the update time, the inset and the panel close button sit in the usual layout
@@ -2067,6 +2070,7 @@
         if (h.close) h.close.parent.insertBefore(h.close.el, h.close.next);
         DOCKS.forEach(function (where) { D.docks[where].hidden = true; });
         root.classList.remove('wmv-panels-set', 'wmv-legend-bar-off');
+        kioskSidePanel(false);
         if (panelButton) panelButton.hidden = false;
         D.applied = false;
         if (D.sideEmpty && !kioskFrame) restorePanel();
@@ -2090,8 +2094,8 @@
             let where = p.shown ? p.position : 'off';
             // a phone has no room for cards in the corners: they go in the panel sheet, the update time stays small
             if (phone && where !== 'off' && where !== 'side' && p.id !== 'updated') where = 'side';
-            // no side panel in the kiosk
-            if (where === 'side' && (kioskFrame || !panel)) where = 'off';
+            // no side panel in the kiosk, unless it has its own layout
+            if (where === 'side' && ((kioskFrame && !D.kioskSide) || !panel)) where = 'off';
             if (where === 'off') D.off.appendChild(el);
             else if (where === 'side') side.push(el);
             else D.docks[where].appendChild(el);
@@ -2114,6 +2118,8 @@
         // the small legend bar of the update time, while the legend is in the side panel
         const legend = D.list.filter(function (p) { return p.id === 'legend'; })[0];
         root.classList.toggle('wmv-legend-bar-off', !legend || !legend.shown || legend.position !== 'side' || kioskFrame);
+        // the kiosk's side panel: always open, the map fitted beside it
+        if (kioskFrame) kioskSidePanel(side.length > 0);
         DOCKS.forEach(function (where) { D.docks[where].hidden = !D.docks[where].children.length; });
         // nothing left for the side panel: no panel and no button for it
         if (panel && !kioskFrame) {
@@ -2141,11 +2147,21 @@
         root.style.setProperty('--wmv-dock-bl-h', (bl.hidden ? 0 : bl.offsetHeight) + 'px');
     }
 
-    function setPanels(list) {
+    function setPanels(list, kioskSide) {
         const next = Array.isArray(list) && list.length ? list : null;
-        if (JSON.stringify(next) === JSON.stringify(D.list) && D.applied === !!next) return;
+        if (JSON.stringify(next) === JSON.stringify(D.list) && D.applied === !!next && D.kioskSide === !!kioskSide) return;
         D.list = next;
+        D.kioskSide = !!kioskSide;
         layoutPanels();
+    }
+
+    /** Opens or closes the kiosk's side panel; the map is fitted again in the room left */
+    function kioskSidePanel(open) {
+        if (!kioskFrame || !panel) return;
+        const was = root.classList.contains('wmv-kiosk-side');
+        root.classList.toggle('wmv-kiosk-side', open);
+        setPanel(open, false);
+        if (was !== open && S.el) refit();
     }
 
     window.addEventListener('resize', function () {
@@ -2787,7 +2803,10 @@
     // Window size, fullscreen idle toolbar
 
     let lastVp = vpSize();
-    window.addEventListener('resize', function () {
+    window.addEventListener('resize', refit);
+
+    /** The view after a change of the window, or of the room the kiosk's side panel leaves */
+    function refit() {
         if (!S.el) return;
         const c = {x: (lastVp.w / 2 - S.tx) / S.z, y: (lastVp.h / 2 - S.ty) / S.z};
         lastVp = vpSize();
@@ -2802,7 +2821,7 @@
         // the view of a focus area follows the window
         if (A.view && !S.touched) areaView(A.byId[A.current], false);
         apply();
-    });
+    }
 
     // In fullscreen the controls fade out after 3 s without movement; any
     // movement, touch or key brings them back

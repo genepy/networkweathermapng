@@ -1757,6 +1757,9 @@ class MapEditor
             } elseif ($key === ViewerPanels::HINT) {
                 // which panels the viewer and the kiosk show, and where
                 ViewerPanels::set($map, $value);
+            } elseif ($key === ViewerPanels::KIOSK_HINT) {
+                // the kiosk's layout: the viewer's corners, the viewer's layout or its own
+                ViewerPanels::setKiosk($map, $value);
             } elseif ($key === 'background_sizing') {
                 // the PHP Weathermap 2.0 hint: natural size (image), fit or stretch
                 if (!in_array($value, \WeatherMap::BACKGROUND_SIZINGS, true)) {
@@ -2062,6 +2065,7 @@ class MapEditor
             'basemap_attribution' => (string) ($map->hints['basemap_attribution'] ?? ''),
             'cluster_mode' => Basemap::clusterMode($map),
             'viewer_panels' => ViewerPanels::of($map),
+            'kiosk_panels' => ViewerPanels::kioskModel($map),
         ];
     }
 

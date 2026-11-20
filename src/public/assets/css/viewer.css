@@ -1017,8 +1017,20 @@ body.wmv-noc {
 .wmv-kiosk .wmv-bar,
 .wmv-kiosk .wmv-zoombar,
 .wmv-kiosk > .wmv-status,
-.wmv-kiosk .wmv-panel,
+.wmv-kiosk:not(.wmv-kiosk-side) .wmv-panel,
+.wmv-kiosk [data-act="panel-close"],
 .wmv-kiosk .wmv-minimap { display: none !important; }
+/* the kiosk's own side panel (SET kiosk_panels): on the left, always open,
+   the map fitted in the room beside it */
+.wmv-kiosk-side .wmv-panel {
+    top: var(--wm-space-3);
+    max-height: calc(100% - 2 * var(--wm-space-3));
+    opacity: 1;
+    pointer-events: auto;
+}
+.wmv-kiosk-side .wmv-viewport { left: calc(272px + 2 * var(--wm-space-3)); }
+.wmv-kiosk-side .wmv-dock-top-left,
+.wmv-kiosk-side .wmv-dock-bottom-left { left: calc(272px + 3 * var(--wm-space-3)); }
 /* the panels the map places in a corner (SET viewer_panels) */
 .wmv-kiosk .wmv-dock-top-left,
 .wmv-kiosk .wmv-dock-top-right { top: var(--wm-space-3); }

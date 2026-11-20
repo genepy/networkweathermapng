@@ -21,10 +21,27 @@ namespace App\Services;
  * Without the hint the viewer looks as it always did: the sites, the total
  * traffic and the legend in the side panel, the update time at the bottom
  * left, and the kiosk shows none of them.
+ *
+ * The kiosk has a layout of its own, with the same syntax:
+ *
+ *   SET kiosk_panels total:side legend:bottom-right sites:side:hidden
+ *
+ * or "SET kiosk_panels same" for the viewer's layout. With either one the
+ * kiosk shows a side panel for the panels set to "side". Without it the
+ * kiosk keeps its old behaviour: the viewer's layout, corners only.
  */
 final class ViewerPanels
 {
     public const HINT = 'viewer_panels';
+
+    /** The layout of the kiosk, when it differs from the viewer's corners */
+    public const KIOSK_HINT = 'kiosk_panels';
+
+    /** SET kiosk_panels same: the kiosk uses the viewer's layout, side panel included */
+    public const SAME = 'same';
+
+    /** The kiosk modes the editor offers: corners only (no hint), the viewer's layout, its own */
+    public const KIOSK_MODES = ['corners', 'same', 'own'];
 
     /** The panels, in their default order */
     public const IDS = ['sites', 'total', 'legend', 'updated'];
@@ -56,6 +73,75 @@ final class ViewerPanels
     {
         $panels = self::of($map);
         return self::isDefault($panels) ? null : $panels;
+    }
+
+    /**
+     * What the kiosk uses: its own panels, the viewer's (SET kiosk_panels
+     * same), or null without the hint (the viewer's layout, corners only).
+     *
+     * @return list<array{id: string, position: string, shown: bool}>|null
+     */
+    public static function forKiosk(\WeatherMap $map): ?array
+    {
+        return match (self::kioskMode($map)) {
+            'own' => self::parse(self::kioskHint($map)),
+            'same' => self::of($map),
+            default => null,
+        };
+    }
+
+    /** How the kiosk lays out its panels: corners (no hint), same or own */
+    public static function kioskMode(\WeatherMap $map): string
+    {
+        $hint = strtolower(trim(self::kioskHint($map)));
+        if ($hint === '') {
+            return 'corners';
+        }
+        return $hint === self::SAME ? 'same' : 'own';
+    }
+
+    /**
+     * The kiosk layout for the editor: its mode, and its own panels (the
+     * viewer's while it has none, as a start).
+     *
+     * @return array{mode: string, panels: list<array{id: string, position: string, shown: bool}>}
+     */
+    public static function kioskModel(\WeatherMap $map): array
+    {
+        $mode = self::kioskMode($map);
+        return ['mode' => $mode, 'panels' => $mode === 'own' ? self::parse(self::kioskHint($map)) : self::of($map)];
+    }
+
+    /**
+     * Writes the kiosk layout: 'corners' (or '') removes the hint, 'same'
+     * follows the viewer, a list of panels (or a hint value) is its own.
+     * As the editor sends it: {mode, panels}.
+     */
+    public static function setKiosk(\WeatherMap $map, mixed $value): void
+    {
+        if (is_array($value) && array_key_exists('mode', $value)) {
+            $mode = (string) $value['mode'];
+            if (!in_array($mode, self::KIOSK_MODES, true)) {
+                throw new \InvalidArgumentException(__('Invalid :key: :value', ['key' => self::KIOSK_HINT, 'value' => $mode]));
+            }
+            $value = $mode === 'own' ? ($value['panels'] ?? []) : $mode;
+        }
+        if ($value === null || $value === '' || $value === 'corners') {
+            unset($map->hints[self::KIOSK_HINT]);
+            return;
+        }
+        if (is_string($value) && strtolower(trim($value)) === self::SAME) {
+            $map->add_hint(self::KIOSK_HINT, self::SAME);
+            return;
+        }
+        // its own layout is always written, the usual one included: it has a side panel
+        $map->add_hint(self::KIOSK_HINT, self::tokens(self::normalise($value)));
+    }
+
+    private static function kioskHint(\WeatherMap $map): string
+    {
+        $hint = is_array($map->hints) ? ($map->hints[self::KIOSK_HINT] ?? '') : '';
+        return is_scalar($hint) ? (string) $hint : '';
     }
 
     /**
@@ -129,9 +215,16 @@ final class ViewerPanels
      */
     public static function format(array $panels): string
     {
-        if (self::isDefault($panels)) {
-            return '';
-        }
+        return self::isDefault($panels) ? '' : self::tokens($panels);
+    }
+
+    /**
+     * The hint value of the panels, every one of them written.
+     *
+     * @param list<array{id: string, position: string, shown: bool}> $panels
+     */
+    private static function tokens(array $panels): string
+    {
         return implode(' ', array_map(
             static fn (array $p): string => $p['id'] . ':' . $p['position'] . ($p['shown'] ? '' : ':hidden'),
             $panels
