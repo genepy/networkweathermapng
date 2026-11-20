@@ -973,7 +973,11 @@
             var at = (box.getAttribute('data-at') || '').split(' ').map(Number);
             var k = geo.k;
             if (k < 1 && at.length === 2 && isFinite(at[0]) && isFinite(at[1])) {
-                rect = [at[0] + (rect[0] - at[0]) * k, at[1] + (rect[1] - at[1]) * k, at[0] + (rect[2] - at[0]) * k, at[1] + (rect[3] - at[1]) * k];
+                // and follows its arrows as the nodes shrink (data-move)
+                var mv = (box.getAttribute('data-move') || '').split(' ').map(Number);
+                var mx = mv.length === 2 && isFinite(mv[0]) ? mv[0] * (1 - k) : 0;
+                var my = mv.length === 2 && isFinite(mv[1]) ? mv[1] * (1 - k) : 0;
+                rect = [at[0] + mx + (rect[0] - at[0]) * k, at[1] + my + (rect[1] - at[1]) * k, at[0] + mx + (rect[2] - at[0]) * k, at[1] + my + (rect[3] - at[1]) * k];
             }
             out.push({ dir: dir, w: rect[2] - rect[0], h: rect[3] - rect[1], rect: rect });
         });
@@ -2568,6 +2572,8 @@
 
     function effectivePos(l) {
         if (l.labelpos_in === 75 && l.labelpos_out === 25) {
+            // the engine centres each label on the visible part of its arrow
+            if (l.labelpos_drawn) { return { in: l.labelpos_drawn.in, out: l.labelpos_drawn.out }; }
             return { in: (l.splitpos + 100) / 2, out: l.splitpos / 2 };
         }
         return { in: l.labelpos_in, out: l.labelpos_out };

@@ -2144,6 +2144,11 @@ class MapEditor
                 'splitpos' => (int) $link->splitpos,
                 'labelpos_in' => (int) $link->labeloffset_in,
                 'labelpos_out' => (int) $link->labeloffset_out,
+                // where the engine put the labels, in % of the spine (on the
+                // visible part of each arrow with the default BWLABELPOS)
+                'labelpos_drawn' => is_array($link->drawn_labelpos ?? null)
+                    ? ['in' => round((float) $link->drawn_labelpos[IN], 1), 'out' => round((float) $link->drawn_labelpos[OUT], 1)]
+                    : null,
                 'target' => self::targetsOut($link->targets),
                 'datasource' => (string) ($link->hints['datasource'] ?? ''),
                 'comment_in' => (string) ($link->comments[IN] ?? ''),

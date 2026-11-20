@@ -951,6 +951,27 @@ function calc_arrowsize($width,&$map,$linkname) {
 	return(array($arrowsize, $arrowwidth));
 }
 
+/**
+ * The head of an arrow that has $length along its half of the link: when
+ * the half is too short for the normal head ($size long, $arrowwidth half
+ * wide), the head gets shorter and narrower in the same ratio, so it keeps
+ * its shape instead of looking squashed, but never narrower than the body
+ * ($width, half width). A half shorter than the body is wide ends square
+ * (a 1 px head as wide as the body), like ARROWSTYLE flat. The 1.2 leaves
+ * some body before the head. Returns [size, arrowwidth].
+ */
+function fit_arrow_head($length, $size, $width, $arrowwidth) {
+	if ($size <= 1 || $length >= 1.2 * $size) {
+		return array($size, $arrowwidth);
+	}
+	if ($length < 2 * $width) {
+		return array(min(1, $length / 2), $width);
+	}
+	$fit = $length / 1.2;
+
+	return array($fit, max($width, $arrowwidth * $fit / $size));
+}
+
 /** ARROWSTYLE flat: links end square, without an arrow head */
 function arrow_is_flat(&$map, $linkname) {
 	return $map !== null && isset($map->links[$linkname]) && $map->links[$linkname]->arrowstyle == 'flat';
@@ -1123,9 +1144,7 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 		// Each half holds its own arrowhead. When it is too short for it (a
 		// wide link between close nodes), the arrowhead gets shorter rather
 		// than the link not being drawn at all.
-		if ($l < 1.2 * $arrowsize[$dir]) {
-			$arrowsize[$dir] = $l / 1.2;
-		}
+		list($arrowsize[$dir], $arrowwidth[$dir]) = fit_arrow_head($l, $arrowsize[$dir], $widths[$dir], $arrowwidth[$dir]);
 		if ($l < 2) {
 			wm_warn("Skipping too-short line.");
 		} else {
@@ -1427,21 +1446,18 @@ function draw_curve($image, &$curvepoints, $widths, $outlinecolour, $fillcolours
 	list($arrowsize[IN], $arrowwidth[IN])   = calc_arrowsize($widths[IN], $map, $linkname);
 	list($arrowsize[OUT], $arrowwidth[OUT]) = calc_arrowsize($widths[OUT], $map, $linkname);
 
-	// the 1.2 here is empirical. It ought to be 1 in theory.
-	// in practice, a link this short is useless anyway, especially with bwlabels.
-	$minimumlength = 1.2 * ($arrowsize[IN]+$arrowsize[OUT]);
-
 	# warn("$linkname: Total: $totaldistance $arrowsize $arrowwidth $minimumlength\n");
 	if ($totaldistance < 2) {
 		wm_warn("Skipping drawing very short link ($linkname). Impossible to draw! Try changing WIDTH or ARROWSTYLE? [WMWARN01]");
 
 		return;
 	}
-	if ($totaldistance <= $minimumlength) {
-		// a wide link between close nodes: shorter arrowheads rather than no link
-		$fit = $totaldistance / $minimumlength * 0.99;
-		$arrowsize[IN] *= $fit;
-		$arrowsize[OUT] *= $fit;
+	// a wide link between close nodes: shorter arrowheads rather than no link
+	if ($unidirectional) {
+		list($arrowsize[OUT], $arrowwidth[OUT]) = fit_arrow_head($totaldistance, $arrowsize[OUT], $widths[OUT], $arrowwidth[OUT]);
+	} else {
+		list($arrowsize[OUT], $arrowwidth[OUT]) = fit_arrow_head($halfway, $arrowsize[OUT], $widths[OUT], $arrowwidth[OUT]);
+		list($arrowsize[IN], $arrowwidth[IN]) = fit_arrow_head($totaldistance - $halfway, $arrowsize[IN], $widths[IN], $arrowwidth[IN]);
 	}
 
 	list($halfway_x, $halfway_y, $halfwayindex) = find_distance_coords($curvepoints, $halfway);

@@ -122,6 +122,14 @@ class WeatherMapLink extends WeatherMapItem {
 	var $comments = array();
 	var $bwlabelformats = array();
 	var $curvepoints;
+	// where the arrows meet, along curvepoints, and the length hidden under each node (hidden_ends)
+	var $drawn_split = null;
+	var $drawn_cuts = null;
+	// where the bandwidth labels are, in % of curvepoints (for the editor)
+	var $drawn_labelpos = null;
+	var $drawn_labelmove = null;
+	// pixels across the link added to each label when the link is too short for both side by side
+	var $labels_across = array(0, 0);
 
 	var $labeloffset_in;
 	var $labeloffset_out;
@@ -455,18 +463,113 @@ class WeatherMapLink extends WeatherMapItem {
 	}
 
 	/**
+	 * Where the bandwidth labels go, as distances along curvepoints: OUT
+	 * then IN, and how far each moves along the link (towards B when
+	 * positive) when its nodes shrink to nothing deep in a basemap.
+	 *
+	 * BWLABELPOS set to something other than the default (75 25) wins.
+	 * Otherwise each label is centred on the visible part of its own arrow,
+	 * between the edge of its node and the split point (hidden_ends()).
+	 * When the two labels do not fit there side by side, they are pushed
+	 * apart along the link, inside the part between the node edges; when
+	 * even that is too short, they are also put on either side of the link
+	 * ($labels_across, pixels added to bwlabel_offset_*).
+	 */
+	function label_places(&$map, $total, $oneway) {
+		$this->labels_across = array(OUT => 0, IN => 0);
+		$none = array(OUT => 0, IN => 0);
+		if ($this->labeloffset_in != 75 || $this->labeloffset_out != 25) {
+			return array($total * $this->labeloffset_out / 100, $total * $this->labeloffset_in / 100, $none);
+		}
+
+		$pos = max(0, min(100, (float) $this->splitpos)) / 100;
+		$cuts = is_array($this->drawn_cuts) ? $this->drawn_cuts : $none;
+		$a = (float) $cuts[OUT];
+		$b = $total - (float) $cuts[IN];
+		$split = $this->drawn_split !== null ? (float) $this->drawn_split : $total * $pos;
+
+		if ($oneway) {
+			// the arrow is the whole visible link (only the OUT label shows)
+			$out = ($a + $b) / 2;
+			return array($out, $out, array(OUT => $total / 2 - $out, IN => 0));
+		}
+
+		$out = ($a + $split) / 2;
+		$in = ($split + $b) / 2;
+		// with nodes shrunk to nothing: the split at $pos of the whole spine
+		$move = array(OUT => $total * $pos / 2 - $out, IN => $total * (1 + $pos) / 2 - $in);
+
+		list($out_along, $out_across) = $this->label_extent($map, OUT, $out);
+		list($in_along, $in_across) = $this->label_extent($map, IN, $in);
+		if ($out_along <= 0 || $in_along <= 0) {
+			return array($out, $in, $move);
+		}
+		// the least distance between the two centres
+		$need = $out_along + $in_along + 2;
+		if ($in - $out >= $need) {
+			return array($out, $in, $move);
+		}
+
+		// push them apart around their middle, both kept between the node edges
+		$lo = $a + $out_along + $need / 2;
+		$hi = $b - $in_along - $need / 2;
+		if ($lo <= $hi) {
+			$mid = max($lo, min($hi, ($out + $in) / 2));
+			return array($mid - $need / 2, $mid + $need / 2, $move);
+		}
+
+		// no room along the link: in its middle, one on either side of it
+		$mid = ($a + $b) / 2;
+		$this->labels_across = array(OUT => $out_across + 1, IN => -($in_across + 1));
+		$move = array(OUT => $total / 2 - $mid, IN => $total / 2 - $mid);
+
+		return array($mid, $mid, $move);
+	}
+
+	/**
+	 * The half size of a bandwidth label along and across the link, at the
+	 * angle the link has at $distance: [0, 0] when it shows no label.
+	 */
+	function label_extent(&$map, $dir, $distance) {
+		$text = $map->ProcessString($this->bwlabelformats[$dir], $this);
+		if ($text == '') {
+			return array(0, 0);
+		}
+		if ($map->get_hint('screenshot_mode') == 1) {
+			$text = screenshotify($text);
+		}
+		list($hw, $hh) = $map->LabelHalfSize($text, $this->bwfont, $this->get_hint('bwlabel_padding'), $this->labelboxstyle == 'pill');
+		if ($this->labelboxstyle == 'angled' || $this->labelboxstyle == 'pill') {
+			return array($hw, $hh);
+		}
+		// a level box: its shadow on the link and across it
+		list($x, $y, $junk, $angle) = find_distance_coords_angle($this->curvepoints, $distance);
+		$c = abs(cos(deg2rad($angle)));
+		$s = abs(sin(deg2rad($angle)));
+		return array($hw * $c + $hh * $s, $hw * $s + $hh * $c);
+	}
+
+	/**
 	 * The part of the spine to draw so that each end of the link is hidden
 	 * under its node: the spine, the split position in % of that part and
 	 * the length cut at each end (OUT at node A, IN at node B). For a
 	 * one-way link, the tip of the arrow stops at the edge of node B.
+	 *
+	 * SPLITPOS is taken on the visible part of the link, from the edge of
+	 * node A to the edge of node B, so with the default both arrows have
+	 * the same visible length whatever the size of the nodes. The split
+	 * point (distance along the whole spine) and the cuts are kept in
+	 * $drawn_split and $drawn_cuts for the labels and the traffic flow.
 	 */
 	function hidden_ends(&$map, $points, $halfwidth, $oneway) {
-		$none = array($points, $this->splitpos, array(OUT => 0, IN => 0));
-		if (!is_array($points) || count($points) < 2 || !isset($points[0][2])) {
+		$total = (is_array($points) && count($points) >= 2 && isset($points[0][2])) ? $points[count($points) - 1][2] : 0;
+		$pos = max(0, min(100, (float) $this->splitpos));
+		$this->drawn_cuts = array(OUT => 0, IN => 0);
+		$this->drawn_split = $oneway ? $total : $total * $pos / 100;
+		$none = array($points, $this->splitpos, $this->drawn_cuts);
+		if ($total <= 0) {
 			return $none;
 		}
-		$total = $points[count($points) - 1][2];
-		$split = $oneway ? $total : $total * max(0, min(100, (float) $this->splitpos)) / 100;
 		// the arrows keep some length of their own
 		$keep = min(4, $total / 4);
 
@@ -475,9 +578,17 @@ class WeatherMapLink extends WeatherMapItem {
 		// the outline is one pixel outside the half width
 		$edge = (float) $halfwidth + 1;
 
-		$cut_a = $node_a ? link_end_cut($points, $node_a->cover_shapes(), $edge, $split - $keep) : 0;
+		// each end may lose all but what the arrows keep; when both nodes
+		// would cover more than that (nodes that overlap), they share it
+		$room = $total - 2 * $keep;
+		$cut_a = $node_a ? link_end_cut($points, $node_a->cover_shapes(), $edge, $room) : 0;
 		// the tip of a one-way arrow is a point
-		$cut_b = $node_b ? link_end_cut(spine_reverse($points), $node_b->cover_shapes(), $oneway ? 0 : $edge, $oneway ? $total - $cut_a - 2 * $keep : $total - $split - $keep) : 0;
+		$cut_b = $node_b ? link_end_cut(spine_reverse($points), $node_b->cover_shapes(), $oneway ? 0 : $edge, $room) : 0;
+		if ($cut_a + $cut_b > $room && $cut_a + $cut_b > 0) {
+			$f = max(0, $room) / ($cut_a + $cut_b);
+			$cut_a *= $f;
+			$cut_b *= $f;
+		}
 
 		if ($cut_a <= 0 && $cut_b <= 0) {
 			return $none;
@@ -486,9 +597,10 @@ class WeatherMapLink extends WeatherMapItem {
 		if ($length < 2) {
 			return $none;
 		}
-		$splitpos = $oneway ? $this->splitpos : 100 * ($split - $cut_a) / $length;
+		$this->drawn_cuts = array(OUT => $cut_a, IN => $cut_b);
+		$this->drawn_split = $oneway ? $total - $cut_b : $cut_a + $length * $pos / 100;
 
-		return array(spine_cut($points, $cut_a, $total - $cut_b), $splitpos, array(OUT => $cut_a, IN => $cut_b));
+		return array(spine_cut($points, $cut_a, $total - $cut_b), $this->splitpos, $this->drawn_cuts);
 	}
 
 	/**
@@ -650,11 +762,13 @@ class WeatherMapLink extends WeatherMapItem {
 
 		// The link is drawn under its nodes and stops where its square end
 		// is still hidden under each of them, so no corner sticks out
-		// around a round badge or a small icon. The arrows still meet at
-		// the same place.
+		// around a round badge or a small icon. The arrows meet at SPLITPOS
+		// of that visible part, so with the default both have the same
+		// length whatever the size of the nodes.
 		list($drawpoints, $splitpos, $cuts) = $this->hidden_ends($map, $this->curvepoints, max($link_in_width, $link_out_width), $oneway);
 
-		WeatherMapSvg::$cuts = $cuts;
+		// the viewer also moves the split point as the nodes shrink
+		WeatherMapSvg::$cuts = $cuts + array('pos' => $oneway ? 1 : max(0, min(100, (float) $this->splitpos)) / 100);
 		if ($straight) {
 			draw_straight($image, $drawpoints,
 				array($link_in_width, $link_out_width), $outline_colour, array($gd_in_colour, $gd_out_colour),
@@ -690,22 +804,19 @@ class WeatherMapLink extends WeatherMapItem {
 		}
 
 		$curvelength = $this->curvepoints[count($this->curvepoints)-1][2];
+		list($out_d, $in_d, $move) = $this->label_places($map, $curvelength, $oneway);
+		$this->drawn_labelpos = $curvelength > 0
+			? array(OUT => 100 * $out_d / $curvelength, IN => 100 * $in_d / $curvelength)
+			: null;
 
-		// figure out where the labels should be, and what the angle of the curve is at that point
-		// Put OUT and IN labels at the centres of the directional arrow halves.
-		// OUT is in the first half: [0..SPLITPOS], IN is in the second half: [SPLITPOS..100].
-		// This matches the user's expectation of "middle of each directional arrow".
-		$out_percent = $this->splitpos / 2;
-		$in_percent = ($this->splitpos + 100) / 2;
-
-		// BWLABELPOS set to something other than the default wins, so
-		// labels can be moved apart when they overlap
-		if ($this->labeloffset_in != 75 || $this->labeloffset_out != 25) {
-			$in_percent = $this->labeloffset_in;
-			$out_percent = $this->labeloffset_out;
-		}
-		list($q1_x, $q1_y, $junk, $q1_angle) = find_distance_coords_angle($this->curvepoints, ($out_percent / 100) * $curvelength);
-		list($q3_x, $q3_y, $junk, $q3_angle) = find_distance_coords_angle($this->curvepoints, ($in_percent / 100) * $curvelength);
+		list($q1_x, $q1_y, $junk, $q1_angle) = find_distance_coords_angle($this->curvepoints, $out_d);
+		list($q3_x, $q3_y, $junk, $q3_angle) = find_distance_coords_angle($this->curvepoints, $in_d);
+		// how far each label moves, along the link, as its nodes shrink to
+		// nothing deep in a basemap (geo-view.js follows it)
+		$this->drawn_labelmove = array(
+			OUT => array($move[OUT] * cos(deg2rad($q1_angle)), -$move[OUT] * sin(deg2rad($q1_angle))),
+			IN  => array($move[IN] * cos(deg2rad($q3_angle)), -$move[IN] * sin(deg2rad($q3_angle))),
+		);
 
 		// Keep labels on the arrow band: offset must be within the half-width of the link.
 		$maxw = max($link_in_width, $link_out_width);
@@ -725,9 +836,10 @@ class WeatherMapLink extends WeatherMapItem {
 
 		// SET bwlabel_offset_out / bwlabel_offset_in: pixels across the
 		// link, to the left of A to B when positive, so labels of links
-		// that run side by side can be moved off each other
-		$shift_out = (float) $this->get_hint('bwlabel_offset_out');
-		$shift_in = (float) $this->get_hint('bwlabel_offset_in');
+		// that run side by side can be moved off each other. A link too
+		// short for its two labels side by side gets them across too.
+		$shift_out = (float) $this->get_hint('bwlabel_offset_out') + $this->labels_across[OUT];
+		$shift_in = (float) $this->get_hint('bwlabel_offset_in') + $this->labels_across[IN];
 		$q1_x += $shift_out * cos($rad_out);
 		$q1_y -= $shift_out * sin($rad_out);
 		$q3_x += $shift_in * cos($rad_in);

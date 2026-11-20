@@ -235,7 +235,8 @@ class WeatherMapSvg {
 			return;
 		}
 		$oneway = $link->linkstyle == 'oneway';
-		$split = $oneway ? $total : $total * max(0, min(100, (float) $link->splitpos)) / 100;
+		// where the arrows meet, on the visible part of the link (WeatherMapLink::hidden_ends)
+		$split = $oneway ? $total : ($link->drawn_split !== null ? (float) $link->drawn_split : $total * max(0, min(100, (float) $link->splitpos)) / 100);
 
 		$runs = array(array('out', 0, $split, $link->outpercent, $out_width));
 		if (!$oneway) {
@@ -335,14 +336,20 @@ class WeatherMapSvg {
 			$flat[] = $p[0];
 			$flat[] = $p[1];
 		}
-		// the length cut off at the node where the arrow starts, and at
-		// its tip when the tip is at a node (a one-way link)
-		$cut = array(0, 0);
+		// the length cut off at the node where the arrow starts, at its
+		// tip when the tip is at a node (a one-way link), and how far a tip
+		// where the two arrows meet moves (forwards when positive) once
+		// both nodes are shrunk to nothing, since the split stays at
+		// SPLITPOS of the visible part
+		$cut = array(0, 0, 0);
 		if (is_array(self::$cuts)) {
 			$total = $points[count($points) - 1][2];
 			$cut[0] = (float) ($from == 0 ? self::$cuts[OUT] : self::$cuts[IN]);
 			if ($from == 0 && abs($to - $total) < 0.01) {
 				$cut[1] = (float) self::$cuts[IN];
+			} elseif (isset(self::$cuts['pos'])) {
+				$move = self::$cuts['pos'] * (self::$cuts[OUT] + self::$cuts[IN]) - self::$cuts[OUT];
+				$cut[2] = $from == 0 ? $move : -$move;
 			}
 		}
 		$svg->shape = array(
@@ -866,10 +873,14 @@ class WeatherMapSvg {
 		for ($i = 0; $i + 1 < count($shape['spine']); $i += 2) {
 			$pts[] = self::num($shape['spine'][$i]) . ',' . self::num($shape['spine'][$i + 1]);
 		}
-		$cut = isset($shape['cut']) ? $shape['cut'] : array(0, 0);
+		$cut = isset($shape['cut']) ? $shape['cut'] + array(0, 0, 0) : array(0, 0, 0);
+		$data = '';
+		if ($cut[0] > 0 || $cut[1] > 0) {
+			$data = sprintf(' data-cut="%s %s', self::num(round($cut[0], 2)), self::num(round($cut[1], 2)));
+			$data .= abs($cut[2]) >= 0.01 ? ' ' . self::num(round($cut[2], 2)) . '"' : '"';
+		}
 		return sprintf(' data-spine="%s" data-w="%s" data-aw="%s" data-as="%s"%s', implode(' ', $pts),
-			self::num($shape['w']), self::num($shape['aw']), self::num($shape['as']),
-			$cut[0] > 0 || $cut[1] > 0 ? sprintf(' data-cut="%s %s"', self::num(round($cut[0], 2)), self::num(round($cut[1], 2))) : '');
+			self::num($shape['w']), self::num($shape['aw']), self::num($shape['as']), $data);
 	}
 
 	/** The centre of the label being drawn, moved as the shape reported next */
@@ -877,7 +888,10 @@ class WeatherMapSvg {
 		if ($this->at === null) {
 			return null;
 		}
-		return array($this->at[0] + $this->offset[0], $this->at[1] + $this->offset[1]);
+		$at = $this->at;
+		$at[0] += $this->offset[0];
+		$at[1] += $this->offset[1];
+		return $at;
 	}
 
 	static function roleClass($item) {
@@ -885,6 +899,10 @@ class WeatherMapSvg {
 			// a bandwidth label says where its centre is (data-at), so it can
 			// be drawn smaller around it deep in a basemap (geo-view.js)
 			$at = empty($item['at']) ? '' : sprintf(' data-at="%s %s"', self::num(round($item['at'][0], 2)), self::num(round($item['at'][1], 2)));
+			// and how far it moves along its link as the nodes shrink there
+			if (isset($item['at'][3])) {
+				$at .= sprintf(' data-move="%s %s"', self::num(round($item['at'][2], 2)), self::num(round($item['at'][3], 2)));
+			}
 			return ' class="wm-' . $item['role'] . '"' . $at;
 		}
 		return $item['type'] == 'polygon' ? ' class="wm-arrow"' : ' class="wm-comment"';

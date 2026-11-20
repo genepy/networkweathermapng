@@ -1374,6 +1374,38 @@ class WeatherMap extends WeatherMapBase {
 	}
 
 	// nodename is a vestigal parameter, from the days when nodes were just big labels
+	/**
+	 * The half width and half height of a bandwidth label box before it is
+	 * turned: the same sizes DrawLabelRotated() and DrawLabelPill() draw.
+	 */
+	function LabelHalfSize($text, $font, $padding, $pill = false) {
+		list($strwidth, $strheight) = $this->myimagestringsize($font, $text);
+		if ($pill) {
+			$padding = max(0, intval($padding));
+			$half_h = $strheight / 2 + $padding + 2;
+			$arrow = max(4, round($strheight * 0.45));
+			return array($strwidth / 2 + ($arrow + 3) / 2 + $padding + 1 + $half_h, $half_h);
+		}
+		$padding = (float) $padding;
+
+		return array($strwidth / 2 + $padding + 3, $strheight / 2 + $padding + 3);
+	}
+
+	/**
+	 * Where the SVG says a bandwidth label is: its centre, and how far it
+	 * moves as its nodes shrink deep in a basemap (WeatherMapLink::label_places).
+	 */
+	function label_anchor($x, $y, $linkname, $direction) {
+		$link = isset($this->links[$linkname]) ? $this->links[$linkname] : null;
+		if ($link && is_array($link->drawn_labelmove) && isset($link->drawn_labelmove[$direction])) {
+			list($mx, $my) = $link->drawn_labelmove[$direction];
+			if (abs($mx) >= 0.05 || abs($my) >= 0.05) {
+				return array($x, $y, $mx, $my);
+			}
+		}
+		return array($x, $y);
+	}
+
 	function DrawLabelRotated($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, &$map, $direction, $pill = false) {
 		if ($pill) {
 			$this->DrawLabelPill($image, $x, $y, $angle, $text, $font, $padding, $linkname, $textcolour, $bgcolour, $outlinecolour, $map, $direction);
@@ -1383,7 +1415,7 @@ class WeatherMap extends WeatherMapBase {
 
 		if (WeatherMapSvg::$active) {
 			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
-			WeatherMapSvg::$active->at = array($x, $y);
+			WeatherMapSvg::$active->at = $this->label_anchor($x, $y, $linkname, $direction);
 		}
 
 		if (abs($angle) > 90) {
@@ -1461,7 +1493,7 @@ class WeatherMap extends WeatherMapBase {
 
 		if (WeatherMapSvg::$active) {
 			WeatherMapSvg::$active->role = ($direction == IN) ? 'bwlabel-in' : 'bwlabel-out';
-			WeatherMapSvg::$active->at = array($x, $y);
+			WeatherMapSvg::$active->at = $this->label_anchor($x, $y, $linkname, $direction);
 		}
 
 		$flow = $angle + ($direction == IN ? 180 : 0);
