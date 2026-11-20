@@ -113,7 +113,18 @@
         for (i = 1; i < pts.length; i++) { d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); }
         var len = d[d.length - 1];
         if (len <= 0) { return null; }
-        as = Math.min(as, len / 1.2);
+        // a half too short for its head: the head gets shorter and narrower
+        // in the same ratio, never narrower than the body, and a half
+        // shorter than the body is wide ends square (fit_arrow_head() in PHP)
+        if (as > 1 && len < 1.2 * as) {
+            if (len < 2 * w) {
+                aw = w;
+                as = Math.min(1, len / 2);
+            } else {
+                aw = Math.max(w, aw * (len / 1.2) / as);
+                as = len / 1.2;
+            }
+        }
         var at = len - as;
         // the spine up to where the head starts
         var body = [pts[0]];
@@ -153,12 +164,15 @@
 
     /**
      * The engine stops each link where its end is just hidden under its
-     * node (data-cut: the length cut at the start and at the tip). A
+     * node (data-cut: the length cut at the start and at the tip, then
+     * how far a tip where the two arrows meet moves when the nodes shrink
+     * to nothing). A
      * thinner link drawn under a node shrunk as much ends that much closer
      * to the centre, or it would show between the node and its old edge.
      */
     function reachNodes(pts, cut, k) {
-        if (!(cut[0] > 0) && !(cut[1] > 0)) { return pts; }
+        var move = cut[2] || 0;
+        if (!(cut[0] > 0) && !(cut[1] > 0) && !move) { return pts; }
         function stretch(p, q, d) {
             var l = Math.hypot(p[0] - q[0], p[1] - q[1]);
             return l > 0 ? [p[0] + (p[0] - q[0]) / l * d, p[1] + (p[1] - q[1]) / l * d] : p;
@@ -166,6 +180,34 @@
         var out = pts.slice();
         if (cut[0] > 0) { out[0] = stretch(pts[0], pts[1], cut[0] * (1 - k)); }
         if (cut[1] > 0) { out[out.length - 1] = stretch(pts[pts.length - 1], pts[pts.length - 2], cut[1] * (1 - k)); }
+        // the tip where the two arrows meet stays at SPLITPOS of the
+        // visible part (data-cut third value): forwards or back along it
+        if (move) { out = moveTip(out, move * (1 - k)); }
+        return out;
+    }
+
+    /** pts with its last point moved d along the line: further when positive, back along it when negative */
+    function moveTip(pts, d) {
+        var n = pts.length, a, b, l;
+        if (d > 0) {
+            a = pts[n - 1]; b = pts[n - 2];
+            l = Math.hypot(a[0] - b[0], a[1] - b[1]);
+            if (!(l > 0)) { return pts; }
+            return pts.slice(0, n - 1).concat([[a[0] + (a[0] - b[0]) / l * d, a[1] + (a[1] - b[1]) / l * d]]);
+        }
+        var left = -d, out = pts.slice();
+        while (out.length > 2) {
+            a = out[out.length - 1]; b = out[out.length - 2];
+            l = Math.hypot(a[0] - b[0], a[1] - b[1]);
+            if (l > left) { break; }
+            left -= l;
+            out.pop();
+        }
+        a = out[out.length - 1]; b = out[out.length - 2];
+        l = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (!(l > 0)) { return out; }
+        var f = Math.max(0, l - left) / l;
+        out[out.length - 1] = [b[0] + (a[0] - b[0]) * f, b[1] + (a[1] - b[1]) * f];
         return out;
     }
 
@@ -183,7 +225,7 @@
                 el: el, pts: pts, points: el.getAttribute('points'), w: w,
                 aw: parseFloat(el.getAttribute('data-aw')) || w,
                 as: parseFloat(el.getAttribute('data-as')) || 0,
-                cut: [cut[0] > 0 ? cut[0] : 0, cut[1] > 0 ? cut[1] : 0]
+                cut: [cut[0] > 0 ? cut[0] : 0, cut[1] > 0 ? cut[1] : 0, isFinite(cut[2]) ? cut[2] : 0]
             });
         });
         return out;
@@ -199,14 +241,20 @@
 
     /**
      * The shapes of the bandwidth labels of an SVG drawing: each says where
-     * the centre of its label is (data-at), to draw it smaller around it.
+     * the centre of its label is (data-at), to draw it smaller around it,
+     * and how far it moves along its link as the nodes shrink (data-move).
      */
     function labels(svg) {
         var out = [];
         svg.querySelectorAll('.wm-bwlabel-in[data-at], .wm-bwlabel-out[data-at]').forEach(function (el) {
             var at = el.getAttribute('data-at').split(' ').map(Number);
             if (at.length !== 2 || !isFinite(at[0]) || !isFinite(at[1])) { return; }
-            out.push({ el: el, x: at[0], y: at[1], transform: el.getAttribute('transform') });
+            // how far the label follows its arrows as the nodes shrink (data-move)
+            var mv = (el.getAttribute('data-move') || '').split(' ').map(Number);
+            out.push({
+                el: el, x: at[0], y: at[1], transform: el.getAttribute('transform'),
+                mx: mv.length === 2 && isFinite(mv[0]) ? mv[0] : 0, my: mv.length === 2 && isFinite(mv[1]) ? mv[1] : 0
+            });
         });
         return out;
     }
@@ -216,7 +264,8 @@
         list.forEach(function (l) {
             if (k < 1) {
                 // the shape's own transform (a turned text) comes first
-                l.el.setAttribute('transform', 'translate(' + l.x + ' ' + l.y + ') scale(' + k + ') translate(' + (-l.x) + ' ' + (-l.y) + ')'
+                var x = l.x + l.mx * (1 - k), y = l.y + l.my * (1 - k);
+                l.el.setAttribute('transform', 'translate(' + x + ' ' + y + ') scale(' + k + ') translate(' + (-l.x) + ' ' + (-l.y) + ')'
                     + (l.transform ? ' ' + l.transform : ''));
             } else if (l.transform) {
                 l.el.setAttribute('transform', l.transform);

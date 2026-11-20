@@ -654,6 +654,17 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   (`ARROWSTYLE compact`) or none (`ARROWSTYLE flat`): each half of the link
   ends square in the middle. With pill labels, the arrow on the label still
   shows which way the traffic goes, as on the Nine IX maps.
+- **Link ends**: a link starts at the edge of its nodes (icon, badge or
+  label box), not at their centre: it is drawn hidden under them. The two
+  arrows meet at `SPLITPOS` of that visible part, so with the default (50)
+  both have the same length whatever the size of the nodes, and each
+  bandwidth label sits in the middle of its own arrow (default
+  `BWLABELPOS 75 25`; another value is taken along the whole link, as
+  before). When a link is too short for its two labels side by side, they
+  are pushed apart along it, or, as a last resort, put on either side of
+  it. A half too short for its arrow head gets a smaller head of the same
+  shape (never narrower than the link), or a square end when even that
+  does not fit. The same happens in the PNG, the SVG and deep in a basemap.
 - **Badge nodes**: *Look* in the node panel draws the selected nodes as
   round badges (`SET node_style badge`): their icon, or the initials of
   their label, on a disc in the label background colour with a ring in the

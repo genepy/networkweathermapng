@@ -95,13 +95,17 @@ visual change.
 
 ## Workflow for a Claude thread
 
-1. Take the next issue (lowest task number, unclaimed). Issues are the todo:
-   each one names the files concerned and the expected result.
-2. Branch, push, open a draft PR with `Closes #<issue>`.
+1. One thread works through the whole todo in order (lowest task number
+   first, skipping issues marked on hold). Issues are the todo: each one
+   names the files concerned and the expected result.
+2. Group 2 or 3 small or related tasks in one PR. For each PR: branch,
+   push, open a draft PR with `Closes #<issue>` for each task.
 3. Implement, keep the PR description current, mark it ready.
 4. Wait for green CI, review your own diff, merge it yourself, check the
-   issue is closed, delete the branch. No separate review thread.
-5. Small related issues (2 or 3) may share one PR.
+   issues are closed, delete the branch. No separate review thread. Post a
+   short update to the maintainer after each merge, then take the next task.
+5. The thread auto-compacts its context. If it stalls or grows too large,
+   it is closed and a new thread resumes at the next open task.
 6. Only one thread works at a time.
 
 Conversations with the maintainer are in French; code, commits, PRs, issues

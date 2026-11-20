@@ -785,6 +785,147 @@ final class SvgRenderTest extends TestCase
         $this->assertEqualsWithDelta(-20, min($shifted) - min($label), 1);
     }
 
+    /** The length of a polyline */
+    private static function length(array $pts): float
+    {
+        $l = 0.0;
+        for ($i = 1; $i < count($pts); $i++) {
+            $l += hypot($pts[$i][0] - $pts[$i - 1][0], $pts[$i][1] - $pts[$i - 1][1]);
+        }
+        return $l;
+    }
+
+    /** The arrows of a link in the SVG, keyed by direction (out, in): spine points, cut, head size and width */
+    private static function arrowsOf(\DOMXPath $xpath, string $link): array
+    {
+        $out = [];
+        foreach ($xpath->query('//s:g[@data-kind="link"][@data-name="' . $link . '"]/s:polygon[@data-spine]') as $i => $arrow) {
+            self::assertInstanceOf(\DOMElement::class, $arrow);
+            $out[$i === 0 ? 'out' : 'in'] = [
+                'spine' => self::points($arrow->getAttribute('data-spine')),
+                'cut' => array_map('floatval', explode(' ', $arrow->getAttribute('data-cut') ?: '0 0')),
+                'w' => (float) $arrow->getAttribute('data-w'),
+                'aw' => (float) $arrow->getAttribute('data-aw'),
+                'as' => (float) $arrow->getAttribute('data-as'),
+            ];
+        }
+        return $out;
+    }
+
+    /** The centres of the bandwidth labels of a link in the SVG, keyed by direction */
+    private static function labelsOf(\DOMXPath $xpath, string $link): array
+    {
+        $out = [];
+        foreach (['out', 'in'] as $dir) {
+            $el = $xpath->query('//s:g[@data-kind="link"][@data-name="' . $link . '"]/s:*[@class="wm-bwlabel-' . $dir . '"][@data-at]')->item(0);
+            if ($el instanceof \DOMElement) {
+                $out[$dir] = array_map('floatval', explode(' ', $el->getAttribute('data-at')));
+            }
+        }
+        return $out;
+    }
+
+    /** F35: the arrows meet in the middle of the visible part of the link, whatever the size of its nodes */
+    public function testArrowsHaveTheSameVisibleLengthWhateverTheNodes(): void
+    {
+        $map = $this->load(TESTS_ROOT . '/fixtures/maps/link-ends.conf');
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        foreach (['long', 'short', 'badges', 'wide'] as $name) {
+            $arrows = self::arrowsOf($xpath, $name);
+            $this->assertCount(2, $arrows, $name);
+            $this->assertEqualsWithDelta(self::length($arrows['out']['spine']), self::length($arrows['in']['spine']), 1, "$name: both arrows as long");
+            // they meet at the same point
+            $this->assertEqualsWithDelta(end($arrows['out']['spine'])[0], end($arrows['in']['spine'])[0], 0.5);
+            $this->assertEqualsWithDelta(end($arrows['out']['spine'])[1], end($arrows['in']['spine'])[1], 0.5);
+        }
+
+        // the big node hides more of the link than the small one, and the
+        // viewer knows how far the split moves when they shrink
+        $long = self::arrowsOf($xpath, 'long');
+        $this->assertGreaterThan($long['in']['cut'][0] + 20, $long['out']['cut'][0]);
+        $this->assertCount(3, $long['out']['cut']);
+        $this->assertEqualsWithDelta(-$long['out']['cut'][2], $long['in']['cut'][2], 0.01);
+        $this->assertEqualsWithDelta(($long['in']['cut'][0] - $long['out']['cut'][0]) / 2, $long['out']['cut'][2], 0.05);
+    }
+
+    /** F32: each label sits on its own arrow, and the two labels of a link never overlap */
+    public function testBandwidthLabelsSitOnTheirOwnArrow(): void
+    {
+        $map = $this->load(TESTS_ROOT . '/fixtures/maps/link-ends.conf');
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+
+        // a long link: each label in the middle of the visible part of its arrow
+        $arrows = self::arrowsOf($xpath, 'long');
+        $labels = self::labelsOf($xpath, 'long');
+        foreach (['out', 'in'] as $dir) {
+            $spine = $arrows[$dir]['spine'];
+            $middle = ($spine[0][0] + end($spine)[0]) / 2;
+            $this->assertEqualsWithDelta($middle, $labels[$dir][0], 1.5, "$dir label in the middle of its arrow");
+        }
+
+        // short links: the two label boxes do not overlap
+        foreach (['short', 'badges', 'wide'] as $name) {
+            $boxes = [];
+            foreach ($xpath->query('//s:g[@data-kind="link"][@data-name="' . $name . '"]/s:polygon[contains(@class, "wm-bwlabel-")]') as $el) {
+                $this->assertInstanceOf(\DOMElement::class, $el);
+                $pts = self::points($el->getAttribute('points'));
+                $xs = array_column($pts, 0);
+                $ys = array_column($pts, 1);
+                $boxes[] = [min($xs), min($ys), max($xs), max($ys)];
+            }
+            $this->assertCount(2, $boxes, $name);
+            [$p, $q] = $boxes;
+            $apart = $p[2] <= $q[0] + 0.5 || $q[2] <= $p[0] + 0.5 || $p[3] <= $q[1] + 0.5 || $q[3] <= $p[1] + 0.5;
+            $this->assertTrue($apart, "$name: the two labels do not overlap");
+        }
+
+        // BWLABELPOS set by hand still wins
+        $file = TESTS_OUTPUT . '/labelpos.conf';
+        file_put_contents($file, (string) file_get_contents(TESTS_ROOT . '/fixtures/maps/link-ends.conf') . "\tBWLABELPOS 80 20\n");
+        $map = $this->load($file);
+        $this->assertEqualsWithDelta(20, $map->links['wide']->drawn_labelpos[OUT], 0.01);
+        $this->assertEqualsWithDelta(80, $map->links['wide']->drawn_labelpos[IN], 0.01);
+    }
+
+    /** F36: a head too long for its half gets narrower in the same ratio, never narrower than the body */
+    public function testShortArrowHeadsKeepTheirShape(): void
+    {
+        // long enough: unchanged
+        $this->assertSame([20, 10], fit_arrow_head(100, 20, 5, 10));
+        // shorter: length and width shrink together
+        [$size, $width] = fit_arrow_head(24, 40, 5, 20);
+        $this->assertEqualsWithDelta(20, $size, 0.01);
+        $this->assertEqualsWithDelta(10, $width, 0.01);
+        $this->assertEqualsWithDelta(40 / 20, $size / $width, 0.01, 'same shape');
+        // never narrower than the body
+        [$size, $width] = fit_arrow_head(14, 40, 6, 12);
+        $this->assertSame(6, $width);
+        // shorter than the body is wide: a square end
+        [$size, $width] = fit_arrow_head(10, 40, 6, 12);
+        $this->assertLessThanOrEqual(1, $size);
+        $this->assertSame(6, $width);
+        // ARROWSTYLE flat keeps its 1 px head
+        $this->assertSame([1, 6], fit_arrow_head(5, 1, 6, 6));
+
+        $map = $this->load(TESTS_ROOT . '/fixtures/maps/link-ends.conf');
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        foreach (self::arrowsOf($xpath, 'wide') as $arrow) {
+            // the normal head is 4 link widths long and 2 wide: a ratio of 2
+            $this->assertEqualsWithDelta(2, $arrow['as'] / $arrow['aw'], 0.05, 'the head keeps its angle');
+            $this->assertGreaterThanOrEqual($arrow['w'], $arrow['aw']);
+        }
+    }
+
     /** Links stop where their square end is still hidden under the node, are drawn under their nodes, and the arrows still meet half way */
     public function testLinkEndsHideUnderTheirNodes(): void
     {
