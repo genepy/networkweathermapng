@@ -399,4 +399,7 @@ return [
     'Maps & rendering settings saved' => 'Réglages Cartes et rendu enregistrés',
     'Some values are not valid and were not saved.' => 'Certaines valeurs ne sont pas valides et n’ont pas été enregistrées.',
     'Kiosk, recording and time zone have pages of their own in this menu; the settings of one map are in its Map settings panel.' => 'Kiosque, enregistrement et fuseau horaire ont leur propre page dans ce menu ; les réglages d’une carte sont dans son panneau Réglages de la carte.',
+    // F31: New map > On a web map
+    'An empty map on a web map (OpenStreetMap)' => 'Une carte vide sur un fond de carte web (OpenStreetMap)',
+    'The editor opens on Map properties > Basemap: pick the area and the zoom, or another web map. Nodes you give a location sit on their point.' => 'L’éditeur s’ouvre sur Propriétés de la carte > Fond de carte : choisissez la zone et le zoom, ou un autre fond web. Les nœuds auxquels vous donnez un emplacement se placent sur leur point.',
 ];

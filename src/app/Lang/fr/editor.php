@@ -319,4 +319,11 @@ return [
     'A card with the total traffic of the map and its graph' => 'Une carte avec le trafic total de la carte et son graphique',
     'A card with a title and rows, typed or taken from the map sites' => 'Une carte avec un titre et des lignes, saisies ou tirées des sites de la carte',
     'Map items on this map' => 'Éléments présents sur la carte',
+    // F31: the basemap one click away
+    'A web map such as OpenStreetMap under the map: Map properties > Basemap' => 'Un fond de carte web, comme OpenStreetMap, sous la carte : Propriétés de la carte > Fond de carte',
+    'Choose a basemap (web map)…' => 'Choisir un fond de carte (web)…',
+    'Basemap (web map)' => 'Fond de carte (web)',
+    'A web map instead (basemap)…' => 'Plutôt un fond de carte web…',
+    'For a web map such as OpenStreetMap under the map, choose a basemap instead (Map properties > Basemap).' => 'Pour un fond de carte web, comme OpenStreetMap, sous la carte, choisissez plutôt un fond de carte (Propriétés de la carte > Fond de carte).',
+    'Choose a basemap…' => 'Choisir un fond de carte…',
 ];

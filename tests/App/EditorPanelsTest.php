@@ -67,4 +67,23 @@ final class EditorPanelsTest extends TestCase
         }
         $this->assertContains('#11141a', $colours['night']);
     }
+
+    public function testBasemapIsOneClickAway(): void
+    {
+        // F31: the Basemap section opens from the menu, the layers, the Add panel and the background library
+        $view = self::read('src/app/Views/editor/svg.php');
+        $this->assertSame(3, substr_count($view, 'data-cmd="basemap"'));
+        $this->assertStringContainsString('class="bg-basemap-open"', $view);
+
+        $props = self::read('src/public/assets/js/editor-mapprops.js');
+        $this->assertStringContainsString("ed.commands.basemap = openBasemap;", $props);
+        $this->assertStringContainsString("get('open')", $props);
+        $this->assertStringContainsString("cmd('basemap')", self::read('src/public/assets/js/editor-palette.js'));
+        $this->assertStringContainsString("row(t('Basemap'), basemapButton)", self::read('src/public/assets/js/editor-svg.js'));
+        $this->assertStringContainsString('.bg-basemap-open', self::read('src/public/assets/js/editor-backgrounds.js'));
+
+        // New map > On a web map, then the editor opens on the Basemap section
+        $this->assertStringContainsString('<option value="web">', self::read('src/app/Views/editor/map_form.php'));
+        $this->assertStringContainsString("'?open=basemap'", self::read('src/app/Controllers/MapManagementController.php'));
+    }
 }

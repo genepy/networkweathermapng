@@ -107,6 +107,7 @@
             // the map and the editor
             { icon: 'history', label: t('History and savepoints'), keys: 'timeline versions savepoint restore', when: !!ed.timeline, run: cmd('timeline') },
             { icon: 'sliders-horizontal', label: t('Map properties'), keys: 'title background legend colours fonts', when: editing, run: function () { ed.select([]); } },
+            { icon: 'map', label: t('Basemap (web map)'), keys: 'background openstreetmap osm tiles geographic web map', when: editing, run: cmd('basemap') },
             { icon: 'settings', label: t('Map settings'), keys: 'group kiosk recording access time zone', when: true, run: click('#editor-menu a[href^="/editor/maps/edit/"]') },
             { icon: 'eye', label: t('Open the published map'), keys: 'view viewer', when: true, run: click('#appbar .tb-view') },
             { icon: '#i-toolbars', label: mode === 'contextual' ? t('Use the movable toolbars') : t('Use the bar next to the selection'), keys: 'toolbars layout contextual', when: !!ed.layout, run: function () { ed.layout.setMode(mode === 'contextual' ? 'toolbars' : 'contextual'); } },

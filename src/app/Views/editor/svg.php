@@ -47,6 +47,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
                 <?= $btn('layers', 'layers', __('Layers'), __('Hide layers while editing (not saved in the map)'), 'aria-expanded="false" aria-controls="layers-panel"') ?>
                 <span id="layers-panel" role="group" aria-label="<?= e__('Layers shown in the editor') ?>" hidden>
                     <label><input type="checkbox" name="background" checked> <?= e__('Background image') ?></label>
+                    <button type="button" class="layers-basemap" data-cmd="basemap" title="<?= e__('A web map such as OpenStreetMap under the map: Map properties > Basemap') ?>"><?= icon('map', 'i') ?><span><?= e__('Choose a basemap (web map)…') ?></span></button>
                     <label><input type="checkbox" name="zones" checked> <?= e__('Zones') ?></label>
                     <label><input type="checkbox" name="links" checked> <?= e__('Links') ?></label>
                     <label><input type="checkbox" name="linklabels" checked> <?= e__('Link labels (bandwidth)') ?></label>
@@ -63,6 +64,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
 
     <div id="editor-menu" popover role="menu" aria-label="<?= e__('More') ?>">
         <button type="button" role="menuitem" data-cmd="map-properties"><?= icon('sliders-horizontal', 'i') ?><span><?= e__('Map properties') ?></span></button>
+        <button type="button" role="menuitem" data-cmd="basemap" title="<?= e__('A web map such as OpenStreetMap under the map: Map properties > Basemap') ?>"><?= icon('map', 'i') ?><span><?= e__('Basemap (web map)') ?></span></button>
         <a role="menuitem" href="/editor/maps/edit/<?= $mapId ?>?return=<?= rawurlencode('/editor/edit/' . $mapId) ?>" data-map-settings title="<?= e__('Name, group, time zone, kiosk, recording and access of the map') ?>"><?= icon('settings', 'i') ?><span><?= e__('Map settings') ?></span></a>
         <button type="button" role="menuitem" data-cmd="timeline"><?= icon('history', 'i') ?><span><?= e__('History and savepoints') ?></span></button>
         <button type="button" role="menuitem" popovertarget="toolbars-menu" id="toolbars-button"><svg class="i" aria-hidden="true"><use href="#i-toolbars"/></svg><span><?= e__('Toolbars and panels') ?></span></button>
@@ -188,6 +190,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <summary><span><?= e__('Backgrounds') ?></span><span class="icon-count"></span></summary>
             <div class="pb-grid" role="group" aria-label="<?= e__('Backgrounds') ?>"></div>
             <button type="button" class="pb-manage"><?= e__('Search, add or remove…') ?></button>
+            <button type="button" class="pb-basemap" data-cmd="basemap"><?= icon('map', 'i') ?><span><?= e__('A web map instead (basemap)…') ?></span></button>
         </details>
     </aside>
 
@@ -374,6 +377,8 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             </label>
         </div>
         <p class="hint"><?= e__('PNG, JPEG or GIF up to 4096 px, 10 MB at most per file. A background used by a map, or shipped with NetworkWeathermapNG, cannot be removed.') ?></p>
+        <p class="hint bg-basemap"><?= e__('For a web map such as OpenStreetMap under the map, choose a basemap instead (Map properties > Basemap).') ?>
+            <button type="button" class="bg-basemap-open"><?= icon('map', 'i') ?><span><?= e__('Choose a basemap…') ?></span></button></p>
         <ul class="icon-errors"></ul>
         <div class="bg-grid" role="listbox" aria-labelledby="bg-title"></div>
         <menu>

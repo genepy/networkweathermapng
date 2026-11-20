@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\Basemap;
 use App\Services\GroupService;
 use App\Services\KioskService;
 use App\Services\MapService;
@@ -47,6 +48,8 @@ class MapManagementController extends BaseController
             $name = MapService::cleanName((string) ($_POST['name'] ?? ''));
             $groupId = (int) ($_POST['group_id'] ?? 1);
             $template = (int) ($_POST['template'] ?? 0);
+            // New map > On a web map: an empty map with the starter basemap
+            $onWebMap = ($_POST['template'] ?? '') === 'web' && Basemap::starterAllowed($this->config);
 
             if ($name === '') {
                 $this->flash('error', __('Map name is required'));
@@ -67,11 +70,13 @@ class MapManagementController extends BaseController
                         'active' => isset($_POST['active']) ? 1 : 0,
                         'width' => (int) ($_POST['width'] ?? 800),
                         'height' => (int) ($_POST['height'] ?? 600),
+                        'basemap' => $onWebMap,
                     ]);
                 }
 
                 $this->flash('success', __('Map ":name" created', ['name' => $name]));
-                $this->redirect('/editor/edit/' . $mapId);
+                // on a web map, the editor opens on the Basemap section to place the canvas
+                $this->redirect('/editor/edit/' . $mapId . ($onWebMap ? '?open=basemap' : ''));
             } catch (\Exception $e) {
                 $this->flash('error', __('Failed to create map: :error', ['error' => $e->getMessage()]));
                 $this->redirect($this->returnUrl());
@@ -88,6 +93,7 @@ class MapManagementController extends BaseController
             'maps' => $this->mapService->getAllMaps(),
             'title' => __('New map'),
             'action' => 'create',
+            'webMap' => Basemap::starterAllowed($this->config),
             'return' => $this->returnUrl(),
         ]);
     }

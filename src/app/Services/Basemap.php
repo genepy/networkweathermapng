@@ -26,6 +26,24 @@ final class Basemap
 
     public const DEFAULT_SERVERS = 'https://tiles.openfreemap.org';
 
+    /**
+     * The basemap of New map > On a web map, as the editor's first preset:
+     * OpenFreeMap (OpenStreetMap vector tiles, no key), light and dark,
+     * centred on France at country zoom until the editor frames the nodes.
+     */
+    public const STARTER = [
+        'basemap' => 'https://tiles.openfreemap.org/styles/positron',
+        'basemap_dark' => 'https://tiles.openfreemap.org/styles/dark',
+        'basemap_center' => '46.6 2.4',
+        'basemap_zoom' => '5',
+    ];
+
+    /** Whether New map can offer the starter basemap: its server is allowed (BASEMAP_SERVERS) */
+    public static function starterAllowed(?Config $config = null): bool
+    {
+        return self::allowed(self::STARTER['basemap'], self::servers($config));
+    }
+
     /** Credit of raster tiles without SET basemap_attribution */
     public const RASTER_ATTRIBUTION = '© OpenStreetMap contributors';
 

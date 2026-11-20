@@ -3081,6 +3081,25 @@
         var bg = window.WMEditor.backgroundPicker(m.background || '', function (path) {
             send([{ op: 'set_map', background: path }]);
         });
+        // the web map under the map (SET basemap), set in the Basemap section of the map properties
+        var tiles = m.props && m.props.basemap;
+        var tilesName = '';
+        if (tiles) {
+            try { tilesName = new URL(tiles, location.href).hostname; } catch (e) { tilesName = tiles; }
+        }
+        var sprite = document.querySelector('use[href*="ui.svg"]');
+        var mapIcon = document.createElementNS(SVGNS, 'svg');
+        mapIcon.setAttribute('class', 'i');
+        mapIcon.setAttribute('aria-hidden', 'true');
+        el('use', { href: (sprite ? sprite.getAttribute('href').split('#')[0] : '/assets/icons/ui.svg') + '#map' }, mapIcon);
+        var basemapButton = h('button', { type: 'button', 'class': 'icon-pick-current basemap-pick', title: t('A web map such as OpenStreetMap under the map: Map properties > Basemap') }, [
+            mapIcon,
+            h('span', { text: tiles ? tilesName : t('None') })
+        ]);
+        basemapButton.addEventListener('click', function (evt) {
+            evt.preventDefault();
+            if (commands.basemap) { commands.basemap(); }
+        });
         // how the picture fills the canvas (SET background_sizing); only useful with a picture
         var sizing = h('select', { name: 'background_sizing' }, [
             ['image', t('Natural size')], ['fit', t('Fit, keep the ratio')], ['stretch', t('Stretch to the map')]
@@ -3096,6 +3115,7 @@
             row(t('Map name'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
+            row(t('Basemap'), basemapButton),
             m.background ? row(t('Background size'), sizing, false, TIPS.background_sizing) : null,
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) })
         ].concat(window.WMEditor.mapSections ? window.WMEditor.mapSections() : []).concat([
