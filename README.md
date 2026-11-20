@@ -173,10 +173,23 @@ LINK router1-switch1
 | `KEYSTYLE DEFAULT modern 240` | The legend card shows a gradient bar 240 px long (`horizontal` too); `classic`, `vertical` and `inverted` show the list of colours, `tags` the list with the step tags. See [Map items](#map-items) |
 | `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
 
-Resizing a map in the editor (by dragging its border, or in Map Properties)
-asks whether to **scale the content** with it (nodes, VIA points, legend, title
-and timestamp move proportionally, optionally keeping proportions and scaling
-link widths) or only extend/crop the canvas.
+Resizing a map in the editor (by dragging its right or bottom side or that
+corner, or in Map Properties) asks whether to **scale the content** with it
+(nodes, VIA points, legend, title and timestamp move proportionally, optionally
+keeping proportions and scaling link widths) or only extend/crop the canvas.
+When nothing is selected, the canvas shows a handle on each side and corner,
+with the size shown while dragging (Shift keeps the proportions at a corner).
+Dragging the left or top side grows or shrinks the canvas on that side and
+moves everything (nodes, VIA points, zones, boxes, legends, title, timestamps,
+focus areas) with it, so nothing moves on screen; on a basemap the map shows
+more of it and located nodes keep their point. A background picture keeps its
+place in the top left corner.
+
+The icon of a selected node has the same eight handles: a side changes one
+dimension, a corner both, and the opposite side stays in place (the node moves
+with the icon); Shift keeps the proportions, Alt resizes around the centre. A
+picture, a badge or an icon alone always keeps its proportions (for those two,
+the handles set `SET badge_size`).
 
 ### Zones (site rectangles)
 
@@ -277,9 +290,10 @@ In the side panel and the kiosk the total traffic card reads like a peering
 exchange dashboard: tabs for *Total* and each link group (`SET
 traffic_group Peering` on a link, *Traffic group* in the link panel; a link
 in a group counts in its tab even with `SET traffic_total 0`), a *1 day* /
-*1 week* / *1 month* switch (a period is offered once the kept history goes
-back further than the period before it, so raise the retention in Admin >
-Recording, up to 31 days, to get a month; demo maps have all three), IN
+*1 week* / *1 month* switch (every period can be picked, as in the zoomed
+graph: when the kept history is shorter, the graph spans the whole period,
+shows what exists and says since when it is recorded; raise the retention in
+Admin > Recording, up to 31 days, to keep a month; demo maps have all three), IN
 above and OUT below the line, and the 95th percentile and peak of each
 direction worked out on every point of the period. Long periods are
 averaged down for the small graph ("Aggregated data"); a click on the graph

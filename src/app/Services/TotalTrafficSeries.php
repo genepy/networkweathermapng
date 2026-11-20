@@ -179,24 +179,28 @@ final class TotalTrafficSeries
     }
 
     /**
-     * Which periods have enough history to be shown: a day once there are
-     * two points, a longer period once the history goes back further than
-     * the period before it.
+     * Which periods can be shown: every one once there are two points with
+     * data (F39). A period longer than the history shows what exists, over
+     * the whole period, with the date the recording starts (since()).
      *
      * @param list<array{0: int, 1: float|null, 2: float|null}> $rows oldest first
      * @return array<string, bool>
      */
     public static function periods(array $rows, int $now): array
     {
+        return array_fill_keys(array_keys(self::PERIODS), count(self::withData($rows)) >= 2);
+    }
+
+    /**
+     * When the history starts: the time of the oldest point with data, or
+     * null without any.
+     *
+     * @param list<array{0: int, 1: float|null, 2: float|null}> $rows oldest first
+     */
+    public static function since(array $rows): ?int
+    {
         $rows = self::withData($rows);
-        $oldest = $rows === [] ? $now : $rows[0][0];
-        $out = [];
-        $previous = 0;
-        foreach (self::PERIODS as $name => $seconds) {
-            $out[$name] = $previous === 0 ? count($rows) >= 2 : $now - $oldest > $previous;
-            $previous = $seconds;
-        }
-        return $out;
+        return $rows === [] ? null : (int) $rows[0][0];
     }
 
     /**

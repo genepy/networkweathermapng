@@ -55,7 +55,6 @@
     var overlay = $('#overlay');
     var paper = $('#paper');
     var gridLayer = $('#grid-layer');
-    var resizeHandle = $('#resize-handle');
     var canvas = $('#canvas');
     var inspector = $('#inspector-body');
 
@@ -405,13 +404,6 @@
         var zoom = Math.round(state.zoom * 100);
         $$('.zoom-value').forEach(function (v) { v.textContent = zoom + '%'; });
         $$('[data-cmd="zoom-reset"]').forEach(function (b) { b.title = t('Zoom of the editor view: :p%. Click for actual size', { p: zoom }) + keyHint('editor.actual-size'); });
-        if (state.model) {
-            var s = 12 / state.zoom;
-            resizeHandle.setAttribute('x', state.model.map.width - s / 2);
-            resizeHandle.setAttribute('y', state.model.map.height - s / 2);
-            resizeHandle.setAttribute('width', s);
-            resizeHandle.setAttribute('height', s);
-        }
         updateMinimap();
         if (state.model) {
             renderOverlay();
@@ -818,9 +810,7 @@
             el('rect', { 'class': 'label-ghost', x: drag.at[0] - drag.w / 2, y: drag.at[1] - drag.h / 2, width: drag.w, height: drag.h }, overlay);
         }
 
-        if (drag && drag.type === 'resize' && drag.started) {
-            el('rect', { 'class': 'lasso', x: 0, y: 0, width: drag.w, height: drag.h }, overlay);
-        }
+        renderCanvasHandles(drag);
 
         // Two nodes or more: a box with handles to scale their layout
         if (nodes.length >= 2 && state.tool === 'select' && !moved) {
@@ -892,17 +882,53 @@
         });
     }
 
-    /** The icon of the selected node, resized from its corner */
+    /** Eight handles around a box [x1, y1, x2, y2]: the sides change one dimension, the corners both */
+    function sizeHandles(b, handle, cornerTip, sideTip) {
+        var r = 4 / state.zoom, mx = (b[0] + b[2]) / 2, my = (b[1] + b[3]) / 2;
+        var at = { nw: [b[0], b[1]], n: [mx, b[1]], ne: [b[2], b[1]], e: [b[2], my], se: [b[2], b[3]], s: [mx, b[3]], sw: [b[0], b[3]], w: [b[0], my] };
+        SCALE_DIRS.forEach(function (dir) {
+            el('rect', {
+                'class': 'scale-handle h-' + dir, x: at[dir][0] - r, y: at[dir][1] - r, width: 2 * r, height: 2 * r,
+                'data-handle': handle, 'data-dir': dir
+            }, overlay).appendChild(el('title', {})).textContent = dir.length === 2 ? cornerTip : sideTip;
+        });
+    }
+
+    /** The width and height being dragged, next to the bottom right corner of the box */
+    function sizeReadout(b) {
+        el('text', {
+            'class': 'size-readout', x: b[2], y: b[3] + 16 / state.zoom, 'text-anchor': 'end', 'font-size': 12 / state.zoom
+        }, overlay).textContent = Math.round(b[2] - b[0]) + ' × ' + Math.round(b[3] - b[1]);
+    }
+
+    /** The icon of the selected node, resized from any side or corner */
     function renderIconHandle(n, drag) {
         if (!n.icon_box || n.locked) { return; }
-        var b = n.icon_box, r = 4 / state.zoom;
+        var b = n.icon_box;
         if (drag && drag.type === 'iconsize' && drag.started) {
-            var cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
-            b = [cx - drag.w / 2, cy - drag.h / 2, cx + drag.w / 2, cy + drag.h / 2];
-            el('rect', { 'class': 'lasso', x: b[0], y: b[1], width: drag.w, height: drag.h }, overlay);
+            b = drag.rect;
+            el('rect', { 'class': 'lasso', x: b[0], y: b[1], width: b[2] - b[0], height: b[3] - b[1] }, overlay);
+            sizeReadout(b);
+            return;
         }
-        el('rect', { 'class': 'scale-handle', x: b[2] - r, y: b[3] - r, width: 2 * r, height: 2 * r, 'data-handle': 'iconsize' }, overlay)
-            .appendChild(el('title', {})).textContent = t('Drag to resize the icon');
+        sizeHandles(b, 'iconsize', t('Drag to resize the icon (Alt: around its centre)'), t('Drag to resize the icon on this side (Shift keeps proportions, Alt: around its centre)'));
+    }
+
+    /**
+     * The map canvas, when nothing is selected: handles on every side and
+     * corner. The left and top sides grow the canvas there, everything
+     * moving with it (resize_canvas); the others work as before.
+     */
+    function renderCanvasHandles(drag) {
+        var m = state.model.map;
+        if (drag && drag.type === 'canvas-size') {
+            if (!drag.started) { return; }
+            el('rect', { 'class': 'lasso', x: drag.rect[0], y: drag.rect[1], width: drag.rect[2] - drag.rect[0], height: drag.rect[3] - drag.rect[1] }, overlay);
+            sizeReadout(drag.rect);
+            return;
+        }
+        if (state.selection.size || state.tool !== 'select' || state.placing || (drag && drag.started)) { return; }
+        sizeHandles([0, 0, m.width, m.height], 'canvas-size', t('Drag to resize the map (Shift keeps proportions)'), t('Drag to resize the map on this side'));
     }
 
     /** With an icon, the label of the selected node can be dragged on its own */
@@ -1166,10 +1192,6 @@
         }
 
         var handle = evt.target.dataset && evt.target.dataset.handle;
-        if (evt.target === resizeHandle) {
-            startDrag(evt, { type: 'resize', start: p, w: state.model.map.width, h: state.model.map.height });
-            return;
-        }
         if (handle) {
             handleDown(evt, handle, p);
             return;
@@ -1442,7 +1464,12 @@
         }
         if (handle === 'iconsize') {
             var ni = selected('node')[0], ib = ni.icon_box;
-            startDrag(evt, { type: 'iconsize', node: ni.name, box: ib, w: ib[2] - ib[0], h: ib[3] - ib[1] });
+            startDrag(evt, { type: 'iconsize', node: ni.name, dir: evt.target.dataset.dir || 'se', start: p, box: ib, rect: ib.slice(), w: ib[2] - ib[0], h: ib[3] - ib[1] });
+            return;
+        }
+        if (handle === 'canvas-size') {
+            var cm = state.model.map;
+            startDrag(evt, { type: 'canvas-size', dir: evt.target.dataset.dir || 'se', start: p, w: cm.width, h: cm.height, rect: [0, 0, cm.width, cm.height] });
             return;
         }
         if (handle === 'zonelabel') {
@@ -1525,7 +1552,11 @@
                 break;
 
             case 'iconsize':
-                iconSizeMove(d, p, evt.shiftKey);
+                iconSizeMove(d, p, evt.shiftKey, evt.altKey);
+                break;
+
+            case 'canvas-size':
+                canvasSizeMove(d, p, evt.shiftKey);
                 break;
 
             case 'nodelabel':
@@ -1565,11 +1596,6 @@
 
             case 'connector':
                 d.now = p;
-                break;
-
-            case 'resize':
-                d.w = Math.max(50, snap(state.model.map.width + p.x - d.start.x));
-                d.h = Math.max(50, snap(state.model.map.height + p.y - d.start.y));
                 break;
 
             case 'scale':
@@ -1764,7 +1790,24 @@
                     renderOverlay();
                     return;
                 }
-                send([{ op: 'set_node', names: [d.node], props: { iconscalew: d.w, iconscaleh: d.h } }]);
+                send(iconSizeOps(d));
+                return;
+
+            case 'canvas-size':
+                var cr = d.rect, grow = { left: -cr[0], top: -cr[1], right: cr[2] - d.w, bottom: cr[3] - d.h };
+                renderOverlay();
+                if (!d.started || (!grow.left && !grow.top && !grow.right && !grow.bottom)) { return; }
+                if (!grow.left && !grow.top) {
+                    // the right and bottom sides: as before, asking what happens to the map
+                    askResize(cr[2], cr[3]);
+                    return;
+                }
+                send([{ op: 'resize_canvas', left: grow.left, top: grow.top, right: grow.right, bottom: grow.bottom }]).then(function () {
+                    // everything moved by (left, top): the view follows, so nothing moves on screen
+                    state.view.x += grow.left;
+                    state.view.y += grow.top;
+                    updateView();
+                });
                 return;
 
             case 'nodelabel':
@@ -1857,13 +1900,6 @@
                 }
                 return;
 
-            case 'resize':
-                renderOverlay();
-                if (d.started && (d.w !== state.model.map.width || d.h !== state.model.map.height)) {
-                    askResize(d.w, d.h);
-                }
-                return;
-
             case 'scale':
                 scaleEnd(d);
                 return;
@@ -1874,21 +1910,74 @@
     var SHAPES = ['box', 'rbox', 'round', 'inpie', 'outpie', 'nink'];
 
     /**
-     * The new size of an icon dragged by its corner, the icon staying
-     * centred on the node. A picture keeps its proportions; a shape keeps
-     * them with Shift.
+     * The new box of an icon dragged by a side or a corner: the opposite
+     * side stays in place (the node moves with the icon), or the centre
+     * with Alt. A side changes one dimension and a corner both; a picture,
+     * a badge or a corner keeps the proportions, a drawn shape with Shift.
      */
-    function iconSizeMove(d, p, keep) {
-        var b = d.box, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+    function iconSizeMove(d, p, shift, alt) {
+        var b = d.box, dir = d.dir, n = state.nodes.get(d.node);
         var w0 = Math.max(1, b[2] - b[0]), h0 = Math.max(1, b[3] - b[1]);
-        var w = Math.max(8, 2 * Math.abs(p.x - cx)), hh = Math.max(8, 2 * Math.abs(p.y - cy));
-        if (keep || SHAPES.indexOf(state.nodes.get(d.node).icon) < 0) {
-            var k = Math.max(w / w0, hh / h0);
-            w = Math.max(8, w0 * k);
-            hh = Math.max(8, h0 * k);
+        var dx = p.x - d.start.x, dy = p.y - d.start.y, k = alt ? 2 : 1;
+        var w = w0, hh = h0;
+        if (dir.indexOf('e') >= 0) { w = w0 + k * dx; }
+        if (dir.indexOf('w') >= 0) { w = w0 - k * dx; }
+        if (dir.indexOf('s') >= 0) { hh = h0 + k * dy; }
+        if (dir.indexOf('n') >= 0) { hh = h0 - k * dy; }
+        w = Math.max(8, w);
+        hh = Math.max(8, hh);
+        var shape = SHAPES.indexOf(n.icon) >= 0 && n.style === 'box';
+        if (shift || dir.length === 2 || !shape) {
+            var f = dir === 'n' || dir === 's' ? hh / h0 : (dir === 'e' || dir === 'w' ? w / w0 : Math.max(w / w0, hh / h0));
+            w = Math.max(8, w0 * f);
+            hh = Math.max(8, h0 * f);
         }
-        d.w = Math.min(1024, Math.round(w));
-        d.h = Math.min(1024, Math.round(hh));
+        w = Math.min(1024, Math.round(w));
+        hh = Math.min(1024, Math.round(hh));
+        var cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2;
+        var x1 = alt ? cx - w / 2 : (dir.indexOf('w') >= 0 ? b[2] - w : (dir.indexOf('e') >= 0 ? b[0] : cx - w / 2));
+        var y1 = alt ? cy - hh / 2 : (dir.indexOf('n') >= 0 ? b[3] - hh : (dir.indexOf('s') >= 0 ? b[1] : cy - hh / 2));
+        d.w = w;
+        d.h = hh;
+        d.rect = [x1, y1, x1 + w, y1 + hh];
+    }
+
+    /** The edits of an icon resize: its size (the badge size for a badge or an icon alone) and the node moved to the new centre */
+    function iconSizeOps(d) {
+        var n = state.nodes.get(d.node), props;
+        if (n.style === 'badge' || n.style === 'icon') {
+            // a badge box holds its 3 px shadow on each side
+            var size = Math.max(d.w, d.h) - (n.style === 'badge' ? 6 : 0);
+            props = { badge_size: Math.max(12, Math.min(200, Math.round(size))) };
+        } else {
+            props = { iconscalew: d.w, iconscaleh: d.h };
+        }
+        var ops = [{ op: 'set_node', names: [d.node], props: props }];
+        var b = d.box, r = d.rect;
+        var mx = Math.round((r[0] + r[2]) / 2 - (b[0] + b[2]) / 2), my = Math.round((r[1] + r[3]) / 2 - (b[1] + b[3]) / 2);
+        if (mx || my) {
+            var nodes = {};
+            nodes[d.node] = [n.x + mx, n.y + my];
+            ops.push({ op: 'move', nodes: nodes });
+        }
+        return ops;
+    }
+
+    /** The new canvas dragged by a side or a corner: [x1, y1, x2, y2] in map pixels, Shift keeps the proportions at a corner */
+    function canvasSizeMove(d, p, keep) {
+        var dir = d.dir, MIN = 50, r = [0, 0, d.w, d.h];
+        var dx = p.x - d.start.x, dy = p.y - d.start.y;
+        if (dir.indexOf('w') >= 0) { r[0] = Math.min(snap(dx), d.w - MIN); }
+        if (dir.indexOf('e') >= 0) { r[2] = Math.max(snap(d.w + dx), MIN); }
+        if (dir.indexOf('n') >= 0) { r[1] = Math.min(snap(dy), d.h - MIN); }
+        if (dir.indexOf('s') >= 0) { r[3] = Math.max(snap(d.h + dy), MIN); }
+        if (keep && dir.length === 2) {
+            var f = Math.max((r[2] - r[0]) / d.w, (r[3] - r[1]) / d.h);
+            var w = Math.max(MIN, Math.round(d.w * f)), hh = Math.max(MIN, Math.round(d.h * f));
+            if (dir.indexOf('w') >= 0) { r[0] = r[2] - w; } else { r[2] = r[0] + w; }
+            if (dir.indexOf('n') >= 0) { r[1] = r[3] - hh; } else { r[3] = r[1] + hh; }
+        }
+        d.rect = r;
     }
 
     function midpoint(link) {

@@ -172,6 +172,7 @@ class MapEditor
                 'clone' => $this->cloneNodes($map, (array) ($op['nodes'] ?? []), (int) ($op['dx'] ?? 20), (int) ($op['dy'] ?? 20)),
                 'hint' => $this->hint($map, $op),
                 'set_map' => $this->setMap($map, $op),
+                'resize_canvas' => $this->resizeCanvas($map, $op),
                 'paste' => $this->paste($map, $op),
                 'add_zone' => $this->addZone($map, $op),
                 'set_zone' => $this->setZones($map, $op),
@@ -1469,6 +1470,52 @@ class MapEditor
 
         if (isset($op['props'])) {
             $this->setMapProps($map, (array) $op['props']);
+        }
+    }
+
+    /** The smallest and largest canvas the editor makes, in pixels */
+    private const CANVAS_MIN = 50;
+    private const CANVAS_MAX = 20000;
+
+    /**
+     * {op: resize_canvas, left, top, right, bottom} - grow (or shrink, when
+     * negative) the canvas by that many pixels on each side. Everything
+     * moves by (left, top), so nothing moves against the sides that stay:
+     * nodes, vias, zones, legends, title, timestamps, boxes, the width
+     * legend and the focus areas. On a basemap the shown area grows
+     * instead: the centre moves so the located nodes keep their point.
+     */
+    private function resizeCanvas(\WeatherMap $map, array $op): void
+    {
+        $side = static fn (string $k): int => (int) round((float) ($op[$k] ?? 0));
+        [$left, $top, $right, $bottom] = [$side('left'), $side('top'), $side('right'), $side('bottom')];
+        $w = (int) $map->width + $left + $right;
+        $h = (int) $map->height + $top + $bottom;
+        if ($w < self::CANVAS_MIN || $h < self::CANVAS_MIN || $w > self::CANVAS_MAX || $h > self::CANVAS_MAX) {
+            throw new InvalidArgumentException(__('The map size must be between :min and :max pixels', ['min' => self::CANVAS_MIN, 'max' => self::CANVAS_MAX]));
+        }
+
+        $frame = \WeatherMapGeo::frame($map);
+        if ($frame !== null) {
+            // the point under the centre of the new canvas, in the old one
+            [$lat, $lon] = \WeatherMapGeo::unproject($frame, (int) $map->width, (int) $map->height, $w / 2 - $left, $h / 2 - $top);
+            $map->add_hint('basemap_center', \WeatherMapGeo::format($lat, $lon));
+        }
+
+        \WeatherMapScaler::shift($map, $left, $top, $w, $h);
+
+        $hints = is_array($map->hints) ? $map->hints : [];
+        foreach ($hints as $key => $value) {
+            $key = (string) $key;
+            $value = trim((string) $value);
+            if (preg_match('/^box_[A-Za-z0-9]+$/', $key) && preg_match('/^(\w+)\s+(-?\d+)[\s,]+(-?\d+)$/', $value, $m)) {
+                $map->add_hint($key, $m[1] . ' ' . ((int) $m[2] + $left) . ' ' . ((int) $m[3] + $top));
+            } elseif ($key === 'width_legend' && preg_match('/^(-?\d+)[\s,]+(-?\d+)$/', $value, $m)) {
+                $map->add_hint($key, ((int) $m[1] + $left) . ' ' . ((int) $m[2] + $top));
+            } elseif (preg_match('/^focus_[A-Za-z0-9]+$/', $key) && $key !== 'focus_default'
+                && preg_match('/^(-?\d+)[\s,]+(-?\d+)[\s,]+(-?\d+)[\s,]+(-?\d+)$/', $value, $m)) {
+                $map->add_hint($key, implode(' ', [(int) $m[1] + $left, (int) $m[2] + $top, (int) $m[3] + $left, (int) $m[4] + $top]));
+            }
         }
     }
 

@@ -215,6 +215,26 @@ final class BasemapTest extends TestCase
         }
     }
 
+    /** F34: growing the canvas on a basemap shows more of it; located nodes keep their point and their place on it */
+    public function testResizeCanvasOnABasemapShowsMore(): void
+    {
+        $file = $this->mapFile("NODE paris\n\tPOSITION 0 0\n\tSET geo 48.8566 2.3522\nNODE free\n\tPOSITION 100 100\n");
+        $editor = new MapEditor($file);
+        $before = $editor->load();
+        \WeatherMapGeo::placeNodes($before);
+        $at = [$before->nodes['paris']->x, $before->nodes['paris']->y];
+
+        $editor->apply([['op' => 'resize_canvas', 'left' => 200, 'top' => 100, 'right' => 0, 'bottom' => 0]]);
+        $map = $editor->load();
+        \WeatherMapGeo::placeNodes($map);
+
+        $this->assertSame('48.8566 2.3522', $map->nodes['paris']->hints['geo']);
+        $this->assertEqualsWithDelta($at[0] + 200, $map->nodes['paris']->x, 1, 'the located node stays over its point');
+        $this->assertEqualsWithDelta($at[1] + 100, $map->nodes['paris']->y, 1);
+        $this->assertEquals([300, 200], [$map->nodes['free']->x, $map->nodes['free']->y]);
+        $this->assertNotSame('46.6 2.4', $map->hints['basemap_center'], 'the centre moved');
+    }
+
     public function testEditorSetsTheBasemapAndLocatesNodes(): void
     {
         $file = $this->dir . '/map.conf';

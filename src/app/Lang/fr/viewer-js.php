@@ -69,6 +69,7 @@ return [
     'Total traffic' => 'Trafic total',
     'Total traffic over :period, IN above the line and OUT below' => 'Trafic total sur :period, ENTRANT au-dessus de la ligne et SORTANT en dessous',
     'Demo data' => 'Données de démonstration',
+    'Recorded since :date' => 'Enregistré depuis le :date',
     'Aggregated data, click to zoom' => 'Données agrégées, cliquez pour agrandir',
     'Aggregated data' => 'Données agrégées',
     'Click to zoom' => 'Cliquez pour agrandir',

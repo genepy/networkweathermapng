@@ -39,6 +39,20 @@ class WeatherMapScaler {
 		$new_height = max(1, intval($new_height));
 
 		list($sx, $sy, $dx, $dy) = self::factors($map->width, $map->height, $new_width, $new_height, $keep_aspect);
+		self::transform($map, $sx, $sy, $dx, $dy, $new_width, $new_height, $scale_sizes);
+	}
+
+	/**
+	 * A new canvas of $new_width x $new_height with everything moved by
+	 * ($dx, $dy): the canvas grows or shrinks on its left and top sides
+	 * while nothing moves against the others.
+	 */
+	static function shift(&$map, $dx, $dy, $new_width, $new_height) {
+		self::transform($map, 1, 1, (int) $dx, (int) $dy, max(1, intval($new_width)), max(1, intval($new_height)), false);
+	}
+
+	/** Every position times ($sx, $sy) plus ($dx, $dy), on a canvas of the new size */
+	static function transform(&$map, $sx, $sy, $dx, $dy, $new_width, $new_height, $scale_sizes) {
 		$sd = sqrt($sx * $sy); // for distances that have no direction
 
 		$px = function ($x) use ($sx, $dx) { return intval(round($x * $sx + $dx)); };

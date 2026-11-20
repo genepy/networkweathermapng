@@ -70,7 +70,6 @@ return [
     'Link groups' => 'Groupes de liens',
     'Total' => 'Total',
     'Period' => 'Période',
-    'Not enough history yet' => 'Pas encore assez d’historique',
     '1 day' => '1 jour',
     '1 week' => '1 semaine',
     '1 month' => '1 mois',
