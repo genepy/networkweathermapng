@@ -261,7 +261,7 @@ return [
     'Add a zone here' => 'Ajouter une zone ici',
 
     // Labels and map items (legends, timestamps, title)
-    'Drag the label of the selected node to move it away from the icon.' => 'Faites glisser l’étiquette du nœud sélectionné pour l’écarter de l’icône.',
+    'Drag the label of the selected node to put it anywhere: it snaps above, below, beside or on the icon (Alt: no snapping).' => 'Faites glisser l’étiquette du nœud sélectionné pour la placer où vous voulez : elle s’aligne au-dessus, au-dessous, à côté ou sur l’icône (Alt : sans alignement).',
     'Reset label position' => 'Replacer l’étiquette',
     'Label position' => 'Position de l’étiquette',
     'Above the icon' => 'Au-dessus de l’icône',
