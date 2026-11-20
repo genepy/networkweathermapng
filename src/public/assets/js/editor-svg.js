@@ -2926,7 +2926,7 @@
         label_text: t('What the label writes, with values in braces: {link:this:bandwidth_in:%2k} is the traffic in, {link:this:inpercent:%.2f} the load in % (bandwidth_out and outpercent for the other way).'),
         bwstyle: t('Level box: a box that stays level whatever the angle of the link. Box along the link: the box turns with the link. Pill along the link, with an arrow: a rounded label that turns with the link, with a small arrow toward where the traffic goes.'),
         commentcurve: t('Straight: the comment is written on a straight line. Follow the curve: the comment bends with the link where it bends gently.'),
-        node_style: t('Box with the label: the icon and the label are drawn on the map. Round badge: a disc with the icon or the initials of the label; the name shows on hover and in Find a node.'),
+        node_style: t('Box with the label: the icon and the label are drawn on the map. Round badge: a disc with the icon or the initials of the label; the name shows on hover and in Find a node. Icon only: the icon without disc nor label box, the name on hover; a node without an icon shows a badge with its initials.'),
         label_position: t('Where the label sits around the icon: above it, on its top, centre or bottom, or below it. Only for nodes with an icon; drag the label to put it anywhere else.'),
         background_sizing: t('Natural size: the picture keeps its size in the top left corner, cut at the edges of the map. Fit, keep the ratio: scaled to the map without distortion and centred; the background colour fills the rest. Stretch to the map: scaled to the whole map, its ratio may change.'),
         zone_labelpos: t('Which corner or side of the zone its label sits in. Drag the label of a single zone to put it anywhere else.')
@@ -3304,7 +3304,7 @@
             iconSizeRow(nodes),
             labelPositionRow(nodes),
             h('h3', { text: t('Label style') }),
-            row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')]] }), false, TIPS.node_style),
+            row(t('Look'), field(nodes, 'style', 'node', { options: [['box', t('Box with the label')], ['badge', t('Round badge: icon or initials, name on hover')], ['icon', t('Icon only, name on hover')]] }), false, TIPS.node_style),
             badgeSizeRow(nodes),
             row(t('Font'), fontField(nodes, 'labelfont', 'node')),
             row(t('Background'), colourField(nodes, 'labelbgcolour', 'node')),
@@ -3402,9 +3402,9 @@
         ]);
     }
 
-    /** SET badge_size: the diameter of round badges, the same in the viewer and the editor */
+    /** SET badge_size: the diameter of round badges (the longest side of an icon alone), the same in the viewer and the editor */
     function badgeSizeRow(nodes) {
-        var badges = nodes.filter(function (n) { return n.style === 'badge'; });
+        var badges = nodes.filter(function (n) { return n.style === 'badge' || n.style === 'icon'; });
         if (!badges.length) { return null; }
         var names = badges.map(function (n) { return n.name; });
         var c = common(badges, 'badge_size');
@@ -3422,7 +3422,9 @@
                     onclick: function () { save(0); }
                 })
             ])),
-            h('p', { 'class': 'help', text: t('The diameter of the badge on the map at 100 %. On a basemap, located nodes keep this size on the screen when zooming in, in the live view and here.') })
+            h('p', { 'class': 'help', text: t('The diameter of the badge on the map at 100 %. On a basemap, located nodes keep this size on the screen when zooming in, in the live view and here.') }),
+            badges.some(function (n) { return n.style === 'icon'; })
+                ? h('p', { 'class': 'help', text: t('An icon alone takes this size on its longest side.') }) : null
         ]);
     }
 
