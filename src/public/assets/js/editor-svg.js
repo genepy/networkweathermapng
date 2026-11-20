@@ -3115,8 +3115,8 @@
             row(t('Map name'), title),
             row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
             row(t('Background'), bg),
-            row(t('Basemap'), basemapButton),
             m.background ? row(t('Background size'), sizing, false, TIPS.background_sizing) : null,
+            row(t('Basemap'), basemapButton),
             h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) })
         ].concat(window.WMEditor.mapSections ? window.WMEditor.mapSections() : []).concat([
             h('button', { type: 'button', 'class': 'shortcuts-hint', onclick: openShortcuts }, [
