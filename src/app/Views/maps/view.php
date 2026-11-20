@@ -223,7 +223,7 @@
 
         <!-- the city of the hovered site, on a map with a basemap (viewer.js) -->
         <aside class="wmv-inset wmv-fades" hidden aria-hidden="true">
-            <header class="wmv-inset-head"><span class="wmv-inset-title"></span><span class="wmv-inset-count"></span></header>
+            <header class="wmv-inset-head"><?= icon('map') ?><span class="wmv-inset-title"></span><span class="wmv-inset-count"></span></header>
             <div class="wmv-inset-map"></div>
         </aside>
 
