@@ -4942,6 +4942,8 @@
         'spread': function () { spreadApart(10); },
         'zone': function () { if (state.placing) { stopPlacing(); } else { startPlacing(); } },
         'note': function () { addNote(null); },
+        // the Basemap section of the map properties (editor-mapprops.js replaces it with its own)
+        'basemap': function () { if (window.WMEditor.openMapProperties) { window.WMEditor.openMapProperties('basemap'); } },
         'layers': toggleLayersPanel,
         'text-mode': function () { if (state.textMode) { closeText(); } else { openText(); } },
         'snap': function () { state.snap = !state.snap; updateToolbar(); },
