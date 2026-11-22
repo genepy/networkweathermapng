@@ -54,7 +54,8 @@ final class SvgRenderTest extends TestCase
         // TITLEPOS -1 -1 (the default) draws no title
         $titled = $map->titlex >= 0 && $map->titley >= 0;
         $this->assertSame($titled ? 1 : 0, $xpath->query('//s:g[@data-kind="title"]/s:text')->length, 'title');
-        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"][@data-name=""]/s:text')->length, 'timestamp');
+        // TIMEPOS is read but not drawn (F58): the status bar gives the update time
+        $this->assertSame(0, $xpath->query('//s:g[@data-kind="timestamp"]')->length, 'no timestamp card');
     }
 
     public function testLegendsAreVectorsAtTheirPlace(): void
@@ -87,7 +88,7 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
     }
 
-    public function testModernLegendAndPillTimestampAreVectors(): void
+    public function testModernLegendIsAVectorAndTheTimestampIsNotDrawn(): void
     {
         $conf = "WIDTH 500\nHEIGHT 300\nKEYPOS DEFAULT 20 40 Traffic load\nKEYSTYLE DEFAULT modern 240\n"
             . "TIMEPOS 300 280 Created: %H:%M\nSET timestamp_style pill\n"
@@ -106,8 +107,7 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(1, $xpath->query($legend . '/s:rect[@class="wm-scale-bar"]')->length, 'the bar');
         $this->assertSame('240', $xpath->query($legend . '/s:rect')->item(0)->getAttribute('width'), 'as long as KEYSTYLE says');
         $this->assertSame(['Traffic load', '0%', '100%'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query($legend . '/s:text'))));
-        $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"]/s:polygon')->length, 'the timestamp card');
-        $this->assertStringStartsWith('Created: ', $xpath->query('//s:g[@data-kind="timestamp"]/s:text')->item(0)->textContent);
+        $this->assertSame(0, $xpath->query('//s:g[@data-kind="timestamp"]')->length, 'TIMEPOS is read, not drawn (F58)');
         $this->assertSame(0, $xpath->query('//s:image')->length, 'nothing is left as a bitmap');
     }
 

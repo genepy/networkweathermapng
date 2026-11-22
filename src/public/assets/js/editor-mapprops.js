@@ -496,19 +496,11 @@
             case 'legend':
                 // the look of every map item card
                 return [
-                    h('p', { 'class': 'mapprops-explain', text: t('Legends, the update time, the total traffic and text boxes are cards with this font and these colours. Add them or remove them in the Map items of the Add panel.') }),
+                    h('p', { 'class': 'mapprops-explain', text: t('Legends, the status bar on the map, the total traffic and text boxes are cards with this font and these colours. Add them or remove them in the Map items of the Add panel.') }),
                     field(t('Font'), fontSelect('key_font', p.key_font)),
                     field(t('Text colour'), colour('key_text_colour', p.key_text_colour, false)),
                     field(t('Box colour'), colour('key_bg_colour', p.key_bg_colour, true)),
                     field(t('Box outline'), colour('key_outline_colour', p.key_outline_colour, true))
-                ];
-            case 'timestamp':
-                return [
-                    itemsHint(),
-                    field(t('Timestamp text'), h('input', { name: 'stamp_text', value: p.stamp_text, autocomplete: 'off' }),
-                        t('%d day, %m month, %b month name, %Y year, %H hour, %M minutes, %S seconds. Example: Created: %b %d %Y %H:%M:%S')),
-                    field(t('Font'), fontSelect('time_font', p.time_font)),
-                    field(t('Colour'), colour('time_colour', p.time_colour, false))
                 ];
             case 'links':
                 return [
@@ -570,7 +562,16 @@
     }
 
     function copyPanels(list) {
-        return (list || []).map(function (x) { return { id: x.id, position: x.position, shown: !!x.shown }; });
+        return (list || []).map(function (x) {
+            var c = { id: x.id, position: x.position, shown: !!x.shown };
+            if (x.at) { c.at = x.at.slice(); }
+            return c;
+        });
+    }
+
+    /** The places of a panel: the update time (the status bar) can also go on the map (F58) */
+    function panelPlaces(id) {
+        return id === 'updated' ? PANEL_PLACES.concat([['map', t('On the map')]]) : PANEL_PLACES;
     }
 
     /**
@@ -592,6 +593,16 @@
             sendProps(props).then(function () { if (box) { showSummary(box); } });
         }
 
+        // the status bar keeps the place it was dragged to on the canvas since this section was drawn
+        function withStatusAt(list) {
+            var m = ed.state.model && ed.state.model.map;
+            var now = ((m && m.props && m.props.viewer_panels) || []).filter(function (x) { return x.id === 'updated'; })[0];
+            list.forEach(function (x) {
+                if (x.id === 'updated' && x.position === 'map' && now && now.at) { x.at = now.at.slice(); }
+            });
+            return list;
+        }
+
         function saveKiosk() {
             saved({ kiosk_panels: { mode: kiosk.mode, panels: kiosk.panels } });
         }
@@ -611,8 +622,8 @@
             if (target === 'viewer') {
                 body.replaceChildren(
                     h('p', { 'class': 'mapprops-explain', text: t('The panels over the live map: show or hide each one, and put it in the side panel or in a corner of the map. The order is their order in the side panel, and in a corner that holds more than one.') }),
-                    panelRows(viewer, function () { saved({ viewer_panels: viewer }); }),
-                    h('span', { 'class': 'hint', text: t('The pictures (PNG, SVG) do not change.') })
+                    panelRows(viewer, function () { saved({ viewer_panels: withStatusAt(viewer) }); }),
+                    h('span', { 'class': 'hint', text: t('The update time can also go on the map: drag it there in the editor, it moves and zooms with the map, and the pictures (PNG, SVG) draw it. Elsewhere, the pictures show no time.') })
                 );
                 return;
             }
@@ -662,7 +673,7 @@
             list.replaceChildren.apply(list, panels.map(function (x, i) {
                 var name = panelName(x.id);
                 var shown = h('input', { type: 'checkbox', checked: x.shown, 'aria-label': t('Show :name', { name: name }) });
-                var place = h('select', { 'aria-label': t('Place of :name', { name: name }), disabled: !x.shown }, PANEL_PLACES.map(function (o) {
+                var place = h('select', { 'aria-label': t('Place of :name', { name: name }), disabled: !x.shown }, panelPlaces(x.id).map(function (o) {
                     return h('option', { value: o[0], text: o[1], selected: o[0] === x.position });
                 }));
                 shown.addEventListener('change', function () {
@@ -705,7 +716,6 @@
             case 'title': return ed.fontName(p.title_font);
             case 'legend': return ed.fontName(p.key_font);
             case 'scale': return t(':n steps', { n: (m.scale || []).length });
-            case 'timestamp': return p.stamp_shown === false ? t('Hidden') : p.stamp_text;
             case 'links': return p.link_bandwidth;
             case 'basemap':
                 if (!p.basemap) { return t('None'); }
@@ -722,7 +732,7 @@
 
     var SECTIONS = [
         ['appearance', t('Background colour and theme')], ['basemap', t('Basemap')], ['title', t('Title')], ['legend', t('Map items')],
-        ['scale', t('Link colours')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['fonts', t('Fonts')],
+        ['scale', t('Link colours')], ['links', t('Link defaults')], ['fonts', t('Fonts')],
         ['focus', t('Focus areas')], ['panels', t('Viewer panels')]
     ];
 

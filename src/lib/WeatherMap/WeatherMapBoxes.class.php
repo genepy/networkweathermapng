@@ -229,7 +229,8 @@ class WeatherMapBoxes {
 	static function drawAll($map, $image) {
 		$svg = WeatherMapSvg::$active;
 		foreach (self::all($map) as $id => $box) {
-			if ($box['hidden']) {
+			// an update time card is read but not drawn (F58): the status bar replaces it
+			if ($box['hidden'] || $box['type'] === 'updated') {
 				continue;
 			}
 			if ($svg) {
@@ -237,9 +238,31 @@ class WeatherMapBoxes {
 			}
 			self::draw($map, $image, $box);
 		}
+		self::drawStatus($map, $image);
 		if ($svg) {
 			$svg->begin(null);
 		}
+	}
+
+	/**
+	 * The status bar on the map (WeatherMap::$status_bar, F58): a card with
+	 * the update time and the most loaded link, and a muted line for a data
+	 * source that failed. Its image map area is STATUS.
+	 */
+	static function drawStatus($map, $image) {
+		$bar = $map->status_bar;
+		if (!is_array($bar) || !isset($bar['x'], $bar['y']) || empty($bar['lines'])) {
+			return;
+		}
+		$svg = WeatherMapSvg::$active;
+		if ($svg) {
+			$svg->begin('status', '', 'STATUS');
+		}
+		self::draw($map, $image, array(
+			'id' => 'status', 'type' => 'text', 'x' => max(0, (int) $bar['x']), 'y' => max(0, (int) $bar['y']),
+			'title' => '', 'text' => implode("\n", array_map(function ($l) { return str_replace('|', '/', (string) $l); }, $bar['lines'])),
+			'note' => isset($bar['note']) ? (string) $bar['note'] : '', 'area' => 'STATUS',
+		));
 	}
 
 	/** Draw one card; returns its [x1, y1, x2, y2] */

@@ -130,6 +130,15 @@ class WeatherMapScaler {
 			}
 		}
 
+		// the status bar placed on the map (SET viewer_panels / kiosk_panels ... updated:map:<x>,<y>)
+		foreach (array('viewer_panels', 'kiosk_panels') as $hint) {
+			if (isset($map->hints[$hint])) {
+				$map->hints[$hint] = preg_replace_callback('/\bupdated:map:(\d+),(\d+)/', function ($m) use ($px, $py) {
+					return 'updated:map:' . max(0, $px((int) $m[1])) . ',' . max(0, $py((int) $m[2]));
+				}, (string) $map->hints[$hint]);
+			}
+		}
+
 		$map->width  = $new_width;
 		$map->height = $new_height;
 	}

@@ -82,7 +82,7 @@
             { icon: '#i-link', label: t('Draw a link'), shortcut: keys('editor.link-tool'), keys: 'link tool new', when: editing, run: cmd('tool-link') },
             { icon: '#i-legend-load', label: t('Add a traffic legend'), keys: 'new key colours scale map item box card', when: editing, run: cmd('add-box-legend') },
             { icon: '#i-legend-speed', label: t('Add a link speed legend'), keys: 'new key width bandwidth map item box card', when: editing, run: cmd('add-box-speed') },
-            { icon: 'clock', label: t('Add the update time'), keys: 'new time date timestamp updated map item box card', when: editing, run: cmd('add-box-updated') },
+            { icon: 'clock', label: t('Show the status bar on the map'), keys: 'add update time date timestamp updated map item max load', when: editing, run: cmd('add-box-updated') },
             { icon: 'chart-line', label: t('Add the total traffic'), keys: 'new sum graph map item box card', when: editing, run: cmd('add-box-total') },
             { icon: '#i-paste', label: t('Paste'), shortcut: keys('editor.paste'), when: editing && ed.hasClip(), run: cmd('paste') },
             // selecting

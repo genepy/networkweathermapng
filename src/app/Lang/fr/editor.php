@@ -143,7 +143,6 @@ return [
     'Zone' => 'Zone',
     'Zones' => 'Zones',
     'Unknown zone: :name' => 'Zone inconnue : :name',
-    'Unknown timestamp: :name' => 'Horodatage inconnu : :name',
     'Unknown map item: :name' => 'Élément de carte inconnu : :name',
     'Unknown zone property: :key' => 'Propriété de zone inconnue : :key',
     'A zone named :name already exists' => 'Une zone nommée :name existe déjà',
@@ -280,7 +279,7 @@ return [
     'Unknown box property: :key' => 'Propriété d’encadré inconnue : :key',
     'Unknown box: :name' => 'Encadré inconnu : :name',
     'Traffic legend' => 'Légende du trafic',
-    'Updated at' => 'Mis à jour à',
+    'Status bar' => 'Barre d’état',
 
     // History and savepoints (timeline of saved versions)
     'History and savepoints' => 'Historique et points de sauvegarde',
@@ -312,7 +311,7 @@ return [
     // F19: map items
     'A card with the link load colours, as a gradient bar or a list' => 'Une carte avec les couleurs de charge des liens, en barre en dégradé ou en liste',
     'A card with the link widths by speed' => 'Une carte avec l’épaisseur des liens selon leur débit',
-    'A card with the time of the last data' => 'Une carte avec l’heure des dernières données',
+    'The status bar on the map: the update time and the most loaded link, as the viewer shows them' => 'La barre d’état sur la carte : l’heure de mise à jour et le lien le plus chargé, comme le visualiseur les montre',
     'A card with the total traffic of the map and its graph' => 'Une carte avec le trafic total de la carte et son graphique',
     'Map items on this map' => 'Éléments présents sur la carte',
     // F31: the basemap one click away

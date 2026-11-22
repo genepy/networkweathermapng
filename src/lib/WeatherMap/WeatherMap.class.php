@@ -234,6 +234,14 @@ class WeatherMap extends WeatherMapBase {
 	var $box_series_note = null;
 	/** The texts of the total traffic graph: p95, peak and period (WeatherMapBoxes::SERIES_LABELS) */
 	var $box_series_labels = null;
+	/**
+	 * The status bar drawn on the map (F58): null for none, or
+	 * array('x' => left, 'y' => top, 'lines' => list of texts, 'note' => a
+	 * muted line or ''). The application sets it from SET viewer_panels
+	 * (updated:map:<x>,<y>) with the values of the render; the editor with
+	 * sample values. See WeatherMapBoxes::drawStatus().
+	 */
+	var $status_bar = null;
 	var $texts = array(); // an array containing all the extraneous text bits
 
 	var $used_images  = array(); // an array of image filenames referred to (used by editor)
@@ -2017,13 +2025,9 @@ class WeatherMap extends WeatherMapBase {
 				break;
 		}
 
-		// a negative position hides the timestamp (the editor keeps its place as -x - 1, -y - 1)
-		if (($pos_x < 0) || ($pos_y < 0)) {
-			return;
-		}
-
-		// a card with the time; TIMEPOS 0 0 (or none) puts it in the top right corner
-		WeatherMapBoxes::draw($this, $image, WeatherMapBoxes::fromTimestamp($this, $which, $stamp, $pos_x, $pos_y, $font, $colour));
+		// TIMEPOS, MINTIMEPOS and MAXTIMEPOS are read but not drawn any more
+		// (F58): the status bar gives the update time, in a corner of the
+		// viewer or on the map (status_bar); the editor turns them into it
 	}
 
 	/**

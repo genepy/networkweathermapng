@@ -136,9 +136,8 @@ class MapEditor
     public const LEGEND_PLACE = [10, 40];
 
     private const FURNITURE_AREAS = [
-        'TIMESTAMP' => ['timestamp', ''],
-        'MINTIMESTAMP' => ['timestamp', 'MIN'],
-        'MAXTIMESTAMP' => ['timestamp', 'MAX'],
+        // the status bar placed on the map (F58)
+        'STATUS' => ['status', ''],
         'TITLE' => ['title', ''],
     ];
 
@@ -192,10 +191,13 @@ class MapEditor
      * - SET width_legend becomes a link speed card with its title;
      * - the legend panel of the viewer is gone (F56): a map whose viewer
      *   showed it, and that has no card at all, gets a legend card, and the
-     *   viewer and kiosk hints no longer name a shown legend panel.
+     *   viewer and kiosk hints no longer name a shown legend panel;
+     * - one update time (F58): TIMEPOS, MINTIMEPOS, MAXTIMEPOS and the
+     *   update time cards (SET box_<id> updated) are removed; when one of
+     *   them was shown, the status bar goes on the map at its place.
      *
-     * The engine still draws the older keywords of maps never opened in the
-     * editor. True when the map changed.
+     * The engine still draws the older legends of maps never opened in the
+     * editor (not the timestamps). True when the map changed.
      */
     public static function convertLegacyItems(\WeatherMap $map): bool
     {
@@ -278,6 +280,69 @@ class MapEditor
             $changed = true;
         }
 
+        if (self::convertTimestamps($map)) {
+            $changed = true;
+        }
+
+        return $changed;
+    }
+
+    /** Width of a status bar, to place one where a timestamp ended at the right edge */
+    private const STATUS_WIDTH = 260;
+
+    /**
+     * The update times of older maps become the status bar (F58), see
+     * convertLegacyItems(); the migration preview uses it too. True when
+     * the map changed.
+     */
+    public static function convertTimestamps(\WeatherMap $map): bool
+    {
+        $defaults = $map->inherit_fieldlist;
+        $changed = false;
+        $place = null;
+
+        // TIMEPOS (0 0, or no TIMEPOS: the top right corner), MINTIMEPOS, MAXTIMEPOS
+        foreach (['', 'min', 'max'] as $prefix) {
+            $x = (int) $map->{$prefix . 'timex'};
+            $y = (int) $map->{$prefix . 'timey'};
+            $hidden = $prefix === '' ? [-1, -1] : [$defaults[$prefix . 'timex'], $defaults[$prefix . 'timey']];
+            $text = $map->{$prefix . 'stamptext'};
+            if ([$x, $y] === $hidden && $text === $defaults[$prefix . 'stamptext']) {
+                continue;
+            }
+            $changed = true;
+            if ($x >= 0 && $y >= 0 && $place === null) {
+                // the card's top left corner: the text starts at TIMEPOS (its baseline)
+                $place = $x === 0 && $y === 0
+                    ? [max(0, (int) $map->width - self::STATUS_WIDTH), 10]
+                    : [max(0, $x - 8), max(0, $y - 18)];
+            }
+            [$map->{$prefix . 'timex'}, $map->{$prefix . 'timey'}] = $hidden;
+            $map->{$prefix . 'stamptext'} = $defaults[$prefix . 'stamptext'];
+        }
+
+        // SET box_<id> updated: the update time cards
+        foreach (\WeatherMapBoxes::all($map) as $id => $box) {
+            if ($box['type'] !== 'updated') {
+                continue;
+            }
+            $changed = true;
+            if (!$box['hidden'] && $place === null) {
+                $place = [
+                    $box['x'] < 0 ? max(0, (int) $map->width + $box['x'] - self::STATUS_WIDTH) : $box['x'],
+                    $box['y'] < 0 ? max(0, (int) $map->height + $box['y'] - ViewerPanels::STATUS_MARGIN[1]) : $box['y'],
+                ];
+            }
+            foreach (array_keys($map->hints) as $hint) {
+                if ($hint === 'box_' . $id || str_starts_with((string) $hint, 'box_' . $id . '_')) {
+                    unset($map->hints[$hint]);
+                }
+            }
+        }
+
+        if ($place !== null) {
+            ViewerPanels::placeStatus($map, $place);
+        }
         return $changed;
     }
 
@@ -360,9 +425,9 @@ class MapEditor
 
     /**
      * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]},
-     *  furniture: {"box:<id>" | "timestamp:" | "timestamp:MIN" | "title:": [x, y]}}
+     *  furniture: {"box:<id>" | "status:" | "title:": [x, y]}}
      * Positions are absolute map pixels; for furniture, the position its
-     * keyword takes (SET box_<id>, TIMEPOS, TITLEPOS), as in model().
+     * keyword takes (SET box_<id>, viewer_panels updated:map:<x>,<y>, TITLEPOS), as in model().
      */
     private function move(\WeatherMap $map, array $op): void
     {
@@ -398,7 +463,7 @@ class MapEditor
         }
     }
 
-    /** Place a map item card, a timestamp or the title */
+    /** Place a map item card, the status bar or the title */
     private function moveFurniture(\WeatherMap $map, string $key, array $pos): void
     {
         [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
@@ -406,14 +471,9 @@ class MapEditor
         [$x, $y] = [max(0, $pos[0]), max(0, $pos[1])];
 
         switch ($kind) {
-            case 'timestamp':
-                // TIMEPOS 0 0 means "top right corner"
-                $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
-                if ($prefix === null) {
-                    throw new InvalidArgumentException(__('Unknown timestamp: :name', ['name' => $name]));
-                }
-                $map->{$prefix . 'timex'} = max(1, $x);
-                $map->{$prefix . 'timey'} = max(1, $y);
+            case 'status':
+                // the status bar on the map (F58): SET viewer_panels ... updated:map:<x>,<y>
+                ViewerPanels::placeStatus($map, [$x, $y]);
                 return;
 
             case 'title':
@@ -431,8 +491,8 @@ class MapEditor
     }
 
     /**
-     * {op: show_furniture, keys: [...], at?: [x, y]} - put timestamps or
-     * the title back on the map: at `at` (the position
+     * {op: show_furniture, keys: [...], at?: [x, y]} - put the status bar,
+     * the title or a hidden card back on the map: at `at` (the position
      * their keyword takes, as for move) or where they were before.
      */
     private function showFurniture(\WeatherMap $map, array $op): void
@@ -448,8 +508,8 @@ class MapEditor
 
     /**
      * {op: hide_furniture, keys: [...]} - the Delete of the editor for
-     * map items: timestamps and the title stay in the .conf, hidden (a
-     * negative position); a card is removed.
+     * map items: the status bar and the title stay in the .conf, hidden,
+     * with their place; a card is removed.
      */
     private function hideFurniture(\WeatherMap $map, array $keys): void
     {
@@ -460,33 +520,22 @@ class MapEditor
 
     /**
      * Show or hide a piece of furniture by its key ("box:<id>", "title:",
-     * "timestamp:", "timestamp:MIN", "timestamp:MAX"). The title and
-     * timestamps keep their place while hidden as (-x - 1,
-     * -y - 1), so showing them puts them back where they were.
+     * "status:"). The title keeps its place while hidden as (-x - 1,
+     * -y - 1), so showing it puts it back where it was; the status bar
+     * keeps its place in SET viewer_panels (updated:map:<x>,<y>:hidden).
      */
     private function setFurnitureShown(\WeatherMap $map, string $key, bool $shown): void
     {
         [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
 
         switch ($kind) {
-            case 'timestamp':
-                $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
-                if ($prefix === null) {
-                    throw new InvalidArgumentException(__('Unknown timestamp: :name', ['name' => $name]));
+            case 'status':
+                // shown: on the map, where it was (bottom left the first time)
+                if ($shown) {
+                    ViewerPanels::placeStatus($map, null);
+                } else {
+                    ViewerPanels::hideStatus($map);
                 }
-                [$x, $y] = [(int) $map->{$prefix . 'timex'}, (int) $map->{$prefix . 'timey'}];
-                $hidden = $x < 0 || $y < 0;
-                if ($shown && $hidden) {
-                    [$x, $y] = [$x < 0 ? -$x - 1 : $x, $y < 0 ? -$y - 1 : $y];
-                    if ($x > $map->width || $y > $map->height) {
-                        // never placed (the -10000 of MINTIMEPOS and MAXTIMEPOS): bottom left
-                        [$x, $y] = $prefix === '' ? [0, 0] : [10, max(1, $map->height - ($prefix === 'min' ? 24 : 8))];
-                    }
-                } elseif (!$shown && !$hidden) {
-                    [$x, $y] = [-$x - 1, -$y - 1];
-                }
-                $map->{$prefix . 'timex'} = $x;
-                $map->{$prefix . 'timey'} = $y;
                 return;
 
             case 'box':
@@ -1946,10 +1995,6 @@ class MapEditor
             } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
                 $field = ['title_font' => 'titlefont', 'time_font' => 'timefont', 'key_font' => 'keyfont'][$key];
                 $map->$field = $this->fontNumber($map, $value);
-            } elseif ($key === 'stamp_shown') {
-                $this->setFurnitureShown($map, 'timestamp:', (bool) $value);
-            } elseif ($key === 'stamp_text') {
-                $map->stamptext = $this->text($value);
             } elseif ($key === 'stamp_style') {
                 if (!in_array($value, ['plain', 'pill'], true)) {
                     throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
@@ -2240,8 +2285,6 @@ class MapEditor
             'key_text_colour' => $colour('KEYTEXT'),
             'key_bg_colour' => $colour('KEYBG'),
             'key_outline_colour' => $colour('KEYOUTLINE'),
-            'stamp_shown' => (int) $map->timex >= 0 && (int) $map->timey >= 0,
-            'stamp_text' => (string) $map->stamptext,
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
             'link_glow' => (string) $map->get_hint('link_glow') === '1',
@@ -2466,6 +2509,8 @@ class MapEditor
                 'title' => (string) $map->title,
                 // TITLEPOS -1 -1 (or another negative position): not drawn
                 'title_shown' => $map->titlex >= 0 && $map->titley >= 0,
+                // the status bar placed on the map (F58): the Map items list shows or hides it
+                'status_shown' => ViewerPanels::statusAt($map) !== null,
                 'background' => (string) $map->background,
                 'props' => self::mapProps($map),
                 'scale' => self::scaleOut($map),
@@ -2496,7 +2541,7 @@ class MapEditor
     }
 
     /**
-     * The cards, timestamps and title as drawn: their box
+     * The cards, the status bar and title as drawn: their box
      * (from the image map) and the position their keyword holds.
      */
     private static function furnitureOut(\WeatherMap $map): array
@@ -2517,8 +2562,6 @@ class MapEditor
 
             $box = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
             $pos = match ($kind) {
-                // text is placed by the left end of its baseline (a timestamp in its card)
-                'timestamp' => self::timestampPosition($map, $item, $box),
                 'title' => [$box[0], $box[3]],
                 default => [$box[0], $box[1]],
             };
@@ -2545,16 +2588,6 @@ class MapEditor
         return array_values($found);
     }
 
-    /**
-     * Where TIMEPOS (MINTIMEPOS, MAXTIMEPOS) puts a timestamp: its keyword
-     * when set, else the start of the text in the card (the top right corner)
-     */
-    private static function timestampPosition(\WeatherMap $map, string $which, array $box): array
-    {
-        $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$which] ?? '';
-        [$x, $y] = [(int) $map->{$prefix . 'timex'}, (int) $map->{$prefix . 'timey'}];
-        return $x > 0 && $y > 0 ? [$x, $y] : \WeatherMapBoxes::timestampAnchor($box);
-    }
 
     // ------------------------------------------------------------------
     // Helpers

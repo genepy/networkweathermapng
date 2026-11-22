@@ -668,14 +668,17 @@ class SvgEditorController extends BaseController
         )));
 
         $timezone = TimezoneService::fromConfig($this->database, $this->config)->forMap($mapId);
+        $clock = (new \App\Services\ClockFormat($this->database))->forMap($mapId);
 
         // from the web root (font and icon paths are relative to it), with
         // the engine warnings logged instead of printed
-        return $this->engine(static function () use ($file, $withData, $mapId, $timezone): array {
+        return $this->engine(static function () use ($file, $withData, $mapId, $timezone, $clock): array {
             $wmap = (new MapEditor($file))->load();
             if ($withData) {
                 $wmap->ReadData();
             }
+            // the status bar placed on the map (F58), with the values of this drawing
+            $wmap->status_bar = MapService::statusBar($wmap, $timezone, $clock);
             $svg = TimezoneService::using($timezone, static fn () => \WeatherMapSvg::render($wmap, [
                 'font_url' => static fn (int $n) => '/editor/font/' . $mapId . '/' . $n,
             ]));

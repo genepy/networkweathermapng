@@ -177,12 +177,12 @@ LINK router1-switch1
 
 Resizing a map in the editor (by dragging its right or bottom side or that
 corner, or in Map Properties) asks whether to **scale the content** with it
-(nodes, VIA points, legend, title and timestamp move proportionally, optionally
+(nodes, VIA points, legend, title and status bar move proportionally, optionally
 keeping proportions and scaling link widths) or only extend/crop the canvas.
 When nothing is selected, the canvas shows a handle on each side and corner,
 with the size shown while dragging (Shift keeps the proportions at a corner).
 Dragging the left or top side grows or shrinks the canvas on that side and
-moves everything (nodes, VIA points, zones, boxes, legends, title, timestamps,
+moves everything (nodes, VIA points, zones, boxes, legends, title, status bar,
 focus areas) with it, so nothing moves on screen; on a basemap the map shows
 more of it and located nodes keep their point. A background picture keeps its
 place in the top left corner.
@@ -264,7 +264,7 @@ and the downloads show them. Each item is a set of map hints (engines that
 do not know them skip them):
 
 ```
-SET box_1 total 10 10              # type and position: total, legend, speed, updated or text
+SET box_1 total 10 10              # type and position: total, legend, speed or text
 SET box_1_style graph              # total: graph (value and the last 24 h) or plain
 SET box_2 legend -10 -10           # negative x or y count from the right or bottom edge
 SET box_2_style bar                # legend: bar (the scale as a bar, 0% to 100%) or list
@@ -274,7 +274,6 @@ SET box_3_text Amsterdam | 68\nParis | 37   # \n starts a row, "label | value" p
 SET box_3_rows sites               # rows from the map: sites (nodes per site) or sites_load (busiest link)
 SET box_3_width 240                # least width of the content
 SET box_4 speed 10 300             # the link widths by speed (link width table)
-SET box_5 updated 10 460           # the time of the last data
 SET box_2_note Data: Observium     # a small line under the content (credits, a source...)
 SET box_6 legend 10 40             # a legend card...
 SET box_6_style tags               # bar (gradient), list (one row per step) or tags (the step tags)
@@ -286,12 +285,15 @@ The older keywords are read as the same items and drawn as the same cards
 for maps never opened in the editor. Opening a map in the editor turns
 `KEYPOS` (with its text and `KEYSTYLE`) and `SET width_legend`
 (with `SET width_legend_title`) into legend and link speed cards at the same
-place, and drops the hidden ones, in one step of the history (*Converted
+place, and drops the hidden ones; it also puts the status bar on the map
+where the first shown `TIMEPOS`, `MINTIMEPOS`, `MAXTIMEPOS` or update time
+card (`SET box_<id> updated`) was (the top right corner for a map without
+`TIMEPOS`), and removes them; all in one step of the history (*Converted
 legacy map items*) that Undo takes back. Until then `KEYPOS` is a
-traffic legend, `TIMEPOS`, `MINTIMEPOS` and `MAXTIMEPOS` are update time
-cards with their own text, font and colour (TIMEPOS still places the start
-of the text; without it the card sits in the top right corner), and
-`SET width_legend` is a link speed card. `SET timestamp_style` no longer
+traffic legend and `SET width_legend` a link speed card. The engine no
+longer draws `TIMEPOS`, `MINTIMEPOS` and `MAXTIMEPOS` (the lines are still
+read) nor update time cards: the status bar has the time (see
+[Viewer panels](#viewer-panels)). `SET timestamp_style` no longer
 changes anything. A card that would go past the edge of the map is drawn
 inside it.
 
@@ -318,8 +320,7 @@ opens it larger, where dragging across it zooms in. The PNG and SVG card
 keeps a still version: the last day, with its 95th percentile and peak.
 Every card takes the legend
 colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`, `KEYTEXTCOLOR`) and `KEYFONT`
-(*Map items* in the map panel); an update time card of `TIMEPOS` keeps
-`TIMEFONT` and `TIMECOLOR`. In the editor, the *Map items* tiles of the
+(*Map items* in the map panel). In the editor, the *Map items* tiles of the
 *Add* panel add one in the middle of the view; it moves like the other
 furniture, its panel edits the title, style, rows, width and note, and
 Delete removes it.
@@ -350,17 +351,24 @@ The live view shows the sites of the map, its total traffic and the update
 time (with the most loaded link); the legend is a card drawn on the map
 (`SET box_<id> legend`). The map chooses
 which ones are shown and where: in the side panel, or in a corner of the
-map, in their order. The PNG and SVG pictures do not change.
+map, in their order. The status bar can also sit on the map itself, at a
+point of the picture: it then moves and zooms with the map, the PNG and SVG
+pictures draw it there (update time, zone, most loaded link and the data
+sources that failed), and the editor shows it as a map item that moves like
+the title. Otherwise the PNG and SVG pictures do not change.
 
 ```
 SET viewer_panels total:top-right sites:side updated:bottom-left:hidden
+SET viewer_panels sites:side total:side updated:map:10,460
 ```
 
 Each panel is `<id>:<position>`, with `:hidden` when it is not shown. The
 ids are `sites`, `total` and `updated` (a `legend` entry of an older map is
 read and left out; the editor gives such a map a legend card when it opens
 it, if the viewer showed the legend and the map has no card); the positions are `side`,
-`top-left`, `top-right`, `bottom-left` and `bottom-right`. The order is the
+`top-left`, `top-right`, `bottom-left` and `bottom-right`, and for the
+status bar `map:<x>,<y>` (the top left corner of the bar on the map; a new
+map puts it at the bottom left, inside the map). The order is the
 order in the side panel, and in a corner that holds more than one. A panel
 left out takes its usual place. Without the hint the sites and the total
 are in the side panel and the update time at the bottom left.
@@ -561,13 +569,13 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   Settings pages of the application-wide palette.
 
 - **Select**: click, Shift+click to add, drag on empty space for an area,
-  Ctrl+A for every object of the map (zones, legends, timestamps, title and
+  Ctrl+A for every object of the map (zones, legends, the status bar, title and
   boxes included) wherever the focus is, except in a text field where it
   still selects the typed text, or *Select…* (Ctrl+F) to pick by name, label, target, group, width or
   bandwidth. Esc cancels a drag, closes the open menu, or empties the
   selection.
 - **Move**: drag the selection, or use the arrow keys (Shift for 10 px).
-  Nodes, zones, legends (`KEYPOS`), timestamps (`TIMEPOS`) and the title
+  Nodes, zones, legends, the status bar (`updated:map` of `viewer_panels`) and the title
   (`TITLEPOS`) move alike. While dragging, pink guides show the edges and
   centres the selection lines up with, and it snaps to them (hold Shift
   not to). *Grid* (G) snaps to 10 px; its lines are light on a dark background
@@ -625,7 +633,8 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   or drag it) and *Backgrounds* (click one to set the background of the map,
   one undo step). Ctrl+click on an empty spot also adds a node. *Map items*
   adds a card (see [Map items](#map-items)) in the middle of the view:
-  *Traffic legend*, *Link speed*, *Updated at* or *Total traffic* (a text
+  *Traffic legend*, *Link speed* or *Total traffic*, and *Status bar* puts
+the status bar on the map (a text
   card is a *Text* whose style is *Card*). Under the tiles, the items on the map are listed: a click on one
   selects it and shows it, its eye hides it and its bin removes it from the
   map (one undo step each). A hidden card is not drawn (PNG, SVG, viewer,
@@ -634,9 +643,8 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   first, with a switch that shows or hides it.
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection
   bar, of the right panel or of the context menu) removes the selection. A
-  timestamp is hidden rather than removed: it stays in the `.conf` at a
-  negative position (`TIMEPOS -11 -491 ...`, kept as -x - 1, -y - 1 so it
-  comes back where it was). The title
+  status bar is hidden rather than removed (`updated:map:<x>,<y>:hidden`),
+  so it comes back where it was. The title
   is hidden the same way (`TITLEPOS -11 -29`; `TITLEPOS -1 -1`, the default,
   draws no title). Ctrl+Z undoes it.
 - **Edit**: the right panel changes every selected item at once.
@@ -646,15 +654,14 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   *Look* (the background image, then sections that fold, each with its
   value on its row: *Background colour and theme*, *Basemap*, *Title*,
   *Map items* (the font and colours of every card), *Link colours*,
-  *Timestamp*, *Link defaults*, *Fonts*), *Viewer & kiosk* (time zone,
+  *Link defaults*, *Fonts*), *Viewer & kiosk* (time zone,
   clock, kiosk zoom and display time, then *Viewer panels* and *Focus
   areas*), *Recording* and *Access*. The fields of *General*, *Viewer &
   kiosk*, *Recording* and *Access* are saved with *Save* (*Cancel* puts
-  them back); the size and the sections are saved when they change. *Timestamp* has a
-  box that shows or hides it on the map. A section field is saved when
+  them back); the size and the sections are saved when they change. A section field is saved when
   it changes, as one step Ctrl+Z undoes; the colour scale is saved with its
   *Apply the colours* button. The browser remembers which sections are
-  open. A selected legend, title, timestamp or link speed legend shows its
+  open. A selected legend, title, status bar or link speed legend shows its
   own section. The
   width of all the links of a map is set in *Link defaults* (a number of
   pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).

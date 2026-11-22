@@ -15,7 +15,7 @@
     // how far a bandwidth label may move across its link (MapEditor::LABEL_SHIFT_MAX)
     var LABEL_SHIFT_MAX = 60;
     /** Map furniture: drawn by the map itself, placed by KEYPOS, TIMEPOS, TITLEPOS... */
-    var FURNITURE = ['timestamp', 'title', 'box'];
+    var FURNITURE = ['status', 'title', 'box'];
     /** Distance, in screen pixels, at which a moved object snaps to a guide */
     var GUIDE_SNAP = 6;
 
@@ -3730,7 +3730,7 @@
 
     function furnitureName(f) {
         // the same names for a card and for the older keyword it stands for
-        if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Updated at'); }
+        if (f.kind === 'status') { return t('Status bar'); }
         if (f.kind === 'title') { return t('Title'); }
         return boxTypeName(f.props ? f.props.type : '');
     }
@@ -3747,7 +3747,7 @@
         if (!list) { return; }
         var items = [];
         state.furniture.forEach(function (f, k) {
-            if (f.kind !== 'title') { items.push([k, f]); }
+            if (f.kind !== 'title' && f.kind !== 'status') { items.push([k, f]); }
         });
         items.sort(function (a, b) { return a[1].box[1] - b[1].box[1] || a[1].box[0] - b[1].box[0]; });
         var rows = items.map(function (it) {
@@ -3776,6 +3776,8 @@
                 removeItem(key('box', f.name), name)
             ]));
         });
+        var status = statusItem();
+        if (status) { rows.unshift(status); }
         var title = titleItem();
         if (title) { rows.unshift(title); }
         list.replaceChildren.apply(list, rows);
@@ -3808,6 +3810,34 @@
                 send([{ op: 'set_box', name: f.name, props: { hidden: shown ? '1' : '' } }], shown ? [] : [k]);
             }
         }, [icon(shown ? 'eye' : 'eye-off')]);
+    }
+
+    /**
+     * The status bar's row of the map items (F58): the update time and the
+     * most loaded link, placed on the map; its eye shows it there or hides it.
+     */
+    function statusItem() {
+        var m = state.model && state.model.map;
+        if (!m) { return null; }
+        var k = key('status', ''), f = state.furniture.get(k), shown = !!m.status_shown && !!f;
+        return h('li', { 'class': 'map-item' + (state.selection.has(k) ? ' selected' : '') + (shown ? '' : ' hidden-item') }, [
+            h('button', {
+                type: 'button', 'class': 'map-item-name', title: shown ? t('Select it on the map') : t('Not on the map: the viewer shows it in a corner, or not at all'), disabled: !shown,
+                onclick: function () {
+                    state.selection = new Set([k]);
+                    centerOn((f.box[0] + f.box[2]) / 2, (f.box[1] + f.box[3]) / 2);
+                    refresh();
+                }
+            }, [h('span', { text: t('Status bar') }), h('small', { text: t('Update time and most loaded link') })]),
+            h('button', {
+                type: 'button', 'class': 'map-item-remove', role: 'switch', 'aria-checked': shown ? 'true' : 'false',
+                title: shown ? t('Hide the status bar') : t('Show the status bar on the map'), 'aria-label': shown ? t('Hide the status bar') : t('Show the status bar on the map'),
+                onclick: function () {
+                    state.selection.delete(k);
+                    send([{ op: shown ? 'hide_furniture' : 'show_furniture', keys: [k] }], shown ? [] : [k]);
+                }
+            }, [icon(shown ? 'eye' : 'eye-off')])
+        ]);
     }
 
     /** The title's row of the map items: select it, show or hide it */
@@ -3916,8 +3946,14 @@
         if (single && single.kind === 'box') {
             out = out.concat(boxFields(single));
         }
-        // the text, font and colours of the title or timestamp (editor-mapprops.js)
-        var section = single && { title: 'title', timestamp: 'timestamp' }[single.kind];
+        if (single && single.kind === 'status') {
+            out.push(h('p', { 'class': 'help', text: t('The update time and the most loaded link, with a warning when a data source failed: the viewer and the kiosk show it here, live, and the pictures (PNG, SVG) draw it with the values of their render. The editor shows the values of its own drawing.') }));
+            if (window.WMEditor.openMapProperties) {
+                out.push(h('button', { type: 'button', text: t('Viewer panels…'), onclick: function () { window.WMEditor.openMapProperties('panels'); } }));
+            }
+        }
+        // the text, font and colours of the title (editor-mapprops.js)
+        var section = single && { title: 'title' }[single.kind];
         if (section && window.WMEditor.mapSection) {
             out.push(window.WMEditor.mapSection(section, true));
         }
@@ -5267,7 +5303,8 @@
         'add-box-total': function () { addBox('total'); },
         'add-box-legend': function () { addBox('legend'); },
         'add-box-speed': function () { addBox('speed'); },
-        'add-box-updated': function () { addBox('updated'); },
+        // the status bar on the map (F58), where it was or bottom left; then selected
+        'add-box-updated': function () { send([{ op: 'show_furniture', keys: [key('status', '')] }], [key('status', '')]); },
         'add-box-text': function () { addBox('text'); },
         'shortcuts': openShortcuts,
         'delete': deleteSelection,

@@ -154,7 +154,7 @@ final class ViewerPanelsTest extends TestCase
 
         $editor = (string) file_get_contents($root . '/src/public/assets/js/editor-mapprops.js');
         $this->assertStringContainsString("['panels', t('Viewer panels')]", $editor);
-        $this->assertStringContainsString('viewer_panels: viewer', $editor);
+        $this->assertStringContainsString('viewer_panels: withStatusAt(viewer)', $editor);
         $this->assertStringContainsString('kiosk_panels: { mode: kiosk.mode', $editor, 'the Kiosk switch edits the kiosk layout');
         $this->assertStringContainsString('data.kiosk_panels', $js, 'the kiosk takes its own panels');
         $this->assertStringContainsString("'kiosk_panels' => \$summary['kiosk_panels']", $controller);
@@ -225,5 +225,48 @@ final class ViewerPanelsTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    public function testTheStatusBarCanBePutOnTheMap(): void
+    {
+        $map = $this->withHint('sites:side, updated:map:20,400 total:top-right');
+        $this->assertSame([20, 400], ViewerPanels::statusAt($map), 'the comma between x and y does not split the panel');
+        $this->assertSame(['sites', 'updated', 'total'], array_column(ViewerPanels::of($map), 'id'));
+
+        // hidden: it keeps its place, and the pictures draw no status bar
+        $this->assertNull(ViewerPanels::statusAt($this->withParsed('updated:map:20,400:hidden')));
+        $this->assertSame(['id' => 'updated', 'position' => 'map', 'shown' => false, 'at' => [20, 400]], ViewerPanels::parse('updated:map:20,400:hidden')[0]);
+
+        // only the status bar goes on the map, and only with a place
+        $this->assertSame('side', ViewerPanels::parse('sites:map:1,2')[0]['position']);
+        $this->assertSame('bottom-left', ViewerPanels::parse('updated:map')[0]['position']);
+        $this->assertSame('updated:map:20,400 sites:side total:side', ViewerPanels::format(ViewerPanels::parse('updated:map:20,400')));
+    }
+
+    private function withParsed(string $value): \WeatherMap
+    {
+        copy(TESTS_ROOT . '/fixtures/maps/basic.conf', $this->file);
+        return $this->withHint($value);
+    }
+
+    public function testPlacingAndHidingTheStatusBar(): void
+    {
+        $map = $this->read();
+        ViewerPanels::placeStatus($map, null);
+        $this->assertSame([10, 460], ViewerPanels::statusAt($map), 'without a place: bottom left, inside the 800x500 map');
+
+        ViewerPanels::placeStatus($map, [120.4, -5]);
+        $this->assertSame([120, 0], ViewerPanels::statusAt($map));
+
+        ViewerPanels::hideStatus($map);
+        $this->assertNull(ViewerPanels::statusAt($map));
+        $this->assertSame('sites:side total:side updated:map:120,0:hidden', $map->hints['viewer_panels']);
+
+        ViewerPanels::placeStatus($map, null);
+        $this->assertSame([120, 0], ViewerPanels::statusAt($map), 'shown again where it was');
+
+        // the editor's panel list keeps a place, and gives one to a bar put on the map
+        ViewerPanels::set($map, [['id' => 'updated', 'position' => 'map', 'shown' => true]]);
+        $this->assertSame([10, 460], ViewerPanels::statusAt($map));
     }
 }

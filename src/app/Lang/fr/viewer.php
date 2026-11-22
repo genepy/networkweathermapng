@@ -75,4 +75,10 @@ return [
     '95th percentile' => '95e centile',
     'Peak' => 'Pic',
     'No data' => 'Pas de données',
+    '1 link without data' => '1 lien sans données',
+    ':n links without data' => ':n liens sans données',
+    ':source unreachable: :links' => ':source injoignable : :links',
+    ':source error: :links' => 'Erreur de :source : :links',
+    'Updated at :time' => 'Mis à jour à :time',
+    'Max load :pct % (:link)' => 'Charge max. :pct % (:link)',
 ];

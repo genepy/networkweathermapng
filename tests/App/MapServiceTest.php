@@ -64,6 +64,8 @@ final class MapServiceTest extends TestCase
     {
         $conf = (string) $this->maps->getMapConfig($this->maps->createMap(['name' => 'Audit test']));
         $this->assertStringContainsString("TIMEPOS -1 -1\n", $conf);
+        // F58: the status bar is on the map, bottom left
+        $this->assertMatchesRegularExpression('/^SET viewer_panels .*updated:map:10,\d+$/m', $conf);
 
         $svg = $this->svgOf($conf);
         $title = $svg->query('//s:g[@data-kind="title"]/s:text')->item(0);
