@@ -85,7 +85,7 @@
                 <div class="row-menu-items" role="menu" aria-label="<?= e__('Focus areas') ?>"></div>
             </details>
             <button type="button" class="wmv-icon-btn" data-act="panel" aria-controls="wmv-panel" aria-pressed="false" aria-keyshortcuts="P" data-keys="viewer.panel"
-                    title="<?= e__('Side panel: sites, total traffic, legend') ?>" aria-label="<?= e__('Side panel') ?>"><?= icon('panel-left') ?></button>
+                    title="<?= e__('Side panel: sites and total traffic') ?>" aria-label="<?= e__('Side panel') ?>"><?= icon('panel-left') ?></button>
             <?php if ($isFullscreen): ?>
             <a class="wmv-icon-btn" href="<?= htmlspecialchars($normalUrl) ?>" data-act="exit" aria-keyshortcuts="F" title="<?= e__('Leave fullscreen (Esc)') ?>" aria-label="<?= e__('Leave fullscreen') ?>"><?= icon('minimize') ?></a>
             <?php else: ?>
@@ -131,11 +131,6 @@
             <span class="wmv-status-when"><span class="wmv-dot" aria-hidden="true"></span><span class="wmv-updated"></span></span>
             <span class="wmv-status-max"></span>
             <span class="wmv-status-warn" hidden><?= icon('triangle-alert') ?><span class="wmv-status-warn-text"></span></span>
-            <span class="wmv-legend" hidden>
-                <span class="wmv-legend-min"></span>
-                <span class="wmv-legend-bar" role="img"></span>
-                <span class="wmv-legend-max"></span>
-            </span>
         </div>
 
         <div class="wmv-zoombar wmv-fades" role="group" aria-label="<?= e__('Zoom') ?>">
@@ -188,10 +183,6 @@
                     <?php endif; ?>
                 </p>
                 <?php endif; ?>
-            </section>
-            <section class="wmv-panel-sec wmv-panel-legend" aria-labelledby="wmv-legend-title" hidden>
-                <header class="wmv-panel-head"><h2 id="wmv-legend-title"><?= e__('Link load') ?></h2></header>
-                <div class="wmv-panel-scale"></div>
             </section>
         </aside>
 

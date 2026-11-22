@@ -77,7 +77,7 @@
     // ------------------------------------------------------------------
     // What a version is
 
-    var ICONS = { savepoint: 'star', restore: 'history', import: 'upload', outside: 'external-link', start: 'circle-dot', edit: 'pencil' };
+    var ICONS = { savepoint: 'star', restore: 'history', import: 'upload', outside: 'external-link', start: 'circle-dot', edit: 'pencil', convert: 'layout-grid' };
 
     function label(v) {
         if (v.name) { return v.name; }
@@ -85,6 +85,7 @@
             case 'start': return v.id ? t('Earlier version') : t('The map as it is now');
             case 'outside': return v.id ? t('Saved outside the editor') : t('Changed outside the editor');
             case 'import': return t('Map imported');
+            case 'convert': return t('Converted legacy map items');
             case 'restore':
                 if (v.from && v.from.name) { return t('Restored “:name”', { name: v.from.name }); }
                 return v.from ? t('Restored the version of :time', { time: clock(v.from.time) }) : t('Restored');

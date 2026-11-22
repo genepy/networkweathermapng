@@ -170,9 +170,7 @@ LINK router1-switch1
 | `WIDTH auto` (in a LINK) | Width follows the bandwidth: 2 px up to 1G, 4 px for 10G, 5 px for 25G, 6 px for 40G, 9 px for 100G, 10 px for 200G, 12 px for 400G, 15 px for 800G |
 | `SET link_width_table 1G:2 10G:4 100G:9` | The map's own speed → width table for `WIDTH auto` |
 | `BANDWIDTH auto` (in a LINK) | Bandwidth read from the interface speed (Observium, or Zabbix for links picked in the editor: the `net.if.speed[...]` item of the SNMP templates, or the sysfs speed of the Linux agent); an aggregated link adds up its members. Falls back to 1G when unknown |
-| `SET width_legend 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge); no hint, no legend |
-| `SET width_legend_title Speed` | Title of that legend (default `Link speed`) |
-| `KEYSTYLE DEFAULT modern 240` | The legend card shows a gradient bar 240 px long (`horizontal` too); `classic`, `vertical` and `inverted` show the list of colours, `tags` the list with the step tags. See [Map items](#map-items) |
+| `SET box_4 speed 10 -10` | Draws a legend of the `WIDTH auto` widths at x, y (negative values count from the right or bottom edge). See [Map items](#map-items) |
 | `SET link_spacing 12` | Gap in pixels between links that join the same two nodes. By default they are spread according to their width; `0` turns spreading off |
 
 Resizing a map in the editor (by dragging its right or bottom side or that
@@ -269,10 +267,17 @@ SET box_3_width 240                # least width of the content
 SET box_4 speed 10 300             # the link widths by speed (link width table)
 SET box_5 updated 10 460           # the time of the last data
 SET box_2_note Data: Observium     # a small line under the content (credits, a source...)
+SET box_6 legend 10 40             # a legend card...
+SET box_6_style tags               # bar (gradient), list (one row per step) or tags (the step tags)
+SET box_6_scale backbone           # ...of another scale than DEFAULT
 ```
 
-The older keywords are read as the same items and drawn as the same cards;
-they stay as they are in the `.conf`: `KEYPOS` (with `KEYSTYLE`) is a
+The older keywords are read as the same items and drawn as the same cards
+for maps never opened in the editor. Opening a map in the editor turns
+`KEYPOS` (with its text and `KEYSTYLE`) and `SET width_legend`
+(with `SET width_legend_title`) into legend and link speed cards at the same
+place, and drops the hidden ones, in one step of the history (*Converted
+legacy map items*) that Undo takes back. Until then `KEYPOS` is a
 traffic legend, `TIMEPOS`, `MINTIMEPOS` and `MAXTIMEPOS` are update time
 cards with their own text, font and colour (TIMEPOS still places the start
 of the text; without it the card sits in the top right corner), and
@@ -331,21 +336,24 @@ context menu adds one around the selection.
 
 ### Viewer panels
 
-The live view shows the sites of the map, its total traffic, the link load
-legend and the update time (with the most loaded link). The map chooses
+The live view shows the sites of the map, its total traffic and the update
+time (with the most loaded link); the legend is a card drawn on the map
+(`SET box_<id> legend`). The map chooses
 which ones are shown and where: in the side panel, or in a corner of the
 map, in their order. The PNG and SVG pictures do not change.
 
 ```
-SET viewer_panels total:top-right sites:side legend:side:hidden updated:bottom-left
+SET viewer_panels total:top-right sites:side updated:bottom-left:hidden
 ```
 
 Each panel is `<id>:<position>`, with `:hidden` when it is not shown. The
-ids are `sites`, `total`, `legend` and `updated`; the positions are `side`,
+ids are `sites`, `total` and `updated` (a `legend` entry of an older map is
+read and left out; the editor gives such a map a legend card when it opens
+it, if the viewer showed the legend and the map has no card); the positions are `side`,
 `top-left`, `top-right`, `bottom-left` and `bottom-right`. The order is the
 order in the side panel, and in a corner that holds more than one. A panel
-left out takes its usual place. Without the hint the sites, the total and
-the legend are in the side panel and the update time at the bottom left.
+left out takes its usual place. Without the hint the sites and the total
+are in the side panel and the update time at the bottom left.
 On a phone the corner cards go in the side panel sheet. In the editor,
 *Viewer panels* in the map properties sets them.
 
@@ -353,7 +361,7 @@ The kiosk can have a layout of its own, with the same syntax, or follow the
 viewer's layout:
 
 ```
-SET kiosk_panels total:side legend:bottom-right sites:side:hidden
+SET kiosk_panels total:side updated:bottom-right sites:side:hidden
 SET kiosk_panels same
 ```
 
@@ -616,19 +624,18 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   The title comes first, with a switch that shows or hides it.
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection
   bar, of the right panel or of the context menu) removes the selection. A
-  legend or a timestamp is hidden rather than removed: it stays in the
-  `.conf` at a negative position (`KEYPOS DEFAULT -681 -21`,
-  `TIMEPOS -11 -491 ...`, kept as -x - 1, -y - 1 so it comes back where it
-  was) and the link speed legend loses its `SET width_legend`. The title
+  timestamp is hidden rather than removed: it stays in the `.conf` at a
+  negative position (`TIMEPOS -11 -491 ...`, kept as -x - 1, -y - 1 so it
+  comes back where it was). The title
   is hidden the same way (`TITLEPOS -11 -29`; `TITLEPOS -1 -1`, the default,
   draws no title). Ctrl+Z undoes it.
 - **Edit**: the right panel changes every selected item at once.
 - **Map properties**: with nothing selected, the right panel shows the map:
   name, size, background, basemap (a click opens its section), then sections that fold, each with its value on
-  its row (*Background colour and theme*, *Title*, *Link load legend*,
-  *Link colours*, *Link speed legend*, *Timestamp*, *Link defaults*,
-  *Basemap*, *Fonts*). *Link load legend*, *Link speed legend* and
-  *Timestamp* each have a box that shows or hides the item on the map. A field is saved when
+  its row (*Background colour and theme*, *Title*, *Map items* (the font
+  and colours of every card), *Link colours*, *Timestamp*, *Link defaults*,
+  *Basemap*, *Fonts*, *Focus areas*, *Viewer panels*). *Timestamp* has a
+  box that shows or hides it on the map. A field is saved when
   it changes, as one step Ctrl+Z undoes; the colour scale is saved with its
   *Apply the colours* button. The browser remembers which sections are
   open. A selected legend, title, timestamp or link speed legend shows its
@@ -755,13 +762,13 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 - **Themes**: the theme cards of the *Background colour and theme*
   section of *Map properties* restyle the whole map in one click, saved at
   once and undone with Ctrl+Z. Every theme shares one design base (the
-  modern legend card, the timestamp pill and pill link labels), so only the
+  timestamp pill and pill link labels), so only the
   palette changes: *Night* (an idea from the Nine IX traffic map: a dark
   canvas, glowing links that fade from cream to amber to red, gold-edged
   cards), *Day* (a warm light canvas, green to red), *Ocean* (deep blue,
   glowing links from cyan to pink) and *High contrast* (white and black,
   colour-blind safe steps). Each card shows the canvas, a label and the
-  link colours. A theme only writes ordinary settings (colours, `KEYSTYLE`, the `SCALE`
+  link colours. A theme only writes ordinary settings (colours, the `SCALE`
   steps, the label colours of `NODE DEFAULT` and `LINK DEFAULT`); nodes and
   links with their own colours keep them.
 - **Copy and paste**: Ctrl+C / Ctrl+X / Ctrl+V copy the selected nodes and

@@ -36,7 +36,6 @@ final class MapThemesTest extends TestCase
             $shape = [array_keys($theme['map']), array_keys($theme['link']), array_keys($theme['node'])];
             $first ??= $shape;
             $this->assertSame($first, $shape, "$name sets the same fields as the others");
-            $this->assertSame('modern', $theme['map']['key_style'], $name);
             $this->assertSame('pill', $theme['map']['stamp_style'], $name);
             $this->assertSame('pill', $theme['map']['link_bwstyle'], $name);
         }

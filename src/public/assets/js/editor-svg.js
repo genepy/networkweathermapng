@@ -15,7 +15,7 @@
     // how far a bandwidth label may move across its link (MapEditor::LABEL_SHIFT_MAX)
     var LABEL_SHIFT_MAX = 60;
     /** Map furniture: drawn by the map itself, placed by KEYPOS, TIMEPOS, TITLEPOS... */
-    var FURNITURE = ['legend', 'timestamp', 'title', 'widthlegend', 'box'];
+    var FURNITURE = ['timestamp', 'title', 'box'];
     /** Distance, in screen pixels, at which a moved object snaps to a guide */
     var GUIDE_SNAP = 6;
 
@@ -3644,11 +3644,9 @@
 
     function furnitureName(f) {
         // the same names for a card and for the older keyword it stands for
-        if (f.kind === 'legend') { return f.name === 'DEFAULT' ? t('Traffic legend') : t('Legend :name', { name: f.name }); }
         if (f.kind === 'timestamp') { return f.name === 'MIN' ? t('Oldest data time') : f.name === 'MAX' ? t('Newest data time') : t('Updated at'); }
         if (f.kind === 'title') { return t('Title'); }
-        if (f.kind === 'box') { return boxTypeName(f.props ? f.props.type : ''); }
-        return t('Link speed');
+        return boxTypeName(f.props ? f.props.type : '');
     }
 
     /**
@@ -3731,7 +3729,7 @@
         out.push(row(t('Title'), title));
 
         var styles = {
-            legend: [['bar', t('Gradient bar')], ['list', t('List of colours')]],
+            legend: [['bar', t('Gradient bar')], ['list', t('List of colours')], ['tags', t('List with the step tags')]],
             total: [['graph', t('Value and graph')], ['plain', t('Value only')]]
         }[p.type];
         if (styles) {
@@ -3798,8 +3796,8 @@
         if (single && single.kind === 'box') {
             out = out.concat(boxFields(single));
         }
-        // the text, font and colours of the legend, title or timestamp (editor-mapprops.js)
-        var section = single && { legend: 'legend', title: 'title', timestamp: 'timestamp', widthlegend: 'widthlegend' }[single.kind];
+        // the text, font and colours of the title or timestamp (editor-mapprops.js)
+        var section = single && { title: 'title', timestamp: 'timestamp' }[single.kind];
         if (section && window.WMEditor.mapSection) {
             out.push(window.WMEditor.mapSection(section, true));
         }
@@ -5418,7 +5416,10 @@
         }).catch(function () {});
     }, 10000);
 
-    run(load);
+    run(load).then(function () {
+        // the older legends of the map became cards as it was opened (MapEditor::convertLegacy)
+        if (cfg.converted) { toast(t('Older map items were turned into cards. Ctrl+Z to undo.')); }
+    });
 
     /** The colours used on the map, the most used first (swatches of the colour picker) */
     function mapColours() {

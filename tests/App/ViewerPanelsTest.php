@@ -51,7 +51,6 @@ final class ViewerPanelsTest extends TestCase
         return [
             ['id' => 'sites', 'position' => 'side', 'shown' => true],
             ['id' => 'total', 'position' => 'side', 'shown' => true],
-            ['id' => 'legend', 'position' => 'side', 'shown' => true],
             ['id' => 'updated', 'position' => 'bottom-left', 'shown' => true],
         ];
     }
@@ -66,12 +65,11 @@ final class ViewerPanelsTest extends TestCase
 
     public function testThePanelsAreReadInTheirOrder(): void
     {
-        $map = $this->withHint('total:top-right legend:bottom-right:hidden sites:side');
+        $map = $this->withHint('total:top-right updated:bottom-right:hidden sites:side');
         $this->assertSame([
             ['id' => 'total', 'position' => 'top-right', 'shown' => true],
-            ['id' => 'legend', 'position' => 'bottom-right', 'shown' => false],
+            ['id' => 'updated', 'position' => 'bottom-right', 'shown' => false],
             ['id' => 'sites', 'position' => 'side', 'shown' => true],
-            ['id' => 'updated', 'position' => 'bottom-left', 'shown' => true],
         ], ViewerPanels::of($map), 'a panel left out comes last, at its default place');
         $this->assertSame(ViewerPanels::of($map), MapService::summarize($map)['panels']);
     }
@@ -79,26 +77,42 @@ final class ViewerPanelsTest extends TestCase
     public function testUnknownPanelsAndPlacesAreSkipped(): void
     {
         $this->assertSame([
-            ['id' => 'legend', 'position' => 'side', 'shown' => false],
+            ['id' => 'updated', 'position' => 'bottom-left', 'shown' => false],
             ['id' => 'sites', 'position' => 'side', 'shown' => true],
             ['id' => 'total', 'position' => 'side', 'shown' => true],
-            ['id' => 'updated', 'position' => 'bottom-left', 'shown' => true],
-        ], ViewerPanels::parse('clock:top-left legend:hidden SITES:middle sites:top-left'), 'the first of two is kept');
+        ], ViewerPanels::parse('clock:top-left updated:hidden SITES:middle sites:top-left'), 'the first of two is kept');
         $this->assertSame(self::defaults(), ViewerPanels::parse(''));
+    }
+
+    public function testAnOlderLegendPanelIsReadAndLeftOut(): void
+    {
+        $map = $this->withHint('legend:top-left total:top-right');
+        $this->assertSame(['total', 'sites', 'updated'], array_column(ViewerPanels::of($map), 'id'));
+        $this->assertTrue(ViewerPanels::showedLegend($map));
+        copy(TESTS_ROOT . '/fixtures/maps/basic.conf', $this->file);
+        $this->assertFalse(ViewerPanels::showedLegend($this->withHint('legend:side:hidden')));
+        copy(TESTS_ROOT . '/fixtures/maps/basic.conf', $this->file);
+
+        // the editor drops it when it writes the hint
+        $editor = new MapEditor($this->file);
+        $editor->apply([['op' => 'set_map', 'props' => ['viewer_panels' => [
+            ['id' => 'legend', 'position' => 'top-left', 'shown' => true],
+            ['id' => 'total', 'position' => 'top-right', 'shown' => true],
+        ]]]]);
+        $this->assertStringContainsString('SET viewer_panels total:top-right sites:side updated:bottom-left', (string) file_get_contents($this->file));
     }
 
     public function testTheEditorWritesTheHintAndRemovesTheDefault(): void
     {
         $editor = new MapEditor($this->file);
         $panels = [
-            ['id' => 'legend', 'position' => 'top-left', 'shown' => true],
             ['id' => 'sites', 'position' => 'side', 'shown' => false],
             ['id' => 'updated', 'position' => 'top-right', 'shown' => true],
             ['id' => 'total', 'position' => 'bottom-right', 'shown' => true],
         ];
         $editor->apply([['op' => 'set_map', 'props' => ['viewer_panels' => $panels]]]);
         $this->assertStringContainsString(
-            'SET viewer_panels legend:top-left sites:side:hidden updated:top-right total:bottom-right',
+            'SET viewer_panels sites:side:hidden updated:top-right total:bottom-right',
             (string) file_get_contents($this->file)
         );
         $map = $editor->load();
@@ -160,12 +174,11 @@ final class ViewerPanelsTest extends TestCase
 
     public function testTheKioskHasItsOwnPanels(): void
     {
-        $map = $this->withHint('total:side legend:bottom-right sites:side:hidden', 'kiosk_panels');
+        $map = $this->withHint('total:side updated:bottom-right sites:side:hidden', 'kiosk_panels');
         $own = [
             ['id' => 'total', 'position' => 'side', 'shown' => true],
-            ['id' => 'legend', 'position' => 'bottom-right', 'shown' => true],
+            ['id' => 'updated', 'position' => 'bottom-right', 'shown' => true],
             ['id' => 'sites', 'position' => 'side', 'shown' => false],
-            ['id' => 'updated', 'position' => 'bottom-left', 'shown' => true],
         ];
         $this->assertSame('own', ViewerPanels::kioskMode($map));
         $this->assertSame($own, ViewerPanels::forKiosk($map));
@@ -177,7 +190,7 @@ final class ViewerPanelsTest extends TestCase
     public function testTheKioskCanFollowTheViewer(): void
     {
         $this->withHint('same', 'kiosk_panels');
-        $map = $this->withHint('legend:top-left');
+        $map = $this->withHint('total:top-left');
         $this->assertSame('same', ViewerPanels::kioskMode($map));
         $this->assertSame(ViewerPanels::of($map), ViewerPanels::forKiosk($map));
 
@@ -192,7 +205,7 @@ final class ViewerPanelsTest extends TestCase
         $editor = new MapEditor($this->file);
         $editor->apply([['op' => 'set_map', 'props' => ['kiosk_panels' => ['mode' => 'own', 'panels' => self::defaults()]]]]);
         $this->assertStringContainsString(
-            'SET kiosk_panels sites:side total:side legend:side updated:bottom-left',
+            'SET kiosk_panels sites:side total:side updated:bottom-left',
             (string) file_get_contents($this->file),
             'its own layout is written even when it is the usual one'
         );

@@ -2,8 +2,8 @@
 /**
  * Ready-made looks for a map, applied in one click from Map properties.
  *
- * A theme only sets values the map format already has (colours, the legend
- * style, the colour scale, the DEFAULT node and link label colours, and for
+ * A theme only sets values the map format already has (colours of the cards
+ * and the map, the colour scale, the DEFAULT node and link label colours, and for
  * some the fonts, as FONTDEFINE lines) plus SET link_glow, so a themed map
  * stays an ordinary .conf file that any Weathermap reads.
  *
@@ -26,9 +26,8 @@ namespace App\Services\Editor;
 
 final class MapThemes
 {
-    /** The shared design base: legend, timestamp and link label styles */
+    /** The shared design base: timestamp and link label styles (legends are cards) */
     private const BASE = [
-        'key_style' => 'modern',
         'stamp_style' => 'pill',
         'link_bwstyle' => 'pill',
     ];

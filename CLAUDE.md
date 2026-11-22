@@ -16,6 +16,9 @@ re-explore the repository. Keep it short and up to date.
   (title, legends, cards) in the editor: `moveFurniture()` /
   `setFurnitureShown()` in `MapEditor`, `renderMapItems()` in
   `editor-svg.js`; a negative position (`TITLEPOS -1 -1`) hides an item.
+  Older legends (`KEYPOS`, `SET width_legend`) become `SET box_<id>` cards
+  when the editor opens a map: `MapEditor::convertLegacy()`, history kind
+  `convert`.
 - Map engine (php-weathermap fork): `src/lib/WeatherMap/`.
   `WeatherMap.class.php` (config parser, PNG render), `WeatherMapSvg.class.php`
   (SVG render), `WeatherMapNode/Link/Zone/Boxes.class.php`,
@@ -44,7 +47,7 @@ App features store their settings as map hints, each parsed by one service:
 
 | Hint | Service |
 |------|---------|
-| `viewer_panels` (e.g. `sites:side total:top-right legend:side:hidden`), `kiosk_panels` (same syntax, or `same`) | `Services/ViewerPanels.php` |
+| `viewer_panels` (e.g. `sites:side total:top-right updated:bottom-left:hidden`), `kiosk_panels` (same syntax, or `same`) | `Services/ViewerPanels.php` |
 | `focus_<id>`, `focus_default` | `Services/FocusAreas.php` |
 | `basemap`, `basemap_dark`, `basemap_center`, `basemap_zoom`, `basemap_attribution` | `Services/Basemap.php` |
 | `kiosk_duration`, `kiosk_zoom` | `Services/KioskService.php` |

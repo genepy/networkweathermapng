@@ -52,11 +52,10 @@ return [
     'Total traffic' => 'Trafic total',
     'IN' => 'ENTRANT',
     'OUT' => 'SORTANT',
-    'Link load' => 'Charge des liens',
     'Traffic graph' => 'Graphe du trafic',
 
     // Tooltips without their key: shortcuts.js adds the user's key (F6)
-    'Side panel: sites, total traffic, legend' => 'Panneau latéral : sites, trafic total, légende',
+    'Side panel: sites and total traffic' => 'Panneau latéral : sites et trafic total',
     'Play or pause' => 'Lecture ou pause',
     'Focus areas' => 'Zones de focus',
 

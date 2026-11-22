@@ -143,7 +143,6 @@ return [
     'Zone' => 'Zone',
     'Zones' => 'Zones',
     'Unknown zone: :name' => 'Zone inconnue : :name',
-    'Unknown legend: :name' => 'Légende inconnue : :name',
     'Unknown timestamp: :name' => 'Horodatage inconnu : :name',
     'Unknown map item: :name' => 'Élément de carte inconnu : :name',
     'Unknown zone property: :key' => 'Propriété de zone inconnue : :key',

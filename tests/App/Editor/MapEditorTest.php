@@ -726,7 +726,6 @@ final class MapEditorTest extends TestCase
         $map = $this->editor->load();
         $props = MapEditor::model($map)['map']['props'];
         $this->assertSame('#11141a', $props['bg_colour']);
-        $this->assertSame('modern', $props['key_style']);
         $this->assertSame('pill', $props['stamp_style']);
         $this->assertTrue($props['link_glow']);
         $this->assertSame('pill', $props['link_bwstyle']);
@@ -763,7 +762,7 @@ final class MapEditorTest extends TestCase
         $props = MapEditor::model($map)['map']['props'];
         $this->assertSame('#f6f4ef', $props['bg_colour']);
         $this->assertFalse($props['link_glow'], 'Day has no glow');
-        $this->assertSame('modern', $props['key_style'], 'the shared base stays');
+        $this->assertSame('pill', $props['stamp_style'], 'the shared base stays');
         $this->assertEquals([31, 36, 48], $map->nodes['lyon']->labelfontcolour, 'labels follow the new theme');
         $this->assertTrue($map->scale_is_smooth('DEFAULT'));
         $this->assertStringNotContainsString('link_glow', (string) file_get_contents($this->file));
@@ -872,41 +871,38 @@ final class MapEditorTest extends TestCase
         return MapEditor::model($map);
     }
 
-    public function testLegendTimestampAndTitleAreInTheModelAndMove(): void
+    public function testTimestampAndTitleAreInTheModelAndMove(): void
     {
         $furniture = array_column($this->drawnModel()['furniture'], null, 'kind');
-        $this->assertSame('DEFAULT', $furniture['legend']['name']);
-        $this->assertSame([680, 20], $furniture['legend']['pos']);
+        $this->assertArrayNotHasKey('legend', $furniture, 'a KEYPOS legend is not an editor item: it becomes a card');
         $this->assertSame([10, 490], $furniture['timestamp']['pos']);
         $this->assertSame([10, 20], $furniture['title']['pos']);
         $this->assertLessThan(490, $furniture['timestamp']['box'][1], 'the card is around the text');
         $this->assertGreaterThanOrEqual(490, $furniture['timestamp']['box'][3]);
 
         $this->editor->apply([
-            ['op' => 'move', 'furniture' => ['legend:DEFAULT' => [600, 40], 'timestamp:' => [20, 470], 'title:' => [30, 25]]],
+            ['op' => 'move', 'furniture' => ['timestamp:' => [20, 470], 'title:' => [30, 25]]],
         ]);
 
         $map = $this->editor->load();
-        $this->assertEquals([600, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
         $this->assertEquals([20, 470], [$map->timex, $map->timey]);
         $this->assertEquals([30, 25], [$map->titlex, $map->titley]);
 
         // what the model says is where it was put
         $furniture = array_column($this->drawnModel()['furniture'], null, 'kind');
-        $this->assertSame([600, 40], $furniture['legend']['pos']);
         $this->assertSame([20, 470], $furniture['timestamp']['pos']);
         $this->assertSame([30, 25], $furniture['title']['pos']);
     }
 
     public function testFurnitureStaysOnTheMapAndUnknownItemsAreRefused(): void
     {
-        // TIMEPOS 0 0 would mean "top right corner", negative KEYPOS hides the legend
-        $this->editor->apply([['op' => 'move', 'furniture' => ['timestamp:' => [-5, 0], 'legend:DEFAULT' => [-10, 5]]]]);
+        // TIMEPOS 0 0 would mean "top right corner"
+        $this->editor->apply([['op' => 'move', 'furniture' => ['timestamp:' => [-5, 0]]]]);
         $map = $this->editor->load();
         $this->assertEquals([1, 1], [$map->timex, $map->timey]);
-        $this->assertEquals([0, 5], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
 
-        foreach (['legend:NOPE', 'timestamp:LATER', 'clock:'] as $key) {
+        // the older legends are cards now: their keys are refused
+        foreach (['legend:DEFAULT', 'widthlegend:', 'box:9', 'timestamp:LATER', 'clock:'] as $key) {
             try {
                 $this->editor->apply([['op' => 'move', 'furniture' => [$key => [1, 1]]]]);
                 $this->fail('accepted ' . $key);
@@ -934,21 +930,14 @@ final class MapEditorTest extends TestCase
         $this->assertFalse($this->drawnModel()['zones'][0]['locked']);
     }
 
-    public function testModernLegendAndPillTimestamp(): void
+    public function testPillTimestamp(): void
     {
-        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true, 'key_style' => 'modern', 'key_size' => 260, 'stamp_style' => 'pill']]]);
-        $conf = file_get_contents($this->file);
-        $this->assertStringContainsString('KEYSTYLE  DEFAULT modern 260', $conf);
-        $this->assertStringContainsString('SET timestamp_style pill', $conf);
-
-        $model = $this->drawnModel();
-        $this->assertSame('modern', $model['map']['props']['key_style']);
-        $this->assertSame('pill', $model['map']['props']['stamp_style']);
-        $legend = array_column($model['furniture'], null, 'kind')['legend'];
-        $this->assertGreaterThanOrEqual(260, $legend['box'][2] - $legend['box'][0], 'the card holds the bar');
+        $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_style' => 'pill']]]);
+        $this->assertStringContainsString('SET timestamp_style pill', (string) file_get_contents($this->file));
+        $this->assertSame('pill', $this->drawnModel()['map']['props']['stamp_style']);
 
         $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_style' => 'plain']]]);
-        $this->assertStringNotContainsString('timestamp_style', file_get_contents($this->file));
+        $this->assertStringNotContainsString('timestamp_style', (string) file_get_contents($this->file));
     }
 
     public function testAShippedFontIsAddedToTheMap(): void
@@ -1135,15 +1124,11 @@ final class MapEditorTest extends TestCase
     public function testMapPropertiesAreSavedAndLinkDefaultsFollow(): void
     {
         $this->editor->apply([['op' => 'set_map', 'props' => [
-            'key_text' => "Load\nper link", 'key_style' => 'horizontal', 'key_size' => 300,
             'key_bg_colour' => 'none', 'title_colour' => '#102030', 'stamp_text' => 'Updated %H:%M',
             'title_font' => 4, 'link_bandwidth' => '10G', 'link_width' => 8,
         ]]]);
 
         $map = $this->editor->load();
-        $this->assertSame('Load per link', $map->keytext['DEFAULT']);
-        $this->assertSame('horizontal', $map->keystyle['DEFAULT']);
-        $this->assertEquals(300, $map->keysize['DEFAULT']);
         $this->assertEquals(-1, $map->colours['DEFAULT']['KEYBG']['red1']);
         $this->assertEquals([16, 32, 48], [$map->colours['DEFAULT']['TITLE']['red1'], $map->colours['DEFAULT']['TITLE']['green1'], $map->colours['DEFAULT']['TITLE']['blue1']]);
         $this->assertSame('Updated %H:%M', $map->stamptext);
@@ -1160,58 +1145,27 @@ final class MapEditorTest extends TestCase
         $this->assertSame('10G', $props['link_bandwidth']);
     }
 
-    public function testTheLegendCanBeHiddenAndShownAgain(): void
+    public function testDeleteHidesTheTimestampAndShowPutsItBack(): void
     {
-        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => false]]]);
-        $this->assertFalse(MapEditor::model($this->editor->load())['map']['props']['key_shown']);
-
-        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
-        $map = $this->editor->load();
-        $this->assertEquals([680, 20], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']], 'the legend comes back where it was');
-        $this->assertSame('Trafic', $map->keytext['DEFAULT']);
-    }
-
-    public function testAClassicHiddenLegendIsShownInTheCorner(): void
-    {
-        file_put_contents($this->file, str_replace('KEYPOS DEFAULT 680 20', 'KEYPOS DEFAULT -1 -1', (string) file_get_contents($this->file)));
-
-        $this->editor->apply([['op' => 'set_map', 'props' => ['key_shown' => true]]]);
-        $map = $this->editor->load();
-        $this->assertEquals([10, 40], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
-    }
-
-    public function testDeleteHidesLegendsAndTimestampAndShowPutsThemBack(): void
-    {
-        $this->editor->apply([['op' => 'move', 'furniture' => ['widthlegend:' => [30, 300], 'timestamp:' => [20, 470]]]]);
-        $this->assertContains('widthlegend', array_column($this->drawnModel()['furniture'], 'kind'));
-
-        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['legend:DEFAULT', 'timestamp:', 'widthlegend:']]]);
+        $this->editor->apply([['op' => 'move', 'furniture' => ['timestamp:' => [20, 470]]]]);
+        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['timestamp:']]]);
         $model = $this->drawnModel();
         $this->assertSame(['title'], array_column($model['furniture'], 'kind'), 'only the title is still drawn');
-        $props = $model['map']['props'];
-        $this->assertFalse($props['key_shown']);
-        $this->assertFalse($props['stamp_shown']);
-        $this->assertFalse($props['width_legend_shown']);
-        $conf = (string) file_get_contents($this->file);
-        $this->assertStringContainsString('TIMEPOS -21 -471 ', $conf, 'kept in the .conf, hidden');
-        $this->assertStringNotContainsString('width_legend ', $conf);
+        $this->assertFalse($model['map']['props']['stamp_shown']);
+        $this->assertStringContainsString('TIMEPOS -21 -471 ', (string) file_get_contents($this->file), 'kept in the .conf, hidden');
 
-        // shown again where they were, the width legend in the bottom left corner
-        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['legend:DEFAULT', 'timestamp:', 'widthlegend:']]]);
+        // shown again where it was
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['timestamp:']]]);
         $map = $this->editor->load();
-        $this->assertEquals([680, 20], [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']]);
         $this->assertEquals([20, 470], [$map->timex, $map->timey]);
-        $this->assertSame('10 -10', $map->get_hint('width_legend'));
 
         // or at a given place (the Add panel)
         $this->editor->apply([
-            ['op' => 'hide_furniture', 'keys' => ['widthlegend:', 'timestamp:']],
-            ['op' => 'show_furniture', 'keys' => ['widthlegend:'], 'at' => [200, 150]],
-            ['op' => 'set_map', 'props' => ['stamp_shown' => true]],
+            ['op' => 'hide_furniture', 'keys' => ['timestamp:']],
+            ['op' => 'show_furniture', 'keys' => ['timestamp:'], 'at' => [200, 150]],
         ]);
         $map = $this->editor->load();
-        $this->assertSame('200 150', $map->get_hint('width_legend'));
-        $this->assertEquals([20, 470], [$map->timex, $map->timey]);
+        $this->assertEquals([200, 150], [$map->timex, $map->timey]);
     }
 
     public function testBoxesAreAddedEditedMovedAndDeleted(): void
@@ -1292,18 +1246,9 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('TIMEPOS', (string) file_get_contents($this->file));
     }
 
-    public function testTheWidthLegendTitleAndUnknownItemsCannotBeHidden(): void
+    public function testUnknownItemsCannotBeHidden(): void
     {
-        $this->editor->apply([['op' => 'set_map', 'props' => ['width_legend_shown' => true, 'width_legend_title' => 'Capacity']]]);
-        $props = $this->drawnModel()['map']['props'];
-        $this->assertTrue($props['width_legend_shown']);
-        $this->assertSame('Capacity', $props['width_legend_title']);
-
-        $this->editor->apply([['op' => 'set_map', 'props' => ['width_legend_title' => '']]]);
-        $this->assertSame('Link speed', $this->drawnModel()['map']['props']['width_legend_title']);
-        $this->assertStringNotContainsString('width_legend_title', (string) file_get_contents($this->file));
-
-        foreach (['legend:NOPE', 'timestamp:LATER', 'clock:'] as $key) {
+        foreach (['legend:DEFAULT', 'widthlegend:', 'timestamp:LATER', 'clock:'] as $key) {
             try {
                 $this->editor->apply([['op' => 'hide_furniture', 'keys' => [$key]]]);
                 $this->fail('accepted ' . $key);

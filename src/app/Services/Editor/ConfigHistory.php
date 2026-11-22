@@ -36,7 +36,7 @@ class ConfigHistory
     public const NAME_LENGTH = 80;
 
     /** Kinds of versions: what made them */
-    public const KINDS = ['start', 'outside', 'edit', 'import', 'restore', 'savepoint'];
+    public const KINDS = ['start', 'outside', 'edit', 'import', 'restore', 'savepoint', 'convert'];
 
     private string $dir;
     private string $file;
