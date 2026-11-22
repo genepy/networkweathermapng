@@ -3046,7 +3046,7 @@
         bar_separator: t('The double tick where the two halves of a traffic bar meet; none hides it. A one-way link has none.'),
         arrowstyle: t('Classic: the usual arrow heads where the two halves meet. Small: shorter, narrower heads. None, square ends: no heads, each half ends square; the link then takes the colour of its busiest direction, and pill labels still show where the traffic goes. Custom size: the length and width of the heads, in link widths.'),
         splitpos: t('Where the two halves of the link meet, in % of its length from the first node: 50 is the middle.'),
-        zorder: t('Items on a higher layer are drawn over those on a lower one.'),
+        zorder: t('Items with a higher drawing order are drawn over the others. Bring to front and Send to back change it.'),
         labelstyle: t('Load in %: the traffic as a percentage of the link bandwidth. Traffic in bits/s: the rate, such as 450M. Raw value: the number as the data source gives it. No label: nothing is written on the link. Custom text: a format of your own, from the map file.'),
         label_text: t('What the label writes, with values in braces: {link:this:bandwidth_in:%2k} is the traffic in, {link:this:inpercent:%.2f} the load in % (bandwidth_out and outpercent for the other way).'),
         bwstyle: t('Level box: a box that stays level whatever the angle of the link. Box along the link: the box turns with the link. Pill along the link, with an arrow: a rounded label that turns with the link, with a small arrow toward where the traffic goes.'),
@@ -3385,7 +3385,7 @@
             row(t('Background'), colourField(notes, 'labelbgcolour', 'node')),
             row(t('Text'), colourField(notes, 'labelfontcolour', 'node', true)),
             row(t('Outline'), colourField(notes, 'labeloutlinecolour', 'node')),
-            row(t('Layer'), field(notes, 'zorder', 'node', { type: 'number', number: true })),
+            row(t('Drawing order'), field(notes, 'zorder', 'node', { type: 'number', number: true }), false, TIPS.zorder),
             h('p', { 'class': 'help', text: t('A note is free text on the map, for a legend, a contact or a maintenance window. Enter starts a new line; the text is saved when you leave the field.') })
         );
         return out;
@@ -3442,7 +3442,7 @@
             row(t('Hover graph'), field(nodes, 'hover_url', 'node', { placeholder: t('Picture address') })),
             row(t('Site'), field(nodes, 'site', 'node', { list: 'site-options', placeholder: t('none') })),
             siteOptions(),
-            row(t('Layer'), field(nodes, 'zorder', 'node', { type: 'number', number: true })),
+            row(t('Drawing order'), field(nodes, 'zorder', 'node', { type: 'number', number: true }), false, TIPS.zorder),
             h('p', { 'class': 'help', text: t('Nodes of the same site are grouped in the side panel of the map view.') })
         );
         out = out.concat(locationRows(nodes));
@@ -3984,7 +3984,7 @@
             row(t('Arrow heads'), field(links, 'arrowstyle', 'link', { options: arrowChoices(links) }), false, TIPS.arrowstyle),
             arrowSizeRow(links),
             row(t('Split at %'), field(links, 'splitpos', 'link', { type: 'number', number: true }), false, TIPS.splitpos),
-            row(t('Layer'), field(links, 'zorder', 'link', { type: 'number', number: true }), false, TIPS.zorder),
+            row(t('Drawing order'), field(links, 'zorder', 'link', { type: 'number', number: true }), false, TIPS.zorder),
             h('h3', { text: t('Bandwidth labels') }),
             row(t('Labels'), field(links, 'labelstyle', 'link', { options: withCurrent(links, 'labelstyle', [
                 ['percent', t('Load in %')], ['bits', t('Traffic in bits/s')], ['unformatted', t('Raw value')], ['none', t('No label')]

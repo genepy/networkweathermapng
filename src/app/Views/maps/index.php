@@ -22,7 +22,8 @@ foreach ($maps as $i => $map) {
     $load = ($st !== null && $st['max'] !== null) ? (float) $st['max'] : null;
     $timezone = $timezones[$mid];
     $stTitle = __('No data yet');
-    $stText = '';
+    // no data: a plain status text, not a pill that would look like a switch
+    $stText = __('No data');
     if ($load !== null) {
         $stTitle = __('Max load :pct %', ['pct' => $st['max']]) . ($st['link'] ? ' (' . $st['link'] . ')' : '');
         $stText = round($load) . ' %';
@@ -45,8 +46,8 @@ foreach ($maps as $i => $map) {
             $h(mb_strtolower($map['name'] . ' ' . ($map['group_name'] ?? '') . ($canEdit ? ' ' . $map['config_file'] : '')))
         ),
         'badge' => sprintf(
-            '<span class="map-state%s" title="%s" aria-label="%s"><span class="map-state-dot"%s></span><span class="map-state-text">%s</span></span>',
-            ($st !== null && !empty($st['stale'])) ? ' map-state-stale' : '', $h($stTitle), $h($stTitle),
+            '<span class="map-state%s%s" title="%s" aria-label="%s"><span class="map-state-dot"%s></span><span class="map-state-text">%s</span></span>',
+            ($st !== null && !empty($st['stale'])) ? ' map-state-stale' : '', $load === null ? ' map-state-none' : '', $h($stTitle), $h($stTitle),
             ($st !== null && !empty($st['colour'])) ? ' style="background:' . $h($st['colour']) . '"' : '', $h($stText)
         ),
     ];
@@ -71,7 +72,7 @@ $menu = static function (array $r) use ($h): string {
         . $item('/editor/maps/edit/' . $id . '?return=%2F', 'settings', __('Settings'), ' data-map-settings')
         . $item('/editor/maps/duplicate/' . $id . '?return=%2F', 'copy', __('Duplicate'))
         . '<button type="button" class="menu-move" data-map-id="' . $id . '" data-group="' . (int) $r['map']['group_id'] . '">' . icon('arrow-left-right') . e__('Move to…') . '</button>'
-        . $item('/editor/maps/toggle/' . $id . '?return=%2F', $r['active'] ? 'eye-off' : 'eye', $r['active'] ? __('Hide from users') : __('Show to users'), ' data-method="post"')
+        . $item('/editor/maps/toggle/' . $id . '?return=%2F', $r['active'] ? 'eye-off' : 'eye', $r['active'] ? __('Hide from viewers') : __('Show to viewers'), ' data-method="post"')
         . $item('/map/' . $id . '?fullscreen=1', 'monitor', __('Fullscreen'))
         . $item('/editor/maps/export/' . $id, 'download', __('Download .conf'))
         . $item('/editor/maps/delete/' . $id, 'trash-2', __('Delete…'), ' class="danger" data-method="post" data-confirm-label="' . e__('Delete') . '" data-confirm="'
@@ -175,7 +176,7 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
                         <h3><?= $h($map['name']) ?></h3>
                         <span class="map-group">
                             <?= $h($map['group_name'] ?? __('Default')) ?>
-                            <?php if (!$r['active']): ?><span class="badge-hidden" title="<?= e__('Inactive: only editors see this map') ?>"><?= e__('Hidden') ?></span><?php endif; ?>
+                            <?php if (!$r['active']): ?><span class="badge-hidden" title="<?= e__('Hidden from viewers: only editors see this map') ?>"><?= e__('Hidden') ?></span><?php endif; ?>
                         </span>
                     </div>
                     <?= $r['badge'] ?>
@@ -200,8 +201,8 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
         <?php if ($canEdit): ?>
         <div class="bulk-bar" hidden>
             <span class="bulk-count"></span>
-            <button type="submit" name="action" value="activate" class="btn btn-sm"><?= e__('Show to users') ?></button>
-            <button type="submit" name="action" value="deactivate" class="btn btn-sm"><?= e__('Hide from users') ?></button>
+            <button type="submit" name="action" value="activate" class="btn btn-sm"><?= e__('Show to viewers') ?></button>
+            <button type="submit" name="action" value="deactivate" class="btn btn-sm"><?= e__('Hide from viewers') ?></button>
             <select name="group_id" aria-label="<?= e__('Group') ?>">
                 <?php foreach ($allGroups as $g): ?>
                 <option value="<?= (int) $g['id'] ?>"><?= $h($g['name']) ?></option>
@@ -248,9 +249,9 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
                         <td>
                             <a href="/editor/maps/toggle/<?= $id ?>?return=%2F" data-method="post" role="switch" aria-checked="<?= $r['active'] ? 'true' : 'false' ?>"
                                class="status-toggle <?= $r['active'] ? 'is-on' : '' ?>"
-                               title="<?= $r['active'] ? e__('Active: click to deactivate (hidden from users)') : e__('Inactive: click to activate') ?>">
+                               title="<?= $r['active'] ? e__('Visible to viewers: click to hide it from them') : e__('Hidden from viewers: click to show it to them') ?>">
                                 <span class="status-toggle-track" aria-hidden="true"></span>
-                                <span class="status-toggle-label"><?= $r['active'] ? e__('Active') : e__('Inactive') ?></span>
+                                <span class="status-toggle-label"><?= $r['active'] ? e__('Visible to viewers') : e__('Hidden from viewers') ?></span>
                             </a>
                         </td>
                         <td class="col-last-run"><?= $map['last_run'] ? $h($map['last_run']) : e__('Never') ?></td>
