@@ -52,12 +52,13 @@
         return exact(time);
     }
 
+    // in the language of the editor and the clock of the map (WMUI.time, ui.js)
     function exact(time) {
-        return new Date(time * 1000).toLocaleString(lang, { dateStyle: 'full', timeStyle: 'medium' });
+        return window.WMUI.time(time, { date: 'full', seconds: true });
     }
 
     function clock(time) {
-        return new Date(time * 1000).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
+        return window.WMUI.time(time);
     }
 
     /** The heading of the day of a version: Today, Yesterday or the date */

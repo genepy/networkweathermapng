@@ -21,6 +21,7 @@ foreach ($maps as $i => $map) {
     $st = $statuses[$mid] ?? null;
     $load = ($st !== null && $st['max'] !== null) ? (float) $st['max'] : null;
     $timezone = $timezones[$mid];
+    $clock = $clocks[$mid] ?? '';
     $stTitle = __('No data yet');
     // no data: a plain status text, not a pill that would look like a switch
     $stText = __('No data');
@@ -29,7 +30,7 @@ foreach ($maps as $i => $map) {
         $stText = round($load) . ' %';
     }
     if ($st !== null && !empty($st['time'])) {
-        $stTitle .= ' — ' . __('Updated :time', ['time' => \App\Services\TimezoneService::formatTimestamp((int) $st['time'], $timezone, 'Y-m-d H:i')]);
+        $stTitle .= ' — ' . __('Updated :time', ['time' => \App\Services\ClockFormat::format((int) $st['time'], $timezone, $clock, false, true)]);
     }
     // a data source that failed in the last render (F49): a warning, the source in the tooltip
     $failed = array_column(\App\Controllers\MapController::publicSources($st ?? []), 'name');
@@ -45,9 +46,9 @@ foreach ($maps as $i => $map) {
         'fav' => $isFav,
         'active' => (bool) $map['active'],
         'attrs' => sprintf(
-            ' data-map-id="%d" data-group="%d" data-fav="%s" data-load="%s" data-stale="%s" data-timezone="%s" data-order="%d" data-name="%s"',
+            ' data-map-id="%d" data-group="%d" data-fav="%s" data-load="%s" data-stale="%s" data-timezone="%s" data-clock="%s" data-order="%d" data-name="%s"',
             $mid, (int) $map['group_id'], $isFav ? '1' : '0', $load === null ? '' : $h($load),
-            ($st === null || !empty($st['stale'])) ? '1' : '0', $h($timezone), (int) ($map['list_order'] ?? $i),
+            ($st === null || !empty($st['stale'])) ? '1' : '0', $h($timezone), $h($clock), (int) ($map['list_order'] ?? $i),
             $h(mb_strtolower($map['name'] . ' ' . ($map['group_name'] ?? '') . ($canEdit ? ' ' . $map['config_file'] : '')))
         ),
         'badge' => sprintf(

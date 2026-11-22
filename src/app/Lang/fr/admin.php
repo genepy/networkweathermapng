@@ -404,4 +404,11 @@ return [
     // F31: New map > On a web map
     'An empty map on a web map (OpenStreetMap)' => 'Une carte vide sur un fond de carte web (OpenStreetMap)',
     'The editor opens on Map properties > Basemap: pick the area and the zoom, or another web map. Nodes you give a location sit on their point.' => 'L’éditeur s’ouvre sur Propriétés de la carte > Fond de carte : choisissez la zone et le zoom, ou un autre fond web. Les nœuds auxquels vous donnez un emplacement se placent sur leur point.',
+    'Clock' => 'Horloge',
+    'Automatic: follows the language' => 'Automatique : suit la langue',
+    '24-hour (14:05)' => '24 heures (14:05)',
+    '12-hour (2:05 PM)' => '12 heures (2:05 PM)',
+    'How update times are written on the maps, the Maps page, the kiosk and the editor history. A map can have its own in its Map settings.' => 'Comment les heures de mise à jour s’écrivent sur les cartes, la page Cartes, le kiosque et l’historique de l’éditeur. Une carte peut avoir la sienne dans ses paramètres.',
+    'Default (:value)' => 'Par défaut (:value)',
+    'How update times of this map are written.' => 'Comment les heures de mise à jour de cette carte s’écrivent.',
 ];

@@ -31,7 +31,7 @@ $themes = ['' => [__('Auto'), 'sun-moon'], 'light' => [__('Light'), 'sun'], 'dar
 $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)) : '';
 ?>
 <!DOCTYPE html>
-<html lang="<?= I18n::locale() ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
+<html lang="<?= I18n::locale() ?>" data-clock="<?= htmlspecialchars((string) ($pageClock ?? ''), ENT_QUOTES) ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">

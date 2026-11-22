@@ -4,6 +4,7 @@
  * the maps, stored in the app. The environment (.env) gives the defaults.
  *
  * @var array<string, array{value: string, default: string, stored: bool}> $settings
+ * @var string $clockSetting auto, 24h or 12h
  */
 use App\Services\RenderingSettings;
 
@@ -32,6 +33,15 @@ $refresh = $settings['MAP_REFRESH_INTERVAL'];
                        value="<?= (int) $refresh['value'] ?>"
                        min="<?= RenderingSettings::MIN_REFRESH ?>" max="<?= RenderingSettings::MAX_REFRESH ?>">
                 <small><?= e__('How often the maps fetch new data and the views follow it. Default: :value, from :var.', ['value' => __(':n seconds', ['n' => (int) $refresh['default']]), 'var' => 'MAP_REFRESH_INTERVAL']) ?></small>
+            </div>
+            <div class="form-group">
+                <label for="rendering-clock"><?= e__('Clock') ?></label>
+                <select id="rendering-clock" name="clock">
+                    <?php foreach (['auto' => __('Automatic: follows the language'), '24h' => __('24-hour (14:05)'), '12h' => __('12-hour (2:05 PM)')] as $value => $label): ?>
+                    <option value="<?= $h($value) ?>" <?= $value === $clockSetting ? 'selected' : '' ?>><?= $h($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small><?= e__('How update times are written on the maps, the Maps page, the kiosk and the editor history. A map can have its own in its Map settings.') ?></small>
             </div>
         </div>
         <p class="set-help"><?= e__('Saved in the application. The :file file or the Docker environment only gives the values of a new install, or of a setting left at its default.', ['file' => '.env']) ?></p>

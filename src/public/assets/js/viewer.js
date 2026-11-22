@@ -617,16 +617,9 @@
             });
     }
 
-    // Time of a render, in the map's time zone (the browser's own if it does not know it)
+    // Time of a render, in the map's time zone and clock, in the language of the interface (WMUI.time, ui.js)
     function formatTime(seconds) {
-        const options = {hour: '2-digit', minute: '2-digit'};
-        if (root.dataset.timezone) options.timeZone = root.dataset.timezone;
-        try {
-            return new Date(seconds * 1000).toLocaleTimeString([], options);
-        } catch (e) {
-            delete options.timeZone;
-            return new Date(seconds * 1000).toLocaleTimeString([], options);
-        }
+        return window.WMUI.time(seconds, {zone: root.dataset.timezone || ''});
     }
 
     /** Name of a time zone for people: "Europe/Paris" stays, "UTC" too */
@@ -3023,14 +3016,7 @@
     }
 
     function formatWhen(seconds) {
-        const options = {weekday: 'short', hour: '2-digit', minute: '2-digit'};
-        if (root.dataset.timezone) options.timeZone = root.dataset.timezone;
-        try {
-            return new Date(seconds * 1000).toLocaleString([], options);
-        } catch (e) {
-            delete options.timeZone;
-            return new Date(seconds * 1000).toLocaleString([], options);
-        }
+        return window.WMUI.time(seconds, {zone: root.dataset.timezone || '', date: 'weekday'});
     }
 
     function frameData(time) {

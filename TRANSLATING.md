@@ -15,11 +15,13 @@ language shows in the user menu (top right). No code change is needed.
    ```
 
 2. Edit `src/app/Lang/de/_meta.php` and set the name of the language, written
-   in that language:
+   in that language, and how it writes times (`24h` or `12h`, used when the
+   clock setting is *Automatic*):
 
    ```php
    return [
        'name' => 'Deutsch',
+       'clock' => '24h',
    ];
    ```
 

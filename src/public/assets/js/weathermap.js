@@ -279,9 +279,14 @@
         return d;
     }
 
+    /** The clock of the page (24h or 12h) as Intl options (WMUI.clockOptions, ui.js) */
+    function wmClock() {
+        return window.WMUI && window.WMUI.clockOptions ? window.WMUI.clockOptions() : {};
+    }
+
     /** Time labels under the graph, in the map's time zone when known */
     function wmTimeLabel(sec, range, tz) {
-        const opts = range === 'day' ? {hour: '2-digit', minute: '2-digit'}
+        const opts = range === 'day' ? Object.assign({hour: '2-digit', minute: '2-digit'}, wmClock())
             : range === 'week' ? {weekday: 'short', day: 'numeric'}
                 : {day: 'numeric', month: 'short'};
         const lang = document.documentElement.lang || undefined;
@@ -505,7 +510,7 @@
 
     /** A full date and time, for the value under the pointer */
     function wmFullTime(sec, tz) {
-        const opts = {weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'};
+        const opts = Object.assign({weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}, wmClock());
         const lang = document.documentElement.lang || undefined;
         try {
             return new Intl.DateTimeFormat(lang, tz ? Object.assign({timeZone: tz}, opts) : opts).format(new Date(sec * 1000));

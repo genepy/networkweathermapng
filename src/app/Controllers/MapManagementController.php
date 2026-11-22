@@ -197,7 +197,7 @@ class MapManagementController extends BaseController
             $settings = new MapSettings($this->database, $this->config);
             if (isset($_POST['kiosk_zoom'])) {
                 $duration = trim((string) ($_POST['kiosk_duration'] ?? ''));
-                $settings->saveDisplay($id, $zone, (int) $_POST['kiosk_zoom'], $duration === '' ? null : (int) $duration);
+                $settings->saveDisplay($id, $zone, (int) $_POST['kiosk_zoom'], $duration === '' ? null : (int) $duration, isset($_POST['clock']) ? (string) $_POST['clock'] : null);
             }
             if (isset($_POST['recording_shown']) && $settings->saveRecording($id, !empty($_POST['recorded'])) && !empty($_POST['recorded'])) {
                 $settings->ensureRecorder();

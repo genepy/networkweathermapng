@@ -288,6 +288,14 @@ class WeatherMap extends WeatherMapBase {
 	 */
 	var $source_errors = array();
 
+	/**
+	 * How the update time is written when the map keeps the default
+	 * TIMEPOS text: a date() format given by the application from its clock
+	 * setting (ClockFormat::phpFormat(), F51); '' keeps the strftime-like
+	 * text. An explicit TIMEPOS text always wins.
+	 */
+	var $clock_format = '';
+
 	/** How many links got no data from any of their targets in ReadData */
 	var $nodata_links = 0;
 	var $htmloutputfile;
@@ -1982,7 +1990,9 @@ class WeatherMap extends WeatherMapBase {
 			return $out;
 		};
 
-		$this->datestamp = $formatStamp($this->stamptext, time());
+		$this->datestamp = ($this->clock_format !== '' && $this->stamptext === $this->inherit_fieldlist['stamptext'])
+			? date($this->clock_format, time())
+			: $formatStamp($this->stamptext, time());
 
 		switch($which) {
 			case 'MIN':

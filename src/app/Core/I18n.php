@@ -110,6 +110,23 @@ class I18n
         return self::langDir() . '/' . self::$locale;
     }
 
+    /**
+     * The _meta.php of a language (name, clock...), [] for English and for
+     * a language without one.
+     *
+     * @return array<string, mixed>
+     */
+    public static function meta(?string $locale = null): array
+    {
+        $locale ??= self::locale();
+        if ($locale === self::DEFAULT_LOCALE || !preg_match('/^[A-Za-z_]+$/', $locale)) {
+            return [];
+        }
+        $meta = self::langDir() . '/' . $locale . '/_meta.php';
+        $data = is_file($meta) ? require $meta : null;
+        return is_array($data) ? $data : [];
+    }
+
     private static function displayName(string $dir, string $code): string
     {
         $meta = $dir . '/_meta.php';
