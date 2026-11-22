@@ -35,7 +35,6 @@ Every file below keeps (or was given) the MIT header of its authors.
 | `src/lib/WeatherMap/geometry.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/ds-common.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/lib/datasources/WeatherMapDataSource_static.php` | Cacti plugin, after Howard Jones | See the git history |
-| `src/lib/WeatherMap/DataSources/WeatherMapDataSource_static.php` | Cacti plugin, after Howard Jones | See the git history |
 | `src/lib/WeatherMap/lib/datasources/WeatherMapDataSource_rrd.php` | Cacti plugin, after Howard Jones | rrdtool path from `RRDTOOL_PATH`, Cacti poller table only inside Cacti |
 | `src/lib/WeatherMap/lib/datasources/WeatherMapDataSource_snmp.php` | Cacti plugin, after Howard Jones | None |
 | `src/lib/WeatherMap/lib/datasources/WeatherMapDataSource_snmp2c.php` | Howard Jones (`SNMP2c.php`), through the Cacti plugin | MIT header added, PHP 8 fixes (undeclared property, counter) |
