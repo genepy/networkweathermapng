@@ -19,12 +19,14 @@ final class MapSettings
     private TimezoneService $timezones;
     private KioskService $kiosk;
     private RecordingService $recording;
+    private ClockFormat $clocks;
 
     public function __construct(private Database $db, private Config $config)
     {
         $this->timezones = TimezoneService::fromConfig($db, $config);
         $this->kiosk = new KioskService($db);
         $this->recording = new RecordingService($db, $config);
+        $this->clocks = new ClockFormat($db);
     }
 
     /**
@@ -40,6 +42,9 @@ final class MapSettings
         return [
             'timezone' => (string) ($this->timezones->getOverrides([$mapId])[$mapId] ?? ''),
             'defaultZone' => $this->timezones->getDefault(),
+            // the map's clock ('' follows the default of Settings > Maps & rendering)
+            'clock' => (string) ($this->clocks->getOverride($mapId) ?? ''),
+            'defaultClock' => $this->clocks->getDefault(),
             'kioskZoom' => $kiosk['zoom'],
             'kioskDuration' => $kiosk['duration'],
             'kioskDefault' => $this->kiosk->getDefaultDuration(),
@@ -57,7 +62,7 @@ final class MapSettings
      *
      * @throws \InvalidArgumentException on a time zone PHP does not know
      */
-    public function saveDisplay(int $mapId, string $zone, int $zoom, ?int $duration): void
+    public function saveDisplay(int $mapId, string $zone, int $zoom, ?int $duration, ?string $clock = null): void
     {
         $zone = trim($zone);
         if ($zone !== '' && !TimezoneService::isValid($zone)) {
@@ -65,6 +70,10 @@ final class MapSettings
         }
         $this->timezones->setOverride($mapId, $zone);
         $this->kiosk->setMapSettings($mapId, $zoom, $duration);
+        if ($clock !== null) {
+            // '' follows the default
+            $this->clocks->setOverride($mapId, $clock);
+        }
     }
 
     /**

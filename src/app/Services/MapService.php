@@ -520,6 +520,8 @@ class MapService
             try {
                 $wmap = new \WeatherMap();
                 $wmap->context = 'standalone';
+                // the update time card in the map's clock, unless TIMEPOS gives its own text (F51)
+                $wmap->clock_format = ClockFormat::phpFormat((new ClockFormat($this->db))->forMap($id), false, true);
             
                 // Read the config
                 $wmap->ReadConfig($configPath);

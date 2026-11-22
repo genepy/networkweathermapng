@@ -23,6 +23,7 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Multiple Maps** - Organize maps into groups
 - **Kiosk** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Settings > Kiosk), a progress bar and controls that fade out
 - **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Settings > Time zone, or the map's *Map settings*)
+- **Clock** - Times are written with a 24-hour or 12-hour clock: *Automatic* follows the language of the interface (24-hour in French, 12-hour in English, from each language's `_meta.php`); Settings > Maps & rendering sets it for every map, a map's *Map settings* > *Display & kiosk* for that map. An explicit `TIMEPOS` text keeps its own format
 - **Map Management** - Create, duplicate, reorder, export and delete maps (with all their data) from the Maps page; every setting of a map (name, group, time zone, kiosk, recording, access) in one *Map settings* panel
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system

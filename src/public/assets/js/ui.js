@@ -204,7 +204,46 @@
         });
     });
 
-    window.WMUI = { toast: toast, confirm: confirmDialog, drawer: drawer };
+    /**
+     * The clock options of Intl for a clock (F51): 24h -> hourCycle h23,
+     * 12h -> hour12. The clock is the one given, else the page's
+     * (<html data-clock>, resolved by the server from the language and the
+     * settings); none: the language's own.
+     */
+    function clockOptions(clock) {
+        clock = clock || document.documentElement.getAttribute('data-clock') || '';
+        return clock === '24h' ? { hourCycle: 'h23' } : clock === '12h' ? { hour12: true } : {};
+    }
+
+    /**
+     * The one browser formatter of times (twin of App\Services\ClockFormat):
+     * in the language of the interface (not the browser's), the clock of
+     * the map and its time zone. opts: zone, clock, seconds (true), date
+     * (true: day and month; 'full': weekday, day, month and year;
+     * 'weekday': short weekday), plus any Intl option.
+     */
+    function formatTime(seconds, opts) {
+        opts = opts || {};
+        var o = { hour: '2-digit', minute: '2-digit' };
+        if (opts.seconds) { o.second = '2-digit'; }
+        if (opts.date === 'full') { o.weekday = 'long'; o.day = 'numeric'; o.month = 'long'; o.year = 'numeric'; }
+        else if (opts.date === 'weekday') { o.weekday = 'short'; }
+        else if (opts.date) { o.day = 'numeric'; o.month = 'short'; o.year = 'numeric'; }
+        Object.keys(opts).forEach(function (k) {
+            if (['zone', 'clock', 'seconds', 'date'].indexOf(k) < 0) { o[k] = opts[k]; }
+        });
+        Object.assign(o, clockOptions(opts.clock));
+        if (opts.zone) { o.timeZone = opts.zone; }
+        var lang = document.documentElement.lang || undefined, at = new Date(seconds * 1000);
+        try {
+            return new Intl.DateTimeFormat(lang, o).format(at);
+        } catch (e) {
+            delete o.timeZone; // a zone the browser does not know
+            return new Intl.DateTimeFormat(lang, o).format(at);
+        }
+    }
+
+    window.WMUI = { toast: toast, confirm: confirmDialog, drawer: drawer, time: formatTime, clockOptions: clockOptions };
 
     function ready() {
         document.querySelectorAll('#wm-toasts .wm-toast').forEach(arm);

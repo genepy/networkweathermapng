@@ -318,14 +318,9 @@
         // State badges: maps with no recent data render are asked for it,
         // two at a time
 
-        // Time of a render, in the map's time zone (the browser's own if it does not know it)
-        function formatTime(seconds, timeZone) {
-            const date = new Date(seconds * 1000);
-            try {
-                return date.toLocaleString([], timeZone ? {timeZone: timeZone} : {});
-            } catch (e) {
-                return date.toLocaleString();
-            }
+        // Time of a render, in the map's time zone and clock, in the language of the interface
+        function formatTime(seconds, timeZone, clock) {
+            return window.WMUI.time(seconds, {zone: timeZone || '', clock: clock || '', date: true});
         }
 
         function showState(item, st) {
@@ -337,7 +332,7 @@
                 title = fmt('Max load :pct %', {pct: st.max}) + (st.link ? ' (' + st.link + ')' : '');
             }
             if (st.time) {
-                title += ' — ' + fmt('Updated :time', {time: formatTime(st.time, item.card.dataset.timezone)});
+                title += ' — ' + fmt('Updated :time', {time: formatTime(st.time, item.card.dataset.timezone, item.card.dataset.clock)});
             }
             // a data source that failed in the last render (F49)
             const failed = (st.sources || []).map(function (s) { return s.name; });

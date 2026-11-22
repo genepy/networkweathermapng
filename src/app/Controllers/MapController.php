@@ -14,6 +14,7 @@ use App\Services\CommandPalette;
 use App\Services\KioskService;
 use App\Services\RecordingService;
 use App\Services\TimezoneService;
+use App\Services\ClockFormat;
 use App\Services\TotalTrafficSeries;
 use App\Services\TrafficSeries;
 
@@ -71,6 +72,8 @@ class MapController extends BaseController
             'favourites' => $favourites,
             'statuses' => $statuses,
             'timezones' => $this->timezones()->forMaps(array_column($maps, 'id')),
+            // the clock of each map: 24h or 12h (F51)
+            'clocks' => (new ClockFormat($this->database))->forMaps(array_map('intval', array_column($maps, 'id'))),
             'groups' => $groups,
             'groupCounts' => $counts,
             'allGroups' => $canEdit ? $this->getMapGroups() : [],

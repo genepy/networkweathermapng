@@ -42,6 +42,8 @@ abstract class BaseController
         $user = $this->auth->user();
         // the user's keyboard shortcuts, for assets/js/shortcuts.js
         $keysScript = (new \App\Services\KeyboardShortcuts($this->database))->scriptFor((int) ($user['id'] ?? 0));
+        // how the page writes times (F51): the clock of its map, or the default one, as 24h or 12h
+        $pageClock = $data['pageClock'] ?? self::clockFor($this->database, (int) ($data['map']['id'] ?? 0));
         
         // Start output buffering
         ob_start();
@@ -66,6 +68,16 @@ abstract class BaseController
      * a panel next to the side navigation. With ?panel=1 only the view,
      * without the shell, for a drawer. The view gets $panel.
      */
+    /** 24h or 12h for a map (0: the default), '' when the settings cannot be read */
+    protected static function clockFor(\App\Core\Database $db, int $mapId): string
+    {
+        try {
+            return (new \App\Services\ClockFormat($db))->forMap($mapId);
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
     protected function renderSettings(string $view, array $data = []): void
     {
         $panel = !empty($_GET['panel']);

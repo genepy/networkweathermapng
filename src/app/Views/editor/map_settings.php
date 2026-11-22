@@ -106,6 +106,17 @@ $names = static fn (array $list): string => $h(implode(', ', $list));
                 </datalist>
                 <small class="text-muted"><?= e__('Dates shown on this map and in its history. Type to search; leave empty to use the default zone.') ?></small>
             </div>
+            <div class="form-group">
+                <label for="ms-clock"><?= e__('Clock') ?></label>
+                <?php $clockNames = ['auto' => __('Automatic: follows the language'), '24h' => __('24-hour (14:05)'), '12h' => __('12-hour (2:05 PM)')]; ?>
+                <select id="ms-clock" name="clock" class="form-control">
+                    <option value=""><?= e__('Default (:value)', ['value' => $clockNames[$s['defaultClock']] ?? $s['defaultClock']]) ?></option>
+                    <?php foreach ($clockNames as $value => $label): ?>
+                    <option value="<?= $h($value) ?>" <?= $s['clock'] === $value ? 'selected' : '' ?>><?= $h($label) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <small class="text-muted"><?= e__('How update times of this map are written.') ?></small>
+            </div>
             <div class="form-group form-pair">
                 <label><?= e__('Zoom in the kiosk') ?>
                     <select name="kiosk_zoom" class="form-control">

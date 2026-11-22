@@ -12,7 +12,7 @@ $fsUrl = '/cycle?fullscreen=1' . ($groupId ? '&group=' . (int) $groupId : '');
 <?php if ($fullscreen): ?>
 <?php $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''; ?>
 <!DOCTYPE html>
-<html lang="<?= \App\Core\I18n::locale() ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
+<html lang="<?= \App\Core\I18n::locale() ?>" data-clock="<?= htmlspecialchars((string) ($pageClock ?? ''), ENT_QUOTES) ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">

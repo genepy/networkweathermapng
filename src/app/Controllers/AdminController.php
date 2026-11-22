@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\ClockFormat;
 use App\Services\GroupService;
 use App\Services\KioskService;
 use App\Services\RecordingService;
@@ -425,12 +426,18 @@ class AdminController extends BaseController
         $this->requireAdmin();
 
         $rendering = new RenderingSettings($this->database, $this->config);
+        $clocks = new ClockFormat($this->database);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $invalid = $rendering->save([
                 'MAP_OUTPUT_FORMAT' => $_POST['format'] ?? '',
                 'MAP_REFRESH_INTERVAL' => $_POST['refresh'] ?? '',
             ]);
+            try {
+                $clocks->setDefault((string) ($_POST['clock'] ?? 'auto'));
+            } catch (\InvalidArgumentException) {
+                $invalid[] = 'clock';
+            }
             if ($invalid) {
                 $this->flash('error', __('Some values are not valid and were not saved.'));
             } else {
@@ -442,6 +449,7 @@ class AdminController extends BaseController
 
         $this->renderSettings('admin/settings', [
             'settings' => $rendering->describe(),
+            'clockSetting' => $clocks->getDefault(),
             'title' => __('Maps & rendering'),
         ]);
     }
