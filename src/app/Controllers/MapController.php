@@ -9,6 +9,8 @@ namespace App\Controllers;
 
 use App\Core\ErrorPage;
 use App\Services\MapService;
+use App\Services\DemoMaps;
+use App\Services\GroupService;
 use App\Services\DataSourceService;
 use App\Services\CommandPalette;
 use App\Services\KioskService;
@@ -80,6 +82,8 @@ class MapController extends BaseController
             'filter' => $filter,
             'canEdit' => $canEdit,
             'canImport' => $this->auth->isAdmin(),
+            // the demo maps an administrator can still add (F55)
+            'missingDemos' => $this->auth->isAdmin() ? $this->missingDemos() : [],
             // maps whose drawn title still differs from their name (before step 5)
             'titleConflicts' => $canEdit ? $this->mapService->titleConflicts($maps) : [],
             'title' => __('Maps'),
@@ -660,6 +664,16 @@ class MapController extends BaseController
 
         header('Cache-Control: private, max-age=300');
         $this->json($cached + ['tz' => $this->timezones()->forMap($mapId)]);
+    }
+
+    /** @return list<string> the demo maps that are not there yet, [] when they cannot be read */
+    private function missingDemos(): array
+    {
+        try {
+            return (new DemoMaps($this->mapService, new GroupService($this->database)))->missing();
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     private function timezones(): TimezoneService

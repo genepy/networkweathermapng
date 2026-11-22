@@ -417,4 +417,11 @@ return [
     'Open in the editor' => 'Ouvrir dans l’éditeur',
     'The panels of the viewer and the kiosk, and the focus areas, are set in the editor.' => 'Les panneaux du lecteur et du kiosque, et les zones de focus, se règlent dans l’éditeur.',
     'Map…' => 'Carte…',
+    'Demo maps added: :names' => 'Cartes de démo ajoutées : :names',
+    'The demo maps are already there.' => 'Les cartes de démo sont déjà là.',
+    'The demo maps could not be added: :error' => 'Les cartes de démo n’ont pas pu être ajoutées : :error',
+    'Add demo maps' => 'Ajouter les cartes de démo',
+    'Add the demo maps' => 'Ajouter les cartes de démo',
+    'The demo maps show what a map can do, with traffic that needs no data source.' => 'Les cartes de démo montrent ce que peut faire une carte, avec un trafic qui ne demande aucune source de données.',
+    'To try the application, add the demo maps: their traffic needs no data source.' => 'Pour essayer l’application, ajoutez les cartes de démo : leur trafic ne demande aucune source de données.',
 ];

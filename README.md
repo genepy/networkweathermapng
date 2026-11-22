@@ -80,7 +80,9 @@ or Observium:
 | *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, link widths by speed, comments along curved links |
 | *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing links, long-haul links that curve with their comments, a speed legend |
 
-Add them to a "Demo maps" group with:
+An administrator adds them to a "Demo maps" group with *Add the demo maps*
+on the empty Maps page, *Add demo maps* in the ⋯ menu of the Maps page (shown
+while one of them is missing) or on *Settings › Import maps*, or with:
 
 ```bash
 docker compose exec weathermap php bin/demo-maps.php      # or: php src/bin/demo-maps.php

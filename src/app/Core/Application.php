@@ -120,6 +120,7 @@ class Application
             $this->router->post($prefix . '/move/{id}', 'MapManagementController@move');
         }
         $this->router->post('/editor/maps/order', 'MapManagementController@order');
+        $this->router->post('/editor/maps/demos', 'MapManagementController@installDemos');
         $this->router->get('/editor/maps', 'MapManagementController@legacyList');
         $this->router->get('/admin/maps', 'MapManagementController@legacyList');
 

@@ -12,6 +12,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\DataSourceService;
+use App\Services\DemoMaps;
 use App\Services\GroupService;
 use App\Services\MapService;
 use App\Services\Migration\MigrationImporter;
@@ -41,6 +42,8 @@ class MigrationController extends BaseController
 
         $this->renderSettings('admin/migration/index', [
             'migrations' => $this->store->all(),
+            // the demo maps not added yet (F55)
+            'missingDemos' => (new DemoMaps($this->mapService, new GroupService($this->database)))->missing(),
             'title' => __('Migration'),
         ]);
     }

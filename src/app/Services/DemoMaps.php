@@ -48,6 +48,17 @@ final class DemoMaps
     }
 
     /**
+     * The demos no map is named after yet (what install() would add).
+     *
+     * @return list<string> map names
+     */
+    public function missing(): array
+    {
+        $existing = array_column($this->maps->getAllMaps(), 'name');
+        return array_values(array_diff(array_keys($this->available()), $existing));
+    }
+
+    /**
      * Adds the missing demos to the demo group (created when needed).
      *
      * @return array<string, bool> map name => true when added, false when already there
