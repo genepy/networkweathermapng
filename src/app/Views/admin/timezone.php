@@ -46,7 +46,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
                         <td>
                             <strong><?= $h($map['name']) ?></strong>
                             <?php if (!(int) $map['active']): ?>
-                            <span class="status-badge status-inactive"><?= e__('Inactive') ?></span>
+                            <span class="status-badge status-inactive"><?= e__('Hidden from viewers') ?></span>
                             <?php endif; ?>
                         </td>
                         <td><?= $h($map['group_name'] ?? __('Default')) ?></td>

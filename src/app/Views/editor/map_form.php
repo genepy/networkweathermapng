@@ -61,7 +61,7 @@ $name = match ($action) {
         <div class="form-group">
             <label class="checkbox-label">
                 <input type="checkbox" name="active" value="1" <?= ($action === 'duplicate' ? 0 : ($map['active'] ?? 1)) ? 'checked' : '' ?>>
-                <?= e__('Active (visible to users)') ?>
+                <?= e__('Visible to viewers') ?>
             </label>
         </div>
 

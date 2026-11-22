@@ -52,7 +52,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
                         <td>
                             <strong><?= $h($map['name']) ?></strong>
                             <?php if (!(int) $map['active']): ?>
-                            <span class="status-badge status-inactive"><?= e__('Inactive') ?></span>
+                            <span class="status-badge status-inactive"><?= e__('Hidden from viewers') ?></span>
                             <?php endif; ?>
                         </td>
                         <td><?= $h($map['group_name'] ?? __('Default')) ?></td>
@@ -80,7 +80,7 @@ $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
             </table>
         </div>
         <p class="text-muted kiosk-help">
-            <?= e__('Fit to screen enlarges or shrinks the map to fill the screen. A percentage shows the map at that share of its size, centred; what does not fit is cut off. Leave the display time empty to use the one above. Inactive maps are not shown in kiosk mode.') ?>
+            <?= e__('Fit to screen enlarges or shrinks the map to fill the screen. A percentage shows the map at that share of its size, centred; what does not fit is cut off. Leave the display time empty to use the one above. Maps hidden from viewers are not shown in kiosk mode.') ?>
             <?= e__('Kiosk panels opens the Viewer panels section of the map in the editor: switch it to Kiosk to give the kiosk a side panel with the sites, the total traffic or the link load.') ?>
         </p>
         <?php endif; ?>

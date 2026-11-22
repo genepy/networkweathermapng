@@ -1291,6 +1291,9 @@ body.wmv-noc {
     flex: none;
 }
 .map-state.map-state-stale { opacity: 0.7; }
+/* no data: a status text (no pill, no dot), so it does not look like a switch turned off */
+.map-state.map-state-none { padding: 0; border: 0; background: none; color: var(--wm-text-muted); font-weight: 400; font-style: italic; }
+.map-state.map-state-none .map-state-dot { display: none; }
 .map-state.map-state-stale .map-state-dot { box-shadow: 0 0 0 2px var(--border-color); }
 
 /* List */

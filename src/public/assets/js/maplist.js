@@ -343,7 +343,8 @@
                 el.dataset.load = load;
                 const badge = el.querySelector('.map-state');
                 if (!badge) return;
-                badge.querySelector('.map-state-text').textContent = load === '' ? '' : Math.round(st.max) + ' %';
+                badge.querySelector('.map-state-text').textContent = load === '' ? t('No data') : Math.round(st.max) + ' %';
+                badge.classList.toggle('map-state-none', load === '');
                 badge.querySelector('.map-state-dot').style.background = load === '' ? '' : (st.colour || '');
                 badge.title = title;
                 badge.setAttribute('aria-label', title);

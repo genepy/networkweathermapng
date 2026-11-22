@@ -78,7 +78,7 @@ $names = static fn (array $list): string => $h(implode(', ', $list));
                 <label class="ms-switch">
                     <input type="checkbox" role="switch" name="active" value="1" <?= $map['active'] ? 'checked' : '' ?>>
                     <span>
-                        <strong><?= e__('Visible to users') ?></strong>
+                        <strong><?= e__('Visible to viewers') ?></strong>
                         <small class="text-muted"><?= e__('Off hides it from viewers, on the Maps page and in the kiosk. Editors still see it.') ?></small>
                     </span>
                 </label>

@@ -76,4 +76,5 @@ return [
     'Zoom the graph' => 'Agrandir le graphique',
     '95th percentile' => '95e centile',
     'Peak' => 'Pic',
+    'No data' => 'Pas de données',
 ];
