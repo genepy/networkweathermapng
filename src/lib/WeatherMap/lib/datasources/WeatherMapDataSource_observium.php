@@ -17,10 +17,16 @@
 
 class WeatherMapDataSource_observium extends WeatherMapDataSource
 {
-    private ?\App\Services\DataSourceService $svc = null;
+    /** @var \App\Services\DataSourceService|object|null */
+    private $svc = null;
 
     function Init(&$map)
     {
+        if ($this->svc) {
+            // given by useService()
+            return true;
+        }
+
         try {
             if (defined('APP_ROOT')) {
                 $autoload = APP_ROOT . '/vendor/autoload.php';
@@ -51,7 +57,7 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
      */
     function ReadSpeed($targetstring, &$map, &$item)
     {
-        if (!$this->svc) {
+        if (!$this->svc || $map->source_down('observium:' . ($this->sourceIdFor($item) ?? 0))) {
             return 0;
         }
 
@@ -92,6 +98,33 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
         }
     }
 
+    /** The service the plugin reads through (a fake one in tests) */
+    function useService($svc): void
+    {
+        $this->svc = $svc;
+    }
+
+    private function sourceName(?int $sourceId): string
+    {
+        if ($sourceId !== null) {
+            try {
+                $source = method_exists($this->svc, 'getSource') ? $this->svc->getSource($sourceId) : null;
+                if (is_array($source) && (string) ($source['name'] ?? '') !== '') {
+                    return (string) $source['name'];
+                }
+            } catch (\Throwable $e) {
+                // the name only labels the warning
+            }
+        }
+        return 'Observium';
+    }
+
+    /**
+     * An error never stops the render: it is logged once per source,
+     * recorded for the viewer's warning (F49) and the item gets no data;
+     * after a connection failure the other items of the same source are
+     * skipped for this render.
+     */
     function ReadData($targetstring, &$map, &$item)
     {
         $data_time = time();
@@ -100,11 +133,18 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
             return array(NULL, NULL, $data_time);
         }
 
+        $sourceId = $this->sourceIdFor($item);
+        $key = 'observium:' . ($sourceId ?? 0);
+        if ($map->source_down($key)) {
+            $map->source_failed($key, $this->sourceName($sourceId), '', true);
+            return array(NULL, NULL, $data_time);
+        }
+
         try {
-            $values = $this->svc->readObserviumTarget((string) $targetstring, $this->sourceIdFor($item));
+            $values = $this->svc->readObserviumTarget((string) $targetstring, $sourceId);
         } catch (\Throwable $e) {
-            wm_warn("Observium ReadData: {$targetstring}: " . $e->getMessage() . " [WMOBS01]");
-            $values = null;
+            $map->source_failed($key, $this->sourceName($sourceId), $e->getMessage(), self::isConnectionError($e));
+            return array(NULL, NULL, $data_time);
         }
 
         $this->notePage((string) $targetstring, $item);

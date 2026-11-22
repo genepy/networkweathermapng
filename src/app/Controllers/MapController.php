@@ -461,7 +461,21 @@ class MapController extends BaseController
             // frames recorded before the total existed: work it out from their items
             'total' => $summary['total'] ?? MapService::trafficTotal((array) ($summary['items'] ?? [])),
             'basemap' => $summary['basemap'] ?? null,
+            // the data sources that failed in this render (F49): name, unreachable, links without data;
+            // the error text itself stays in the log (it may name internal hosts)
+            'sources' => self::publicSources($summary),
+            'nodata' => (int) ($summary['nodata'] ?? 0),
         ];
+    }
+
+    /** @return list<array{name: string, down: bool, links: int}> */
+    public static function publicSources(array $summary): array
+    {
+        return array_values(array_map(static fn ($s) => [
+            'name' => (string) ($s['name'] ?? ''),
+            'down' => !empty($s['down']),
+            'links' => (int) ($s['links'] ?? 0),
+        ], array_filter((array) ($summary['sources'] ?? []), 'is_array')));
     }
 
     private function configVersion(int $mapId): string

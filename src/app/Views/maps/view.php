@@ -124,9 +124,13 @@
         </div>
         <?php endif; ?>
 
+        <?php if ($isKiosk): ?>
+        <div class="wmv-warn-badge" role="status" hidden><?= icon('triangle-alert') ?><span></span></div>
+        <?php endif; ?>
         <div class="wmv-status" hidden>
             <span class="wmv-status-when"><span class="wmv-dot" aria-hidden="true"></span><span class="wmv-updated"></span></span>
             <span class="wmv-status-max"></span>
+            <span class="wmv-status-warn" hidden><?= icon('triangle-alert') ?><span class="wmv-status-warn-text"></span></span>
             <span class="wmv-legend" hidden>
                 <span class="wmv-legend-min"></span>
                 <span class="wmv-legend-bar" role="img"></span>

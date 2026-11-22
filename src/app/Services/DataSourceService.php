@@ -289,6 +289,29 @@ class DataSourceService
         }
     }
     
+    /**
+     * The current [in, out] of many links of one Zabbix source in one API
+     * call, keyed like $selections; links whose items are not found are
+     * left out. Throws DataSourceException when the source cannot answer.
+     *
+     * @param array<string, array> $selections
+     * @return array<string, array{in: float, out: float}>
+     */
+    public function getLinksBandwidthCurrent(int $sourceId, array $selections): array
+    {
+        $source = $this->getSource($sourceId);
+        $client = $source ? $this->getClient($source) : null;
+        if (!$client instanceof ZabbixClient || !$selections) {
+            return [];
+        }
+
+        try {
+            return $client->getBandwidthCurrentMany($selections);
+        } catch (\Exception $e) {
+            throw new DataSourceException($e->getMessage(), $client->getDebugInfo(), 0, $e);
+        }
+    }
+
     /** Interface speed in bit/s for a link picked from a Zabbix source */
     public function getLinkSpeed(int $sourceId, array $selection): ?int
     {
@@ -489,6 +512,9 @@ class DataSourceService
 
 class ZabbixClient implements DataSourceClientInterface
 {
+    /** Seconds to wait for a connection to the Zabbix server */
+    public const CONNECT_TIMEOUT = 5;
+
     private array $source;
     private DataSourceService $service;
     private ?string $authToken = null;
@@ -799,6 +825,52 @@ class ZabbixClient implements DataSourceClientInterface
     }
     
     /**
+     * getBandwidthCurrent() for many links at once: one item.get for every
+     * host and key, keyed like $selections.
+     *
+     * @param array<string, array> $selections
+     * @return array<string, array{in: float, out: float}>
+     */
+    public function getBandwidthCurrentMany(array $selections): array
+    {
+        $hosts = $keys = [];
+        foreach ($selections as $sel) {
+            $hostId = (string) ($sel['hostId'] ?? '');
+            $inKey = (string) ($sel['inKey'] ?? '');
+            $outKey = (string) ($sel['outKey'] ?? '');
+            if ($hostId !== '' && $inKey !== '' && $outKey !== '') {
+                $hosts[$hostId] = true;
+                $keys[$inKey] = true;
+                $keys[$outKey] = true;
+            }
+        }
+        if (!$hosts) {
+            return [];
+        }
+
+        $items = $this->apiRequest('item.get', [
+            'output' => ['itemid', 'hostid', 'key_', 'lastvalue'],
+            'hostids' => array_keys($hosts),
+            'filter' => ['key_' => array_keys($keys)],
+        ]);
+        $values = [];
+        foreach ((array) $items as $item) {
+            $values[(string) ($item['hostid'] ?? '') . '|' . (string) ($item['key_'] ?? '')] = (float) ($item['lastvalue'] ?? 0);
+        }
+
+        $out = [];
+        foreach ($selections as $id => $sel) {
+            $hostId = (string) ($sel['hostId'] ?? '');
+            $in = $values[$hostId . '|' . (string) ($sel['inKey'] ?? '')] ?? null;
+            $outValue = $values[$hostId . '|' . (string) ($sel['outKey'] ?? '')] ?? null;
+            if ($in !== null && $outValue !== null) {
+                $out[$id] = ['in' => $in, 'out' => $outValue];
+            }
+        }
+        return $out;
+    }
+
+    /**
      * Interface speed in bit/s for a link picked in the editor, read from
      * the speed item the Zabbix templates create next to the traffic items.
      */
@@ -944,6 +1016,8 @@ class ZabbixClient implements DataSourceClientInterface
             CURLOPT_POSTFIELDS => json_encode($request),
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_TIMEOUT => 30,
+            // an unreachable server must not hold a render (F50)
+            CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
             CURLOPT_SSL_VERIFYPEER => false, // For development - enable in production
         ]);
         

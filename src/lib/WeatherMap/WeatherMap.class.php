@@ -130,6 +130,16 @@ class WeatherMapDataSource {
 	function Prefetch() {
 
 	}
+
+	/**
+	 * Whether an error means the source cannot be reached at all (no
+	 * connection, timeout, unknown host...), so the other items of the
+	 * same source are not tried again in this render.
+	 */
+	static function isConnectionError($e) {
+		$message = $e instanceof Throwable ? $e->getMessage() : (string) $e;
+		return preg_match('/curl|could not connect|couldn\'t connect|connection|timed out|timeout|resolve host|SQLSTATE\[HY000\] \[20\d\d\]/i', $message) === 1;
+	}
 }
 
 // template classes for the pre- and post-processor plugins
@@ -270,6 +280,16 @@ class WeatherMap extends WeatherMapBase {
 	var $datestamp;
 	var $min_data_time;
 	var $max_data_time;
+
+	/**
+	 * Data sources that failed during ReadData, by key (one per source):
+	 * array(name, error, down, links). down: it could not be reached and
+	 * its other items were skipped; links: its items left without data.
+	 */
+	var $source_errors = array();
+
+	/** How many links got no data from any of their targets in ReadData */
+	var $nodata_links = 0;
 	var $htmloutputfile;
 	var $imageoutputfile;
 	var $dataoutputfile;
@@ -1148,8 +1168,34 @@ class WeatherMap extends WeatherMapBase {
 		return $total;
 	}
 
+	/**
+	 * A data source plugin could not read an item: the first error of a
+	 * source is logged once, the next ones only count the item. $down: the
+	 * source cannot be reached (source_down() then skips its other items).
+	 */
+	function source_failed($key, $name, $error, $down = false) {
+		if (!isset($this->source_errors[$key])) {
+			$this->source_errors[$key] = array('name' => (string) $name, 'error' => (string) $error, 'down' => (bool) $down, 'links' => 0);
+			wm_warn("Data source {$name}: {$error} [WMDS01]");
+		} elseif ($down && empty($this->source_errors[$key]['down'])) {
+			// the source stopped answering after an item error: keep the connection error
+			$this->source_errors[$key]['down'] = true;
+			if ((string) $error !== '') {
+				$this->source_errors[$key]['error'] = (string) $error;
+			}
+		}
+		$this->source_errors[$key]['links']++;
+	}
+
+	/** Whether a source was found unreachable earlier in this render */
+	function source_down($key) {
+		return !empty($this->source_errors[$key]['down']);
+	}
+
 	function ReadData() {
 		$this->DatasourceInit();
+		$this->source_errors = array();
+		$this->nodata_links = 0;
 
 		wm_debug("======================================");
 		wm_debug("ReadData: Updating link data for all links and nodes");
@@ -1183,6 +1229,8 @@ class WeatherMap extends WeatherMapBase {
 				if (($type=='LINK' && isset($myobj->a)) || ($type=='NODE' && !is_null($myobj->x) ) ) {
 					if (count($myobj->targets)>0) {
 						$tindex = 0;
+						// a link none of whose targets answered counts as "without data"
+						$answered = false;
 
 						foreach ($myobj->targets as $target) {
 							wm_debug("ReadData: New Target: $target[4]");
@@ -1217,6 +1265,7 @@ class WeatherMap extends WeatherMapBase {
 
 									wm_warn("ReadData: $type $name, target: $targetstring on config line $target[3] of $target[2] had no valid data, according to $matched_by");
 								} else {
+									$answered = true;
 									if ($in === null) {
 										$in = 0;
 									}
@@ -1260,6 +1309,10 @@ class WeatherMap extends WeatherMapBase {
 							}
 
 							$tindex++;
+						}
+
+						if ($type == 'LINK' && !$answered) {
+							$this->nodata_links++;
 						}
 
 						wm_debug("ReadData complete for $type $name: $total_in $total_out");

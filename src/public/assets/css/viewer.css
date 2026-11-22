@@ -512,6 +512,30 @@
     border-left: 1px solid var(--wm-border);
 }
 .wmv-status > span[hidden] { display: none; }
+/* a data source that failed in the last render (F49) */
+.wmv-status-warn { color: var(--wm-warning-text); font-weight: 600; }
+.wmv-status-warn .icon, .wmv-warn-badge .icon { width: 14px; height: 14px; flex: none; }
+.wmv-warn-badge { display: none; }
+.wmv-kiosk .wmv-warn-badge:not([hidden]) {
+    position: absolute;
+    z-index: 5;
+    right: var(--wm-space-3);
+    bottom: var(--wm-space-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 50%;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--wm-warning-soft);
+    color: var(--wm-warning-text);
+    border: 1px solid var(--wm-warning);
+    font-size: var(--wm-text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .wmv-legend-bar {
     display: inline-block;
     width: 120px;
@@ -1294,6 +1318,9 @@ body.wmv-noc {
 /* no data: a status text (no pill, no dot), so it does not look like a switch turned off */
 .map-state.map-state-none { padding: 0; border: 0; background: none; color: var(--wm-text-muted); font-weight: 400; font-style: italic; }
 .map-state.map-state-none .map-state-dot { display: none; }
+/* a data source did not answer in the last render */
+.map-state.map-state-warn { border-color: var(--wm-warning); color: var(--wm-warning-text); }
+.map-state.map-state-warn::before { content: "!"; font-weight: 700; }
 .map-state.map-state-stale .map-state-dot { box-shadow: 0 0 0 2px var(--border-color); }
 
 /* List */

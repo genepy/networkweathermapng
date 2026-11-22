@@ -31,6 +31,11 @@ foreach ($maps as $i => $map) {
     if ($st !== null && !empty($st['time'])) {
         $stTitle .= ' — ' . __('Updated :time', ['time' => \App\Services\TimezoneService::formatTimestamp((int) $st['time'], $timezone, 'Y-m-d H:i')]);
     }
+    // a data source that failed in the last render (F49): a warning, the source in the tooltip
+    $failed = array_column(\App\Controllers\MapController::publicSources($st ?? []), 'name');
+    if ($failed) {
+        $stTitle .= ' — ' . __('Data source not answering: :sources', ['sources' => implode(', ', $failed)]);
+    }
     $isFav = in_array($mid, $favourites, true);
     $favCount += $isFav ? 1 : 0;
     $busyCount += ($load !== null && $load >= $busyAt) ? 1 : 0;
@@ -47,7 +52,7 @@ foreach ($maps as $i => $map) {
         ),
         'badge' => sprintf(
             '<span class="map-state%s%s" title="%s" aria-label="%s"><span class="map-state-dot"%s></span><span class="map-state-text">%s</span></span>',
-            ($st !== null && !empty($st['stale'])) ? ' map-state-stale' : '', $load === null ? ' map-state-none' : '', $h($stTitle), $h($stTitle),
+            ($st !== null && !empty($st['stale'])) ? ' map-state-stale' : '', ($load === null ? ' map-state-none' : '') . ($failed ? ' map-state-warn' : ''), $h($stTitle), $h($stTitle),
             ($st !== null && !empty($st['colour'])) ? ' style="background:' . $h($st['colour']) . '"' : '', $h($stText)
         ),
     ];
