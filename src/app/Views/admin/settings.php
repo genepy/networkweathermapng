@@ -41,11 +41,11 @@ $refresh = $settings['MAP_REFRESH_INTERVAL'];
                     <option value="<?= $h($value) ?>" <?= $value === $clockSetting ? 'selected' : '' ?>><?= $h($label) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <small><?= e__('How update times are written on the maps, the Maps page, the kiosk and the editor history. A map can have its own in its Map settings.') ?></small>
+                <small><?= e__('How update times are written on the maps, the Maps page, the kiosk and the editor history. A map can have its own in its Map panel.') ?></small>
             </div>
         </div>
         <p class="set-help"><?= e__('Saved in the application. The :file file or the Docker environment only gives the values of a new install, or of a setting left at its default.', ['file' => '.env']) ?></p>
-        <p class="set-help"><?= e__('Kiosk, recording and time zone have pages of their own in this menu; the settings of one map are in its Map settings panel.') ?></p>
+        <p class="set-help"><?= e__('Kiosk, recording and time zone have pages of their own in this menu; the settings of one map are in its Map panel.') ?></p>
     </div>
     <footer class="set-foot">
         <button type="reset" class="wm-btn"><?= e__('Cancel') ?></button>

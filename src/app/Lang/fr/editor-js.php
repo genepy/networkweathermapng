@@ -491,8 +491,6 @@ return [
     'Hide layers while editing' => 'Masquer des calques pendant l’édition',
     'Edit the map as text (.conf)' => 'Modifier la carte en texte (.conf)',
     'Back to the drawing' => 'Retour au dessin',
-    'Map properties' => 'Propriétés de la carte',
-    'Map settings' => 'Réglages de la carte',
     'Open the published map' => 'Ouvrir la carte publiée',
     'Use the movable toolbars' => 'Utiliser les barres d’outils déplaçables',
     'Use the bar next to the selection' => 'Utiliser la barre près de la sélection',
@@ -570,7 +568,7 @@ return [
     'Basic' => 'De base',
     'Recent' => 'Récentes',
     // Map settings in a drawer over the editor (assets/js/map-settings.js)
-    'Map settings saved' => 'Réglages de la carte enregistrés',
+    'Map saved' => 'Carte enregistrée',
 
     // History and savepoints (assets/js/editor-timeline.js)
     'History and savepoints' => 'Historique et points de sauvegarde',
@@ -646,7 +644,7 @@ return [
     'Remove :name from the map' => 'Retirer :name de la carte',
     'Small note' => 'Petite note',
     'A small line under the content, for example a source or credits.' => 'Une petite ligne sous le contenu, par exemple une source ou des crédits.',
-    'Every map item takes the colours and font of the legends (Map properties).' => 'Chaque élément de carte prend les couleurs et la police des légendes (Propriétés de la carte).',
+    'Every map item takes the font and colours of the Map items section (Map › Look).' => 'Chaque élément de la carte prend la police et les couleurs de la section Éléments de la carte (Carte › Apparence).',
     'Add it to the map or remove it in the Map items of the Add panel.' => 'Ajoutez-le à la carte ou retirez-le dans les Éléments de la carte du panneau Ajouter.',
     'Legends, the update time, the total traffic and text boxes are cards with this font and these colours. Add them or remove them in the Map items of the Add panel.' => 'Les légendes, l’heure de mise à jour, le trafic total et les encadrés sont des cartes avec cette police et ces couleurs. Ajoutez-les ou retirez-les dans les Éléments de la carte du panneau Ajouter.',
     'Map item' => 'Élément de la carte',
@@ -703,8 +701,7 @@ return [
     'none, or Peering, Transit...' => 'aucun, ou Peering, Transit…',
     'Links of the same group get their own tab in the total traffic graph of the live view, next to Total.' => 'Les liens d’un même groupe ont leur propre onglet dans le graphique du trafic total de la vue en direct, à côté de Total.',
     // F31: the basemap one click away
-    'Basemap (web map)' => 'Fond de carte (web)',
-    'A web map such as OpenStreetMap under the map: Map properties > Basemap' => 'Un fond de carte web, comme OpenStreetMap, sous la carte : Propriétés de la carte > Fond de carte',
+    'A web map such as OpenStreetMap under the map: Map › Look › Basemap' => 'Une carte web comme OpenStreetMap sous la carte : Carte › Apparence › Fond de carte',
 
     // F41: traffic bar link look
     'Traffic bar' => 'Barre de trafic',
@@ -721,4 +718,6 @@ return [
     'In the live view and the kiosk the icon turns, faster as its busiest link is loaded: still at 0 %, one turn a second at 100 %. Best for a round icon such as a fan. Here it stays still.' => 'Dans la vue en direct et le kiosque, l’icône tourne, d’autant plus vite que son lien le plus chargé l’est : immobile à 0 %, un tour par seconde à 100 %. Idéal pour une icône ronde comme un ventilateur. Ici elle reste immobile.',
     'Older map items were turned into cards. Ctrl+Z to undo.' => 'Les anciens éléments de la carte sont devenus des cartes d’information. Ctrl+Z pour annuler.',
     'Converted legacy map items' => 'Anciens éléments de carte convertis',
+    'Map…' => 'Carte…',
+    'Basemap (web map)' => 'Fond de carte (web)',
 ];

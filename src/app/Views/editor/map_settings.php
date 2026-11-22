@@ -1,8 +1,12 @@
 <?php
 /**
- * Map settings (UI redesign step 5): every setting of one map on four tabs.
- * A page of its own, or ($panel) only the panel, shown in a drawer by
- * map-settings.js. Without JavaScript the four sections follow each other.
+ * The Map panel (F53): every setting of one map on five tabs, General,
+ * Look, Viewer & kiosk, Recording and Access. A page of its own, or
+ * ($panel) only the panel, shown in a drawer by map-settings.js (viewer,
+ * Maps page) or in the properties panel of the map editor, which fills the
+ * data-ms-slot boxes with its own live fields (size, look, viewer panels,
+ * focus areas). Elsewhere those boxes lead to the editor. Without
+ * JavaScript the sections follow each other.
  *
  * @var array $map @var array $groups @var ?string $drawnTitle the title drawn on the map when it differs from the name
  * @var array $settings MapSettings::load() @var array $audience MapSettings::audience()
@@ -21,27 +25,29 @@ if ($s['kioskZoom'] !== KioskService::ZOOM_FIT && !in_array($s['kioskZoom'], $zo
 $isAdmin = $auth->isAdmin();
 $tabs = [
     'general' => __('General'),
-    'display' => __('Display & kiosk'),
+    'look' => __('Look'),
+    'display' => __('Viewer & kiosk'),
     'recording' => __('Recording'),
     'access' => __('Access'),
 ];
+$editorUrl = static fn (string $section): string => '/editor/edit/' . $id . '?open=' . $section;
 $names = static fn (array $list): string => $h(implode(', ', $list));
 ?>
 <?php if (!$panel): ?>
 <div class="admin-container map-settings-page">
     <div class="page-header">
-        <?= breadcrumb([[__('Maps'), '/'], [$map['name'], '/map/' . $id], [__('Map settings')]]) ?>
+        <?= breadcrumb([[__('Maps'), '/'], [$map['name'], '/map/' . $id], [__('Map')]]) ?>
     </div>
 <?php endif; ?>
 <form method="post" action="/editor/maps/edit/<?= $id ?>" class="map-settings<?= $panel ? '' : ' form-card' ?>" id="map-settings-form" data-map-settings-form>
     <input type="hidden" name="return" value="<?= $h($return) ?>">
     <?php if ($panel): ?>
     <div class="ms-head">
-        <h2 id="ms-title"><?= e__('Map settings') ?></h2>
+        <h2 id="ms-title"><?= e__('Map') ?></h2>
         <button type="button" class="ms-close" data-ms-close aria-label="<?= e__('Close') ?>" title="<?= e__('Close') ?>"><?= icon('x') ?></button>
     </div>
     <?php endif; ?>
-    <div class="ms-tabs" role="tablist" aria-label="<?= e__('Map settings') ?>" hidden>
+    <div class="ms-tabs" role="tablist" aria-label="<?= e__('Map') ?>" hidden>
         <?php foreach ($tabs as $key => $label): ?>
         <button type="button" role="tab" id="ms-tab-<?= $key ?>" aria-controls="ms-<?= $key ?>" data-tab="<?= $key ?>"
                 aria-selected="<?= $key === 'general' ? 'true' : 'false' ?>" tabindex="<?= $key === 'general' ? '0' : '-1' ?>"><?= $h($label) ?></button>
@@ -91,10 +97,19 @@ $names = static fn (array $list): string => $h(implode(', ', $list));
                     <?= e__('Rename the file after the map name') ?>
                 </label>
             </div>
+            <div data-ms-slot="general"></div>
+        </section>
+
+        <section class="ms-section" id="ms-look" role="tabpanel" aria-labelledby="ms-tab-look">
+            <h3 class="ms-section-title"><?= e__('Look') ?></h3>
+            <div data-ms-slot="look">
+                <p class="ms-note"><?= e__('The size, the background, the basemap, the title, the link colours, the fonts and the style of the map items are set in the editor, where the map shows each change.') ?></p>
+                <p><a class="wm-btn" href="<?= $h($editorUrl('appearance')) ?>"><?= icon('pencil') ?><span><?= e__('Open in the editor') ?></span></a></p>
+            </div>
         </section>
 
         <section class="ms-section" id="ms-display" role="tabpanel" aria-labelledby="ms-tab-display">
-            <h3 class="ms-section-title"><?= e__('Display & kiosk') ?></h3>
+            <h3 class="ms-section-title"><?= e__('Viewer & kiosk') ?></h3>
             <div class="form-group">
                 <label for="ms-timezone"><?= e__('Time zone') ?></label>
                 <input type="text" id="ms-timezone" name="timezone" class="form-control" list="ms-zones" autocomplete="off" spellcheck="false"
@@ -136,6 +151,10 @@ $names = static fn (array $list): string => $h(implode(', ', $list));
             <?php if ($isAdmin): ?>
             <p class="text-muted ms-note"><?= e__('Defaults for every map:') ?> <a href="/admin/timezone"><?= e__('Time zone') ?></a> · <a href="/admin/kiosk"><?= e__('Kiosk mode') ?></a></p>
             <?php endif; ?>
+            <div data-ms-slot="display">
+                <p class="ms-note"><?= e__('The panels of the viewer and the kiosk, and the focus areas, are set in the editor.') ?>
+                    <a href="<?= $h($editorUrl('panels')) ?>"><?= e__('Open in the editor') ?></a></p>
+            </div>
         </section>
 
         <section class="ms-section" id="ms-recording" role="tabpanel" aria-labelledby="ms-tab-recording">

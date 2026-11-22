@@ -138,7 +138,7 @@
         if (map.id !== ownMap()) {
             out.push({ kind: 'commands', icon: 'pencil', label: t('Edit “:name”', { name: map.name }), keys: 'edit ' + map.name, href: '/editor/edit/' + map.id });
         }
-        out.push({ kind: 'commands', icon: 'settings', label: t('Map settings for “:name”', { name: map.name }), keys: 'settings ' + map.name, run: function () { mapSettings(map.id); } });
+        out.push({ kind: 'commands', icon: 'settings', label: t('Map panel of “:name”', { name: map.name }), keys: 'settings ' + map.name, run: function () { mapSettings(map.id); } });
         return out;
     }
 

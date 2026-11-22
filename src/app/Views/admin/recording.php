@@ -41,6 +41,7 @@ $size = $diskUsage >= 1048576
             <p><?= e__('No maps configured yet.') ?></p>
         </div>
         <?php else: ?>
+        <p class="set-help"><?= e__('The same values are set in the Map panel of each map: click its name.') ?></p>
         <div class="data-table-container">
             <table class="data-table recording-table">
                 <thead>
@@ -58,7 +59,7 @@ $size = $diskUsage >= 1048576
                     ?>
                     <tr>
                         <td>
-                            <strong><?= $h($map['name']) ?></strong>
+                            <a href="/editor/maps/edit/<?= $id ?>?return=<?= rawurlencode('/admin/recording') ?>" data-map-settings data-tab="recording" title="<?= e__('Open the Map panel of this map') ?>"><strong><?= $h($map['name']) ?></strong></a>
                             <?php if (!(int) $map['active']): ?>
                             <span class="status-badge status-inactive"><?= e__('Hidden from viewers') ?></span>
                             <?php endif; ?>

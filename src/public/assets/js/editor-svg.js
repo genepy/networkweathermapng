@@ -3198,6 +3198,45 @@
         }, 0);
     });
 
+    // The Map panel (F53): the same tabs as the drawer of the viewer and the
+    // Maps page (map_settings.php, map-settings.js), fetched once, kept
+    // between redraws, its slots filled with the live fields of the editor
+    var mapForm = { el: null, busy: false, failed: false };
+
+    function loadMapForm() {
+        if (mapForm.busy || mapForm.failed || !window.WMMapSettings) { return; }
+        mapForm.busy = true;
+        window.WMMapSettings.load(cfg.mapId).then(function (form) {
+            mapForm.el = form;
+            window.WMEditor.mapFormReady = true;
+        }).catch(function () {
+            // the panel without its tabs, as before
+            mapForm.failed = true;
+        }).then(function () {
+            mapForm.busy = false;
+            if (!selected('node').length && !selected('link').length && !selected('zone').length && !selectedFurniture().length) { renderInspector(); }
+            var pending = window.WMEditor.pendingOpen;
+            window.WMEditor.pendingOpen = null;
+            if (pending && window.WMEditor.openMapProperties) { setTimeout(function () { window.WMEditor.openMapProperties(pending); }, 0); }
+        });
+    }
+
+    /** After a save of the panel: fetch it again with the saved values (name, file) */
+    function mapFormSaved() {
+        mapForm.failed = false;
+        var old = mapForm.el;
+        window.WMMapSettings.load(cfg.mapId).then(function (form) {
+            if (old && old.dataset.activeTab && form.msSelect) { form.msSelect(old.dataset.activeTab); }
+            mapForm.el = form;
+            if (old && old.parentNode) { old.parentNode.replaceChild(form, old); renderInspector(); }
+        }).catch(function () { /* the old one stays */ });
+    }
+
+    function fillSlot(form, name, parts) {
+        var slot = form.querySelector('[data-ms-slot="' + name + '"]');
+        if (slot) { slot.replaceChildren.apply(slot, parts.filter(Boolean)); }
+    }
+
     function mapPanel() {
         var m = state.model.map;
         var title = h('input', { name: 'title', value: m.title, title: t('Drawn as the title of the map and shown in the map list.') });
@@ -3223,7 +3262,7 @@
         mapIcon.setAttribute('class', 'i');
         mapIcon.setAttribute('aria-hidden', 'true');
         el('use', { href: (sprite ? sprite.getAttribute('href').split('#')[0] : '/assets/icons/ui.svg') + '#map' }, mapIcon);
-        var basemapButton = h('button', { type: 'button', 'class': 'icon-pick-current basemap-pick', title: t('A web map such as OpenStreetMap under the map: Map properties > Basemap') }, [
+        var basemapButton = h('button', { type: 'button', 'class': 'icon-pick-current basemap-pick', title: t('A web map such as OpenStreetMap under the map: Map › Look › Basemap') }, [
             mapIcon,
             h('span', { text: tiles ? tilesName : t('None') })
         ]);
@@ -3241,19 +3280,39 @@
             send([{ op: 'set_map', props: { background_sizing: sizing.value } }]);
         });
 
+        var sizeRow = row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh]));
+        var stats = h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) });
+        var shortcuts = h('button', { type: 'button', 'class': 'shortcuts-hint', onclick: openShortcuts }, [
+            t('Every keyboard shortcut'), ' ', h('kbd', { text: '?' })
+        ]);
+        var sections = function (tab) { return window.WMEditor.mapSections ? window.WMEditor.mapSections(tab) : []; };
+
+        if (!mapForm.el) { loadMapForm(); }
+        if (mapForm.el) {
+            var form = mapForm.el;
+            fillSlot(form, 'general', [sizeRow, stats]);
+            // the background: its picture, then its colour and theme, and the basemap in their sections
+            fillSlot(form, 'look', [
+                row(t('Background image'), bg),
+                m.background ? row(t('Background size'), sizing, false, TIPS.background_sizing) : null
+            ].concat(sections('look')));
+            fillSlot(form, 'display', sections('display'));
+            if (window.WMEditor.mapTab && form.msSelect) {
+                form.msSelect(window.WMEditor.mapTab);
+                window.WMEditor.mapTab = null;
+            }
+            return [h('h2', { text: t('Map') }), form, shortcuts];
+        }
+
         return [
             h('h2', { text: t('Map') }),
             row(t('Map name'), title),
-            row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh])),
+            sizeRow,
             row(t('Background'), bg),
             m.background ? row(t('Background size'), sizing, false, TIPS.background_sizing) : null,
             row(t('Basemap'), basemapButton),
-            h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) })
-        ].concat(window.WMEditor.mapSections ? window.WMEditor.mapSections() : []).concat([
-            h('button', { type: 'button', 'class': 'shortcuts-hint', onclick: openShortcuts }, [
-                t('Every keyboard shortcut'), ' ', h('kbd', { text: '?' })
-            ])
-        ]).filter(Boolean);
+            stats
+        ].concat(sections()).concat([shortcuts]).filter(Boolean);
     }
 
     function iconOptions() {
@@ -3773,7 +3832,7 @@
         } else if (p.type === 'legend') {
             out.push(h('p', { 'class': 'help', text: t('The colours of the link load scale.') }));
         }
-        out.push(h('p', { 'class': 'help', text: t('Every map item takes the colours and font of the legends (Map properties).') }));
+        out.push(h('p', { 'class': 'help', text: t('Every map item takes the font and colours of the Map items section (Map › Look).') }));
         return out;
     }
 
@@ -5445,6 +5504,8 @@
         // for the other editor scripts (editor-icons.js, editor-toolbars.js, editor-mapprops.js)
         t: t, keyHint: keyHint, h: h, api: api, run: run, toast: toast, commands: commands, refresh: refresh, updateView: updateView,
         selected: selected, deletableFurniture: deletableFurniture, fontName: fontName, fontPicker: fontPicker, tipName: tipName, tips: TIPS, addNodeHere: addNodeHere, renderInspector: renderInspector,
+        // the Map panel (map-settings.js): fetched again after a save
+        mapFormSaved: mapFormSaved,
         // for the contextual bar and the command palette (editor-selbar.js, editor-palette.js)
         selectionBox: selectionBox, toCanvas: toCanvas, hasClip: hasClip, menuOpen: menuOpen,
         alignCount: function () { return alignUnits(selectedObjects()).length; },

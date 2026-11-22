@@ -75,7 +75,7 @@ $menu = static function (array $r) use ($h): string {
     return '<details class="row-menu">'
         . '<summary class="map-action" title="' . e__('More actions') . '" aria-label="' . $h(__('More actions for :name', ['name' => $r['map']['name']])) . '">' . icon('ellipsis') . '</summary>'
         . '<div class="row-menu-items">'
-        . $item('/editor/maps/edit/' . $id . '?return=%2F', 'settings', __('Settings'), ' data-map-settings')
+        . $item('/editor/maps/edit/' . $id . '?return=%2F', 'settings', __('Map…'), ' data-map-settings')
         . $item('/editor/maps/duplicate/' . $id . '?return=%2F', 'copy', __('Duplicate'))
         . '<button type="button" class="menu-move" data-map-id="' . $id . '" data-group="' . (int) $r['map']['group_id'] . '">' . icon('arrow-left-right') . e__('Move to…') . '</button>'
         . $item('/editor/maps/toggle/' . $id . '?return=%2F', $r['active'] ? 'eye-off' : 'eye', $r['active'] ? __('Hide from viewers') : __('Show to viewers'), ' data-method="post"')

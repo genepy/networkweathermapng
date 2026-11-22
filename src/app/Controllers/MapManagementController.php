@@ -152,7 +152,7 @@ class MapManagementController extends BaseController
             'audience' => $settings->audience($map),
             'zones' => TimezoneService::identifiers(),
             'zoomSteps' => KioskService::ZOOM_STEPS,
-            'title' => __('Map settings') . ': ' . $map['name'],
+            'title' => __('Map') . ': ' . $map['name'],
             'return' => $this->returnUrl(),
             'panel' => !empty($_GET['panel']),
         ], empty($_GET['panel']));

@@ -1,9 +1,13 @@
 /**
- * NetworkWeathermapNG - the Map settings panel (UI redesign step 5).
+ * NetworkWeathermapNG - the Map panel (F53, map_settings.php).
  *
- * - Tabs (General, Display & kiosk, Recording, Access) on the panel, with
- *   the arrow keys of a tab list. Without this script the four sections
+ * - Tabs (General, Look, Viewer & kiosk, Recording, Access) on the panel,
+ *   with the arrow keys of a tab list. Without this script the sections
  *   follow each other on the page.
+ * - The map editor shows the same panel in its properties panel when
+ *   nothing is selected (WMMapSettings.load, editor-svg.js) and fills its
+ *   data-ms-slot boxes with its own live fields; there Cancel puts the
+ *   fields back and Save keeps the editor open.
  * - Links marked data-map-settings (the ⋯ menu of a map, the settings
  *   button of the viewer) open the panel in a drawer on the right instead of
  *   leaving the page: GET <href>&panel=1, saved with fetch; on success the
@@ -28,6 +32,7 @@
         form.classList.add('has-tabs');
 
         function select(i, focus) {
+            form.dataset.activeTab = tabs[i].dataset.tab;
             tabs.forEach(function (tab, k) {
                 const on = k === i;
                 tab.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -52,6 +57,10 @@
             const k = panels.findIndex(function (p) { return p && p.contains(e.target); });
             if (k >= 0) select(k, false);
         }, true);
+        form.msSelect = function (key) {
+            const k = tabs.findIndex(function (tab) { return tab.dataset.tab === key; });
+            if (k >= 0) select(k, false);
+        };
         const wanted = tabs.findIndex(function (tab) { return tab.dataset.tab === form.dataset.tab; });
         select(wanted >= 0 ? wanted : 0, false);
     }
@@ -70,6 +79,37 @@
         form.dataset.ready = '1';
         setupTabs(form);
         setupConflict(form);
+        // in the editor's panel (no drawer around it), Cancel puts the fields back
+        form.addEventListener('click', function (e) {
+            const cancel = e.target.closest ? e.target.closest('[data-ms-close]') : null;
+            if (!cancel || form.closest('dialog')) return;
+            e.preventDefault();
+            form.reset();
+        });
+    }
+
+    /**
+     * The panel of a map, for the map editor: a promise of its form, set
+     * up and saved by fetch (the editor redraws after a save).
+     */
+    function load(mapId) {
+        const url = '/editor/maps/edit/' + encodeURIComponent(mapId) + '?panel=1&return=' + encodeURIComponent('/editor/edit/' + mapId);
+        return fetch(url, {credentials: 'same-origin', headers: {Accept: 'text/html'}}).then(function (r) {
+            if (!r.ok || r.redirected) throw new Error('HTTP ' + r.status);
+            return r.text();
+        }).then(function (html) {
+            const box = document.createElement('div');
+            box.innerHTML = html;
+            const form = box.querySelector('[data-map-settings-form]');
+            if (!form) throw new Error('no form');
+            // the editor's panel has its own heading and no close button
+            const head = form.querySelector('.ms-head');
+            if (head) head.remove();
+            form.classList.add('ms-inline');
+            setup(form);
+            form.addEventListener('submit', submit);
+            return form;
+        });
     }
 
     // ------------------------------------------------------------------
@@ -108,7 +148,9 @@
             if (editor) {
                 const dialog = form.closest('dialog');
                 if (dialog) dialog.close();
-                if (window.WMUI) WMUI.toast(t('Map settings saved'), 'success');
+                if (window.WMUI) WMUI.toast(t('Map saved'), 'success');
+                // the panel of the editor is fetched again with the saved values
+                if (editor.mapFormSaved) editor.mapFormSaved();
                 editor.run(editor.load);
                 return;
             }
@@ -129,6 +171,8 @@
         if (menu) menu.open = false;
         open(link);
     });
+
+    window.WMMapSettings = {load: load, setup: setup};
 
     function ready() {
         document.querySelectorAll('[data-map-settings-form]').forEach(setup);

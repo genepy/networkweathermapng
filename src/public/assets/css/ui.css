@@ -569,6 +569,8 @@
 .ms-actions .ms-delete { margin-right: auto; border-color: transparent; background: none; color: var(--wm-danger-text); padding: 0 var(--wm-space-2); }
 .ms-actions .ms-delete:hover { background: var(--wm-danger-soft); }
 .ms-actions .icon { width: 16px; height: 16px; }
+/* the Look tab of the Map panel holds the live fields of the editor (or a link to it): nothing to save there */
+.map-settings[data-active-tab="look"] .ms-actions { display: none; }
 
 @media (max-width: 640px) {
     .wm-drawer { width: 100vw; border-left: 0; }
