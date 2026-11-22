@@ -59,6 +59,46 @@ final class MapServiceTest extends TestCase
         $this->assertStringNotContainsString('SET basemap', $plain);
     }
 
+    /** F44: a new map draws its title inside the picture, and no timestamp (the viewer's status bar has the time) */
+    public function testNewMapDrawsItsTitleAndNoTimestamp(): void
+    {
+        $conf = (string) $this->maps->getMapConfig($this->maps->createMap(['name' => 'Audit test']));
+        $this->assertStringContainsString("TIMEPOS -1 -1\n", $conf);
+
+        $svg = $this->svgOf($conf);
+        $title = $svg->query('//s:g[@data-kind="title"]/s:text')->item(0);
+        $this->assertNotNull($title, 'the title is drawn');
+        $this->assertSame('Audit test', $title->textContent);
+        $this->assertGreaterThan(0, (float) $title->getAttribute('y'), 'inside the picture');
+        $this->assertSame(0, $svg->query('//s:g[@data-kind="timestamp"]')->length, 'no timestamp');
+
+        // hidden (what the editor writes): no title
+        $hidden = $this->svgOf((string) preg_replace('/^TITLEPOS .*$/m', 'TITLEPOS -1 -1', $conf));
+        $this->assertSame(0, $hidden->query('//s:g[@data-kind="title"]/s:text')->length, 'a hidden title is not drawn');
+    }
+
+    private function svgOf(string $conf): \DOMXPath
+    {
+        $file = $this->data . '/svg-of.conf';
+        file_put_contents($file, $conf);
+        $cwd = (string) getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public');
+        try {
+            $map = new \WeatherMap();
+            ob_start();
+            $map->ReadConfig($file);
+            $map->ReadData();
+            ob_end_clean();
+            $doc = new \DOMDocument();
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($map)));
+        } finally {
+            chdir($cwd);
+        }
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        return $xpath;
+    }
+
     public function testRename(): void
     {
         $id = $this->maps->createMap(['name' => 'Old name']);

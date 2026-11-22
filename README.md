@@ -140,6 +140,7 @@ BACKGROUND images/backgrounds/network.png
 WIDTH 1200
 HEIGHT 800
 TITLE My Network Map
+TITLEPOS 10 28      # left end of the title's baseline; without it no title is drawn
 
 # Define a node
 NODE router1
@@ -611,13 +612,15 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   *Traffic legend*, *Link speed*, *Updated at*, *Total traffic* or *Text
   box*. Under the tiles, the items on the map are listed: a click on one
   selects it and shows it, its bin removes it from the map (one undo step).
+  The title comes first, with a switch that shows or hides it.
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection
   bar, of the right panel or of the context menu) removes the selection. A
   legend or a timestamp is hidden rather than removed: it stays in the
   `.conf` at a negative position (`KEYPOS DEFAULT -681 -21`,
   `TIMEPOS -11 -491 ...`, kept as -x - 1, -y - 1 so it comes back where it
-  was) and the link speed legend loses its `SET width_legend`. Ctrl+Z
-  undoes it. The title stays: it shows the map name.
+  was) and the link speed legend loses its `SET width_legend`. The title
+  is hidden the same way (`TITLEPOS -11 -29`; `TITLEPOS -1 -1`, the default,
+  draws no title). Ctrl+Z undoes it.
 - **Edit**: the right panel changes every selected item at once.
 - **Map properties**: with nothing selected, the right panel shows the map:
   name, size, background, basemap (a click opens its section), then sections that fold, each with its value on

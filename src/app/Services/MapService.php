@@ -1358,6 +1358,7 @@ class MapService
         // follow curved links and the SVG draws the same letters as the PNG
         $fontRegular = self::DEFAULT_FONT;
         $fontBold = self::DEFAULT_FONT_BOLD;
+        [$titleX, $titleY] = Editor\MapEditor::TITLE_PLACE;
 
         // New map > On a web map: the starter basemap under the canvas
         $basemap = '';
@@ -1372,10 +1373,11 @@ class MapService
 # WeatherMap Configuration
 # Generated: {$this->getCurrentTimestamp()}
 
-# Map dimensions and title
+# Map dimensions and title (TITLEPOS: the left end of its baseline)
 WIDTH {$width}
 HEIGHT {$height}
 TITLE {$title}
+TITLEPOS {$titleX} {$titleY}
 
 # Background color
 BGCOLOR 255 255 255
@@ -1390,8 +1392,8 @@ TITLEFONT 13
 TIMEFONT 11
 KEYFONT 10
 
-# Timestamp position
-TIMEPOS 10 {$height} Created: %b %d %Y %H:%M:%S
+# No timestamp on the map: the viewer's status bar shows the update time
+TIMEPOS -1 -1
 
 # Default scale
 SCALE DEFAULT 0 0     192 192 192
@@ -1404,8 +1406,8 @@ SCALE DEFAULT 55 70   240 240 0
 SCALE DEFAULT 70 85   255 192 0
 SCALE DEFAULT 85 100  255 0 0
 
-# Map items (Add panel of the editor): the traffic legend card
-SET box_1 legend 10 10
+# Map items (Add panel of the editor): the traffic legend card, under the title
+SET box_1 legend 10 40
 {$basemap}
 
 # Default node settings

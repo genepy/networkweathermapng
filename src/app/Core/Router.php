@@ -121,7 +121,7 @@ class Router
 
     private function serverError(string $message): void
     {
-        ErrorPage::send(500, $this->auth(), null, getenv('APP_DEBUG') === 'true' ? $message : null);
+        ErrorPage::send(500, $this->auth(), null, Config::env('APP_DEBUG') === 'true' ? $message : null);
     }
 
     /** The signed-in user, for the shell of an error page; null when the context has no database */

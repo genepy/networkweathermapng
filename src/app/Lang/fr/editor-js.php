@@ -508,7 +508,9 @@ return [
     'Link load legend' => 'Légende de charge des liens',
     'Link speed legend' => 'Légende de débit des liens',
     'The link speed legend shows how wide a link is drawn for each bandwidth, for links whose width is auto (Link defaults).' => 'La légende de débit montre l’épaisseur d’un lien selon sa bande passante, pour les liens dont l’épaisseur est auto (Liens par défaut).',
-    'The title is not deleted: it shows the map name.' => 'Le titre n’est pas supprimé : il affiche le nom de la carte.',
+    'Hidden: not drawn on the map' => 'Masqué : non dessiné sur la carte',
+    'Hide the title' => 'Masquer le titre',
+    'Show the title' => 'Afficher le titre',
     // Link labels in the editor (F4)
     'Arrow heads' => 'Pointes de flèche',
     'Small' => 'Petites',

@@ -928,3 +928,5 @@ dialog.wm-palette input.pal-input { width: auto; margin: 0; padding: 4px 0; bord
     #timeline { grid-column: 1 / -1; width: 100%; }
     .vp-hint { display: none; }
 }
+.map-item.hidden-item .map-item-name { color: var(--muted); cursor: default; }
+.map-item.hidden-item .map-item-name:hover { background: none; }

@@ -9,7 +9,13 @@ re-explore the repository. Keep it short and up to date.
 
 - Entry point: `src/public/index.php` → `src/app/Core/Application.php`
   (all routes are declared there, e.g. `/map/{id}`, `/map/{id}/image`,
-  `/admin/kiosk`).
+  `/admin/kiosk`). Settings come from `App\Core\Config`; read an
+  environment variable with `Config::env()` (real variables, then `.env`),
+  not `getenv()`.
+- New map template: `MapService::generateDefaultConfig()`. Map items
+  (title, legends, cards) in the editor: `moveFurniture()` /
+  `setFurnitureShown()` in `MapEditor`, `renderMapItems()` in
+  `editor-svg.js`; a negative position (`TITLEPOS -1 -1`) hides an item.
 - Map engine (php-weathermap fork): `src/lib/WeatherMap/`.
   `WeatherMap.class.php` (config parser, PNG render), `WeatherMapSvg.class.php`
   (SVG render), `WeatherMapNode/Link/Zone/Boxes.class.php`,
