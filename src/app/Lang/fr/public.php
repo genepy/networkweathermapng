@@ -98,4 +98,5 @@ return [
     'Drag to reorder (or use the arrow keys)' => 'Glisser pour réordonner (ou utiliser les flèches)',
     'Moved to position :pos of :total in :group' => 'Déplacée en position :pos sur :total dans :group',
     'The new order could not be saved' => 'Le nouvel ordre n’a pas pu être enregistré',
+    'Data source not answering: :sources' => 'Source de données sans réponse : :sources',
 ];

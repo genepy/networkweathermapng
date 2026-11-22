@@ -1120,9 +1120,41 @@
                 : fmt('Max load :pct %', {pct: pct});
             max.title = fmt('Most loaded link: :link (:pct %)', {link: status.link || '', pct: status.max});
         }
+        showSourceWarning(status);
         showLegend(status.scale);
         showTotal(status.total);
         dockSizes();
+    }
+
+    /**
+     * A data source that failed in the last render (F49): a warning next
+     * to the update time ("Observium unreachable: 12 links without data"),
+     * and a small badge in the kiosk. Links without data keep their look.
+     */
+    function sourceWarning(status) {
+        const failed = (status && status.sources) || [];
+        if (!failed.length) return '';
+        return failed.map(function (s) {
+            const links = s.links === 1 ? t('1 link without data') : fmt(':n links without data', {n: s.links});
+            const p = {source: s.name, links: links};
+            return s.down ? fmt(':source unreachable: :links', p) : fmt(':source error: :links', p);
+        }).join(' · ');
+    }
+
+    function showSourceWarning(status) {
+        const text = sourceWarning(status);
+        const warn = statusBox.querySelector('.wmv-status-warn');
+        if (warn) {
+            warn.hidden = text === '';
+            warn.querySelector('.wmv-status-warn-text').textContent = text;
+            warn.title = text;
+        }
+        const badge = root.querySelector('.wmv-warn-badge');
+        if (badge) {
+            badge.hidden = text === '';
+            badge.querySelector('span').textContent = text;
+            badge.title = text;
+        }
     }
 
     // ------------------------------------------------------------------

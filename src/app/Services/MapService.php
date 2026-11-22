@@ -977,8 +977,32 @@ class MapService
             'panels' => ViewerPanels::forViewer($wmap),
             // the kiosk's panels (SET kiosk_panels), null for the viewer's layout without its side panel
             'kiosk_panels' => ViewerPanels::forKiosk($wmap),
+            // data sources that failed in this render, and the links left without data (F49)
+            'sources' => self::failedSources($wmap),
+            'nodata' => (int) $wmap->nodata_links,
             'items' => $items,
         ];
+    }
+
+    /**
+     * The data sources that failed while the map read its data: name,
+     * error, whether it could not be reached at all, and how many links
+     * it left without data.
+     *
+     * @return list<array{name: string, error: string, down: bool, links: int}>
+     */
+    public static function failedSources(\WeatherMap $wmap): array
+    {
+        $out = [];
+        foreach ((array) $wmap->source_errors as $e) {
+            $out[] = [
+                'name' => (string) ($e['name'] ?? ''),
+                'error' => mb_substr((string) ($e['error'] ?? ''), 0, 300),
+                'down' => !empty($e['down']),
+                'links' => (int) ($e['links'] ?? 0),
+            ];
+        }
+        return $out;
     }
 
     /**

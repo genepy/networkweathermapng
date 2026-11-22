@@ -73,4 +73,9 @@ return [
     'Aggregated data, click to zoom' => 'Données agrégées, cliquez pour agrandir',
     'Aggregated data' => 'Données agrégées',
     'Click to zoom' => 'Cliquez pour agrandir',
+    '1 link without data' => '1 lien sans données',
+    ':n links without data' => ':n liens sans données',
+    ':source unreachable: :links' => ':source injoignable : :links',
+    ':source error: :links' => 'Erreur de :source : :links',
+    'Data source not answering: :sources' => 'Source de données sans réponse : :sources',
 ];

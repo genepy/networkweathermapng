@@ -339,12 +339,18 @@
             if (st.time) {
                 title += ' — ' + fmt('Updated :time', {time: formatTime(st.time, item.card.dataset.timezone)});
             }
+            // a data source that failed in the last render (F49)
+            const failed = (st.sources || []).map(function (s) { return s.name; });
+            if (failed.length) {
+                title += ' — ' + fmt('Data source not answering: :sources', {sources: failed.join(', ')});
+            }
             each(item, function (el) {
                 el.dataset.load = load;
                 const badge = el.querySelector('.map-state');
                 if (!badge) return;
                 badge.querySelector('.map-state-text').textContent = load === '' ? t('No data') : Math.round(st.max) + ' %';
                 badge.classList.toggle('map-state-none', load === '');
+                badge.classList.toggle('map-state-warn', failed.length > 0);
                 badge.querySelector('.map-state-dot').style.background = load === '' ? '' : (st.colour || '');
                 badge.title = title;
                 badge.setAttribute('aria-label', title);
