@@ -181,7 +181,9 @@
             if (!preset.value) { return; }
             scaleRows = presetRows(preset.value);
             preset.value = '';
-            smoothBox.checked = scaleRows.some(function (r) { return !!r.colour2; });
+            // a preset is smooth (F57): each step fades into the next; the box switches back to steps
+            chainRows(scaleRows);
+            smoothBox.checked = true;
             render();
         });
         var add = h('button', { type: 'button', text: t('Add a step'), onclick: function () {

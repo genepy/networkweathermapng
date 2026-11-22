@@ -720,4 +720,7 @@ return [
     'Basemap (web map)' => 'Fond de carte (web)',
     'Card' => 'Encadré',
     'Plain text is free lines on the map; a card has a title, rows and the font and colours of the map items. Switching keeps the text.' => 'Le texte simple est fait de lignes libres sur la carte ; un encadré a un titre, des lignes, et la police et les couleurs des éléments de la carte. Changer de style garde le texte.',
+    'Hide it, keeping its settings' => 'Le masquer en gardant ses réglages',
+    'Show it on the map' => 'L’afficher sur la carte',
+    'Hide :name' => 'Masquer :name',
 ];

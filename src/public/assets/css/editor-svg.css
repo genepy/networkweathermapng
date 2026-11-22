@@ -225,6 +225,7 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 .map-item-remove { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 32px; color: var(--muted); }
 .map-item button:hover { background: var(--accent-soft); }
 .map-item-remove:hover { color: var(--danger); }
+.map-item-remove[role="switch"]:hover { color: var(--accent); }
 .map-item button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .map-item-remove svg.i { width: 15px; height: 15px; }
 #palette-backgrounds { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 4px; }

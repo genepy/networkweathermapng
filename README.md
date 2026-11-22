@@ -279,6 +279,7 @@ SET box_2_note Data: Observium     # a small line under the content (credits, a 
 SET box_6 legend 10 40             # a legend card...
 SET box_6_style tags               # bar (gradient), list (one row per step) or tags (the step tags)
 SET box_6_scale backbone           # ...of another scale than DEFAULT
+SET box_6_hidden 1                 # not drawn, its place and settings kept
 ```
 
 The older keywords are read as the same items and drawn as the same cards
@@ -626,8 +627,11 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   adds a card (see [Map items](#map-items)) in the middle of the view:
   *Traffic legend*, *Link speed*, *Updated at* or *Total traffic* (a text
   card is a *Text* whose style is *Card*). Under the tiles, the items on the map are listed: a click on one
-  selects it and shows it, its bin removes it from the map (one undo step).
-  The title comes first, with a switch that shows or hides it.
+  selects it and shows it, its eye hides it and its bin removes it from the
+  map (one undo step each). A hidden card is not drawn (PNG, SVG, viewer,
+  kiosk) but keeps its place and settings (`SET box_<id>_hidden 1`); it
+  stays in the list, greyed, and its eye shows it again. The title comes
+  first, with a switch that shows or hides it.
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection
   bar, of the right panel or of the context menu) removes the selection. A
   timestamp is hidden rather than removed: it stays in the `.conf` at a
@@ -660,7 +664,8 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   classic Weathermap colours, a traffic light, a colour-blind safe scale
   (Okabe and Ito colours), a heat scale or a single blue that darkens with
   the load, and three smooth scales (green to red, cream to amber to red for
-  dark maps, a colour-blind safe blue to orange). The presets but the
+  dark maps, a colour-blind safe blue to orange). A preset comes smooth (see
+  below); untick *Smooth gradient* for blocks of colour. The presets but the
   classic one read on light and dark backgrounds.
 - **Smooth link colours**: with *Smooth gradient* on, each step fades into
   the next one (`SCALE 0 40 r g b r2 g2 b2`, the second colour is where the
@@ -670,7 +675,9 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   map's legend) draws one gradient bar: a linear gradient in the SVG, one
   column of pixels per step in the PNG. Each row then has a start and an
   end colour; changing where a step starts also moves the end of the step
-  before.
+  before. New maps have the classic colours as a smooth scale; the 0 to 0
+  step (links without traffic) stays one flat colour, outside the bar.
+  Existing maps keep their scale until *Smooth gradient* is ticked.
 - **Saturated links**: the same section has a switch that makes the links at
   80 % or more (in either direction) pulse and glow on the live map
   (`SET traffic_pulse 1`, the PHP Weathermap 2.0 hint). Under the system's
