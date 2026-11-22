@@ -349,6 +349,66 @@ final class MapEditorTest extends TestCase
         $this->editor->apply([['op' => 'set_node', 'names' => ['note'], 'props' => ['note_align' => 'justify']]]);
     }
 
+    public function testAPlainTextBecomesACardAndBackWithItsText(): void
+    {
+        $this->editor->apply([['op' => 'add_node', 'note' => true, 'x' => 100, 'y' => 80, 'text' => "Maintenance\nSunday 2:00 | 4:00"]]);
+
+        $r = $this->editor->apply([['op' => 'text_style', 'node' => 'note', 'style' => 'card', 'at' => [60, 70]]]);
+        $this->assertSame(['furniture' => ['box:1']], $r['created']);
+        $map = $this->editor->load();
+        $this->assertArrayNotHasKey('note', $map->nodes, 'the note is gone');
+        $box = \WeatherMapBoxes::parse($map, '1', (string) $map->get_hint('box_1'));
+        $this->assertNotNull($box);
+        $this->assertSame(['text', 60, 70, ''], [$box['type'], $box['x'], $box['y'], $box['title']]);
+        $this->assertSame("Maintenance\nSunday 2:00 | 4:00", $box['text']);
+
+        $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['title' => 'NOC', 'note' => 'Call first']]]);
+        $r = $this->editor->apply([['op' => 'text_style', 'box' => '1', 'style' => 'plain', 'at' => [140, 90]]]);
+        $name = $r['created']['nodes'][0];
+        $map = $this->editor->load();
+        $this->assertNull($map->get_hint('box_1'), 'the card is gone');
+        $this->assertNull($map->get_hint('box_1_text'));
+        $node = $map->nodes[$name];
+        $this->assertTrue($node->is_note());
+        $this->assertSame([140, 90], [(int) $node->x, (int) $node->y]);
+        $this->assertSame("NOC\nMaintenance\nSunday 2:00 | 4:00\nCall first", \WeatherMapNode::note_decode((string) $node->label));
+    }
+
+    public function testTheTextStyleKeepsItsPlaceWithoutOneAndRefusesOtherItems(): void
+    {
+        $this->editor->apply([['op' => 'add_box', 'type' => 'text', 'at' => [30, 40], 'title' => '', 'text' => 'Hello']]);
+        $r = $this->editor->apply([['op' => 'text_style', 'box' => '1', 'style' => 'plain']]);
+        $node = $this->editor->load()->nodes[$r['created']['nodes'][0]];
+        $this->assertSame([30, 40], [(int) $node->x, (int) $node->y]);
+        $this->assertSame('Hello', \WeatherMapNode::note_decode((string) $node->label));
+
+        // the same style changes nothing
+        $this->assertSame(['nodes' => [$node->name]], $this->editor->apply([['op' => 'text_style', 'node' => $node->name, 'style' => 'plain']])['created']);
+
+        $this->editor->apply([['op' => 'add_box', 'type' => 'legend', 'at' => [10, 10]]]);
+        foreach ([
+            ['op' => 'text_style', 'box' => '1', 'style' => 'plain'],
+            ['op' => 'text_style', 'node' => 'core', 'style' => 'card'],
+            ['op' => 'text_style', 'node' => $node->name, 'style' => 'bubble'],
+        ] as $op) {
+            try {
+                $this->editor->apply([$op]);
+                $this->fail('refused: ' . json_encode($op));
+            } catch (InvalidArgumentException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testANoteIsDrawnAsTextInTheSvg(): void
+    {
+        $this->editor->apply([['op' => 'add_node', 'note' => true, 'x' => 100, 'y' => 80, 'text' => 'Hello']]);
+        $map = $this->editor->load();
+        $out = \WeatherMapSvg::render($map);
+        $this->assertMatchesRegularExpression('/<g class="wm-node wm-note" data-kind="node" data-name="note"/', $out, 'left out of Find a node in the viewer');
+        $this->assertMatchesRegularExpression('/<g class="wm-node" data-kind="node" data-name="core"/', $out);
+    }
+
     public function testTheColourScaleIsReplacedAndKeepsTheMapColours(): void
     {
         $this->editor->apply([['op' => 'set_map', 'props' => ['bg_colour' => '#102030']]]);

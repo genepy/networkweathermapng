@@ -315,6 +315,7 @@ class MapEditor
                 'delete_zones' => $this->deleteZones($map, (array) ($op['names'] ?? [])),
                 'add_box' => $this->addBox($map, $op),
                 'set_box' => $this->setBox($map, (string) ($op['name'] ?? ''), (array) ($op['props'] ?? [])),
+                'text_style' => $this->textStyle($map, $op),
                 'add_focus' => $this->addFocus($map, $op),
                 'set_focus' => $this->setFocus($map, (string) ($op['name'] ?? ''), (array) ($op['props'] ?? [])),
                 'delete_focus' => $this->deleteFocus($map, (string) ($op['name'] ?? '')),
@@ -540,6 +541,60 @@ class MapEditor
         $this->setBox($map, (string) $id, array_intersect_key($op, array_flip(['title', 'style', 'text', 'rows', 'width', 'note'])));
 
         return ['furniture' => ['box:' . $id]];
+    }
+
+    /**
+     * {op: text_style, node?: <note>, box?: <id>, style: plain|card, at?: [x, y]}
+     * - the two styles of a Text element (F54): "plain" is a map note
+     * (a node with SET editor_note 1), "card" a text box (SET box_<id> text).
+     * Switching keeps the text: a note becomes a card with its lines; a card
+     * becomes a note with its title, its lines and its small note line (rows
+     * taken from the sites stay with cards). at is where the new item goes:
+     * the top left corner of a card, the middle of a note (the editor sends
+     * the place of the drawn item); without it, the place of the old one.
+     * Returns the new item, {furniture: [box:<id>]} or {nodes: [<name>]}.
+     */
+    private function textStyle(\WeatherMap $map, array $op): array
+    {
+        $style = (string) ($op['style'] ?? '');
+        if (!in_array($style, ['plain', 'card'], true)) {
+            throw new InvalidArgumentException(__('Unknown text style: :style', ['style' => $style]));
+        }
+        $at = isset($op['at']) ? $this->point($op['at']) : null;
+
+        if (isset($op['node'])) {
+            $name = (string) $op['node'];
+            $node = $map->nodes[$name] ?? null;
+            if ($node === null || (string) ($node->hints['editor_note'] ?? '') !== '1') {
+                throw new InvalidArgumentException(__('Unknown note: :name', ['name' => $name]));
+            }
+            if ($style === 'plain') {
+                return ['nodes' => [$name]];
+            }
+            $text = (string) ($node->hints['editor_note_escaped'] ?? '') === '1'
+                ? \WeatherMapNode::note_decode((string) $node->label)
+                : (string) $node->label;
+            [$x, $y] = $at ?? [(int) round((float) $node->x), (int) round((float) $node->y)];
+            $this->delete($map, [$name], []);
+            return $this->addBox($map, ['type' => 'text', 'at' => [$x, $y], 'title' => '', 'text' => $text]);
+        }
+
+        $id = (string) ($op['box'] ?? '');
+        $box = $this->box($map, $id);
+        if ($box['type'] !== 'text') {
+            throw new InvalidArgumentException(__('Only a text box can become plain text'));
+        }
+        if ($style === 'card') {
+            return ['furniture' => ['box:' . $id]];
+        }
+        $lines = array_merge(
+            $box['title'] === '' ? [] : [$box['title']],
+            $box['text'] === '' ? [] : explode("\n", $box['text']),
+            $box['note'] === '' ? [] : explode("\n", $box['note'])
+        );
+        [$x, $y] = $at ?? [max(0, $box['x']), max(0, $box['y'])];
+        $this->setFurnitureShown($map, 'box:' . $id, false);
+        return $this->addNode($map, ['note' => true, 'x' => $x, 'y' => $y, 'text' => $lines ? implode("\n", $lines) : __('Text')]);
     }
 
     /** {op: set_box, name, props: {title, style, text, rows, width, note, x, y}} - an empty value takes the default */
@@ -1303,7 +1358,7 @@ class MapEditor
             // a map note: free text, no icon (SET editor_note 1, as PHP Weathermap 2.0 writes it)
             $node->iconfile = '';
             $node->hints['editor_note'] = '1';
-            $this->setNoteText($node, isset($op['text']) ? (string) $op['text'] : __('Note'));
+            $this->setNoteText($node, isset($op['text']) ? (string) $op['text'] : __('Text'));
         }
 
         // on a basemap, a new node is located where it is put (a note stays on the canvas)

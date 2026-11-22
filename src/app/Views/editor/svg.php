@@ -116,7 +116,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <?= $btn('tool-select', 'select', __('Select'), __('Select and move'), 'class="active" data-keys="editor.select-tool"') ?>
             <?= $btn('tool-link', 'link', __('Link'), __('Draw a link: click two nodes'), 'data-keys="editor.link-tool"') ?>
             <?= $btn('zone', 'zone', __('Zone'), __('Add a zone: a labelled rectangle for a site, around the selected nodes if any')) ?>
-            <?= $btn('note', 'note', __('Note'), __('Add a note: free text on several lines, for a legend, a contact or a maintenance window')) ?>
+            <?= $btn('note', 'note', __('Text'), __('Add text: free lines on the map, or a card with a title and rows')) ?>
         </div>
         <div class="toolbar" data-toolbar="align" aria-label="<?= e__('Align') ?>" role="toolbar" data-needs="objects2">
             <?= $btn('align-left', 'align-left', __('Left'), __('Align left edges')) ?>
@@ -158,7 +158,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <h3><?= e__('Add') ?></h3>
         <div class="add-tiles">
             <button type="button" class="add-tile palette-item" draggable="true" data-template="DEFAULT" data-cmd="add-node" title="<?= e__('Add a node in the middle of the view, or drag it onto the map') ?>"><?= icon('rectangle-horizontal', 'i') ?><span><?= e__('Node') ?></span></button>
-            <button type="button" class="add-tile" data-cmd="note" title="<?= e__('Add a note: free text on several lines, for a legend, a contact or a maintenance window') ?>"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg><span><?= e__('Note') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="note" title="<?= e__('Add text: free lines on the map, or a card with a title and rows') ?>"><svg class="i" aria-hidden="true"><use href="#i-note"/></svg><span><?= e__('Text') ?></span></button>
             <button type="button" class="add-tile" data-cmd="zone" title="<?= e__('Add a zone: a labelled rectangle for a site, around the selected nodes if any') ?>"><svg class="i" aria-hidden="true"><use href="#i-zone"/></svg><span><?= e__('Zone') ?></span></button>
             <button type="button" class="add-tile" data-cmd="tool-link" title="<?= e__('Draw a link: click two nodes') ?>" data-keys="editor.link-tool"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg><span><?= e__('Link') ?></span><kbd data-keys="editor.link-tool">L</kbd></button>
         </div>
@@ -169,7 +169,6 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
             <button type="button" class="add-tile" data-cmd="add-box-speed" title="<?= e__('A card with the link widths by speed') ?>"><svg class="i" aria-hidden="true"><use href="#i-legend-speed"/></svg><span><?= e__('Link speed') ?></span></button>
             <button type="button" class="add-tile" data-cmd="add-box-updated" title="<?= e__('A card with the time of the last data') ?>"><?= icon('clock', 'i') ?><span><?= e__('Updated at') ?></span></button>
             <button type="button" class="add-tile" data-cmd="add-box-total" title="<?= e__('A card with the total traffic of the map and its graph') ?>"><?= icon('chart-line', 'i') ?><span><?= e__('Total traffic') ?></span></button>
-            <button type="button" class="add-tile" data-cmd="add-box-text" title="<?= e__('A card with a title and rows, typed or taken from the map sites') ?>"><?= icon('rectangle-horizontal', 'i') ?><span><?= e__('Text box') ?></span></button>
         </div>
         <ul id="map-items" class="map-items" aria-label="<?= e__('Map items on this map') ?>"></ul>
         <div id="palette-templates"></div>

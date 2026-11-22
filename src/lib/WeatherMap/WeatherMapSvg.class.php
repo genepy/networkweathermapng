@@ -163,12 +163,16 @@ class WeatherMapSvg {
 		);
 	}
 
-	/** Everything recorded until the next call belongs to this map item. */
-	function begin($kind, $name = null, $id = null, $hot = false) {
+	/**
+	 * Everything recorded until the next call belongs to this map item. A
+	 * map note (a node with SET editor_note 1) is drawn as a node with the
+	 * class wm-note too: the viewer leaves it out of "Find a node".
+	 */
+	function begin($kind, $name = null, $id = null, $hot = false, $note = false) {
 		if ($kind === null) {
 			$this->owner = null;
 		} else {
-			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot);
+			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot, 'note' => $note);
 		}
 		if ($hot) {
 			$this->hasHot = true;
@@ -604,8 +608,8 @@ class WeatherMapSvg {
 				}
 				if ($key !== null) {
 					$o = $item['owner'];
-					$out[] = sprintf('<g class="wm-%s%s" data-kind="%s" data-name="%s" data-id="%s">',
-						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
+					$out[] = sprintf('<g class="wm-%s%s%s" data-kind="%s" data-name="%s" data-id="%s">',
+						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', empty($o['note']) ? '' : ' wm-note', $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
 				}
 				$group = $key;
 			}
