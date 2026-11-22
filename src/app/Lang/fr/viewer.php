@@ -18,7 +18,7 @@ return [
     'Last :hours h' => 'Dernières :hours h',
     'Map settings' => 'Réglages de la carte',
     'Copy kiosk link' => 'Copier le lien kiosque',
-    'Download PNG' => 'Télécharger le PNG',
+    'Download as :format' => 'Télécharger en :format',
     'Download as SVG' => 'Télécharger en SVG',
     'Collapse every site' => 'Replier tous les sites',
     'Expand every site' => 'Déplier tous les sites',

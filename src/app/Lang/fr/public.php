@@ -30,7 +30,6 @@ return [
     'Failed to move map' => 'Impossible de déplacer la carte',
 
     // Map view
-    'Last updated:' => 'Dernière mise à jour :',
     'Access denied' => 'Accès refusé',
     'Map not found' => 'Carte introuvable',
 

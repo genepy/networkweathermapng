@@ -157,7 +157,6 @@ class MapController extends BaseController
         $this->render('maps/view', [
             'map' => $map,
             'timezone' => $timezone,
-            'lastRun' => $map['last_run'] ? $timezones->formatStored((string) $map['last_run'], $timezone) : null,
             'fullscreen' => $fullscreen || $kiosk,
             'kiosk' => $kiosk,
             // the kiosk's fixed zoom, in % of the map's own size (0: fit the screen)
@@ -850,118 +849,60 @@ class MapController extends BaseController
         return $out;
     }
 
+    /**
+     * GET: the map as a picture, in the image format of Settings (PNG,
+     * JPG or GIF). With live data it is the last render while it is
+     * younger than the refresh interval and newer than the configuration,
+     * else one render at a time draws it again (MapService::liveImage()).
+     * ?fast=1 draws without reading the data sources (cached until the
+     * configuration changes).
+     */
     public function image(array $params): void
     {
-        $mapId = (int) ($params['id'] ?? 0);
-        $fast = ((string) $this->getInput('fast', '0') === '1');
-        
-        if ($this->config->isAuthEnabled() && !$this->auth->canViewMap($mapId)) {
-            http_response_code(403);
-            exit;
-        }
-        
-        $map = $this->getMap($mapId);
-        
-        if (!$map) {
-            http_response_code(404);
-            exit;
-        }
-        
-        $format = $this->config->get('MAP_OUTPUT_FORMAT', 'png');
-        $outputBase = pathinfo($map['config_file'], PATHINFO_FILENAME);
-        $suffix = $fast ? '.fast' : '';
-        $imageFile = $this->config->getOutputPath() . '/' . $outputBase . $suffix . '.' . $format;
-
-        // In fast mode we want a quick, cached render WITHOUT datasource queries.
-        // In full mode keep current behaviour (render on demand).
-        $this->mapService->renderMap($mapId, $fast ? false : true, !$fast);
-        
-        if (!file_exists($imageFile)) {
-            error_log("Map image missing, attempting render for map_id={$mapId}, expected={$imageFile}");
-            $this->mapService->renderMap($mapId, $fast ? false : true, !$fast);
-            error_log("After render: file exists=" . (file_exists($imageFile) ? 'YES' : 'NO'));
-            if (!file_exists($imageFile)) {
-                http_response_code(404);
-                exit;
-            }
-        }
-        
-        $mimeTypes = [
-            'png' => 'image/png',
-            'jpg' => 'image/jpeg',
-            'gif' => 'image/gif',
-        ];
-        
-        // Ensure nothing else is appended to the binary response (warnings/whitespace/buffers)
-        while (ob_get_level() > 0) {
-            ob_end_clean();
-        }
-        if (function_exists('ini_set')) {
-            @ini_set('zlib.output_compression', '0');
-        }
-
-        header('Content-Type: ' . ($mimeTypes[$format] ?? 'image/png'));
-        if ($fast) {
-            header('Cache-Control: public, max-age=300');
-        } else {
-            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-        }
-        header('Content-Length: ' . filesize($imageFile));
-        readfile($imageFile);
-        exit;
+        $this->sendPicture($params, false);
     }
-    
+
+    /** GET: the thumbnail of the map, as image() */
     public function thumbnail(array $params): void
+    {
+        $this->sendPicture($params, true);
+    }
+
+    private function sendPicture(array $params, bool $thumb): void
     {
         $mapId = (int) ($params['id'] ?? 0);
         $fast = ((string) $this->getInput('fast', '0') === '1');
-        
+
         if ($this->config->isAuthEnabled() && !$this->auth->canViewMap($mapId)) {
             http_response_code(403);
             exit;
         }
-        
+
         $map = $this->getMap($mapId);
-        
         if (!$map) {
             http_response_code(404);
             exit;
         }
-        
+
         $format = $this->config->get('MAP_OUTPUT_FORMAT', 'png');
-        $outputBase = pathinfo($map['config_file'], PATHINFO_FILENAME);
-        $suffix = $fast ? '.fast' : '';
-        $thumbFile = $this->config->getOutputPath() . '/' . $outputBase . $suffix . '.thumb.' . $format;
-        $imageFile = $this->config->getOutputPath() . '/' . $outputBase . $suffix . '.' . $format;
-
-        // In fast mode we want a quick, cached render WITHOUT datasource queries.
-        // In full mode keep current behaviour (render on demand).
-        $this->mapService->renderMap($mapId, $fast ? false : true, !$fast);
-        
-        if (!file_exists($thumbFile)) {
-            // Ensure thumbnail exists (render on demand). If thumb still missing, fall back to main image.
-            $this->mapService->renderMap($mapId, $fast ? false : true, !$fast);
-
-            if (!file_exists($thumbFile)) {
-                // Some older caches might have a main image but no thumbnail. Force a re-render once.
-                if (file_exists($imageFile)) {
-                    $this->mapService->renderMap($mapId, $fast ? false : true, !$fast);
-                }
+        if ($fast) {
+            $this->mapService->renderMap($mapId, false, false);
+            $base = $this->config->getOutputPath() . '/' . pathinfo($map['config_file'], PATHINFO_FILENAME) . '.fast';
+            $file = $base . ($thumb ? '.thumb.' : '.') . $format;
+            if ($thumb && !is_file($file)) {
+                $file = $base . '.' . $format;
             }
-
-            if (!file_exists($thumbFile)) {
-                $this->image($params);
-                return;
-            }
+        } else {
+            $file = $this->mapService->liveImage($mapId, $thumb) ?? $this->mapService->liveImage($mapId);
         }
-        
-        $mimeTypes = [
-            'png' => 'image/png',
-            'jpg' => 'image/jpeg',
-            'gif' => 'image/gif',
-        ];
-        
-        // Ensure nothing else is appended to the binary response (warnings/whitespace/buffers)
+
+        if ($file === null || !is_file($file)) {
+            error_log("Map picture missing for map_id={$mapId}");
+            http_response_code(404);
+            exit;
+        }
+
+        // Nothing else may be appended to the binary response (warnings, whitespace, buffers)
         while (ob_get_level() > 0) {
             ob_end_clean();
         }
@@ -969,17 +910,16 @@ class MapController extends BaseController
             @ini_set('zlib.output_compression', '0');
         }
 
-        header('Content-Type: ' . ($mimeTypes[$format] ?? 'image/png'));
-        if ($fast) {
-            header('Cache-Control: public, max-age=300');
-        } else {
-            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-        }
-        header('Content-Length: ' . filesize($thumbFile));
-        readfile($thumbFile);
+        header('Content-Type: ' . (self::IMAGE_TYPES[$format] ?? 'image/png'));
+        header($fast ? 'Cache-Control: public, max-age=300' : 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Content-Length: ' . filesize($file));
+        readfile($file);
         exit;
     }
-    
+
+    /** Media types of the image formats of Settings > Maps & rendering */
+    public const IMAGE_TYPES = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'gif' => 'image/gif'];
+
     public function cycle(array $params): void
     {
         $this->requireAuth();

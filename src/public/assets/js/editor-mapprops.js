@@ -215,12 +215,6 @@
         ];
     }
 
-    var SECTIONS = [
-        ['general', t('General')], ['title', t('Title')], ['legend', t('Map items')], ['scale', t('Link colours')],
-        ['widthlegend', t('Link speed legend')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
-        ['focus', t('Focus areas')]
-    ];
-
     /**
      * Basemaps to start from: [id, label, url, dark url]. OpenFreeMap serves
      * OpenStreetMap vector tiles for free, without a key; its styles come

@@ -77,6 +77,41 @@ final class MapServiceTest extends TestCase
         $this->assertSame(0, $hidden->query('//s:g[@data-kind="title"]/s:text')->length, 'a hidden title is not drawn');
     }
 
+    /** F46: the picture is drawn again only when older than the refresh interval or the configuration */
+    public function testLiveImageReusesAFreshRender(): void
+    {
+        $id = $this->maps->createMap(['name' => 'Cached']);
+        $image = $this->maps->liveImage($id);
+        $this->assertNotNull($image);
+        $this->assertFileExists($image);
+        $thumb = $this->maps->liveImage($id, true);
+        $this->assertNotNull($thumb);
+        $this->assertStringContainsString('.thumb.', $thumb);
+
+        // young enough: kept
+        $config = $this->data . '/configs/' . $this->maps->getMap($id)['config_file'];
+        touch($config, time() - 100);
+        touch($image, time() - 10);
+        touch($thumb, time() - 10);
+        clearstatcache();
+        $this->maps->liveImage($id);
+        clearstatcache();
+        $this->assertSame(time() - 10, filemtime($image), 'not drawn again');
+
+        // past the refresh interval (300 s by default): drawn again
+        touch($image, time() - 400);
+        $this->maps->liveImage($id);
+        clearstatcache();
+        $this->assertGreaterThan(time() - 5, filemtime($image));
+
+        // the configuration changed since: drawn again
+        touch($image, time() - 50);
+        touch($config, time() - 20);
+        $this->maps->liveImage($id);
+        clearstatcache();
+        $this->assertGreaterThan(time() - 5, filemtime($image));
+    }
+
     private function svgOf(string $conf): \DOMXPath
     {
         $file = $this->data . '/svg-of.conf';
