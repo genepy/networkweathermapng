@@ -77,6 +77,40 @@ final class MapServiceTest extends TestCase
         $this->assertSame(0, $hidden->query('//s:g[@data-kind="title"]/s:text')->length, 'a hidden title is not drawn');
     }
 
+    /** F57: a new map has a smooth scale, its legend card is one gradient bar, and it can be hidden */
+    public function testNewMapHasASmoothScaleAndAGradientLegend(): void
+    {
+        $conf = (string) $this->maps->getMapConfig($this->maps->createMap(['name' => 'Smooth']));
+        $map = new \WeatherMap();
+        $file = $this->data . '/smooth.conf';
+        file_put_contents($file, $conf);
+        $cwd = (string) getcwd();
+        chdir(dirname(TESTS_ROOT) . '/src/public');
+        try {
+            $map->ReadConfig($file);
+        } finally {
+            chdir($cwd);
+        }
+
+        // the steps of the scale (the special colours KEYBG, TITLE... are kept with them)
+        $steps = array_values(array_filter($map->colours['DEFAULT'], static fn ($s, $k) => (bool) preg_match('/^[\d.]+_[\d.]+$/', (string) $k), ARRAY_FILTER_USE_BOTH));
+        $this->assertCount(9, $steps);
+        $flat = array_filter($steps, static fn ($s) => !isset($s['red2']));
+        // only 0 to 0 (no traffic) and the last step have one colour
+        $this->assertCount(2, $flat);
+        foreach ($steps as $i => $s) {
+            if (isset($s['red2'], $steps[$i + 1])) {
+                $next = $steps[$i + 1];
+                $this->assertSame([$next['red1'], $next['green1'], $next['blue1']], [$s['red2'], $s['green2'], $s['blue2']], 'each step fades into the next');
+            }
+        }
+
+        $svg = $this->svgOf($conf);
+        $this->assertSame(1, $svg->query('//s:g[@data-kind="box"]//s:linearGradient')->length, 'the legend card draws a gradient');
+        $hidden = $this->svgOf(str_replace("SET box_1 legend 10 40\n", "SET box_1 legend 10 40\nSET box_1_hidden 1\n", $conf));
+        $this->assertSame(0, $hidden->query('//s:g[@data-kind="box"]')->length, 'a hidden card is not drawn');
+    }
+
     /** F46: the picture is drawn again only when older than the refresh interval or the configuration */
     public function testLiveImageReusesAFreshRender(): void
     {

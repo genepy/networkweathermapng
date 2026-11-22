@@ -490,9 +490,11 @@ class MapEditor
                 return;
 
             case 'box':
-                // a box is deleted: it has no place to keep while hidden
+                // a box is deleted (SET box_<id>_hidden 1 hides one and keeps it: set_box hidden);
+                // showing it draws a hidden one again
                 $this->box($map, $name);
                 if ($shown) {
+                    unset($map->hints['box_' . $name . '_hidden']);
                     return;
                 }
                 foreach (array_keys($map->hints) as $hint) {
@@ -597,7 +599,11 @@ class MapEditor
         return $this->addNode($map, ['note' => true, 'x' => $x, 'y' => $y, 'text' => $lines ? implode("\n", $lines) : __('Text')]);
     }
 
-    /** {op: set_box, name, props: {title, style, text, rows, width, note, x, y}} - an empty value takes the default */
+    /**
+     * {op: set_box, name, props: {title, style, text, rows, width, note, hidden, x, y}}
+     * - an empty value takes the default; hidden 1 keeps the card and its
+     * settings in the .conf without drawing it (F57).
+     */
     private function setBox(\WeatherMap $map, string $id, array $props): void
     {
         $box = $this->box($map, $id);
@@ -628,6 +634,9 @@ class MapEditor
                     if ($value !== '' && !in_array($value, \WeatherMapBoxes::ROW_SOURCES, true)) {
                         throw new InvalidArgumentException(__('Unknown box rows: :rows', ['rows' => $value]));
                     }
+                    break;
+                case 'hidden':
+                    $value = $value === true || $value === 1 || $value === '1' ? '1' : '';
                     break;
                 case 'width':
                     $value = $value === '' || $value === null ? '' : (string) max(0, min(2000, (int) $value));
@@ -2468,6 +2477,10 @@ class MapEditor
             'links' => $links,
             'zones' => $zones,
             'furniture' => self::furnitureOut($map),
+            // the cards kept in the .conf but not drawn (SET box_<id>_hidden 1): the Map items list shows them again
+            'hidden_boxes' => array_values(array_map(static fn (array $b) => [
+                'kind' => 'box', 'name' => $b['id'], 'props' => ['type' => $b['type'], 'title' => $b['title']],
+            ], array_filter(\WeatherMapBoxes::all($map), static fn (array $b) => $b['hidden']))),
             // the focus areas of the viewer and the kiosk (SET focus_*)
             'focus' => array_values(FocusAreas::all($map)),
             'templates' => $templates,

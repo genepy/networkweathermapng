@@ -23,6 +23,7 @@
  *   SET box_<id>_width <px>        least width of the content (default per type)
  *   SET box_<id>_note <text>       small line under the content (credits, a source...)
  *   SET box_<id>_scale <name>      legend: the scale it shows (default DEFAULT)
+ *   SET box_<id>_hidden 1          not drawn (PNG, SVG, viewer), its settings kept
  *
  * The older keywords are read as the same items and drawn as the same cards,
  * for maps never opened in the editor (the editor turns them into boxes,
@@ -52,6 +53,7 @@ class WeatherMapBoxes {
 		'id' => '', 'type' => 'text', 'x' => 0, 'y' => 0, 'title' => '', 'style' => '', 'text' => '', 'rows' => '', 'width' => 0, 'note' => '',
 		'scale' => 'DEFAULT',  // the scale of a legend
 		'tags' => false,       // a legend list shows the tags of the scale instead of the ranges
+		'hidden' => false,     // SET box_<id>_hidden 1: not drawn
 		'stamp' => null,       // the text of an update time card (default: the map's datestamp)
 		'font' => null,        // font number (default: KEYFONT)
 		'colour' => null,      // gd colour of the text (default: KEYTEXTCOLOR)
@@ -127,6 +129,7 @@ class WeatherMapBoxes {
 			'note'  => self::decode((string) $hint('note')),
 			'scale' => $type === 'legend' && preg_match('/^[A-Za-z][A-Za-z0-9_]*$/', $scale) ? $scale : 'DEFAULT',
 			'tags'  => $tags,
+			'hidden' => $hint('hidden') === '1',
 		);
 	}
 
@@ -215,7 +218,7 @@ class WeatherMapBoxes {
 	/** Whether one of the boxes draws the total traffic graph (it needs WeatherMap::$box_series) */
 	static function wantsSeries($map) {
 		foreach (self::all($map) as $box) {
-			if ($box['type'] === 'total' && $box['style'] === 'graph') {
+			if ($box['type'] === 'total' && $box['style'] === 'graph' && !$box['hidden']) {
 				return true;
 			}
 		}
@@ -226,6 +229,9 @@ class WeatherMapBoxes {
 	static function drawAll($map, $image) {
 		$svg = WeatherMapSvg::$active;
 		foreach (self::all($map) as $id => $box) {
+			if ($box['hidden']) {
+				continue;
+			}
 			if ($svg) {
 				$svg->begin('box', $id, 'BOX:' . $id);
 			}

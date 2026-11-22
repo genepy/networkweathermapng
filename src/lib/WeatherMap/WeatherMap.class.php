@@ -1789,7 +1789,9 @@ class WeatherMap extends WeatherMapBase {
 				if ($direction === 'up') {
 					$p = 100 - $p;
 				}
-				list($col) = $this->NewColourFromPercent($p, $scalename, '', true, false);
+				// the 0 to 0 step (links without traffic) is not part of the bar:
+				// its first pixel takes the colour just above 0 %
+				list($col) = $this->NewColourFromPercent(max($p, 0.0001), $scalename, '', true, false);
 				$colour = $col->is_real() ? array($col->r, $col->g, $col->b) : null;
 			}
 			if ($i > 0 && $colour !== $last) {

@@ -3762,19 +3762,52 @@
                         refresh();
                     }
                 }, [h('span', { text: name }), sub ? h('small', { text: sub }) : null].filter(Boolean)),
-                h('button', {
-                    type: 'button', 'class': 'map-item-remove', title: t('Remove from the map'), 'aria-label': t('Remove :name from the map', { name: name }),
-                    onclick: function () {
-                        state.selection.delete(k);
-                        send([{ op: 'hide_furniture', keys: [k] }], []);
-                    }
-                }, [icon('trash')])
-            ]);
+                f.kind === 'box' ? boxSwitch(f, true) : null,
+                removeItem(k, name)
+            ].filter(Boolean));
+        });
+        // the cards kept in the .conf but not drawn: shown again with their switch
+        ((state.model && state.model.hidden_boxes) || []).forEach(function (f) {
+            var name = furnitureName(f), sub = f.props && f.props.title && f.props.title !== name ? f.props.title : '';
+            rows.push(h('li', { 'class': 'map-item hidden-item' }, [
+                h('button', { type: 'button', 'class': 'map-item-name', title: t('Hidden: not drawn on the map'), disabled: true },
+                    [h('span', { text: name }), sub ? h('small', { text: sub }) : null].filter(Boolean)),
+                boxSwitch(f, false),
+                removeItem(key('box', f.name), name)
+            ]));
         });
         var title = titleItem();
         if (title) { rows.unshift(title); }
         list.replaceChildren.apply(list, rows);
         list.hidden = !rows.length;
+    }
+
+    /** The bin of a map items row: takes the item off the map (a card is deleted) */
+    function removeItem(k, name) {
+        return h('button', {
+            type: 'button', 'class': 'map-item-remove', title: t('Remove from the map'), 'aria-label': t('Remove :name from the map', { name: name }),
+            onclick: function () {
+                state.selection.delete(k);
+                send([{ op: 'hide_furniture', keys: [k] }], []);
+            }
+        }, [icon('trash')]);
+    }
+
+    /**
+     * The eye of a card in the map items (F57): hidden, it is not drawn
+     * (PNG, SVG, viewer) but keeps its place and settings (SET box_<id>_hidden 1).
+     */
+    function boxSwitch(f, shown) {
+        var k = key('box', f.name), name = furnitureName(f);
+        return h('button', {
+            type: 'button', 'class': 'map-item-remove', role: 'switch', 'aria-checked': shown ? 'true' : 'false',
+            title: shown ? t('Hide it, keeping its settings') : t('Show it on the map'),
+            'aria-label': shown ? t('Hide :name', { name: name }) : t('Show :name', { name: name }),
+            onclick: function () {
+                state.selection.delete(k);
+                send([{ op: 'set_box', name: f.name, props: { hidden: shown ? '1' : '' } }], shown ? [] : [k]);
+            }
+        }, [icon(shown ? 'eye' : 'eye-off')]);
     }
 
     /** The title's row of the map items: select it, show or hide it */

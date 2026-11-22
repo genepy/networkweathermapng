@@ -1462,15 +1462,17 @@ KEYFONT 10
 # No timestamp on the map: the viewer's status bar shows the update time
 TIMEPOS -1 -1
 
-# Default scale
+# Default scale, smooth: each step fades into the next one, so a link takes
+# the colour of its exact load and the legend card is one continuous bar
+# (0 to 0, the links without traffic, stays a flat grey)
 SCALE DEFAULT 0 0     192 192 192
-SCALE DEFAULT 0 1     255 255 255
-SCALE DEFAULT 1 10    140 0 255
-SCALE DEFAULT 10 25   32 32 255
-SCALE DEFAULT 25 40   0 192 255
-SCALE DEFAULT 40 55   0 240 0
-SCALE DEFAULT 55 70   240 240 0
-SCALE DEFAULT 70 85   255 192 0
+SCALE DEFAULT 0 1     255 255 255  140 0 255
+SCALE DEFAULT 1 10    140 0 255    32 32 255
+SCALE DEFAULT 10 25   32 32 255    0 192 255
+SCALE DEFAULT 25 40   0 192 255    0 240 0
+SCALE DEFAULT 40 55   0 240 0      240 240 0
+SCALE DEFAULT 55 70   240 240 0    255 192 0
+SCALE DEFAULT 70 85   255 192 0    255 0 0
 SCALE DEFAULT 85 100  255 0 0
 
 # Map items (Add panel of the editor): the traffic legend card, under the title

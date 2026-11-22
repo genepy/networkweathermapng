@@ -1263,6 +1263,31 @@ final class MapEditorTest extends TestCase
         $this->assertStringContainsString('SET box_2 legend', $conf);
     }
 
+    public function testALegendCardIsHiddenWithItsSettingsAndShownAgain(): void
+    {
+        $this->editor->apply([['op' => 'add_box', 'type' => 'legend', 'at' => [30, 50], 'style' => 'list', 'title' => 'Load']]);
+        $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['hidden' => '1']]]);
+
+        $map = $this->editor->load();
+        $this->assertSame('1', $map->get_hint('box_1_hidden'));
+        $this->assertSame('legend 30 50', $map->get_hint('box_1'), 'its place is kept');
+        $this->assertSame('list', $map->get_hint('box_1_style'), 'its settings are kept');
+
+        $model = $this->drawnModel();
+        $this->assertSame([], array_values(array_filter($model['furniture'], fn ($f) => $f['kind'] === 'box')), 'not drawn');
+        $this->assertSame([['kind' => 'box', 'name' => '1', 'props' => ['type' => 'legend', 'title' => 'Load']]], $model['hidden_boxes']);
+
+        // the eye of the map items, or showing it again
+        $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['hidden' => '']]]);
+        $this->assertNull($this->editor->load()->get_hint('box_1_hidden'));
+        $this->editor->apply([['op' => 'set_box', 'name' => '1', 'props' => ['hidden' => '1']]]);
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['box:1']]]);
+        $model = $this->drawnModel();
+        $this->assertSame([], $model['hidden_boxes']);
+        $boxes = array_column(array_filter($model['furniture'], fn ($f) => $f['kind'] === 'box'), null, 'name');
+        $this->assertSame([30, 50], $boxes['1']['pos']);
+    }
+
     public function testSeveralBoxesInOneStepAreAllReturnedAndKeptTogether(): void
     {
         $result = $this->editor->apply([
