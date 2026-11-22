@@ -3767,7 +3767,7 @@ class WeatherMap extends WeatherMapBase {
 									$this->nodes[$it->name]->NewDraw($image, $this);
 
 									if ($svg) {
-										$svg->begin('node', $it->name, 'N' . $it->id);
+										$svg->begin('node', $it->name, 'N' . $it->id, false, $it->is_note());
 										$svg->node($this->nodes[$it->name]);
 									}
 

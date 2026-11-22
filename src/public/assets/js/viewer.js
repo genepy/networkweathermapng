@@ -2156,9 +2156,9 @@
     // ------------------------------------------------------------------
     // Find a node
 
-    /** Nodes by what people know them by: their label, and their name */
+    /** Nodes by what people know them by: their label, and their name (map notes are text, not nodes) */
     function nodeEntries(svg) {
-        return Array.from(svg.querySelectorAll('g.wm-node[data-name]')).map(function (g) {
+        return Array.from(svg.querySelectorAll('g.wm-node[data-name]:not(.wm-note)')).map(function (g) {
             const texts = g.querySelectorAll('text');
             // a badge node keeps its label in its title; otherwise the last
             // text is the label itself (a shadow comes first)

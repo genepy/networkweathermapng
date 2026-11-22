@@ -7,7 +7,9 @@
  * @var array $maps @var array $groups @var array $groupCounts @var array $allGroups
  * @var string $filter all, favourites, busy or group:<id>
  * @var bool $canEdit @var bool $canImport
+ * @var list<string> $missingDemos the demo maps an administrator can still add
  */
+$missingDemos = (array) ($missingDemos ?? []);
 $favourites = array_map('intval', (array) ($favourites ?? []));
 $statuses = (array) ($statuses ?? []);
 $h = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES);
@@ -116,6 +118,9 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
                 <div class="row-menu-items">
                     <?php if ($canImport): ?>
                     <a href="/admin/migration"><?= icon('upload') ?><?= e__('Import maps') ?></a>
+                    <?php if ($missingDemos): ?>
+                    <a href="/editor/maps/demos" data-method="post" title="<?= $h(implode(', ', $missingDemos)) ?>"><?= icon('map') ?><?= e__('Add demo maps') ?></a>
+                    <?php endif; ?>
                     <?php endif; ?>
                     <?php if ($maps): ?>
                     <a href="/editor/maps/export"><?= icon('package') ?><?= e__('Export all') ?></a>
@@ -135,8 +140,14 @@ $chips[] = ['busy', __('Over :pct %', ['pct' => $busyAt]), $busyCount];
             <a href="/editor/maps/create?return=%2F" class="wm-btn wm-btn-primary"><?= e__('Create your first map') ?></a>
             <?php if ($canImport): ?>
             <a href="/admin/migration" class="wm-btn"><?= e__('Import existing maps') ?></a>
+            <?php if ($missingDemos): ?>
+            <a href="/editor/maps/demos" class="wm-btn" data-method="post"><?= e__('Add the demo maps') ?></a>
+            <?php endif; ?>
             <?php endif; ?>
         </p>
+        <?php if ($canImport && $missingDemos): ?>
+        <p class="text-muted"><?= e__('The demo maps show what a map can do, with traffic that needs no data source.') ?></p>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
     <?php else: ?>

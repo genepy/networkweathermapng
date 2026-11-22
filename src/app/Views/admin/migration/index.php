@@ -9,6 +9,10 @@
             <button type="submit" class="btn btn-primary"><?= e__('Import') ?></button>
         </form>
         <p class="text-muted small"><?= e__('Many maps at once:') ?> <code>php bin/migrate.php --source=1 --apply maps/*.conf</code></p>
+        <?php if (!empty($missingDemos)): ?>
+        <p class="text-muted small"><?= e__('To try the application, add the demo maps: their traffic needs no data source.') ?>
+            <a href="/editor/maps/demos?return=%2Fadmin%2Fmigration" data-method="post" class="btn btn-sm"><?= e__('Add demo maps') ?></a></p>
+        <?php endif; ?>
     </div>
 
     <?php if ($migrations): ?>

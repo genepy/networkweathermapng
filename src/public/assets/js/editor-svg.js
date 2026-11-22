@@ -2169,10 +2169,36 @@
         return { x: state.view.x + canvas.clientWidth / state.zoom / 2, y: state.view.y + canvas.clientHeight / state.zoom / 2 };
     }
 
-    /** A map note at a point of the map, or in the middle of the view */
+    /** A Text element (a map note, its "Plain text" style) at a point of the map, or in the middle of the view */
     function addNote(at) {
         var c = at || viewCentre();
-        addNode({ note: true, text: t('Note'), x: Math.max(0, snap(c.x)), y: Math.max(0, snap(c.y)) });
+        addNode({ note: true, text: t('Text'), x: Math.max(0, snap(c.x)), y: Math.max(0, snap(c.y)) });
+    }
+
+    /**
+     * The style of a Text element (F54): "plain" is a map note, "card" a
+     * text box. The other item takes the place of the drawn one (the top
+     * left corner of a card, the middle of a note) and keeps the text.
+     */
+    function textStyleRow(item, style) {
+        var select = h('select', { name: 'text_style' }, [['plain', t('Plain text')], ['card', t('Card')]].map(function (o) {
+            return h('option', { value: o[0], text: o[1], selected: o[0] === style });
+        }));
+        select.addEventListener('change', function () {
+            var op = { op: 'text_style', style: select.value }, b = item.box;
+            if (item.kind === 'box') {
+                op.box = item.name;
+                if (b) { op.at = [Math.round((b[0] + b[2]) / 2), Math.round((b[1] + b[3]) / 2)]; }
+            } else {
+                op.node = item.name;
+                if (b) { op.at = [Math.max(0, b[0]), Math.max(0, b[1])]; }
+            }
+            send([op], function (r) {
+                var c = r.created || {};
+                return (c.furniture || []).concat((c.nodes || []).map(function (n) { return key('node', n); }));
+            });
+        });
+        return row(t('Style'), select, false, t('Plain text is free lines on the map; a card has a title, rows and the font and colours of the map items. Switching keeps the text.'));
     }
 
     /** A node in the middle of the view (the Add panel), from a template or with an icon */
@@ -3281,7 +3307,7 @@
         });
 
         var sizeRow = row(t('Size'), h('div', { 'class': 'pair' }, [w, h('label', { text: '×' }), hh]));
-        var stats = h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.length, links: state.model.links.length }) });
+        var stats = h('p', { 'class': 'help', text: t(':w × :h px, :nodes nodes, :links links.', { w: m.width, h: m.height, nodes: state.model.nodes.filter(function (n) { return !n.note; }).length, links: state.model.links.length }) });
         var shortcuts = h('button', { type: 'button', 'class': 'shortcuts-hint', onclick: openShortcuts }, [
             t('Every keyboard shortcut'), ' ', h('kbd', { text: '?' })
         ]);
@@ -3418,9 +3444,10 @@
     function notePanel(notes) {
         var single = notes.length === 1 ? notes[0] : null;
         var names = notes.map(function (n) { return n.name; });
-        var out = [h('h2', { text: single ? t('Note') : t(':n notes', { n: notes.length }) })];
+        var out = [h('h2', { text: single ? t('Text') : t(':n texts', { n: notes.length }) })];
 
         if (single) {
+            out.push(textStyleRow(single, 'plain'));
             var text = h('textarea', { name: 'note_text', rows: 5, 'class': 'note-text' });
             text.value = single.note_text;
             // Enter makes a new line here; the text is saved when the field is left
@@ -3445,7 +3472,7 @@
             row(t('Text'), colourField(notes, 'labelfontcolour', 'node', true)),
             row(t('Outline'), colourField(notes, 'labeloutlinecolour', 'node')),
             row(t('Drawing order'), field(notes, 'zorder', 'node', { type: 'number', number: true }), false, TIPS.zorder),
-            h('p', { 'class': 'help', text: t('A note is free text on the map, for a legend, a contact or a maintenance window. Enter starts a new line; the text is saved when you leave the field.') })
+            h('p', { 'class': 'help', text: t('Free text on the map, for a contact or a maintenance window. Enter starts a new line; the text is saved when you leave the field.') })
         );
         return out;
     }
@@ -3776,7 +3803,7 @@
     }
 
     function boxTypeName(type) {
-        return { total: t('Total traffic'), legend: t('Traffic legend'), speed: t('Link speed'), updated: t('Updated at'), text: t('Text box') }[type] || t('Map item');
+        return { total: t('Total traffic'), legend: t('Traffic legend'), speed: t('Link speed'), updated: t('Updated at'), text: t('Text') }[type] || t('Map item');
     }
 
     /** The fields of one box (SET box_<id>_...): saved when a field is left */
@@ -3800,6 +3827,7 @@
         }
 
         if (p.type === 'text') {
+            out.unshift(textStyleRow(f, 'card'));
             var text = h('textarea', { name: 'box_text', rows: 5, 'class': 'note-text' });
             text.value = p.text || '';
             // Enter makes a new line here; the text is saved when the field is left
@@ -4891,7 +4919,7 @@
         }
         entries.push('-',
             { label: nodes.length ? t('Add a zone around the selection') : t('Add a zone here'), run: function () { addZone(at); } },
-            { label: t('Add a note here'), run: function () { addNote(at); } },
+            { label: t('Add text here'), run: function () { addNote(at); } },
             { label: state.selection.size ? t('Add a focus area around the selection') : t('Add a focus area over the view'), run: function () { window.WMEditor.addFocusArea(); }, off: !window.WMEditor.addFocusArea },
             { label: t('Route with right angles'), run: function () { rightAngles(links, 'z'); }, off: !links.length },
             { label: t('Make straight'), run: function () { rightAngles(links, 'straight'); }, off: !links.some(function (l) { return l.via.length; }) },

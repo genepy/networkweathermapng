@@ -80,7 +80,9 @@ or Observium:
 | *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, link widths by speed, comments along curved links |
 | *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing links, long-haul links that curve with their comments, a speed legend |
 
-Add them to a "Demo maps" group with:
+An administrator adds them to a "Demo maps" group with *Add the demo maps*
+on the empty Maps page, *Add demo maps* in the ⋯ menu of the Maps page (shown
+while one of them is missing) or on *Settings › Import maps*, or with:
 
 ```bash
 docker compose exec weathermap php bin/demo-maps.php      # or: php src/bin/demo-maps.php
@@ -226,9 +228,14 @@ position*, puts it back.
 
 ### Map notes
 
-A note is free text on the map, on several lines: a legend, a contact, a
-maintenance window. It is a node without an icon, marked with a hint, in the
-format PHP Weathermap 2.0 uses, so its maps import with their notes:
+Free text goes on the map as one *Text* element with two styles. *Plain
+text*, described here, is a note: free lines on the map (a contact, a
+maintenance window). *Card* is a text box of the [map items](#map-items),
+with a title, rows (typed or taken from the sites) and the font and colours
+of the map items. The *Style* of the Text inspector switches between them and
+keeps the text: a card's title, rows and small note line become lines of the
+note. A note is a node without an icon, marked with a hint, in the format PHP
+Weathermap 2.0 uses, so its maps import with their notes:
 
 ```
 NODE note1
@@ -242,9 +249,11 @@ NODE note1
 
 The note uses the node label style (`LABELFONT`, `LABELBGCOLOR` none for no
 box, `LABELOUTLINECOLOR`, `LABELFONTCOLOR`) and is drawn sharp in the PNG and
-the SVG. In the SVG editor, the **Note** button (or **Add a note here** in the
-right-click menu) adds one; the inspector edits its text, where Enter starts a
-new line, its alignment and its style.
+the SVG. In the SVG editor, the **Text** button (or **Add text here** in the
+right-click menu, or *Add text* in Ctrl+K) adds one; the inspector edits its
+text, where Enter starts a new line, its alignment and its style. Notes are
+text, not nodes: the node count of the Map panel and *Find a node* in the
+viewer leave them out.
 
 ### Map items
 
@@ -609,14 +618,14 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   click, for every selected node (`SET editor_label_position N`, `N60`, `C`,
   `S60` or `S`, the PHP Weathermap 2.0 hint; a drag replaces it).
 - **Add**: the *Add* panel on the left has four tiles: *Node* (click to add
-  it in the middle of the view, or drag it onto the map), *Note*, *Zone* and
+  it in the middle of the view, or drag it onto the map), *Text*, *Zone* and
   *Link* (L). Below them come the node templates of the map, the icon
   library (themes that fold, a search; click an icon to add a node with it,
   or drag it) and *Backgrounds* (click one to set the background of the map,
   one undo step). Ctrl+click on an empty spot also adds a node. *Map items*
   adds a card (see [Map items](#map-items)) in the middle of the view:
-  *Traffic legend*, *Link speed*, *Updated at*, *Total traffic* or *Text
-  box*. Under the tiles, the items on the map are listed: a click on one
+  *Traffic legend*, *Link speed*, *Updated at* or *Total traffic* (a text
+  card is a *Text* whose style is *Card*). Under the tiles, the items on the map are listed: a click on one
   selects it and shows it, its bin removes it from the map (one undo step).
   The title comes first, with a switch that shows or hides it.
 - **Delete**: Delete (or Backspace, the *Delete* button of the selection

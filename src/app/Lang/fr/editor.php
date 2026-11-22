@@ -214,8 +214,8 @@ return [
     'PNG, GIF or JPEG up to 1024 px, or SVG (cleaned, and drawn as a 64 px PNG for the PNG map). 2 MB at most per file.' => 'PNG, GIF ou JPEG jusqu’à 1024 px, ou SVG (nettoyé, et dessiné en PNG de 64 px pour la carte PNG). 2 Mo au plus par fichier.',
     'Unknown alignment: :value' => 'Alignement inconnu : :value',
     'Unknown label position: :value' => 'Position d’étiquette inconnue : :value',
-    'Note' => 'Note',
-    'Add a note: free text on several lines, for a legend, a contact or a maintenance window' => 'Ajouter une note : du texte libre sur plusieurs lignes, pour une légende, un contact ou une fenêtre de maintenance',
+    'Text' => 'Texte',
+    'Add text: free lines on the map, or a card with a title and rows' => 'Ajouter du texte : des lignes libres sur la carte, ou un encadré avec un titre et des lignes',
     'A colour scale has 1 to :n steps' => 'Une échelle de couleurs a de 1 à :n paliers',
     'Invalid scale step: :from to :to' => 'Palier d’échelle invalide : :from à :to',
     'Two scale steps go from :from to :to' => 'Deux paliers vont de :from à :to',
@@ -281,7 +281,6 @@ return [
     'Unknown box: :name' => 'Encadré inconnu : :name',
     'Traffic legend' => 'Légende du trafic',
     'Updated at' => 'Mis à jour à',
-    'Text box' => 'Encadré libre',
 
     // History and savepoints (timeline of saved versions)
     'History and savepoints' => 'Historique et points de sauvegarde',
@@ -315,9 +314,11 @@ return [
     'A card with the link widths by speed' => 'Une carte avec l’épaisseur des liens selon leur débit',
     'A card with the time of the last data' => 'Une carte avec l’heure des dernières données',
     'A card with the total traffic of the map and its graph' => 'Une carte avec le trafic total de la carte et son graphique',
-    'A card with a title and rows, typed or taken from the map sites' => 'Une carte avec un titre et des lignes, saisies ou tirées des sites de la carte',
     'Map items on this map' => 'Éléments présents sur la carte',
     // F31: the basemap one click away
     'For a web map such as OpenStreetMap under the map, choose a basemap instead (Map › Look › Basemap).' => 'Pour une carte web comme OpenStreetMap sous la carte, choisissez plutôt un fond de carte (Carte › Apparence › Fond de carte).',
     'Choose a basemap…' => 'Choisir un fond de carte…',
+    'Unknown text style: :style' => 'Style de texte inconnu : :style',
+    'Unknown note: :name' => 'Texte inconnu : :name',
+    'Only a text box can become plain text' => 'Seul un encadré de texte peut devenir du texte simple',
 ];

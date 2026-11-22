@@ -2,7 +2,7 @@
 /**
  * NetworkWeathermapNG - Map management for administrators and editors: the
  * actions of the Maps page (create, settings, duplicate, move, reorder,
- * activate, export, delete, bulk actions)
+ * activate, export, delete, bulk actions, add the demo maps)
  */
 
 declare(strict_types=1);
@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\Basemap;
+use App\Services\DemoMaps;
 use App\Services\GroupService;
 use App\Services\KioskService;
 use App\Services\MapService;
@@ -206,6 +207,28 @@ class MapManagementController extends BaseController
             return __('Failed to update map: :error', ['error' => $e->getMessage()]);
         }
         return null;
+    }
+
+    /**
+     * POST (administrators): adds the demo maps that are not there yet
+     * (Maps page empty state and ⋯ menu, Settings › Import maps), then
+     * says which ones were added.
+     */
+    public function installDemos(array $params): void
+    {
+        $this->requireAdmin();
+
+        try {
+            $added = array_keys(array_filter((new DemoMaps($this->mapService, $this->groupService))->install()));
+            if ($added) {
+                $this->flash('success', __('Demo maps added: :names', ['names' => implode(', ', $added)]));
+            } else {
+                $this->flash('info', __('The demo maps are already there.'));
+            }
+        } catch (\Exception $e) {
+            $this->flash('error', __('The demo maps could not be added: :error', ['error' => $e->getMessage()]));
+        }
+        $this->redirect($this->returnUrl());
     }
 
     /** POST JSON {ids: [...]}: the maps in their new order (drag and drop on the Maps page) */
