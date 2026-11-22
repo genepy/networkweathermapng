@@ -23,7 +23,7 @@
 
     /** Names of the themes the project knows; others show their folder name */
     var LABELS = {
-        classic: t('Classic'), generic: t('Generic'), status: t('Status'), clouds: t('Clouds'), net: t('Network'),
+        classic: t('Classic'), generic: t('Generic'), status: t('Status'), clouds: t('Clouds'), net: t('Network'), animated: t('Animated'),
         affinity: 'Affinity', ansible: 'Ansible', arista: 'Arista', cisco: 'Cisco', cumulus: 'Cumulus', f5: 'F5', juniper: 'Juniper', viptela: 'Viptela', vmware: 'VMware'
     };
 

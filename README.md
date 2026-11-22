@@ -852,8 +852,10 @@ coloured by `USEICONSCALE`.
 (`animate`, `animateTransform`, `animateMotion`, `set`) or CSS `@keyframes`:
 it plays in the live view and the kiosk. The PNG output, exports and
 thumbnails use the still PNG twin, and so does the editor, so nothing moves
-while editing. `objects/net/fan` and `objects/net/wind-turbine` are shipped
-examples. Uploaded SVG icons keep their animations, but an animation of a
+while editing. `objects/animated/fan` and `objects/animated/wind-turbine`
+are shipped examples, in the *Animated* theme of the Icons panel (a map
+that still names their former place, `objects/net/`, draws them, and the
+editor rewrites the path when it opens the map). Uploaded SVG icons keep their animations, but an animation of a
 link (`href`), of a `style` or of an event attribute is removed. An
 animation inside an icon cannot be slowed by the page: a visitor who asked
 for less motion still sees it, so keep such icons calm.

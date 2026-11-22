@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class IconSpinTest extends TestCase
 {
-    private const FAN = 'src/public/objects/net/fan.png';
+    private const FAN = 'src/public/objects/animated/fan.png';
 
     private string $file;
 
@@ -50,11 +50,12 @@ final class IconSpinTest extends TestCase
     {
         $root = dirname(TESTS_ROOT);
         foreach (['fan', 'wind-turbine'] as $name) {
-            $svg = (string) file_get_contents($root . '/src/public/objects/net/' . $name . '.svg');
+            $svg = (string) file_get_contents($root . '/src/public/objects/animated/' . $name . '.svg');
             $this->assertStringContainsString('<animateTransform', $svg);
             $this->assertSame(trim($svg), trim((new SvgSanitizer())->sanitize($svg)), "$name passes the sanitizer as it is");
-            $this->assertFileExists($root . '/src/public/objects/net/' . $name . '.png', 'with its still PNG twin');
-            $this->assertContains('objects/net/' . $name . '.png', IconLibrary::shippedIcons());
+            $this->assertFileExists($root . '/src/public/objects/animated/' . $name . '.png', 'with its still PNG twin');
+            $this->assertContains('objects/animated/' . $name . '.png', IconLibrary::shippedIcons());
+            $this->assertFileDoesNotExist($root . '/src/public/objects/net/' . $name . '.svg', 'moved out of the Network theme (F59)');
         }
     }
 
@@ -86,7 +87,7 @@ final class IconSpinTest extends TestCase
         };
         $this->assertStringStartsWith('data:image/svg+xml;base64,', $href('viewer'), 'the animated SVG');
         $this->assertStringStartsWith('data:image/png;base64,', $href('editor'), 'its still PNG twin');
-        $this->assertTrue(\WeatherMapSvg::isAnimated(dirname(TESTS_ROOT) . '/src/public/objects/net/fan.svg'));
+        $this->assertTrue(\WeatherMapSvg::isAnimated(dirname(TESTS_ROOT) . '/src/public/objects/animated/fan.svg'));
         $this->assertFalse(\WeatherMapSvg::isAnimated(dirname(TESTS_ROOT) . '/src/public/objects/net/router.svg'));
     }
 
@@ -103,5 +104,34 @@ final class IconSpinTest extends TestCase
         $this->assertTrue($nodes['b']['icon_spin']);
         $this->assertFalse($nodes['a']['icon_spin']);
         $this->assertSame(2, substr_count((string) file_get_contents($this->file), 'SET icon_spin 1'), 'b, and c that was not touched');
+    }
+
+    /** F59: a map that still names objects/net/fan draws it, and the editor rewrites the path */
+    public function testTheOldPathOfAMovedIconStillWorks(): void
+    {
+        $this->assertSame('src/public/objects/animated/fan.png', \WeatherMapNode::movedIcon('src/public/objects/net/fan.png'));
+        $this->assertSame('objects/animated/wind-turbine.svg', \WeatherMapNode::movedIcon('objects/net/wind-turbine.svg'));
+        $this->assertSame('objects/net/router.png', \WeatherMapNode::movedIcon('objects/net/router.png'));
+        $this->assertSame('objects/mynet/fan.png', \WeatherMapNode::movedIcon('objects/mynet/fan.png'));
+
+        $old = 'src/public/objects/net/fan.png';
+        file_put_contents($this->file, str_replace(self::FAN, $old, (string) file_get_contents($this->file)));
+        $map = $this->load('viewer');
+        $this->assertStringContainsString('data:image/svg+xml;base64,', \WeatherMapSvg::render($map), 'the animated icon is drawn from its new place');
+
+        $editor = new MapEditor($this->file);
+        $this->assertTrue($editor->convertLegacy());
+        $conf = (string) file_get_contents($this->file);
+        $this->assertStringNotContainsString('objects/net/fan', $conf);
+        $this->assertSame(2, substr_count($conf, 'ICON ' . self::FAN));
+        $this->assertFalse($editor->convertLegacy());
+    }
+
+    public function testTheAnimatedThemeComesAfterTheProjectThemes(): void
+    {
+        $themes = array_column((new IconLibrary(dirname(TESTS_ROOT) . '/src/public'))->themes(), 'theme');
+        $this->assertSame(['net', 'classic', 'status', 'clouds', 'generic', 'animated'], array_slice($themes, 0, 6));
+        $js = (string) file_get_contents(dirname(TESTS_ROOT) . '/src/public/assets/js/editor-icons.js');
+        $this->assertStringContainsString("animated: t('Animated')", $js);
     }
 }
