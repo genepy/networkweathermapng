@@ -9,7 +9,6 @@ return [
     'Updated at :time' => 'Mis à jour à :time',
     'Max load :pct % (:link)' => 'Charge max. :pct % (:link)',
     'Recorded at :time' => 'Enregistré : :time',
-    'Colour scale from :min to :max %' => 'Échelle de couleurs de :min à :max %',
     'Kiosk link copied' => 'Lien kiosque copié',
     'Copy this link: :url' => 'Copiez ce lien : :url',
     'Most loaded link: :link (:pct %)' => 'Lien le plus chargé : :link (:pct %)',

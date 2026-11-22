@@ -132,12 +132,14 @@ class MapEditor
     /** Where a title shown again (or of a new map) goes: TITLEPOS, the left end of its baseline */
     public const TITLE_PLACE = [10, 28];
 
+    /** Where the legend card of a new map, or of an older map that had none, goes */
+    public const LEGEND_PLACE = [10, 40];
+
     private const FURNITURE_AREAS = [
         'TIMESTAMP' => ['timestamp', ''],
         'MINTIMESTAMP' => ['timestamp', 'MIN'],
         'MAXTIMESTAMP' => ['timestamp', 'MAX'],
         'TITLE' => ['title', ''],
-        'WIDTHLEGEND' => ['widthlegend', ''],
     ];
 
     private string $file;
@@ -160,6 +162,123 @@ class MapEditor
         }
 
         return $map;
+    }
+
+    /**
+     * Turns the older map items of the map into cards, as the editor opens
+     * it (one history step, "Converted legacy map items"); true when the
+     * .conf changed. See convertLegacyItems().
+     */
+    public function convertLegacy(): bool
+    {
+        if (!is_file($this->file)) {
+            return false;
+        }
+        $map = $this->load();
+        if (!self::convertLegacyItems($map)) {
+            return false;
+        }
+        $this->save($map);
+        return true;
+    }
+
+    /**
+     * The older keywords of a map as map item cards (SET box_<id>):
+     *
+     * - each legend placed by KEYPOS becomes a legend card at the same place,
+     *   with its text, its style (KEYSTYLE horizontal and modern: the bar of
+     *   their length, tags: the list with the step tags, the others: the
+     *   list) and its scale; a hidden one (negative position) is dropped;
+     * - SET width_legend becomes a link speed card with its title;
+     * - the legend panel of the viewer is gone (F56): a map whose viewer
+     *   showed it, and that has no card at all, gets a legend card, and the
+     *   viewer and kiosk hints no longer name a shown legend panel.
+     *
+     * The engine still draws the older keywords of maps never opened in the
+     * editor. True when the map changed.
+     */
+    public static function convertLegacyItems(\WeatherMap $map): bool
+    {
+        if (!is_array($map->hints)) {
+            $map->hints = [];
+        }
+        $changed = false;
+        $taken = array_map('strval', array_keys(\WeatherMapBoxes::all($map)));
+        $hadCards = $taken !== [];
+        $nextId = static function () use ($map, &$taken): string {
+            $id = 1;
+            while (in_array((string) $id, $taken, true) || $map->get_hint('box_' . $id) !== null) {
+                $id++;
+            }
+            $taken[] = (string) $id;
+            return (string) $id;
+        };
+        $defaults = $map->inherit_fieldlist;
+
+        // KEYPOS / KEYSTYLE: one legend card per shown legend
+        foreach (array_unique(array_merge(array_keys((array) $map->keyx), array_keys((array) $map->keystyle))) as $scale) {
+            $scale = (string) $scale;
+            $x = $map->keyx[$scale] ?? -1;
+            $y = $map->keyy[$scale] ?? -1;
+            $x = is_numeric($x) ? (int) $x : -1;
+            $y = is_numeric($y) ? (int) $y : -1;
+            $style = strtolower((string) ($map->keystyle[$scale] ?? 'classic'));
+            $text = trim((string) ($map->keytext[$scale] ?? ''));
+            $size = (int) ($map->keysize[$scale] ?? 400);
+            $isDefault = $x === -1 && $y === -1
+                && ($text === '' || $text === $defaults['keytext']['DEFAULT'])
+                && $style === $defaults['keystyle']['DEFAULT']
+                && $size === (int) $defaults['keysize']['DEFAULT'];
+            if (!$isDefault) {
+                $changed = true;
+            }
+            if ($x >= 0 && $y >= 0 && isset($map->colours[$scale])) {
+                $id = $nextId();
+                $bar = in_array($style, ['horizontal', 'modern'], true);
+                $map->add_hint('box_' . $id, 'legend ' . $x . ' ' . $y);
+                $map->add_hint('box_' . $id . '_title', $text === '' ? '-' : $text);
+                if (!$bar) {
+                    $map->add_hint('box_' . $id . '_style', $style === 'tags' ? 'tags' : 'list');
+                } else {
+                    $map->add_hint('box_' . $id . '_width', (string) max(80, min(2000, $size)));
+                }
+                if ($scale !== 'DEFAULT') {
+                    $map->add_hint('box_' . $id . '_scale', $scale);
+                }
+            }
+        }
+        foreach (['keyx', 'keyy', 'keytext', 'keystyle', 'keysize'] as $field) {
+            $map->$field = [];
+        }
+
+        // SET width_legend: a link speed card
+        $where = $map->get_hint('width_legend');
+        $title = trim((string) $map->get_hint('width_legend_title'));
+        if ($where !== null || $map->get_hint('width_legend_title') !== null) {
+            $changed = true;
+            if (preg_match('/^(-?\d+)[\s,]+(-?\d+)$/', trim((string) $where), $m)) {
+                $id = $nextId();
+                $map->add_hint('box_' . $id, 'speed ' . (int) $m[1] . ' ' . (int) $m[2]);
+                if ($title !== '' && $title !== 'Link speed') {
+                    $map->add_hint('box_' . $id . '_title', $title);
+                }
+            }
+            unset($map->hints['width_legend'], $map->hints['width_legend_title']);
+        }
+
+        // the legend panel of the viewer (F56): a card takes its place on a
+        // map from before the cards (none at all: a map that has cards and
+        // no legend had it removed in the editor)
+        $hasLegend = in_array('legend', array_column(\WeatherMapBoxes::all($map), 'type'), true);
+        if (!$hadCards && !$hasLegend && ViewerPanels::showedLegend($map) && \WeatherMapBoxes::scaleBands($map) !== []) {
+            $map->add_hint('box_' . $nextId(), 'legend ' . self::LEGEND_PLACE[0] . ' ' . self::LEGEND_PLACE[1]);
+            $changed = true;
+        }
+        if (ViewerPanels::dropLegend($map)) {
+            $changed = true;
+        }
+
+        return $changed;
     }
 
     /**
@@ -240,9 +359,9 @@ class MapEditor
 
     /**
      * {op: move, nodes: {name: [x, y]}, vias: {link: [[x, y], ...]}, zones: {name: [x, y]},
-     *  furniture: {"legend:DEFAULT" | "timestamp:" | "timestamp:MIN" | "title:" | "widthlegend:": [x, y]}}
+     *  furniture: {"box:<id>" | "timestamp:" | "timestamp:MIN" | "title:": [x, y]}}
      * Positions are absolute map pixels; for furniture, the position its
-     * keyword takes (KEYPOS, TIMEPOS, TITLEPOS, SET width_legend), as in model().
+     * keyword takes (SET box_<id>, TIMEPOS, TITLEPOS), as in model().
      */
     private function move(\WeatherMap $map, array $op): void
     {
@@ -278,7 +397,7 @@ class MapEditor
         }
     }
 
-    /** Place the legend of a scale, a timestamp, the title or the width legend */
+    /** Place a map item card, a timestamp or the title */
     private function moveFurniture(\WeatherMap $map, string $key, array $pos): void
     {
         [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
@@ -286,14 +405,6 @@ class MapEditor
         [$x, $y] = [max(0, $pos[0]), max(0, $pos[1])];
 
         switch ($kind) {
-            case 'legend':
-                if (!isset($map->keyx[$name])) {
-                    throw new InvalidArgumentException(__('Unknown legend: :name', ['name' => $name]));
-                }
-                $map->keyx[$name] = $x;
-                $map->keyy[$name] = $y;
-                return;
-
             case 'timestamp':
                 // TIMEPOS 0 0 means "top right corner"
                 $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
@@ -309,10 +420,6 @@ class MapEditor
                 $map->titley = $y;
                 return;
 
-            case 'widthlegend':
-                $map->add_hint('width_legend', $x . ' ' . $y);
-                return;
-
             case 'box':
                 $box = $this->box($map, $name);
                 $map->add_hint('box_' . $name, $box['type'] . ' ' . $x . ' ' . $y);
@@ -323,8 +430,8 @@ class MapEditor
     }
 
     /**
-     * {op: show_furniture, keys: [...], at?: [x, y]} - put legends,
-     * timestamps or the width legend back on the map: at `at` (the position
+     * {op: show_furniture, keys: [...], at?: [x, y]} - put timestamps or
+     * the title back on the map: at `at` (the position
      * their keyword takes, as for move) or where they were before.
      */
     private function showFurniture(\WeatherMap $map, array $op): void
@@ -340,8 +447,8 @@ class MapEditor
 
     /**
      * {op: hide_furniture, keys: [...]} - the Delete of the editor for
-     * legends, timestamps and the width legend: they stay in the .conf,
-     * hidden (a negative position, or no SET width_legend).
+     * map items: timestamps and the title stay in the .conf, hidden (a
+     * negative position); a card is removed.
      */
     private function hideFurniture(\WeatherMap $map, array $keys): void
     {
@@ -351,9 +458,9 @@ class MapEditor
     }
 
     /**
-     * Show or hide a piece of furniture by its key ("legend:DEFAULT",
-     * "timestamp:", "timestamp:MIN", "timestamp:MAX", "widthlegend:").
-     * Legends and timestamps keep their place while hidden as (-x - 1,
+     * Show or hide a piece of furniture by its key ("box:<id>", "title:",
+     * "timestamp:", "timestamp:MIN", "timestamp:MAX"). The title and
+     * timestamps keep their place while hidden as (-x - 1,
      * -y - 1), so showing them puts them back where they were.
      */
     private function setFurnitureShown(\WeatherMap $map, string $key, bool $shown): void
@@ -361,16 +468,6 @@ class MapEditor
         [$kind, $name] = array_pad(explode(':', $key, 2), 2, '');
 
         switch ($kind) {
-            case 'legend':
-                if (!isset($map->keyx[$name]) && !isset($map->colours[$name])) {
-                    throw new InvalidArgumentException(__('Unknown legend: :name', ['name' => $name]));
-                }
-                [$map->keyx[$name], $map->keyy[$name]] = self::legendPosition($shown, $map->keyx[$name] ?? -1, $map->keyy[$name] ?? -1);
-                $map->keytext[$name] ??= 'Traffic Load';
-                $map->keystyle[$name] ??= 'classic';
-                $map->keysize[$name] ??= 400;
-                return;
-
             case 'timestamp':
                 $prefix = ['' => '', 'MIN' => 'min', 'MAX' => 'max'][$name] ?? null;
                 if ($prefix === null) {
@@ -389,15 +486,6 @@ class MapEditor
                 }
                 $map->{$prefix . 'timex'} = $x;
                 $map->{$prefix . 'timey'} = $y;
-                return;
-
-            case 'widthlegend':
-                if (!$shown) {
-                    unset($map->hints['width_legend']);
-                } elseif (!self::widthLegendShown($map)) {
-                    // bottom left corner (negative counts from the far edge)
-                    $map->add_hint('width_legend', '10 -10');
-                }
                 return;
 
             case 'box':
@@ -428,12 +516,6 @@ class MapEditor
         }
 
         throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
-    }
-
-    /** SET width_legend holds a position, so the engine draws the legend */
-    private static function widthLegendShown(\WeatherMap $map): bool
-    {
-        return (bool) preg_match('/^-?\d+[\s,]+-?\d+$/', trim((string) $map->get_hint('width_legend')));
     }
 
     /**
@@ -481,7 +563,7 @@ class MapEditor
                     break;
                 case 'style':
                     $value = strtolower($this->text($value));
-                    $allowed = ['legend' => ['bar', 'list'], 'total' => ['graph', 'plain']][$box['type']] ?? [];
+                    $allowed = ['legend' => ['bar', 'list', 'tags'], 'total' => ['graph', 'plain']][$box['type']] ?? [];
                     if ($value !== '' && !in_array($value, $allowed, true)) {
                         throw new InvalidArgumentException(__('Unknown box style: :style', ['style' => $value]));
                     }
@@ -1721,8 +1803,6 @@ class MapEditor
     public const BADGE_SIZE_MIN = \WeatherMapNode::BADGE_SIZE_MIN;
     public const BADGE_SIZE_MAX = \WeatherMapNode::BADGE_SIZE_MAX;
 
-    private const KEY_STYLES = ['classic', 'horizontal', 'vertical', 'inverted', 'tags', 'modern'];
-
     /** SET basemap...: the geographic basemap; an empty value removes the hint */
     private function setBasemapHint(\WeatherMap $map, string $key, mixed $value): void
     {
@@ -1802,34 +1882,8 @@ class MapEditor
             } elseif ($key === 'title_font' || $key === 'time_font' || $key === 'key_font') {
                 $field = ['title_font' => 'titlefont', 'time_font' => 'timefont', 'key_font' => 'keyfont'][$key];
                 $map->$field = $this->fontNumber($map, $value);
-            } elseif ($key === 'key_text') {
-                $map->keytext['DEFAULT'] = $this->text($value);
-            } elseif ($key === 'key_style') {
-                if (!in_array($value, self::KEY_STYLES, true)) {
-                    throw new InvalidArgumentException(__('Invalid :key: :value', ['key' => $key, 'value' => $value]));
-                }
-                $map->keystyle['DEFAULT'] = $value;
-            } elseif ($key === 'key_size') {
-                $map->keysize['DEFAULT'] = max(50, min(2000, (int) $value));
-            } elseif ($key === 'key_shown') {
-                [$map->keyx['DEFAULT'], $map->keyy['DEFAULT']] = self::legendPosition(
-                    (bool) $value,
-                    $map->keyx['DEFAULT'] ?? -1,
-                    $map->keyy['DEFAULT'] ?? -1
-                );
-                $map->keytext['DEFAULT'] ??= 'Traffic Load';
             } elseif ($key === 'stamp_shown') {
                 $this->setFurnitureShown($map, 'timestamp:', (bool) $value);
-            } elseif ($key === 'width_legend_shown') {
-                $this->setFurnitureShown($map, 'widthlegend:', (bool) $value);
-            } elseif ($key === 'width_legend_title') {
-                // drawn as "Link speed" when not set
-                $title = $this->text($value);
-                if ($title === '' || $title === 'Link speed') {
-                    unset($map->hints['width_legend_title']);
-                } else {
-                    $map->add_hint('width_legend_title', $title);
-                }
             } elseif ($key === 'stamp_text') {
                 $map->stamptext = $this->text($value);
             } elseif ($key === 'stamp_style') {
@@ -1951,32 +2005,6 @@ class MapEditor
             $item->$field = $new;
         }
         $items['DEFAULT']->$field = $new;
-    }
-
-    /**
-     * The engine hides a legend placed at a negative position. A hidden
-     * legend keeps its place as (-x - 1, -y - 1), so showing it again puts
-     * it back where it was; the classic -1 -1 comes back at 10, 40.
-     *
-     * @return array{int, int}
-     */
-    private static function legendPosition(bool $shown, mixed $x, mixed $y): array
-    {
-        $x = is_numeric($x) ? (int) $x : -1;
-        $y = is_numeric($y) ? (int) $y : -1;
-        $hidden = $x < 0 || $y < 0;
-
-        if ($shown) {
-            if (!$hidden) {
-                return [$x, $y];
-            }
-            if ($x === -1 && $y === -1) {
-                return [10, 40];
-            }
-            return [$x < 0 ? -$x - 1 : $x, $y < 0 ? -$y - 1 : $y];
-        }
-
-        return $hidden ? [$x, $y] : [-$x - 1, -$y - 1];
     }
 
     private function setLinkDefault(\WeatherMap $map, string $key, mixed $value): void
@@ -2144,18 +2172,12 @@ class MapEditor
             'title_font' => (int) $map->titlefont,
             'title_colour' => $colour('TITLE'),
             'bg_colour' => $colour('BG'),
-            'key_shown' => ($map->keyx['DEFAULT'] ?? -1) >= 0 && ($map->keyy['DEFAULT'] ?? -1) >= 0,
-            'key_text' => (string) ($map->keytext['DEFAULT'] ?? ''),
-            'key_style' => (string) ($map->keystyle['DEFAULT'] ?? 'classic'),
-            'key_size' => (int) ($map->keysize['DEFAULT'] ?? 400),
             'key_font' => (int) $map->keyfont,
             'key_text_colour' => $colour('KEYTEXT'),
             'key_bg_colour' => $colour('KEYBG'),
             'key_outline_colour' => $colour('KEYOUTLINE'),
             'stamp_shown' => (int) $map->timex >= 0 && (int) $map->timey >= 0,
             'stamp_text' => (string) $map->stamptext,
-            'width_legend_shown' => self::widthLegendShown($map),
-            'width_legend_title' => (string) ($map->get_hint('width_legend_title') ?: 'Link speed'),
             'stamp_style' => $map->get_hint('timestamp_style') === 'pill' ? 'pill' : 'plain',
             'traffic_pulse' => (string) $map->get_hint('traffic_pulse') === '1',
             'link_glow' => (string) $map->get_hint('link_glow') === '1',
@@ -2406,7 +2428,7 @@ class MapEditor
     }
 
     /**
-     * The legends, timestamps, title and width legend as drawn: their box
+     * The cards, timestamps and title as drawn: their box
      * (from the image map) and the position their keyword holds.
      */
     private static function furnitureOut(\WeatherMap $map): array
@@ -2417,9 +2439,7 @@ class MapEditor
                 continue;
             }
             $name = (string) $area->name;
-            if (str_starts_with($name, 'LEGEND:')) {
-                [$kind, $item] = ['legend', substr($name, 7)];
-            } elseif (str_starts_with($name, 'BOX:')) {
+            if (str_starts_with($name, 'BOX:')) {
                 [$kind, $item] = ['box', substr($name, 4)];
             } elseif (isset(self::FURNITURE_AREAS[$name])) {
                 [$kind, $item] = self::FURNITURE_AREAS[$name];
@@ -2429,7 +2449,6 @@ class MapEditor
 
             $box = [(int) $area->x1, (int) $area->y1, (int) $area->x2, (int) $area->y2];
             $pos = match ($kind) {
-                'legend' => [(int) ($map->keyx[$item] ?? $box[0]), (int) ($map->keyy[$item] ?? $box[1])],
                 // text is placed by the left end of its baseline (a timestamp in its card)
                 'timestamp' => self::timestampPosition($map, $item, $box),
                 'title' => [$box[0], $box[3]],
@@ -2445,7 +2464,7 @@ class MapEditor
                     $found[$kind . ':' . $item]['props'] = [
                         'type' => $b['type'],
                         'title' => $b['title'],
-                        'style' => $b['style'],
+                        'style' => $b['tags'] ? 'tags' : $b['style'],
                         'text' => $b['text'],
                         'rows' => $b['rows'],
                         'width' => $b['width'],

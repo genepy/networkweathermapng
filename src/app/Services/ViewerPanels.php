@@ -6,25 +6,27 @@ namespace App\Services;
 
 /**
  * The panels of the viewer and the kiosk: which ones are shown and where.
- * The panels are the sites list, the total traffic, the link load legend
- * and the update time (with the most loaded link). Each one goes in the
+ * The panels are the sites list, the total traffic and the update time
+ * (with the most loaded link). The legend is a card drawn on the map
+ * (SET box_<id> legend); a hint that still names a legend panel parses, and
+ * the entry is left out. Each one goes in the
  * side panel or in a corner of the map, or is hidden. The choice is one
  * hint of the map's .conf, the panels in their order:
  *
- *   SET viewer_panels sites:side total:top-right legend:side:hidden updated:bottom-left
+ *   SET viewer_panels sites:side total:top-right updated:bottom-left:hidden
  *
  * <id>:<position>, then :hidden for a panel that is not shown (it keeps its
  * position for when it is shown again). The order is the order in the side
  * panel, and in a corner that holds more than one panel. A panel the hint
  * leaves out takes its default place, after the others.
  *
- * Without the hint the viewer looks as it always did: the sites, the total
- * traffic and the legend in the side panel, the update time at the bottom
+ * Without the hint the viewer looks as it always did: the sites and the
+ * total traffic in the side panel, the update time at the bottom
  * left, and the kiosk shows none of them.
  *
  * The kiosk has a layout of its own, with the same syntax:
  *
- *   SET kiosk_panels total:side legend:bottom-right sites:side:hidden
+ *   SET kiosk_panels total:side updated:bottom-right sites:side:hidden
  *
  * or "SET kiosk_panels same" for the viewer's layout. With either one the
  * kiosk shows a side panel for the panels set to "side". Without it the
@@ -44,13 +46,59 @@ final class ViewerPanels
     public const KIOSK_MODES = ['corners', 'same', 'own'];
 
     /** The panels, in their default order */
-    public const IDS = ['sites', 'total', 'legend', 'updated'];
+    public const IDS = ['sites', 'total', 'updated'];
+
+    /** The legend panel of older maps: read and left out (the legend is a card on the map) */
+    public const OLD_LEGEND = 'legend';
+
+    /**
+     * Whether the viewer (or the kiosk, with KIOSK_HINT) showed the legend
+     * panel that is gone: no hint, or a hint that does not hide it. The
+     * kiosk without its hint showed no legend.
+     */
+    public static function showedLegend(\WeatherMap $map, string $key = self::HINT): bool
+    {
+        $hint = is_array($map->hints) ? ($map->hints[$key] ?? '') : '';
+        $hint = is_scalar($hint) ? strtolower(trim((string) $hint)) : '';
+        if ($key === self::KIOSK_HINT && ($hint === '' || $hint === self::SAME)) {
+            return false;
+        }
+        if (!preg_match('/(?:^|[\s,])legend(?::([a-z-]+))?(?::(hidden))?(?=[\s,]|$)/', $hint, $m)) {
+            return $key === self::HINT;
+        }
+        return ($m[1] ?? '') !== 'hidden' && ($m[2] ?? '') !== 'hidden';
+    }
+
+    /**
+     * Rewrites the viewer and kiosk hints of an older map without a shown
+     * legend panel (a card takes its place); true when one of them changed.
+     * A hidden legend entry stays as it is, read and left out, so the map
+     * still says that its viewer showed no legend; the editor drops it when
+     * it writes the hint.
+     */
+    public static function dropLegend(\WeatherMap $map): bool
+    {
+        $changed = false;
+        foreach ([self::HINT, self::KIOSK_HINT] as $key) {
+            $hint = is_array($map->hints) ? ($map->hints[$key] ?? null) : null;
+            if (!is_scalar($hint) || !preg_match('/(?:^|[\s,])legend(?=[:\s,]|$)/i', (string) $hint) || !self::showedLegend($map, $key)) {
+                continue;
+            }
+            if ($key === self::HINT) {
+                self::set($map, (string) $hint);
+            } else {
+                self::setKiosk($map, self::parse((string) $hint));
+            }
+            $changed = true;
+        }
+        return $changed;
+    }
 
     /** Where a panel can go: the side panel or a corner of the map */
     public const POSITIONS = ['side', 'top-left', 'top-right', 'bottom-left', 'bottom-right'];
 
     /** Where each panel goes on a map without the hint */
-    public const DEFAULTS = ['sites' => 'side', 'total' => 'side', 'legend' => 'side', 'updated' => 'bottom-left'];
+    public const DEFAULTS = ['sites' => 'side', 'total' => 'side', 'updated' => 'bottom-left'];
 
     /**
      * The panels of a map, in their order.
@@ -197,6 +245,9 @@ final class ViewerPanels
         foreach ($value as $panel) {
             $id = is_array($panel) ? (string) ($panel['id'] ?? '') : '';
             $position = is_array($panel) ? (string) ($panel['position'] ?? '') : '';
+            if ($id === self::OLD_LEGEND) {
+                continue;
+            }
             if (!isset(self::DEFAULTS[$id])) {
                 throw new \InvalidArgumentException(__('Unknown viewer panel: :id', ['id' => $id]));
             }

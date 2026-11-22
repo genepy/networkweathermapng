@@ -3332,11 +3332,12 @@ class WeatherMap extends WeatherMapBase {
 			$output .= PHP_EOL;
 
 			foreach ($this->colours as $scalename => $colours) {
-				// not all keys will have keypos but if they do, then all three vars should be defined
+				// not all keys will have keypos but if they do, then all three vars should be defined;
+				// the default (KEYPOS DEFAULT -1 -1 Traffic Load, no legend) is not written
 				if ((isset($this->keyx[$scalename])) && (isset($this->keyy[$scalename])) && (isset($this->keytext[$scalename]))
-					&& (($this->keytext[$scalename] != $this->inherit_fieldlist['keytext'])
-						|| ($this->keyx[$scalename] != $this->inherit_fieldlist['keyx'])
-						|| ($this->keyy[$scalename] != $this->inherit_fieldlist['keyy']))
+					&& (($this->keytext[$scalename] != $this->inherit_fieldlist['keytext']['DEFAULT'])
+						|| ($this->keyx[$scalename] != $this->inherit_fieldlist['keyx']['DEFAULT'])
+						|| ($this->keyy[$scalename] != $this->inherit_fieldlist['keyy']['DEFAULT']))
 				) {
 					// sometimes a scale exists but without defaults. A proper scale object would sort this out...
 					if ($this->keyx[$scalename] == '') {

@@ -13,7 +13,8 @@
  *   SET box_<id> <type> <x> <y>    type: total, legend, speed, updated, text
  *                                  (negative x or y count from the right or bottom edge)
  *   SET box_<id>_title <text>      title line ("-" for none; each type has a default)
- *   SET box_<id>_style <style>     legend: bar (gradient bar, 0% and 100%) or list
+ *   SET box_<id>_style <style>     legend: bar (gradient bar, 0% and 100%), list, or tags
+ *                                  (a list with the tag of each step)
  *                                  total: graph (value and small graph) or plain
  *   SET box_<id>_text <text>       text box: lines separated by \n, "label | value" puts
  *                                  the value on the right of the row
@@ -21,9 +22,11 @@
  *                                  site) or sites_load (busiest link load per site)
  *   SET box_<id>_width <px>        least width of the content (default per type)
  *   SET box_<id>_note <text>       small line under the content (credits, a source...)
+ *   SET box_<id>_scale <name>      legend: the scale it shows (default DEFAULT)
  *
  * The older keywords are read as the same items and drawn as the same cards,
- * and stay as they are in the .conf: KEYPOS and KEYSTYLE (a legend card:
+ * for maps never opened in the editor (the editor turns them into boxes,
+ * see MapEditor::convertLegacy()): KEYPOS and KEYSTYLE (a legend card:
  * horizontal and modern give the bar, the other styles the list),
  * TIMEPOS, MINTIMEPOS and MAXTIMEPOS (an update time card with the
  * timestamp text, its font and colour) and SET width_legend (a link speed
@@ -102,11 +105,13 @@ class WeatherMapBoxes {
 			$title = '';
 		}
 		$style = strtolower((string) $hint('style'));
-		$styles = array('legend' => array('bar', 'list'), 'total' => array('graph', 'plain'));
+		$styles = array('legend' => array('bar', 'list', 'tags'), 'total' => array('graph', 'plain'));
 		if (!isset($styles[$type]) || !in_array($style, $styles[$type], true)) {
 			$style = isset($styles[$type]) ? $styles[$type][0] : '';
 		}
 		$rows = strtolower((string) $hint('rows'));
+		$scale = (string) $hint('scale');
+		$tags = $style === 'tags';
 
 		return array(
 			'id'    => (string) $id,
@@ -114,11 +119,14 @@ class WeatherMapBoxes {
 			'x'     => (int) $m[2],
 			'y'     => (int) $m[3],
 			'title' => $title,
-			'style' => $style,
+			// a list with the step tags is drawn as a list
+			'style' => $tags ? 'list' : $style,
 			'text'  => self::decode((string) $hint('text')),
 			'rows'  => in_array($rows, self::ROW_SOURCES, true) ? $rows : '',
 			'width' => max(0, min(2000, (int) $hint('width'))),
 			'note'  => self::decode((string) $hint('note')),
+			'scale' => $type === 'legend' && preg_match('/^[A-Za-z][A-Za-z0-9_]*$/', $scale) ? $scale : 'DEFAULT',
+			'tags'  => $tags,
 		);
 	}
 

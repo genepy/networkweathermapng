@@ -536,14 +536,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.wmv-legend-bar {
-    display: inline-block;
-    width: 120px;
-    height: 8px;
-    border-radius: 4px;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wm-text) 15%, transparent);
-}
-
 /* State dot, shared with the map list */
 .wmv-dot,
 .map-state-dot {
@@ -729,8 +721,7 @@
 .wmv-panel-sec { display: flex; flex-direction: column; gap: var(--wm-space-2); min-height: 0; }
 .wmv-panel-sec[hidden] { display: none; }
 .wmv-sites { flex: 1 1 auto; min-height: auto; }
-.wmv-total,
-.wmv-panel-legend { flex: none; }
+.wmv-total { flex: none; }
 .wmv-panel-sec + .wmv-panel-sec { padding-top: var(--wm-space-3); border-top: 1px solid var(--wm-border); }
 .wmv-panel-head { display: flex; align-items: center; gap: var(--wm-space-2); min-height: 28px; }
 .wmv-panel-head h2 {
@@ -916,18 +907,6 @@
 /* the colours of the card: IN in the accent colour, OUT in orange */
 .wmv-total-dialog .wm-traffic { --wm-hc-in: var(--wm-accent); --wm-hc-out: #d9922e; }
 
-.wmv-panel-scale { display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; }
-.wmv-scale-row { display: flex; align-items: center; gap: var(--wm-space-2); }
-.wmv-scale-swatch {
-    width: 28px;
-    height: 10px;
-    border-radius: 3px;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wm-text) 15%, transparent);
-}
-/* a smooth scale: one long gradient bar */
-.wmv-scale-smooth .wmv-scale-swatch { flex: 1 1 auto; width: auto; }
-/* the legend lives in the panel while it is open */
-.wmv-panel-open .wmv-status .wmv-legend { display: none; }
 /* a node of the list, hovered */
 .wmv-svg g.wmv-hl { filter: drop-shadow(0 0 calc(5 * var(--wm-glow-unit)) var(--wm-warning-mark)) drop-shadow(0 0 var(--wm-glow-unit) var(--wm-warning-mark)); }
 @media (prefers-reduced-motion: reduce) {
@@ -1005,8 +984,6 @@
 .wmv-panel > .wmv-status + .wmv-panel-sec { padding-top: var(--wm-space-3); border-top: 1px solid var(--wm-border); }
 /* the side panel makes room for the cards of the bottom left corner */
 .wmv-panels-set .wmv-panel { max-height: calc(100% - 68px - max(64px, var(--wmv-dock-bl-h, 0px) + 2 * var(--wm-space-3))); }
-/* the small legend bar of the update time, only while the legend is in the side panel */
-.wmv-legend-bar-off .wmv-status .wmv-legend { display: none; }
 
 /* ------------------------------------------------------------------
    Fullscreen: the browser's fullscreen on the map, or the fullscreen
@@ -1062,7 +1039,6 @@ body.wmv-noc {
 @media (max-width: 1000px) {
     .wmv-find-input { width: 150px; }
     .wmv-when button span:not(.wmv-live-dot) { display: none; }
-    .wmv-legend-bar { width: 80px; }
 }
 
 @media (max-width: 640px) {
@@ -1105,8 +1081,7 @@ body.wmv-noc {
         max-height: calc(100% - 104px - 60px);
         z-index: 5;
     }
-    .wmv-status-when,
-    .wmv-legend { display: none !important; }
+    .wmv-status-when { display: none !important; }
     .wmv-status > span + span { margin-left: 0; padding-left: 0; border-left: 0; }
     .wmv-zoombar { right: var(--wm-space-2); bottom: var(--wm-space-2); }
     .wmv-history { bottom: 56px; }

@@ -437,7 +437,8 @@ window.WM_EDITOR = {
     fonts: <?= json_encode($fonts, JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     fontFamilies: <?= json_encode((object) ($fontFamilies ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
     themeColours: <?= json_encode((object) ($themeColours ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
-    themes: <?= json_encode((object) ($themes ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>
+    themes: <?= json_encode((object) ($themes ?? []), JSON_HEX_TAG | JSON_HEX_AMP) ?>,
+    converted: <?= !empty($converted) ? 'true' : 'false' ?>
 };
 </script>
 <script src="<?= asset('/assets/js/ui.js') ?>"></script>

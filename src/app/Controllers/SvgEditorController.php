@@ -70,6 +70,7 @@ class SvgEditorController extends BaseController
         }
 
         $this->loadEngine();
+        $converted = $this->convertLegacy($map);
         $library = $this->icons();
 
         $this->render('editor/svg', [
@@ -82,8 +83,34 @@ class SvgEditorController extends BaseController
             'fontFamilies' => MapEditor::fontFamilies(),
             'themeColours' => MapThemes::colours(),
             'themes' => MapThemes::previews(),
+            'converted' => $converted,
             'title' => __('Edit Map: :name', ['name' => $map['name']]),
         ], false);
+    }
+
+    /**
+     * The older map items (KEYPOS legends, SET width_legend, the viewer's
+     * legend panel) become cards as the editor opens the map: one history
+     * step, which Undo takes back; true when the map changed. A map that
+     * cannot be read is left alone.
+     */
+    private function convertLegacy(array $map): bool
+    {
+        $file = $this->configFile($map);
+        $before = is_file($file) ? (string) file_get_contents($file) : null;
+        if ($before === null) {
+            return false;
+        }
+        try {
+            $changed = (bool) $this->engine(static fn () => (new MapEditor($file))->convertLegacy());
+        } catch (\Throwable $e) {
+            error_log('SVG editor: legacy map items of ' . basename($file) . ' not converted: ' . $e->getMessage());
+            return false;
+        }
+        if ($changed) {
+            $this->history($map)->record($before, 'convert');
+        }
+        return $changed;
     }
 
     /** GET: the icon library, by theme */

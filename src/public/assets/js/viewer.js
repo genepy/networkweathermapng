@@ -5,7 +5,7 @@
  * PNG). Wheel or pinch zooms at the pointer, drag pans. Floating controls
  * over the map: the bar at the top (node search, Live / recorded hours,
  * fullscreen, more actions, Edit), the zoom at the bottom right, the state
- * and the colour legend at the bottom left; a minimap shows where the view
+ * at the bottom left (the legend is a card drawn on the map); a minimap shows where the view
  * is when the map does not fit. In fullscreen the controls fade out after
  * a few seconds without movement. Zoom and position live in the URL hash
  * (#z=2&x=..&y=.., x/y the map point at the centre), so a shared link opens
@@ -15,7 +15,7 @@
  * in the hash). Hovering a node frames it in the minimap too. A side
  * panel on the left (P, remembered per browser) lists the nodes grouped by
  * site (SET site), the total traffic of the map with a graph of the
- * recorded hours, and the colour legend; hovering a node on the map
+ * recorded hours; hovering a node on the map
  * highlights it in the list, hovering it in the list frames it on the map
  * and in the minimap. A map may show only some of these panels, in the
  * side panel or in the corners, in its own order (SET viewer_panels). The
@@ -627,66 +627,6 @@
         return root.dataset.timezone || '';
     }
 
-    /**
-     * The colour legend: the map's DEFAULT scale as one bar, each band at its
-     * place between the lowest and the highest value
-     */
-    function showLegend(scale) {
-        const box = statusBox.querySelector('.wmv-legend');
-        if (!Array.isArray(scale) || !scale.length) {
-            box.hidden = true;
-            if (panel) root.querySelector('.wmv-panel-legend').hidden = true;
-            return;
-        }
-        let lo = Infinity, hi = -Infinity;
-        scale.forEach(function (b) { lo = Math.min(lo, b.bottom); hi = Math.max(hi, b.top); });
-        const span = hi > lo ? hi - lo : 1;
-        const pos = function (v) { return (Math.round((v - lo) / span * 1000) / 10) + '%'; };
-        const stops = [];
-        scale.forEach(function (b) {
-            stops.push(b.colour + ' ' + pos(b.bottom));
-            stops.push((b.colour2 || b.colour) + ' ' + pos(b.top));
-        });
-        const num = function (v) { return Math.round(v * 10) / 10; };
-        box.querySelector('.wmv-legend-bar').style.background = 'linear-gradient(to right, ' + stops.join(', ') + ')';
-        box.querySelector('.wmv-legend-bar').setAttribute('aria-label', fmt('Colour scale from :min to :max %', {min: num(lo), max: num(hi)}));
-        box.querySelector('.wmv-legend-min').textContent = num(lo);
-        box.querySelector('.wmv-legend-max').textContent = num(hi) + ' %';
-        box.hidden = false;
-        // the same legend, larger, in the side panel: one row per band
-        if (panel) {
-            const sec = root.querySelector('.wmv-panel-legend');
-            // a smooth scale: one gradient bar from the lowest to the highest load
-            const smooth = scale.some(function (b) { return b.colour2 && b.top > b.bottom; });
-            const bands = smooth ? scale.filter(function (b) { return b.top <= b.bottom; }).reverse() : scale.slice().reverse();
-            const rows = bands.map(function (b) {
-                const row = document.createElement('div');
-                row.className = 'wmv-scale-row';
-                const sw = document.createElement('span');
-                sw.className = 'wmv-scale-swatch';
-                sw.style.background = b.colour2 ? 'linear-gradient(to right, ' + b.colour + ', ' + b.colour2 + ')' : b.colour;
-                const label = document.createElement('span');
-                label.textContent = num(b.bottom) + ' – ' + num(b.top) + ' %';
-                row.append(sw, label);
-                return row;
-            });
-            if (smooth) {
-                const row = document.createElement('div');
-                row.className = 'wmv-scale-row wmv-scale-smooth';
-                const sw = document.createElement('span');
-                sw.className = 'wmv-scale-swatch';
-                sw.style.background = 'linear-gradient(to right, ' + stops.filter(function (x, i) { return scale[i >> 1].top > scale[i >> 1].bottom; }).join(', ') + ')';
-                const label = document.createElement('span');
-                label.textContent = num(lo) + ' – ' + num(hi) + ' %';
-                row.append(sw, label);
-                rows.unshift(row);
-            }
-            const box2 = sec.querySelector('.wmv-panel-scale');
-            box2.replaceChildren.apply(box2, rows);
-            sec.hidden = false;
-        }
-    }
-
     // ------------------------------------------------------------------
     // Geographic basemap
 
@@ -1114,7 +1054,6 @@
             max.title = fmt('Most loaded link: :link (:pct %)', {link: status.link || '', pct: status.max});
         }
         showSourceWarning(status);
-        showLegend(status.scale);
         showTotal(status.total);
         dockSizes();
     }
@@ -1396,7 +1335,7 @@
     });
 
     // ------------------------------------------------------------------
-    // Side panel: sites, total traffic, legend
+    // Side panel: sites, total traffic
 
     const PANEL_KEY = 'wmv-panel';
     const P = {
@@ -2044,7 +1983,7 @@
 
     // ------------------------------------------------------------------
     // Viewer panels (SET viewer_panels, see ViewerPanels.php): which of
-    // the sites, the total traffic, the legend and the update time are
+    // the sites, the total traffic and the update time are
     // shown, and where: in the side panel, in a corner of the map, in their
     // order. A map without the hint keeps the usual layout untouched.
 
@@ -2065,7 +2004,6 @@
         switch (id) {
             case 'sites': return root.querySelector('.wmv-sites');
             case 'total': return root.querySelector('.wmv-total');
-            case 'legend': return root.querySelector('.wmv-panel-legend');
             case 'updated': return statusBox;
         }
         return null;
@@ -2104,7 +2042,7 @@
     /** Back to the usual layout, as the page was drawn */
     function resetPanels() {
         if (!D.applied) return;
-        ['sites', 'total', 'legend'].forEach(function (id) {
+        ['sites', 'total'].forEach(function (id) {
             const el = panelEl(id);
             if (el && panel) panel.appendChild(el);
         });
@@ -2113,7 +2051,7 @@
         if (h.inset) h.inset.parent.insertBefore(insetBox, h.inset.next);
         if (h.close) h.close.parent.insertBefore(h.close.el, h.close.next);
         DOCKS.forEach(function (where) { D.docks[where].hidden = true; });
-        root.classList.remove('wmv-panels-set', 'wmv-legend-bar-off');
+        root.classList.remove('wmv-panels-set');
         kioskSidePanel(false);
         if (panelButton) panelButton.hidden = false;
         D.applied = false;
@@ -2159,9 +2097,6 @@
             else if (first) first.appendChild(close.el);
             else close.parent.insertBefore(close.el, close.next);
         }
-        // the small legend bar of the update time, while the legend is in the side panel
-        const legend = D.list.filter(function (p) { return p.id === 'legend'; })[0];
-        root.classList.toggle('wmv-legend-bar-off', !legend || !legend.shown || legend.position !== 'side' || kioskFrame);
         // the kiosk's side panel: always open, the map fitted beside it
         if (kioskFrame) kioskSidePanel(side.length > 0);
         DOCKS.forEach(function (where) { D.docks[where].hidden = !D.docks[where].children.length; });
