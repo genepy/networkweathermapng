@@ -148,16 +148,20 @@ final class MigrationTest extends TestCase
         date_default_timezone_set('UTC');
         try {
             $migrator = $this->migrator();
-            $this->assertStringContainsString('Zone UTC', $migrator->renderSvg($conf));
+            // the engine no longer draws TIMEPOS: the status bar takes its place
+            $svg = $migrator->renderSvg($conf);
+            $this->assertStringContainsString('data-kind="status"', $svg);
+            $this->assertStringContainsString('· UTC', $svg);
+            $this->assertStringNotContainsString('Zone UTC', $svg);
 
             $tokyo = $migrator->inTimezone('Asia/Tokyo')->renderSvg($conf);
-            $this->assertStringContainsString('Zone JST', $tokyo);
+            $this->assertStringContainsString('· Asia/Tokyo', $tokyo);
             // the zone only applies while drawing
             $this->assertSame('UTC', date_default_timezone_get());
             $this->assertStringStartsWith("\x89PNG", $migrator->renderPng($conf));
 
             // an unknown zone is ignored
-            $this->assertStringContainsString('Zone UTC', $migrator->inTimezone('Mars/Olympus')->renderSvg($conf));
+            $this->assertStringContainsString('· UTC', $migrator->inTimezone('Mars/Olympus')->renderSvg($conf));
         } finally {
             date_default_timezone_set($previous);
         }

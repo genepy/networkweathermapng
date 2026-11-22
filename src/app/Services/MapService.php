@@ -521,7 +521,8 @@ class MapService
                 $wmap = new \WeatherMap();
                 $wmap->context = 'standalone';
                 // the update time card in the map's clock, unless TIMEPOS gives its own text (F51)
-                $wmap->clock_format = ClockFormat::phpFormat((new ClockFormat($this->db))->forMap($id), false, true);
+                $clock = (new ClockFormat($this->db))->forMap($id);
+                $wmap->clock_format = ClockFormat::phpFormat($clock, false, true);
             
                 // Read the config
                 $wmap->ReadConfig($configPath);
@@ -547,6 +548,10 @@ class MapService
                     }
                 }
             
+                // the status bar placed on the map (F58): drawn with the values of this render
+                $zone = TimezoneService::fromConfig($this->db, $this->config)->forMap($id);
+                $wmap->status_bar = self::statusBar($wmap, $zone, $clock);
+
                 // Write the image
                 // The SVG is collected during the same drawing pass as the PNG
                 $collector = new \WeatherMapSvg($wmap, [
@@ -983,6 +988,48 @@ class MapService
             'sources' => self::failedSources($wmap),
             'nodata' => (int) $wmap->nodata_links,
             'items' => $items,
+        ];
+    }
+
+    /**
+     * The status bar a map places on itself (SET viewer_panels
+     * updated:map:<x>,<y>, F58), as WeatherMap::$status_bar: the update time
+     * in the map's zone and clock, the most loaded link, and a line for the
+     * data sources that failed. Null when the bar is not on the map.
+     *
+     * @return array{x: int, y: int, lines: list<string>, note: string}|null
+     */
+    public static function statusBar(\WeatherMap $wmap, string $zone, string $clock, ?int $now = null): ?array
+    {
+        $at = ViewerPanels::statusAt($wmap);
+        if ($at === null) {
+            return null;
+        }
+        $max = null;
+        foreach ($wmap->links as $link) {
+            if (!isset($link->a, $link->b) || $link->name === 'DEFAULT') {
+                continue;
+            }
+            $pct = max((float) ($link->inpercent ?? 0), (float) ($link->outpercent ?? 0));
+            if ($max === null || $pct > $max[0]) {
+                $max = [$pct, (string) $link->name];
+            }
+        }
+        $time = ClockFormat::format($now ?? time(), $zone, $clock);
+        $warnings = array_map(static function (array $s): string {
+            $links = $s['links'] === 1 ? __('1 link without data') : __(':n links without data', ['n' => $s['links']]);
+            $p = ['source' => $s['name'], 'links' => $links];
+            return $s['down'] ? __(':source unreachable: :links', $p) : __(':source error: :links', $p);
+        }, self::failedSources($wmap));
+
+        return [
+            'x' => $at[0],
+            'y' => $at[1],
+            'lines' => [
+                __('Updated at :time', ['time' => $time]) . ($zone !== '' ? ' · ' . $zone : ''),
+                $max === null ? __('No data') : __('Max load :pct % (:link)', ['pct' => (int) round($max[0]), 'link' => $max[1]]),
+            ],
+            'note' => implode(' · ', $warnings),
         ];
     }
 
@@ -1426,6 +1473,9 @@ class MapService
         $fontRegular = self::DEFAULT_FONT;
         $fontBold = self::DEFAULT_FONT_BOLD;
         [$titleX, $titleY] = Editor\MapEditor::TITLE_PLACE;
+        // the status bar (update time, most loaded link) on the map, bottom left (F58)
+        $statusX = ViewerPanels::STATUS_MARGIN[0];
+        $statusY = max(0, $height - ViewerPanels::STATUS_MARGIN[1]);
 
         // New map > On a web map: the starter basemap under the canvas
         $basemap = '';
@@ -1459,8 +1509,10 @@ TITLEFONT 13
 TIMEFONT 11
 KEYFONT 10
 
-# No timestamp on the map: the viewer's status bar shows the update time
+# No timestamp card: the status bar shows the update time, here on the map
+# (bottom left), as the viewer, the kiosk and the pictures draw it
 TIMEPOS -1 -1
+SET viewer_panels sites:side total:side updated:map:{$statusX},{$statusY}
 
 # Default scale, smooth: each step fades into the next one, so a link takes
 # the colour of its exact load and the legend card is one continuous bar

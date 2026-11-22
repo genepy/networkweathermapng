@@ -79,9 +79,10 @@ final class BoxesTest extends TestCase
         $map->box_series = [[0, 1e9, 5e8], [300, 2e9, 1e9]];
         $svg = $this->svg($map);
 
-        foreach (['1', '2', '3', '4', '5'] as $id) {
+        foreach (['1', '2', '3', '4'] as $id) {
             $this->assertStringContainsString('data-kind="box" data-name="' . $id . '" data-id="BOX:' . $id . '"', $svg);
         }
+        $this->assertStringNotContainsString('data-name="5"', $svg, 'an update time card is read, not drawn (F58)');
         $this->assertStringContainsString('>Points of presence<', $svg);
         $this->assertStringContainsString('>Amsterdam<', $svg);
         $this->assertStringContainsString('>68<', $svg);
@@ -201,11 +202,13 @@ final class BoxesTest extends TestCase
         $this->assertTrue($doc->loadXML($svg));
         $xpath = new \DOMXPath($doc);
         $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
-        foreach (['legend' => 'DEFAULT', 'legend ' => 'other', 'widthlegend' => 'widthlegend', 'timestamp' => ''] as $kind => $name) {
+        foreach (['legend' => 'DEFAULT', 'legend ' => 'other', 'widthlegend' => 'widthlegend'] as $kind => $name) {
             $this->assertSame(1, $xpath->query('//s:g[@data-kind="' . trim($kind) . '"][@data-name="' . $name . '"]/s:polygon')->length, "$kind $name is a card");
         }
         $this->assertSame(['Other', 'low', 'high'], array_map(fn ($n) => $n->textContent, iterator_to_array($xpath->query('//s:g[@data-kind="legend"][@data-name="other"]/s:text'))));
-        $this->assertStringStartsWith('At ', $xpath->query('//s:g[@data-kind="timestamp"]/s:text')->item(0)->textContent);
+        // TIMEPOS is read (the editor turns it into the status bar) but not drawn (F58)
+        $this->assertSame(100, (int) $map->timex);
+        $this->assertSame(0, $xpath->query('//s:g[@data-kind="timestamp"]')->length);
 
         $areas = [];
         foreach ($map->imap->shapes as $area) {
@@ -214,7 +217,7 @@ final class BoxesTest extends TestCase
             }
         }
         $this->assertSame([20, 30], array_slice($areas['LEGEND:DEFAULT'], 0, 2), 'the card at KEYPOS');
-        $this->assertSame([100, 380], \WeatherMapBoxes::timestampAnchor($areas['TIMESTAMP']), 'the text of the timestamp card starts at TIMEPOS');
+        $this->assertArrayNotHasKey('TIMESTAMP', $areas);
         $this->assertSame(390, $areas['WIDTHLEGEND'][3], 'negative positions count from the far edge');
     }
 
@@ -236,5 +239,27 @@ final class BoxesTest extends TestCase
             }
         }
         $this->assertSame((int) $map->width, $areas['BOX:1'][2], 'a card placed past the edge is drawn inside the map');
+    }
+
+    /** F58: the status bar placed on the map, drawn with the values the application gives */
+    public function testTheStatusBarIsDrawnWhereItIsPlaced(): void
+    {
+        $map = $this->load('SET box_1 legend 10 10');
+        $map->status_bar = ['x' => 40, 'y' => 300, 'lines' => ['Updated at 14:05 · Europe/Paris', 'Max load 87 % (core-paris)'], 'note' => 'Observium unreachable: 2 links without data'];
+        $svg = $this->svg($map);
+        $this->assertStringContainsString('data-kind="status" data-name="" data-id="STATUS"', $svg);
+        $this->assertStringContainsString('>Updated at 14:05 · Europe/Paris<', $svg);
+        $this->assertStringContainsString('>Max load 87 % (core-paris)<', $svg);
+        $this->assertStringContainsString('>Observium unreachable: 2 links without data<', $svg, 'the warning as the muted line');
+        $areas = [];
+        foreach ($map->imap->shapes as $area) {
+            if ($area instanceof \HTML_ImageMap_Area_Rectangle) {
+                $areas[(string) $area->name] = [(int) $area->x1, (int) $area->y1];
+            }
+        }
+        $this->assertSame([40, 300], $areas['STATUS'], 'its top left corner where it is placed');
+
+        $map = $this->load('SET box_1 legend 10 10');
+        $this->assertStringNotContainsString('data-kind="status"', $this->svg($map), 'none without status_bar');
     }
 }

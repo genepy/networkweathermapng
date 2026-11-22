@@ -167,7 +167,7 @@ $btn = static function (string $cmd, string $icon, string $label, string $title,
         <div class="add-tiles add-items">
             <button type="button" class="add-tile" data-cmd="add-box-legend" title="<?= e__('A card with the link load colours, as a gradient bar or a list') ?>"><svg class="i" aria-hidden="true"><use href="#i-legend-load"/></svg><span><?= e__('Traffic legend') ?></span></button>
             <button type="button" class="add-tile" data-cmd="add-box-speed" title="<?= e__('A card with the link widths by speed') ?>"><svg class="i" aria-hidden="true"><use href="#i-legend-speed"/></svg><span><?= e__('Link speed') ?></span></button>
-            <button type="button" class="add-tile" data-cmd="add-box-updated" title="<?= e__('A card with the time of the last data') ?>"><?= icon('clock', 'i') ?><span><?= e__('Updated at') ?></span></button>
+            <button type="button" class="add-tile" data-cmd="add-box-updated" title="<?= e__('The status bar on the map: the update time and the most loaded link, as the viewer shows them') ?>"><?= icon('clock', 'i') ?><span><?= e__('Status bar') ?></span></button>
             <button type="button" class="add-tile" data-cmd="add-box-total" title="<?= e__('A card with the total traffic of the map and its graph') ?>"><?= icon('chart-line', 'i') ?><span><?= e__('Total traffic') ?></span></button>
         </div>
         <ul id="map-items" class="map-items" aria-label="<?= e__('Map items on this map') ?>"></ul>

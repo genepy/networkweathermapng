@@ -18,7 +18,10 @@ re-explore the repository. Keep it short and up to date.
   `editor-svg.js`; a negative position (`TITLEPOS -1 -1`) hides an item.
   Older legends (`KEYPOS`, `SET width_legend`) become `SET box_<id>` cards
   when the editor opens a map: `MapEditor::convertLegacy()`, history kind
-  `convert`.
+  `convert`. The engine no longer draws `TIMEPOS`: the status bar takes its
+  place (`MapService::statusBar()` fills `$map->status_bar`, drawn by
+  `WeatherMapBoxes::drawStatus()`; the viewer moves its live HTML bar over
+  it, furniture kind `status` in the editor).
 - Map engine (php-weathermap fork): `src/lib/WeatherMap/`.
   `WeatherMap.class.php` (config parser, PNG render), `WeatherMapSvg.class.php`
   (SVG render), `WeatherMapNode/Link/Zone/Boxes.class.php`,
@@ -50,7 +53,7 @@ App features store their settings as map hints, each parsed by one service:
 
 | Hint | Service |
 |------|---------|
-| `viewer_panels` (e.g. `sites:side total:top-right updated:bottom-left:hidden`), `kiosk_panels` (same syntax, or `same`) | `Services/ViewerPanels.php` |
+| `viewer_panels` (e.g. `sites:side total:top-right updated:bottom-left:hidden`; the status bar can sit on the map: `updated:map:<x>,<y>`), `kiosk_panels` (same syntax, or `same`) | `Services/ViewerPanels.php` |
 | `focus_<id>`, `focus_default` | `Services/FocusAreas.php` |
 | `basemap`, `basemap_dark`, `basemap_center`, `basemap_zoom`, `basemap_attribution` | `Services/Basemap.php` |
 | `kiosk_duration`, `kiosk_zoom` | `Services/KioskService.php` |

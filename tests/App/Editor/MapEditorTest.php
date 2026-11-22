@@ -6,6 +6,8 @@ namespace Tests\App\Editor;
 
 use App\Services\Editor\ConfigHistory;
 use App\Services\Editor\MapEditor;
+use App\Services\MapService;
+use App\Services\ViewerPanels;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
@@ -479,7 +481,7 @@ final class MapEditorTest extends TestCase
     {
         // map-wide hints go before the first NODE or LINK section
         $conf = (string) file_get_contents($this->file);
-        $conf = preg_replace('/^SET nowarn_clipping 1$/m', "SET nowarn_clipping 1\nSET box_1 note 30 40\nSET focus_a 10 20 110 120\nSET width_legend 500 400", $conf, 1);
+        $conf = preg_replace('/^SET nowarn_clipping 1$/m', "SET nowarn_clipping 1\nSET box_1 note 30 40\nSET focus_a 10 20 110 120\nSET width_legend 500 400\nSET viewer_panels updated:map:20,400 sites:side total:side", $conf, 1);
         file_put_contents($this->file, (string) $conf);
         $before = $this->editor->load();
         $vias = $before->links['paris-backup']->vialist;
@@ -500,6 +502,7 @@ final class MapEditorTest extends TestCase
         $this->assertSame('note 130 90', $map->hints['box_1']);
         $this->assertSame('110 70 210 170', $map->hints['focus_a']);
         $this->assertSame('600 450', $map->hints['width_legend']);
+        $this->assertSame([120, 450], ViewerPanels::statusAt($map), 'the status bar moves too');
 
         $this->expectException(InvalidArgumentException::class);
         $this->editor->apply([['op' => 'resize_canvas', 'left' => -900]]);
@@ -926,43 +929,45 @@ final class MapEditorTest extends TestCase
     {
         $map = $this->editor->load();
         ob_start();
+        // the status bar on the map, as the editor draws it (SvgEditorController::draw)
+        $map->status_bar = MapService::statusBar($map, 'UTC', '24h');
         $map->DrawMap('null');
         ob_end_clean();
         return MapEditor::model($map);
     }
 
-    public function testTimestampAndTitleAreInTheModelAndMove(): void
+    public function testStatusBarAndTitleAreInTheModelAndMove(): void
     {
         $furniture = array_column($this->drawnModel()['furniture'], null, 'kind');
         $this->assertArrayNotHasKey('legend', $furniture, 'a KEYPOS legend is not an editor item: it becomes a card');
-        $this->assertSame([10, 490], $furniture['timestamp']['pos']);
+        $this->assertArrayNotHasKey('timestamp', $furniture, 'TIMEPOS is not drawn (F58)');
+        $this->assertArrayNotHasKey('status', $furniture, 'the status bar is not on this map');
         $this->assertSame([10, 20], $furniture['title']['pos']);
-        $this->assertLessThan(490, $furniture['timestamp']['box'][1], 'the card is around the text');
-        $this->assertGreaterThanOrEqual(490, $furniture['timestamp']['box'][3]);
 
         $this->editor->apply([
-            ['op' => 'move', 'furniture' => ['timestamp:' => [20, 470], 'title:' => [30, 25]]],
+            ['op' => 'move', 'furniture' => ['status:' => [20, 400], 'title:' => [30, 25]]],
         ]);
 
         $map = $this->editor->load();
-        $this->assertEquals([20, 470], [$map->timex, $map->timey]);
+        $this->assertSame([20, 400], ViewerPanels::statusAt($map), 'moving it puts it on the map');
+        $this->assertStringContainsString('updated:map:20,400', (string) $map->get_hint('viewer_panels'));
         $this->assertEquals([30, 25], [$map->titlex, $map->titley]);
 
         // what the model says is where it was put
-        $furniture = array_column($this->drawnModel()['furniture'], null, 'kind');
-        $this->assertSame([20, 470], $furniture['timestamp']['pos']);
+        $model = $this->drawnModel();
+        $furniture = array_column($model['furniture'], null, 'kind');
+        $this->assertSame([20, 400], $furniture['status']['pos']);
+        $this->assertTrue($model['map']['status_shown']);
         $this->assertSame([30, 25], $furniture['title']['pos']);
     }
 
     public function testFurnitureStaysOnTheMapAndUnknownItemsAreRefused(): void
     {
-        // TIMEPOS 0 0 would mean "top right corner"
-        $this->editor->apply([['op' => 'move', 'furniture' => ['timestamp:' => [-5, 0]]]]);
-        $map = $this->editor->load();
-        $this->assertEquals([1, 1], [$map->timex, $map->timey]);
+        $this->editor->apply([['op' => 'move', 'furniture' => ['status:' => [-5, 0]]]]);
+        $this->assertSame([0, 0], ViewerPanels::statusAt($this->editor->load()));
 
-        // the older legends are cards now: their keys are refused
-        foreach (['legend:DEFAULT', 'widthlegend:', 'box:9', 'timestamp:LATER', 'clock:'] as $key) {
+        // the older legends and timestamps are cards or the status bar now: their keys are refused
+        foreach (['legend:DEFAULT', 'widthlegend:', 'box:9', 'timestamp:', 'timestamp:LATER', 'clock:'] as $key) {
             try {
                 $this->editor->apply([['op' => 'move', 'furniture' => [$key => [1, 1]]]]);
                 $this->fail('accepted ' . $key);
@@ -1184,14 +1189,13 @@ final class MapEditorTest extends TestCase
     public function testMapPropertiesAreSavedAndLinkDefaultsFollow(): void
     {
         $this->editor->apply([['op' => 'set_map', 'props' => [
-            'key_bg_colour' => 'none', 'title_colour' => '#102030', 'stamp_text' => 'Updated %H:%M',
+            'key_bg_colour' => 'none', 'title_colour' => '#102030',
             'title_font' => 4, 'link_bandwidth' => '10G', 'link_width' => 8,
         ]]]);
 
         $map = $this->editor->load();
         $this->assertEquals(-1, $map->colours['DEFAULT']['KEYBG']['red1']);
         $this->assertEquals([16, 32, 48], [$map->colours['DEFAULT']['TITLE']['red1'], $map->colours['DEFAULT']['TITLE']['green1'], $map->colours['DEFAULT']['TITLE']['blue1']]);
-        $this->assertSame('Updated %H:%M', $map->stamptext);
         $this->assertEquals(4, $map->titlefont);
 
         // links that had the old default follow it; a link with its own value keeps it
@@ -1205,27 +1209,29 @@ final class MapEditorTest extends TestCase
         $this->assertSame('10G', $props['link_bandwidth']);
     }
 
-    public function testDeleteHidesTheTimestampAndShowPutsItBack(): void
+    public function testDeleteHidesTheStatusBarAndShowPutsItBack(): void
     {
-        $this->editor->apply([['op' => 'move', 'furniture' => ['timestamp:' => [20, 470]]]]);
-        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['timestamp:']]]);
+        // the Add panel's tile: on the map, bottom left the first time
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['status:']]]);
+        $this->assertSame([10, 460], ViewerPanels::statusAt($this->editor->load()), 'bottom left, inside the map');
+
+        $this->editor->apply([['op' => 'move', 'furniture' => ['status:' => [20, 300]]]]);
+        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['status:']]]);
         $model = $this->drawnModel();
         $this->assertSame(['title'], array_column($model['furniture'], 'kind'), 'only the title is still drawn');
-        $this->assertFalse($model['map']['props']['stamp_shown']);
-        $this->assertStringContainsString('TIMEPOS -21 -471 ', (string) file_get_contents($this->file), 'kept in the .conf, hidden');
+        $this->assertFalse($model['map']['status_shown']);
+        $this->assertStringContainsString('updated:map:20,300:hidden', (string) file_get_contents($this->file), 'kept in the .conf, hidden');
 
         // shown again where it was
-        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['timestamp:']]]);
-        $map = $this->editor->load();
-        $this->assertEquals([20, 470], [$map->timex, $map->timey]);
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['status:']]]);
+        $this->assertSame([20, 300], ViewerPanels::statusAt($this->editor->load()));
 
-        // or at a given place (the Add panel)
+        // or at a given place
         $this->editor->apply([
-            ['op' => 'hide_furniture', 'keys' => ['timestamp:']],
-            ['op' => 'show_furniture', 'keys' => ['timestamp:'], 'at' => [200, 150]],
+            ['op' => 'hide_furniture', 'keys' => ['status:']],
+            ['op' => 'show_furniture', 'keys' => ['status:'], 'at' => [200, 150]],
         ]);
-        $map = $this->editor->load();
-        $this->assertEquals([200, 150], [$map->timex, $map->timey]);
+        $this->assertSame([200, 150], ViewerPanels::statusAt($this->editor->load()));
     }
 
     public function testBoxesAreAddedEditedMovedAndDeleted(): void
@@ -1316,19 +1322,6 @@ final class MapEditorTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
-    }
-
-    public function testATimestampAtTheDefaultCornerComesBackThere(): void
-    {
-        file_put_contents($this->file, preg_replace('/^TIMEPOS .*$/m', '', (string) file_get_contents($this->file)));
-        $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_shown' => false]]]);
-        $map = $this->editor->load();
-        $this->assertEquals([-1, -1], [$map->timex, $map->timey]);
-
-        $this->editor->apply([['op' => 'set_map', 'props' => ['stamp_shown' => true]]]);
-        $map = $this->editor->load();
-        $this->assertEquals([0, 0], [$map->timex, $map->timey]);
-        $this->assertStringNotContainsString('TIMEPOS', (string) file_get_contents($this->file));
     }
 
     public function testUnknownItemsCannotBeHidden(): void

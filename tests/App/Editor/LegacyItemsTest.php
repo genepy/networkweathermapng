@@ -27,11 +27,15 @@ final class LegacyItemsTest extends TestCase
         $this->editor = new MapEditor($this->file);
     }
 
-    /** basic.conf with $extra after its header, and its KEYPOS line replaced by $keypos */
-    private function write(string $keypos, string $extra = ''): void
+    /**
+     * basic.conf with $extra after its header, its KEYPOS line replaced by
+     * $keypos and its TIMEPOS line by $timepos (hidden by default)
+     */
+    private function write(string $keypos, string $extra = '', string $timepos = 'TIMEPOS -1 -1'): void
     {
         $conf = (string) file_get_contents(TESTS_ROOT . '/fixtures/maps/basic.conf');
         $conf = str_replace("KEYPOS DEFAULT 680 20 Trafic\n", $keypos === '' ? '' : $keypos . "\n", $conf);
+        $conf = str_replace("TIMEPOS 10 490 Rendu de test\n", $timepos === '' ? '' : $timepos . "\n", $conf);
         $conf = str_replace("SET nowarn_clipping 1\n", "SET nowarn_clipping 1\n" . $extra, $conf);
         file_put_contents($this->file, $conf);
     }
@@ -135,5 +139,40 @@ final class LegacyItemsTest extends TestCase
         // a map with cards but no legend: its legend was removed in the editor
         $this->write('', "SET box_1 total 10 40\n");
         $this->assertFalse($this->editor->convertLegacy());
+    }
+
+    public function testATimestampBecomesTheStatusBarAtItsPlace(): void
+    {
+        $this->write('', '', 'TIMEPOS 10 490 Rendu de test');
+        $this->assertTrue($this->editor->convertLegacy());
+
+        $map = $this->editor->load();
+        $this->assertSame([2, 472], ViewerPanels::statusAt($map), 'the card starts just above and left of the text');
+        $this->assertSame([-1, -1], [(int) $map->timex, (int) $map->timey]);
+        $this->assertStringContainsString('updated:map:2,472', $this->conf());
+        $this->assertStringNotContainsString('Rendu de test', $this->conf());
+
+        $after = $this->conf();
+        $this->assertFalse($this->editor->convertLegacy(), 'a second opening changes nothing');
+        $this->assertSame($after, $this->conf());
+    }
+
+    public function testNoTimeposMeansTheTopRightCorner(): void
+    {
+        $this->write('', '', '');
+        $this->assertTrue($this->editor->convertLegacy());
+        $this->assertSame([800 - 260, 10], ViewerPanels::statusAt($this->editor->load()));
+    }
+
+    public function testAnUpdateTimeCardBecomesTheStatusBar(): void
+    {
+        $this->write('', "SET box_2 updated -10 -10\nSET box_2_title Mise a jour\nSET box_1 total 10 40\n");
+        $this->assertTrue($this->editor->convertLegacy());
+
+        $conf = $this->conf();
+        $this->assertStringNotContainsString('box_2', $conf);
+        $this->assertStringContainsString('SET box_1 total 10 40', $conf);
+        // a card placed from the bottom right corner: 800 - 10 - 260, 500 - 10 - 40
+        $this->assertSame([530, 450], ViewerPanels::statusAt($this->editor->load()));
     }
 }

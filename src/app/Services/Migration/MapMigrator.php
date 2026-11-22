@@ -17,6 +17,8 @@ declare(strict_types=1);
 
 namespace App\Services\Migration;
 
+use App\Services\Editor\MapEditor;
+use App\Services\MapService;
 use App\Services\TimezoneService;
 
 class MapMigrator
@@ -289,7 +291,7 @@ class MapMigrator
     {
         [$clean] = $this->sanitize($conf);
         return $this->quietly(fn () => $this->inPublicDir(fn () => $this->inZone(function () use ($clean) {
-            [$map] = $this->read($clean);
+            $map = $this->withStatusBar($this->read($clean)[0]);
             $out = tempnam(sys_get_temp_dir(), 'wm_mig_') . '.png';
             ob_start();
             $map->DrawMap($out);
@@ -307,7 +309,7 @@ class MapMigrator
     {
         [$clean] = $this->sanitize($conf);
         return $this->quietly(fn () => $this->inPublicDir(fn () => $this->inZone(function () use ($clean, $fontUrl) {
-            [$map] = $this->read($clean);
+            $map = $this->withStatusBar($this->read($clean)[0]);
             return \WeatherMapSvg::render($map, $fontUrl ? ['font_url' => $fontUrl] : []);
         })));
     }
@@ -380,6 +382,17 @@ class MapMigrator
         } finally {
             $GLOBALS['weathermap_warnings'] = $previous;
         }
+    }
+
+    /**
+     * The engine no longer draws TIMEPOS: the preview shows the status bar
+     * the editor puts in its place, in the map's zone.
+     */
+    private function withStatusBar(\WeatherMap $map): \WeatherMap
+    {
+        MapEditor::convertTimestamps($map);
+        $map->status_bar = MapService::statusBar($map, $this->timezone ?? date_default_timezone_get(), '24h');
+        return $map;
     }
 
     /** The engine draws its timestamp with date(): in the map's zone when one is set */

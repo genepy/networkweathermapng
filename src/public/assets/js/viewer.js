@@ -183,6 +183,7 @@
         S.el.style.width = ((x1 - x0) * S.z) + 'px';
         S.el.style.height = ((y1 - y0) * S.z) + 'px';
         stage.style.transform = 'translate(' + (S.tx + x0 * S.z) + 'px,' + (S.ty + y0 * S.z) + 'px)';
+        placeMapDock();
         zoomLabel.textContent = Math.round(S.z * 100) + ' %';
         if (B.inst) B.inst.sync(S.z, S.tx, S.ty, S.w, S.h);
         updateGeo();
@@ -1993,6 +1994,8 @@
         list: null,         // the panels of the map: [{id, position, shown}], null for the usual layout
         kioskSide: false,   // the kiosk's own layout (SET kiosk_panels): it has a side panel
         docks: {},          // corner => its box
+        mapDock: null,      // the box of the status bar placed on the map (updated:map:<x>,<y>, F58)
+        mapAt: null,        // its point on the map, [x, y]
         off: null,          // the box that keeps the hidden panels
         home: null,         // where the update time, the inset and the panel close button sit in the usual layout
         sideEmpty: false,   // the map puts nothing in the side panel
@@ -2027,6 +2030,11 @@
             root.insertBefore(box, before);
             D.docks[where] = box;
         });
+        // the status bar on the map: in the viewport, moved and zoomed with the map
+        D.mapDock = document.createElement('div');
+        D.mapDock.className = 'wmv-dock-map';
+        D.mapDock.hidden = true;
+        viewport.appendChild(D.mapDock);
         D.off = document.createElement('div');
         D.off.className = 'wmv-dock-off';
         D.off.hidden = true;
@@ -2051,6 +2059,8 @@
         if (h.inset) h.inset.parent.insertBefore(insetBox, h.inset.next);
         if (h.close) h.close.parent.insertBefore(h.close.el, h.close.next);
         DOCKS.forEach(function (where) { D.docks[where].hidden = true; });
+        D.mapDock.hidden = true;
+        D.mapAt = null;
         root.classList.remove('wmv-panels-set');
         kioskSidePanel(false);
         if (panelButton) panelButton.hidden = false;
@@ -2078,8 +2088,12 @@
             if (phone && where !== 'off' && where !== 'side' && p.id !== 'updated') where = 'side';
             // no side panel in the kiosk, unless it has its own layout
             if (where === 'side' && ((kioskFrame && !D.kioskSide) || !panel)) where = 'off';
+            if (where === 'map' && !(p.at && p.at.length === 2)) where = 'bottom-left';
             if (where === 'off') D.off.appendChild(el);
-            else if (where === 'side') side.push(el);
+            else if (where === 'map') {
+                D.mapDock.appendChild(el);
+                D.mapAt = p.at;
+            } else if (where === 'side') side.push(el);
             else D.docks[where].appendChild(el);
         });
         side.forEach(function (el) { panel.appendChild(el); });
@@ -2100,6 +2114,9 @@
         // the kiosk's side panel: always open, the map fitted beside it
         if (kioskFrame) kioskSidePanel(side.length > 0);
         DOCKS.forEach(function (where) { D.docks[where].hidden = !D.docks[where].children.length; });
+        D.mapDock.hidden = !D.mapDock.children.length;
+        if (D.mapDock.hidden) D.mapAt = null;
+        placeMapDock();
         // nothing left for the side panel: no panel and no button for it
         if (panel && !kioskFrame) {
             if (panelButton) panelButton.hidden = !side.length;
@@ -2115,6 +2132,15 @@
         fillSites();
         loadTotals();
         drawTotals();
+    }
+
+    /**
+     * The status bar placed on the map (F58): its top left corner at its
+     * map point, scaled with the zoom, so it moves and zooms with the map.
+     */
+    function placeMapDock() {
+        if (!D.mapDock || D.mapDock.hidden || !D.mapAt) return;
+        D.mapDock.style.transform = 'translate(' + (S.tx + D.mapAt[0] * S.z) + 'px,' + (S.ty + D.mapAt[1] * S.z) + 'px) scale(' + S.z + ')';
     }
 
     /** The zoom buttons and the bottom left corner, measured, so the corners and the side panel make room */
