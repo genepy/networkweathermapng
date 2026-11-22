@@ -2214,6 +2214,12 @@ class WeatherMap extends WeatherMapBase {
 	}
 
 	function DrawTitle($image, $font, $colour) {
+		// TITLEPOS -1 -1 (the default, and what the editor writes to hide
+		// it): no title. The old default drew it above the picture.
+		if ($this->titlex < 0 || $this->titley < 0) {
+			return;
+		}
+
 		$string = $this->ProcessString($this->title, $this);
 
 		if ($this->get_hint('screenshot_mode')==1) {
@@ -2222,13 +2228,8 @@ class WeatherMap extends WeatherMapBase {
 
 		list($boxwidth, $boxheight) = $this->myimagestringsize($font, $string);
 
-		$x = 10;
-		$y = $this->titley - $boxheight;
-
-		if (($this->titlex >= 0) && ($this->titley >= 0)) {
-			$x = $this->titlex;
-			$y = $this->titley;
-		}
+		$x = $this->titlex;
+		$y = $this->titley;
 
 		$this->myimagestring($image, $font, $x, $y, $string, $colour);
 

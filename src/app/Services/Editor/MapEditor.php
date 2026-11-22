@@ -129,6 +129,9 @@ class MapEditor
      * Map furniture the editor can move, by image map area name:
      * area name => [kind, name]. Legends are LEGEND:<scale>.
      */
+    /** Where a title shown again (or of a new map) goes: TITLEPOS, the left end of its baseline */
+    public const TITLE_PLACE = [10, 28];
+
     private const FURNITURE_AREAS = [
         'TIMESTAMP' => ['timestamp', ''],
         'MINTIMESTAMP' => ['timestamp', 'MIN'],
@@ -411,7 +414,17 @@ class MapEditor
                 return;
 
             case 'title':
-                throw new InvalidArgumentException(__('The title cannot be hidden: it shows the map name.'));
+                // hidden as (-x - 1, -y - 1), so it comes back where it was;
+                // TITLEPOS -1 -1 (never placed) comes back top left
+                [$x, $y] = [(int) $map->titlex, (int) $map->titley];
+                $hidden = $x < 0 || $y < 0;
+                if ($shown && $hidden) {
+                    [$x, $y] = $x === -1 && $y === -1 ? self::TITLE_PLACE : [$x < 0 ? -$x - 1 : $x, $y < 0 ? -$y - 1 : $y];
+                } elseif (!$shown && !$hidden) {
+                    [$x, $y] = [-$x - 1, -$y - 1];
+                }
+                [$map->titlex, $map->titley] = [$x, $y];
+                return;
         }
 
         throw new InvalidArgumentException(__('Unknown map item: :name', ['name' => $key]));
@@ -2365,6 +2378,8 @@ class MapEditor
                 'width' => (int) $map->width,
                 'height' => (int) $map->height,
                 'title' => (string) $map->title,
+                // TITLEPOS -1 -1 (or another negative position): not drawn
+                'title_shown' => $map->titlex >= 0 && $map->titley >= 0,
                 'background' => (string) $map->background,
                 'props' => self::mapProps($map),
                 'scale' => self::scaleOut($map),

@@ -34,7 +34,7 @@ try {
     $app->run();
 } catch (Throwable $e) {
     // Handle fatal errors
-    if (getenv('APP_DEBUG') === 'true') {
+    if (App\Core\Config::env('APP_DEBUG') === 'true') {
         echo '<h1>Application Error</h1>';
         echo '<pre>' . htmlspecialchars($e->getMessage()) . '</pre>';
         echo '<pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>';

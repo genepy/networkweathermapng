@@ -22,10 +22,13 @@ class Config
     
     private function loadDefaults(): void
     {
-        // Determine root directory based on environment
-        // In Docker, APP_ROOT will be /app
-        // In dev mode, it will be the project root
-        $appRoot = dirname(__DIR__, 3);
+        // APP_ROOT holds app/, lib/ and public/: /app in Docker (src/ is
+        // copied there), src/ in a checkout, so `composer start` works
+        // without setting it. Data goes next to src/ in a checkout.
+        $appRoot = dirname(__DIR__, 2);
+        $dataRoot = basename($appRoot) === 'src' && is_file(dirname($appRoot) . '/composer.json')
+            ? dirname($appRoot) . '/data'
+            : $appRoot . '/data';
         
         $this->config = [
             // Application
@@ -40,11 +43,11 @@ class Config
             // Key that encrypts data source passwords; empty = DATA_ROOT/app.key
             'APP_KEY' => '',
             'APP_ROOT' => $appRoot,
-            'DATA_ROOT' => $appRoot . '/data',
+            'DATA_ROOT' => $dataRoot,
             
             // Database
             'DB_TYPE' => 'sqlite',
-            'DB_PATH' => $appRoot . '/data/weathermap.db',  // Will be updated in loadFromEnvironment
+            'DB_PATH' => $dataRoot . '/weathermap.db',
             'DB_HOST' => 'localhost',
             'DB_PORT' => '3306',
             'DB_NAME' => 'weathermap',
@@ -64,14 +67,34 @@ class Config
         ];
     }
     
+    /**
+     * Real environment variables, then the values of .env: Dotenv puts
+     * those in $_ENV and $_SERVER only (no putenv), and never over a real
+     * variable, so a real variable still wins.
+     */
     private function loadFromEnvironment(): void
     {
         foreach ($this->config as $key => $default) {
-            $envValue = getenv($key);
-            if ($envValue !== false) {
+            $envValue = self::env($key);
+            if ($envValue !== null) {
                 $this->config[$key] = $envValue;
             }
         }
+    }
+
+    /** A variable of the environment or of .env, null when neither sets it */
+    public static function env(string $key): ?string
+    {
+        $value = getenv($key);
+        if ($value !== false) {
+            return $value;
+        }
+        foreach ([$_ENV, $_SERVER] as $source) {
+            if (isset($source[$key]) && is_scalar($source[$key])) {
+                return (string) $source[$key];
+            }
+        }
+        return null;
     }
     
     public function get(string $key, mixed $default = null): mixed

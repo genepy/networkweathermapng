@@ -260,7 +260,6 @@ return [
     'Saved' => 'Enregistré',
     'Not saved' => 'Non enregistré',
     // map items in the Add panel
-    'The title cannot be hidden: it shows the map name.' => 'Le titre ne peut pas être masqué : il affiche le nom de la carte.',
     'Map items' => 'Éléments de la carte',
     'Link speed' => 'Débit des liens',
     'Move the overlapping bandwidth labels of the selected links apart' => 'Écarter les étiquettes de débit superposées des liens sélectionnés',

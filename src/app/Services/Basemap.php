@@ -56,7 +56,7 @@ final class Basemap
     {
         $raw = $config !== null
             ? (string) $config->get('BASEMAP_SERVERS', self::DEFAULT_SERVERS)
-            : (getenv('BASEMAP_SERVERS') !== false ? (string) getenv('BASEMAP_SERVERS') : self::DEFAULT_SERVERS);
+            : (Config::env('BASEMAP_SERVERS') ?? self::DEFAULT_SERVERS);
         $out = [];
         foreach (preg_split('/[\s,]+/', trim($raw)) ?: [] as $s) {
             if (preg_match('#^https?://[^/\s]+#i', $s)) {

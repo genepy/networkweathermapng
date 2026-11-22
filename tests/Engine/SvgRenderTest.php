@@ -51,7 +51,9 @@ final class SvgRenderTest extends TestCase
 
         // the furniture is drawn as vectors, one group per piece
         $this->assertSame(0, $xpath->query('//s:image[@class="wm-furniture"]')->length);
-        $this->assertSame(1, $xpath->query('//s:g[@data-kind="title"]')->length, 'title');
+        // TITLEPOS -1 -1 (the default) draws no title
+        $titled = $map->titlex >= 0 && $map->titley >= 0;
+        $this->assertSame($titled ? 1 : 0, $xpath->query('//s:g[@data-kind="title"]/s:text')->length, 'title');
         $this->assertSame(1, $xpath->query('//s:g[@data-kind="timestamp"][@data-name=""]/s:text')->length, 'timestamp');
     }
 

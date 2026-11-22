@@ -1292,7 +1292,7 @@ final class MapEditorTest extends TestCase
         $this->assertStringNotContainsString('TIMEPOS', (string) file_get_contents($this->file));
     }
 
-    public function testTheWidthLegendTitleAndTheTitleCannotBeHidden(): void
+    public function testTheWidthLegendTitleAndUnknownItemsCannotBeHidden(): void
     {
         $this->editor->apply([['op' => 'set_map', 'props' => ['width_legend_shown' => true, 'width_legend_title' => 'Capacity']]]);
         $props = $this->drawnModel()['map']['props'];
@@ -1303,7 +1303,7 @@ final class MapEditorTest extends TestCase
         $this->assertSame('Link speed', $this->drawnModel()['map']['props']['width_legend_title']);
         $this->assertStringNotContainsString('width_legend_title', (string) file_get_contents($this->file));
 
-        foreach (['title:', 'legend:NOPE', 'timestamp:LATER', 'clock:'] as $key) {
+        foreach (['legend:NOPE', 'timestamp:LATER', 'clock:'] as $key) {
             try {
                 $this->editor->apply([['op' => 'hide_furniture', 'keys' => [$key]]]);
                 $this->fail('accepted ' . $key);
@@ -1311,6 +1311,30 @@ final class MapEditorTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
+    }
+
+    /** F44: the title is a map item that hides and comes back where it was */
+    public function testTheTitleHidesAndComesBack(): void
+    {
+        $this->editor->apply([['op' => 'move', 'furniture' => ['title:' => [30, 25]]]]);
+        $this->editor->apply([['op' => 'hide_furniture', 'keys' => ['title:']]]);
+        $map = $this->editor->load();
+        $this->assertEquals([-31, -26], [$map->titlex, $map->titley]);
+        $model = $this->drawnModel();
+        $this->assertFalse($model['map']['title_shown']);
+        $this->assertNotContains('title', array_column($model['furniture'], 'kind'), 'not drawn');
+
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['title:']]]);
+        $map = $this->editor->load();
+        $this->assertEquals([30, 25], [$map->titlex, $map->titley]);
+        $this->assertTrue($this->drawnModel()['map']['title_shown']);
+
+        // never placed (TITLEPOS -1 -1): shown top left
+        file_put_contents($this->file, preg_replace('/^TITLEPOS .*$/m', '', (string) file_get_contents($this->file)));
+        $this->assertFalse($this->drawnModel()['map']['title_shown']);
+        $this->editor->apply([['op' => 'show_furniture', 'keys' => ['title:']]]);
+        $map = $this->editor->load();
+        $this->assertEquals(MapEditor::TITLE_PLACE, [$map->titlex, $map->titley]);
     }
 
     public function testAnEmptyTemplateIsKeptOnSave(): void

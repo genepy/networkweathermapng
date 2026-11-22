@@ -2128,10 +2128,8 @@
         nodes = nodes.filter(function (n) { return !n.locked; });
         links = links.filter(function (l) { return !l.locked; });
         var zones = selected('zone'), ops = [];
-        var furniture = selectedFurniture().filter(function (f) { return f.kind !== 'title'; });
-        if (selectedFurniture().some(function (f) { return f.kind === 'title'; })) {
-            toast(t('The title is not deleted: it shows the map name.'), true);
-        }
+        // a card is deleted; the title, legends and timestamps of the older keywords are hidden
+        var furniture = selectedFurniture();
         if (nodes.length || links.length) {
             ops.push({ op: 'delete', nodes: nodes.map(function (n) { return n.name; }), links: links.map(function (l) { return l.name; }) });
         }
@@ -2139,15 +2137,15 @@
             ops.push({ op: 'delete_zones', names: zones.map(function (z) { return z.name; }) });
         }
         if (furniture.length) {
-            // legends and timestamps stay in the .conf, hidden; the map panel or the Add panel shows them again
+            // the title, legends and timestamps stay in the .conf, hidden; the map items list or the map panel shows them again
             ops.push({ op: 'hide_furniture', keys: furniture.map(function (f) { return key(f.kind, f.name); }) });
         }
         send(ops, []);
     }
 
-    /** Legends and timestamps that Delete can take off the map (not the title) */
+    /** Map items that Delete can take off the map (the title is hidden) */
     function deletableFurniture() {
-        return selectedFurniture().filter(function (f) { return f.kind !== 'title'; }).length;
+        return selectedFurniture().length;
     }
 
     /** Default titles of new boxes, written in the .conf in the editor's language */
@@ -3657,7 +3655,8 @@
      * The map items on the map, listed under the Add panel's tiles: a click
      * on the name selects the item and shows it, the bin removes it from the
      * map (a card is deleted; a legend or timestamp of the older keywords is
-     * hidden and stays in the .conf). One undo step each.
+     * hidden and stays in the .conf). The title comes first, with a switch
+     * that shows or hides it (TITLEPOS). One undo step each.
      */
     function renderMapItems() {
         var list = $('#map-items');
@@ -3667,7 +3666,7 @@
             if (f.kind !== 'title') { items.push([k, f]); }
         });
         items.sort(function (a, b) { return a[1].box[1] - b[1].box[1] || a[1].box[0] - b[1].box[0]; });
-        list.replaceChildren.apply(list, items.map(function (it) {
+        var rows = items.map(function (it) {
             var k = it[0], f = it[1], name = furnitureName(f);
             var sub = f.kind === 'box' && f.props && f.props.title && f.props.title !== name ? f.props.title : '';
             return h('li', { 'class': 'map-item' + (state.selection.has(k) ? ' selected' : '') }, [
@@ -3687,8 +3686,36 @@
                     }
                 }, [icon('trash')])
             ]);
-        }));
-        list.hidden = !items.length;
+        });
+        var title = titleItem();
+        if (title) { rows.unshift(title); }
+        list.replaceChildren.apply(list, rows);
+        list.hidden = !rows.length;
+    }
+
+    /** The title's row of the map items: select it, show or hide it */
+    function titleItem() {
+        var m = state.model && state.model.map;
+        if (!m) { return null; }
+        var k = key('title', ''), f = state.furniture.get(k), shown = m.title_shown !== false && !!f;
+        return h('li', { 'class': 'map-item' + (state.selection.has(k) ? ' selected' : '') + (shown ? '' : ' hidden-item') }, [
+            h('button', {
+                type: 'button', 'class': 'map-item-name', title: shown ? t('Select it on the map') : t('Hidden: not drawn on the map'), disabled: !shown,
+                onclick: function () {
+                    state.selection = new Set([k]);
+                    centerOn((f.box[0] + f.box[2]) / 2, (f.box[1] + f.box[3]) / 2);
+                    refresh();
+                }
+            }, [h('span', { text: t('Title') }), m.title ? h('small', { text: m.title }) : null].filter(Boolean)),
+            h('button', {
+                type: 'button', 'class': 'map-item-remove', role: 'switch', 'aria-checked': shown ? 'true' : 'false',
+                title: shown ? t('Hide the title') : t('Show the title'), 'aria-label': shown ? t('Hide the title') : t('Show the title'),
+                onclick: function () {
+                    state.selection.delete(k);
+                    send([{ op: shown ? 'hide_furniture' : 'show_furniture', keys: [k] }], shown ? [] : [k]);
+                }
+            }, [icon(shown ? 'eye' : 'eye-off')])
+        ]);
     }
 
     function boxTypeName(type) {
