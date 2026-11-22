@@ -258,12 +258,6 @@ button.btn {
     height: auto;
 }
 
-.map-meta {
-    margin-top: 15px;
-    font-size: 13px;
-    color: var(--text-muted);
-}
-
 /* Breadcrumb */
 .breadcrumb {
     font-size: 14px;

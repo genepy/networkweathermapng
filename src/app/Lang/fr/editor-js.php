@@ -292,7 +292,6 @@ return [
     'Remove the icon :name from the library?' => 'Retirer l’icône :name de la bibliothèque ?',
     'Icon :name removed' => 'Icône :name retirée',
     ':n icon(s) added' => ':n icône(s) ajoutée(s)',
-    'General' => 'Général',
     'Link defaults' => 'Liens par défaut',
     'None' => 'Aucune',
     'Background colour' => 'Couleur de fond',

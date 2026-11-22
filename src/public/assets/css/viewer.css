@@ -984,9 +984,6 @@
 /* the small legend bar of the update time, only while the legend is in the side panel */
 .wmv-legend-bar-off .wmv-status .wmv-legend { display: none; }
 
-/* The page around: the "Last updated" line is in the state */
-.map-view-page.svg-view .map-meta { display: none; }
-
 /* ------------------------------------------------------------------
    Fullscreen: the browser's fullscreen on the map, or the fullscreen
    page of a kiosk link. The controls fade out when nothing moves. */

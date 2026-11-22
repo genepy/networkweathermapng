@@ -52,7 +52,6 @@ class MapService
         foreach ($dirs as $dir) {
             if (!is_dir($dir)) {
                 mkdir($dir, 0755, true);
-                error_log("MapService: Created directory: $dir");
             }
         }
     }
@@ -113,9 +112,9 @@ class MapService
         // Create default config file
         $configContent = $this->generateDefaultConfig($data);
         $configPath = $this->configPath . '/' . $data['config_file'];
-        error_log("MapService::createMap writing config to: $configPath");
-        $bytes = file_put_contents($configPath, $configContent);
-        error_log("MapService::createMap wrote $bytes bytes to config file");
+        if (file_put_contents($configPath, $configContent) === false) {
+            error_log("MapService::createMap could not write $configPath");
+        }
         
         // Get next sort order
         $result = $this->db->queryOne("SELECT COALESCE(MAX(sort_order), 0) + 1 as next_order FROM maps");
@@ -481,7 +480,6 @@ class MapService
         }
         
         $configPath = $this->configPath . '/' . $map['config_file'];
-        error_log("MapService::renderMap looking for config at: $configPath");
         if (!file_exists($configPath)) {
             error_log("MapService::renderMap config file not found: $configPath");
             return ['error' => 'Config file not found'];
@@ -524,9 +522,7 @@ class MapService
                 $wmap->context = 'standalone';
             
                 // Read the config
-                error_log("MapService::renderMap reading config from: $configPath");
                 $wmap->ReadConfig($configPath);
-                error_log("MapService::renderMap config read successfully");
             
                 // Read data from data sources
                 if ($readData) {
@@ -550,8 +546,6 @@ class MapService
                 }
             
                 // Write the image
-                error_log("MapService::renderMap writing image to: $imagePath");
-                error_log("MapService::renderMap writing thumbnail to: $thumbPath");
                 // The SVG is collected during the same drawing pass as the PNG
                 $collector = new \WeatherMapSvg($wmap, [
                     'font_url' => static fn ($n) => '/map/' . $id . '/font/' . (int) $n,
@@ -567,7 +561,6 @@ class MapService
                 } finally {
                     \WeatherMapSvg::$active = $previous;
                 }
-                error_log("MapService::renderMap image and thumbnail written successfully");
                 self::writeAtomic($svgPath, (string) $collector->toSvg());
 
                 if ($readData) {
@@ -723,27 +716,7 @@ class MapService
                 && self::isFresh($jsonTime, $configTime, time(), $maxAge);
         };
 
-        if (!$fresh()) {
-            $lock = @fopen($this->config->getCachePath() . '/render-' . $id . '.lock', 'c');
-            if ($lock) {
-                flock($lock, LOCK_EX);
-            }
-            try {
-                if (!$fresh()) {
-                    ob_start();
-                    try {
-                        $this->renderMap($id, true, true);
-                    } finally {
-                        ob_end_clean();
-                    }
-                }
-            } finally {
-                if ($lock) {
-                    flock($lock, LOCK_UN);
-                    fclose($lock);
-                }
-            }
-        }
+        $this->renderUnlessFresh($id, $fresh);
 
         if (!is_file($paths['svg'])) {
             return null;
@@ -753,6 +726,74 @@ class MapService
             'svg' => (string) file_get_contents($paths['svg']),
             'summary' => $this->mapStatus($map) ?? [],
         ];
+    }
+
+    /**
+     * The picture of the map with live data (PNG, JPG or GIF, and its
+     * thumbnail when $thumb), as liveRender() does for the SVG: the last
+     * one while it is newer than the configuration and younger than the
+     * refresh interval, else drawn again, one render at a time per map.
+     * The path of the file, null when the map cannot be drawn.
+     */
+    public function liveImage(int $id, bool $thumb = false): ?string
+    {
+        $map = $this->getMap($id);
+        if (!$map) {
+            return null;
+        }
+        $configPath = $this->configPath . '/' . $map['config_file'];
+        if (!is_file($configPath)) {
+            return null;
+        }
+
+        $base = $this->outputPath . '/' . pathinfo($map['config_file'], PATHINFO_FILENAME);
+        $format = $this->config->get('MAP_OUTPUT_FORMAT', 'png');
+        $files = [$base . '.' . $format, $base . '.thumb.' . $format];
+        $maxAge = (int) $this->config->get('MAP_REFRESH_INTERVAL', 300);
+        $this->renderUnlessFresh($id, function () use ($files, $configPath, $maxAge): bool {
+            clearstatcache();
+            $configTime = (int) filemtime($configPath);
+            foreach ($files as $file) {
+                if (!self::isFresh(is_file($file) ? (int) filemtime($file) : null, $configTime, time(), $maxAge)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        $file = $files[$thumb ? 1 : 0];
+        return is_file($file) ? $file : null;
+    }
+
+    /**
+     * Draw the map with live data unless $fresh() says the last render
+     * can still be shown. One render at a time per map: the others wait
+     * for the lock, then reuse what it drew.
+     */
+    private function renderUnlessFresh(int $id, callable $fresh): void
+    {
+        if ($fresh()) {
+            return;
+        }
+        $lock = @fopen($this->config->getCachePath() . '/render-' . $id . '.lock', 'c');
+        if ($lock) {
+            flock($lock, LOCK_EX);
+        }
+        try {
+            if (!$fresh()) {
+                ob_start();
+                try {
+                    $this->renderMap($id, true, true);
+                } finally {
+                    ob_end_clean();
+                }
+            }
+        } finally {
+            if ($lock) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+        }
     }
 
     /**

@@ -101,7 +101,8 @@
                 <div class="row-menu-items">
                     <button type="button" data-act="copy-kiosk"><?= icon('link') ?><?= e__('Copy kiosk link') ?></button>
                     <a href="/map/<?= $mapId ?>/svg/download" download="<?= htmlspecialchars($fileName) ?>.svg"><?= icon('download') ?><?= e__('Download as SVG') ?></a>
-                    <a href="/map/<?= $mapId ?>/image" download="<?= htmlspecialchars($fileName) ?>.png"><?= icon('download') ?><?= e__('Download PNG') ?></a>
+                    <?php $imageFormat = (string) $config->get('MAP_OUTPUT_FORMAT', 'png'); $imageFormat = isset(\App\Controllers\MapController::IMAGE_TYPES[$imageFormat]) ? $imageFormat : 'png'; ?>
+                    <a href="/map/<?= $mapId ?>/image" download="<?= htmlspecialchars($fileName . '.' . $imageFormat) ?>"><?= icon('download') ?><?= e__('Download as :format', ['format' => strtoupper($imageFormat)]) ?></a>
                 </div>
             </details>
             <?php if ($canEdit): ?>
@@ -232,12 +233,6 @@
             <div class="wmv-minimap-view"></div>
             <div class="wmv-minimap-mark" hidden></div>
         </div>
-    </div>
-
-    <div class="map-meta">
-        <?php if ($lastRun !== null): ?>
-        <span class="last-updated" title="<?= htmlspecialchars($timezone) ?>"><?= e__('Last updated:') ?> <?= htmlspecialchars($lastRun) ?></span>
-        <?php endif; ?>
     </div>
 </div>
 
