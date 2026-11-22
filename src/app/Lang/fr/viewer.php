@@ -16,7 +16,6 @@ return [
     'Time shown' => 'Période affichée',
     'The map with the latest data' => 'La carte avec les dernières données',
     'Last :hours h' => 'Dernières :hours h',
-    'Map settings' => 'Réglages de la carte',
     'Copy kiosk link' => 'Copier le lien kiosque',
     'Download as :format' => 'Télécharger en :format',
     'Download as SVG' => 'Télécharger en SVG',

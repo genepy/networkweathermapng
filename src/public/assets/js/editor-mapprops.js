@@ -1,6 +1,8 @@
 /**
- * Map properties of the SVG editor, shown in the properties panel when
- * nothing is selected: sections that fold for the background colour and
+ * The live sections of the Map panel of the SVG editor (F53), shown in the
+ * properties panel when nothing is selected, on the Look tab (and the
+ * viewer panels and focus areas on the Viewer & kiosk tab, see
+ * map_settings.php and mapPanel() in editor-svg.js): sections that fold for the background colour and
  * theme, the title, legend and timestamp texts, fonts and colours, the
  * colour scale of the links (with presets), the link defaults (the DEFAULT
  * link), the basemap, the fonts, the focus areas and the viewer panels
@@ -717,8 +719,8 @@
     }
 
     var SECTIONS = [
-        ['appearance', t('Background colour and theme')], ['title', t('Title')], ['legend', t('Map items')], ['scale', t('Link colours')],
-        ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['basemap', t('Basemap')], ['fonts', t('Fonts')],
+        ['appearance', t('Background colour and theme')], ['basemap', t('Basemap')], ['title', t('Title')], ['legend', t('Map items')],
+        ['scale', t('Link colours')], ['timestamp', t('Timestamp')], ['links', t('Link defaults')], ['fonts', t('Fonts')],
         ['focus', t('Focus areas')], ['panels', t('Viewer panels')]
     ];
 
@@ -785,16 +787,31 @@
         return details;
     }
 
-    /** Every section, for the map panel */
-    function sections() {
-        return SECTIONS.map(function (s) { return section(s[0], false); }).filter(Boolean);
+    /** The sections of the Viewer & kiosk tab of the Map panel; the others are on its Look tab */
+    var VIEWER_SECTIONS = ['panels', 'focus'];
+
+    /** The tab of the Map panel (map_settings.php) that holds a section */
+    function tabOf(id) {
+        return VIEWER_SECTIONS.indexOf(id) >= 0 ? 'display' : 'look';
+    }
+
+    /** The sections of one tab ('look' or 'display') of the Map panel, or every one */
+    function sections(tab) {
+        return SECTIONS.filter(function (s) { return !tab || tabOf(s[0]) === tab; })
+            .map(function (s) { return section(s[0], false); }).filter(Boolean);
     }
 
     /** Selects nothing, so the panel shows the map; opens a section if asked */
     function open(id) {
         ed.state.selection.clear();
         ed.refresh();
-        if (id) { saveFold(id, true); ed.renderInspector(); }
+        if (id) {
+            saveFold(id, true);
+            // the tab of the Map panel; once the panel is loaded when it is not yet
+            ed.mapTab = tabOf(id);
+            if (!ed.mapFormReady) { ed.pendingOpen = id; }
+            ed.renderInspector();
+        }
         var app = document.getElementById('app');
         if (app.classList.contains('no-inspector')) { ed.toast(t('The properties panel is hidden: show it from ⋯ › Toolbars and panels.')); }
         var target = id ? document.querySelector('#inspector .map-sec[data-section="' + id + '"]') : document.querySelector('#inspector-body input');

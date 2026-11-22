@@ -8,8 +8,10 @@ use App\Services\Editor\MapThemes;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Feedback F9: Map settings open in a drawer over the editor instead of
- * another page, and colour inputs open the application's colour picker.
+ * Feedback F9 and F53: the Map panel (map_settings.php) shows in the
+ * properties panel of the editor, with the same tabs as the drawer of the
+ * viewer and the Maps page; colour inputs open the application's colour
+ * picker.
  */
 final class EditorPanelsTest extends TestCase
 {
@@ -18,16 +20,35 @@ final class EditorPanelsTest extends TestCase
         return (string) file_get_contents(dirname(TESTS_ROOT) . '/' . $path);
     }
 
-    public function testMapSettingsOpenInADrawerOverTheEditor(): void
+    public function testTheMapPanelIsTheSameInTheEditor(): void
     {
         $view = self::read('src/app/Views/editor/svg.php');
-        $this->assertMatchesRegularExpression('#<a role="menuitem" href="/editor/maps/edit/[^"]+"[^>]* data-map-settings#', $view);
+        // ⋯ › Map… opens the panel in the properties panel; no second "Map settings" entry
+        $this->assertStringContainsString('data-cmd="map-properties"', $view);
+        $this->assertStringNotContainsString('data-map-settings', $view);
         $this->assertStringContainsString("asset('/assets/js/map-settings.js')", $view);
 
+        $panel = self::read('src/app/Views/editor/map_settings.php');
+        foreach (['general', 'look', 'display', 'recording', 'access'] as $tab) {
+            $this->assertStringContainsString('id="ms-' . $tab . '"', $panel, $tab);
+        }
+        foreach (['general', 'look', 'display'] as $slot) {
+            $this->assertStringContainsString('data-ms-slot="' . $slot . '"', $panel, 'the editor fills ' . $slot);
+        }
+        $svg = self::read('src/public/assets/js/editor-svg.js');
+        $this->assertStringContainsString('WMMapSettings.load(cfg.mapId)', $svg);
+        $this->assertStringContainsString("fillSlot(form, 'look'", $svg);
+
         $script = self::read('src/public/assets/js/map-settings.js');
-        // the editor is not reloaded: it closes the drawer and redraws the map
+        // the editor is not reloaded: it redraws the map and fetches the panel again
         $this->assertStringContainsString("body.append('inline', '1')", $script);
         $this->assertStringContainsString('editor.run(editor.load)', $script);
+        $this->assertStringContainsString('editor.mapFormSaved()', $script);
+
+        // the per-map tables of Settings lead to the matching tab
+        foreach (['kiosk' => 'display', 'recording' => 'recording', 'timezone' => 'display'] as $page => $tab) {
+            $this->assertStringContainsString('data-map-settings data-tab="' . $tab . '"', self::read('src/app/Views/admin/' . $page . '.php'), $page);
+        }
 
         // no saved message waiting for the next page when the editor stays open
         $controller = self::read('src/app/Controllers/MapManagementController.php');
@@ -70,16 +91,15 @@ final class EditorPanelsTest extends TestCase
 
     public function testBasemapIsOneClickAway(): void
     {
-        // F31: the Basemap section opens from the menu, the layers, the Add panel and the background library
+        // F31, F53: the Basemap section of Map › Look, Ctrl+K and one link in the background library
         $view = self::read('src/app/Views/editor/svg.php');
-        $this->assertSame(3, substr_count($view, 'data-cmd="basemap"'));
+        $this->assertSame(0, substr_count($view, 'data-cmd="basemap"'), 'no duplicate entries in the layers, the ⋯ menu or the Add panel');
         $this->assertStringContainsString('class="bg-basemap-open"', $view);
 
         $props = self::read('src/public/assets/js/editor-mapprops.js');
         $this->assertStringContainsString("ed.commands.basemap = openBasemap;", $props);
         $this->assertStringContainsString("get('open')", $props);
         $this->assertStringContainsString("cmd('basemap')", self::read('src/public/assets/js/editor-palette.js'));
-        $this->assertStringContainsString("row(t('Basemap'), basemapButton)", self::read('src/public/assets/js/editor-svg.js'));
         $this->assertStringContainsString('.bg-basemap-open', self::read('src/public/assets/js/editor-backgrounds.js'));
 
         // New map > On a web map, then the editor opens on the Basemap section

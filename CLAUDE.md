@@ -28,7 +28,9 @@ re-explore the repository. Keep it short and up to date.
 - Editor (SVG): `SvgEditorController` + `src/app/Views/editor/svg.php`,
   `src/app/Services/Editor/MapEditor.php` (config edits),
   `ConfigHistory.php` (savepoints), `src/public/assets/js/editor-*.js`.
-  Map properties sections live in `editor-mapprops.js`; `ed.openMapProperties('<id>')`
+  The Map panel (`Views/editor/map_settings.php`, tabs, `map-settings.js`) is also the
+  editor's properties panel with nothing selected (`mapPanel()` fills its
+  `data-ms-slot` boxes). Its live sections live in `editor-mapprops.js`; `ed.openMapProperties('<id>')`
   or `/editor/edit/<id>?open=<section>` opens one (e.g. `basemap`).
 - Kiosk / cycle: `KioskService`, `Views/maps/cycle.php`, `assets/js/kiosk.js`,
   admin page `Views/admin/kiosk.php`.

@@ -31,7 +31,7 @@ return [
     'Open' => 'Ouvrir',
     'Close' => 'Fermer',
     'Edit “:name”' => 'Modifier « :name »',
-    'Map settings for “:name”' => 'Réglages de la carte « :name »',
+    'Map panel of “:name”' => 'Panneau Carte de « :name »',
     'New map' => 'Nouvelle carte',
     'Start kiosk' => 'Lancer le kiosque',
     'Start kiosk with group “:name”' => 'Lancer le kiosque avec le groupe « :name »',

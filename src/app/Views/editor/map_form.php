@@ -47,7 +47,7 @@ $name = match ($action) {
                 <option value="<?= (int) $m['id'] ?>"><?= e__('A copy of :name', ['name' => $m['name']]) ?></option>
                 <?php endforeach; ?>
             </select>
-            <small class="text-muted" data-web-only hidden><?= e__('The editor opens on Map properties > Basemap: pick the area and the zoom, or another web map. Nodes you give a location sit on their point.') ?></small>
+            <small class="text-muted" data-web-only hidden><?= e__('The editor opens on Map › Look › Basemap: pick the area and the zoom, or another web map. Nodes you give a location sit on their point.') ?></small>
             <?php if ($auth->isAdmin()): ?>
             <small class="text-muted"><?= e__('To bring maps from another Weathermap, use') ?> <a href="/admin/migration"><?= e__('Migration') ?></a>.</small>
             <?php endif; ?>

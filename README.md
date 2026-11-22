@@ -22,9 +22,9 @@ NetworkWeathermapNG is based on the popular Cacti Weathermap plugin but redesign
 - **Visual Map Editor** - Create and edit maps through web interface
 - **Multiple Maps** - Organize maps into groups
 - **Kiosk** - Auto-rotate through maps for NOC displays, with a zoom and a display time per map (Settings > Kiosk), a progress bar and controls that fade out
-- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Settings > Time zone, or the map's *Map settings*)
-- **Clock** - Times are written with a 24-hour or 12-hour clock: *Automatic* follows the language of the interface (24-hour in French, 12-hour in English, from each language's `_meta.php`); Settings > Maps & rendering sets it for every map, a map's *Map settings* > *Display & kiosk* for that map. An explicit `TIMEPOS` text keeps its own format
-- **Map Management** - Create, duplicate, reorder, export and delete maps (with all their data) from the Maps page; every setting of a map (name, group, time zone, kiosk, recording, access) in one *Map settings* panel
+- **Time zone** - Dates shown on maps use a default time zone, and each map can have its own (Settings > Time zone, or the map's *Map* panel)
+- **Clock** - Times are written with a 24-hour or 12-hour clock: *Automatic* follows the language of the interface (24-hour in French, 12-hour in English, from each language's `_meta.php`); Settings > Maps & rendering sets it for every map, a map's *Map* panel > *Viewer & kiosk* for that map. An explicit `TIMEPOS` text keeps its own format
+- **Map Management** - Create, duplicate, reorder, export and delete maps (with all their data) from the Maps page; every setting of a map (name, group, look, viewer and kiosk, recording, access) in one *Map* panel, the same in the editor, the map view and the Maps page
 - **Migration** - Import maps from the Cacti plugin or older Weathermap versions
 - **User Authentication** - Built-in authentication system
 - **Translations** - English and French built in, chosen in the user menu or with `APP_LOCALE`; [add your language](TRANSLATING.md)
@@ -411,10 +411,8 @@ NODE paris
 
 A node with `SET geo` is placed on its point whenever the map is read, so
 changing the centre or the zoom moves it with the basemap; nodes without it
-keep their position. In the editor: *Map properties > Basemap* (presets,
-addresses, centre, zoom, *Frame the located nodes*), one click away from
-the *Basemap* row of the map panel (under *Background*), *⋯ > Basemap (web
-map)*, the *Layers* menu, the *Backgrounds* fold of the Add panel, the
+keep their position. In the editor: *Map > Look > Basemap* (presets,
+addresses, centre, zoom, *Frame the located nodes*), also opened from the
 background library and Ctrl+K "basemap"; and *Location* in the
 node panel (latitude and longitude, *Locate where it is*, *Remove the
 location*). Nodes added on a basemap are located where they are dropped;
@@ -451,7 +449,7 @@ nodes deep in the map.
 The editor zooms into a basemap the same way (up to 64×): located nodes
 keep their 100 % size on the screen, links get thinner, bandwidth labels
 keep their 100 % size too and go deep in, as in the viewer, so the sites of a city can be split and
-edited, and they look the same size as in the viewer. *Map properties >
+edited, and they look the same size as in the viewer. *Map > Look >
 Basemap > Clusters* picks how close located nodes merge in the viewer:
 
 ```
@@ -516,11 +514,10 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
 - **Top bar**: back to the maps, the map name, whether the last change is
   saved (*Saving…*, *Saved*, *Not saved*, in a fixed width so the bar does
   not move), undo and redo; in the middle the
-  `Ctrl+K` search (see below); on the right *Layers*, *Text mode*, a ⋯ menu (*Map properties*, *Map settings*,
+  `Ctrl+K` search (see below); on the right *Layers*, *Text mode*, a ⋯ menu (*Map…*,
   *Toolbars and panels*, *Keyboard shortcuts*, theme, the map in a new tab)
-  and *View*, which opens the map view. *Map settings* opens in a drawer
-  over the editor: saving it closes the drawer and redraws the map (a new
-  name is also its drawn title) without leaving the editor.
+  and *View*, which opens the map view. *Map…* shows the *Map* panel in the
+  properties panel (see below).
 - **Colour picker**: every colour field opens the application's own picker
   (light and dark themes) instead of the browser's: a saturation and
   brightness area (arrow keys move it, Shift for bigger steps), a hue
@@ -630,19 +627,25 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   is hidden the same way (`TITLEPOS -11 -29`; `TITLEPOS -1 -1`, the default,
   draws no title). Ctrl+Z undoes it.
 - **Edit**: the right panel changes every selected item at once.
-- **Map properties**: with nothing selected, the right panel shows the map:
-  name, size, background, basemap (a click opens its section), then sections that fold, each with its value on
-  its row (*Background colour and theme*, *Title*, *Map items* (the font
-  and colours of every card), *Link colours*, *Timestamp*, *Link defaults*,
-  *Basemap*, *Fonts*, *Focus areas*, *Viewer panels*). *Timestamp* has a
-  box that shows or hides it on the map. A field is saved when
+- **Map panel**: with nothing selected, the right panel shows the *Map*
+  panel, with the tabs of the one in the map view and the Maps page:
+  *General* (name, group, *Visible to viewers*, the `.conf` file, the size),
+  *Look* (the background image, then sections that fold, each with its
+  value on its row: *Background colour and theme*, *Basemap*, *Title*,
+  *Map items* (the font and colours of every card), *Link colours*,
+  *Timestamp*, *Link defaults*, *Fonts*), *Viewer & kiosk* (time zone,
+  clock, kiosk zoom and display time, then *Viewer panels* and *Focus
+  areas*), *Recording* and *Access*. The fields of *General*, *Viewer &
+  kiosk*, *Recording* and *Access* are saved with *Save* (*Cancel* puts
+  them back); the size and the sections are saved when they change. *Timestamp* has a
+  box that shows or hides it on the map. A section field is saved when
   it changes, as one step Ctrl+Z undoes; the colour scale is saved with its
   *Apply the colours* button. The browser remembers which sections are
   open. A selected legend, title, timestamp or link speed legend shows its
   own section. The
   width of all the links of a map is set in *Link defaults* (a number of
   pixels, or `auto` to follow the bandwidth: `WIDTH auto` in `LINK DEFAULT`).
-- **Link colours**: the *Link colours* section of *Map properties* edits the
+- **Link colours**: the *Link colours* section of *Map > Look* edits the
   colour scale of the links (`SCALE` lines of the DEFAULT scale, in % of the
   bandwidth): one row per step, with a preview bar. Presets start from the
   classic Weathermap colours, a traffic light, a colour-blind safe scale
@@ -753,14 +756,14 @@ SVG, so zooming stays sharp, and saves each change straight into the map's
   font shipped in `src/public/fonts` at any size, plus the built-in pixel
   fonts (1 to 5, which the engine always draws itself, even when a
   `FONTDEFINE` uses their number). Picking one writes a `FONTDEFINE` for that file and size (or reuses
-  the one the map has). *Fonts* in *Map properties* lists the fonts the map
+  the one the map has). *Fonts* in *Map > Look* lists the fonts the map
   uses and has *One font for the whole map*: after a confirmation, every
   font of the map becomes that family, at the same size, bold where it was
   bold; a single item can still get its own font afterwards. New maps use
   Inter (Regular and SemiBold), an open-source TrueType font, so link
   comments can follow curves; the *Night* theme also sets Inter.
 - **Themes**: the theme cards of the *Background colour and theme*
-  section of *Map properties* restyle the whole map in one click, saved at
+  section of *Map > Look* restyle the whole map in one click, saved at
   once and undone with Ctrl+Z. Every theme shares one design base (the
   timestamp pill and pill link labels), so only the
   palette changes: *Night* (an idea from the Nine IX traffic map: a dark
@@ -872,9 +875,9 @@ badge. Hovering a thumbnail (always shown on touch screens) shows **Edit**
 and a **⋯** menu; the list view has the same menu on each row:
 
 - **New map**: empty (size of your choice) or a copy of an existing map.
-- **Settings**: the *Map settings* panel, a drawer on the right (also the
-  ⚙ button of the map view and *Map settings* in the editor's top bar),
-  with every setting of the map on four tabs:
+- **Map…**: the *Map* panel, a drawer on the right (also the ⚙ button of
+  the map view; in the editor it is the properties panel with nothing
+  selected), with every setting of the map on five tabs:
   - *General*: name, group, *Visible to viewers*, the `.conf` file and
     renaming it after the name, *Delete map…*. The name and the title drawn
     on the map are one thing: renaming a map changes its `TITLE`, and
@@ -882,14 +885,19 @@ and a **⋯** menu; the list view has the same menu on each row:
     in the list. Maps made before this, whose name and drawn title differ,
     are listed at the top of the Maps page; their panel asks which one to
     keep (without a choice both stay as they are).
-  - *Display & kiosk*: the map's time zone (type to search, empty for the
-    default one), its zoom and display time in the kiosk.
+  - *Look*: in the editor, the background, the basemap, the title, the
+    link colours, the fonts and the style of the map items; elsewhere
+    *Open in the editor*.
+  - *Viewer & kiosk*: the map's time zone (type to search, empty for the
+    default one), its clock, its zoom and display time in the kiosk; in the
+    editor also the viewer and kiosk panels and the focus areas.
   - *Recording*: record the map or not (while recording is allowed in
     Settings > Recording; switching it off deletes its images).
   - *Access*: who sees the map, read from the permissions: administrators
     and editors, the viewers of its group, viewers given the map itself.
   The Settings pages *Time zone*, *Kiosk* and *Recording* keep the
-  defaults and the tables that set many maps at once.
+  defaults and the tables that set many maps at once; a map's name there
+  opens its *Map* panel on the matching tab.
 - **Reorder**: drag a thumbnail by its grip (or focus the grip and use the
   arrow keys) to move it among the maps of its group; the order is the one
   of the Maps page and the kiosk for everybody.
@@ -926,7 +934,7 @@ left; without JavaScript the same forms are pages of their own.
 ## Viewing maps
 
 - **Maps** (`/`): the maps as thumbnails or as a list (the switch at the top right; your browser remembers the choice). The chips filter them: *All*, *Favourites*, one chip per group with its number of maps, and *Over 80 %* (maps whose most loaded link is at 80 % or more); the chosen chip is kept in the address (`?filter=favourites`, `?filter=busy`, `?group_id=2`). On phones the chips scroll sideways and the bottom bar has a *Favourites* entry. Type in the search box to filter maps by name (Enter opens the first match). The star on a card makes the map a favourite for your account; favourites come first. The badge on each card shows the state of the map: the colour and load of its most loaded link at the last render ("Max load 87 %" on hover). Maps without a recent render are refreshed in the background.
-- **Map view** (`/map/{id}`): the map fills the page under the top bar and is drawn as SVG. Its controls float over it: a bar at the top (*Maps* › map name with a *Live* badge, *Find a node* (`/`), the *Live* / *Last 24 h* switch when the map is recorded, fullscreen (`F`), ⚙ *Map settings* and **Edit** (`E`) for editors, and a ⋯ menu: *Copy kiosk link*, *Download as SVG*, *Download as PNG* (or the image format of Settings)), the zoom at the bottom right (+, the zoom value (click for 100 %), −, fit) and the state at the bottom left (last update with the map's time zone, the most loaded link, a warning such as *Observium unreachable: 12 links without data* when a data source failed in the last render (the kiosk shows it as a small badge, the Maps page in the load badge), and the colour legend of the map's scale). Zoom with the mouse wheel or a pinch, move by dragging, or use the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows). "Find a node" centres the map on a node by label or name. Clicking a node (or finding it) zooms onto it and pins its card at the top right (a sheet at the bottom on a phone): its links, busiest first, with their IN and OUT load and the node at the other end (click one to go there), *Open its page* when the node has a URL, and, when some of its links read a data source, the same traffic graph for one of them (the busiest first, another one picked in the list above the graph); the rest of the map dims and the minimap rings the node, as it does for any node under the pointer. `Esc`, the × or a click anywhere but on a node or the view controls closes the card; the hover card tapped on a touch screen and the list of a cluster close on a click outside them too. The address keeps the node (`#n=<name>`), so a shared link opens on it. The side panel (the panel button in the bar, or `P`; open by default on wide screens, then remembered in the browser) floats on the left: the nodes grouped by site (`SET site`, a plain list when the map has none) with the load of their busiest link (the button in the heading collapses or expands every site at once, remembered in the browser), a click zooms onto a node and pins its card, the target button frames a whole site, and hovering a row highlights the node on the map and in the minimap while hovering a node on the map highlights its row; the map's total traffic (sum of the IN and OUT rates of the links that count, see *Sites and total traffic*) with a graph (IN above the line, OUT below), its peak and 95th percentile: the recorded hours of a recorded map, a demo day for a map of static data, otherwise a note that recording shows it (see *Total traffic*); and the colour legend, one row per band. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
+- **Map view** (`/map/{id}`): the map fills the page under the top bar and is drawn as SVG. Its controls float over it: a bar at the top (*Maps* › map name with a *Live* badge, *Find a node* (`/`), the *Live* / *Last 24 h* switch when the map is recorded, fullscreen (`F`), ⚙ *Map…* and **Edit** (`E`) for editors, and a ⋯ menu: *Copy kiosk link*, *Download as SVG*, *Download as PNG* (or the image format of Settings)), the zoom at the bottom right (+, the zoom value (click for 100 %), −, fit) and the state at the bottom left (last update with the map's time zone, the most loaded link, a warning such as *Observium unreachable: 12 links without data* when a data source failed in the last render (the kiosk shows it as a small badge, the Maps page in the load badge), and the colour legend of the map's scale). Zoom with the mouse wheel or a pinch, move by dragging, or use the keyboard (`+`, `-`, `0` fit, `1` actual size, arrows). "Find a node" centres the map on a node by label or name. Clicking a node (or finding it) zooms onto it and pins its card at the top right (a sheet at the bottom on a phone): its links, busiest first, with their IN and OUT load and the node at the other end (click one to go there), *Open its page* when the node has a URL, and, when some of its links read a data source, the same traffic graph for one of them (the busiest first, another one picked in the list above the graph); the rest of the map dims and the minimap rings the node, as it does for any node under the pointer. `Esc`, the × or a click anywhere but on a node or the view controls closes the card; the hover card tapped on a touch screen and the list of a cluster close on a click outside them too. The address keeps the node (`#n=<name>`), so a shared link opens on it. The side panel (the panel button in the bar, or `P`; open by default on wide screens, then remembered in the browser) floats on the left: the nodes grouped by site (`SET site`, a plain list when the map has none) with the load of their busiest link (the button in the heading collapses or expands every site at once, remembered in the browser), a click zooms onto a node and pins its card, the target button frames a whole site, and hovering a row highlights the node on the map and in the minimap while hovering a node on the map highlights its row; the map's total traffic (sum of the IN and OUT rates of the links that count, see *Sites and total traffic*) with a graph (IN above the line, OUT below), its peak and 95th percentile: the recorded hours of a recorded map, a demo day for a map of static data, otherwise a note that recording shows it (see *Total traffic*); and the colour legend, one row per band. Bandwidth labels are hidden when they would be too small to read. A minimap shows where you are when the map does not fit. The zoom and position are kept in the address (`#z=2&x=..&y=..`): a shared link opens on the same view. Zooming never changes the saved map.
 - Hovering a link shows its card: the link speed as a badge (its `BANDWIDTH`, `10G`), "A ↔ B" with the link name and the sites of its ends (`SET site`), the current IN and OUT rates with their load, and, when the link reads a data source (set up with the editor's picker, or an Observium port `TARGET`), its traffic over *1 day*, *1 week* or *1 month* with IN above the middle line and OUT below it, the peak and the average of the period. The graph is drawn with uPlot: the pointer on it shows the time and the IN and OUT values at that moment, dragging across it zooms on that part of the period (the peak and average then follow it), and a double-click or *Reset zoom* shows the whole period again. The period you pick is remembered in the browser; the card waits a moment when the pointer leaves the link so you can reach the switch. The series come from `/map/{id}/link/{linkId}/traffic?range=day|week|month` (at most 360 averaged points, cached 5 minutes; Zabbix sends its hourly trends for a week or a month). A link with an `OVERLIBGRAPH` shows that picture instead (about 40 % of the window width, 500 to 1400 px). Clicking a link opens its INFOURL in a new tab; a node opens its card, with *Open its page*.
 - The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
 - **History**: when a map is recorded (Settings > Recording: off for every map until switched on, and the admin can turn recording off for all), its viewer has a **Live** / **Last 24 h** switch (`H`; the hours follow the retention): a player goes through the frames of the last hours (play/pause with Space, a time slider, speed 1× to 10×, **Live** or Esc to come back), and the badge next to the name says *Playback*. A background recorder (`php bin/record.php`) draws each recorded map with live data every interval (5 minutes by default) and keeps the frames for the retention time (24 hours by default) in `DATA_ROOT/recordings/<map id>/`, about 1 to 20 KB each. The recorder only runs while at least one map is recorded: it exits as soon as no map is left (or recording is turned off), and the application starts it again when a map is switched on in Settings > Recording or when a recorded map is viewed. Only one recorder runs at a time. In the Docker image, supervisor also starts it at boot; it exits at once when there is nothing to record. Outside Docker, the same start on demand works as long as PHP may run `exec`; otherwise run `php bin/record.php --once` from cron every minute.
@@ -943,7 +951,7 @@ lists the editor's commands and the items of the map, see *Map editor*):
 - **Nodes** of every map, by label or name: opens the map zoomed onto the
   node, its card pinned (`/map/{id}#n=<name>`).
 - **Settings** pages (administrators).
-- **Commands**: *Edit* and *Map settings* for the maps found (and for the
+- **Commands**: *Edit* and the *Map* panel for the maps found (and for the
   map you are on), *New map*, *Start kiosk* (for each group), favourite and
   busy maps, the theme, *Change password*, *Log out*.
 
