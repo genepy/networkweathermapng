@@ -118,13 +118,15 @@ services:
       ADMIN_USER: ${WEATHERMAP_ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${WEATHERMAP_ADMIN_PASSWORD:?}
       TESTBED_OBSERVIUM_DB_PASSWORD: ${WEATHERMAP_DB_PASSWORD:?}
+      # the testbed map joins the demo maps (seed.php and the Maps page)
+      DEMO_MAPS_EXTRA_DIR: /testbed/demo
     ports:
       - "${BIND_ADDRESS:-0.0.0.0}:${WEATHERMAP_PORT:-8080}:80"
     volumes:
       - weathermap:/app/data
       - ./weathermap/php.ini:/usr/local/etc/php/conf.d/zz-testbed.ini:ro
       - ./weathermap/seed.php:/testbed/seed.php:ro
-      - ./weathermap/demo-map.conf:/testbed/demo-map.conf:ro
+      - ./weathermap/demo:/testbed/demo:ro
     tmpfs:
       - /tmp
       - /app/logs

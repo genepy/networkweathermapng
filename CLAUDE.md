@@ -39,7 +39,8 @@ re-explore the repository. Keep it short and up to date.
   admin page `Views/admin/kiosk.php`.
 - Maps page: `MapManagementController`, `Views/maps/index.php`, `maplist.js`.
 - Demo maps: `src/examples/maps/*.conf`, installed by `Services/DemoMaps.php`
-  (`bin/demo-maps.php`, or `POST /editor/maps/demos` from the Maps page).
+  (`bin/demo-maps.php`, or `POST /editor/maps/demos` from the Maps page),
+  plus `DEMO_MAPS_EXTRA_DIR` (the testbed map, `deploy/testbed/weathermap/demo/`).
 - Data sources: `Services/Observium/`, `ZabbixService.php`, `src/lib/Zabbix/`.
 - Total traffic graph (side panel, total box, kiosk): `Services/TotalTrafficSeries.php`
   decides its source (recorded frames, demo day for static data, or none),

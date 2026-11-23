@@ -1,9 +1,9 @@
 <?php
 /**
- * Testbed seed: adds the Observium data source, a demo map of the
- * simulated devices and the demo maps shipped with the application
- * (examples/maps). Safe to run again: the source is updated, an existing
- * map is left as it is.
+ * Testbed seed: adds the Observium data source and the demo maps: those
+ * shipped with the application (examples/maps) and the map of the
+ * simulated devices (demo/testbed.conf, DEMO_MAPS_EXTRA_DIR). Safe to run
+ * again: the source is updated, an existing map is left as it is.
  *
  *   php seed.php   (in the weathermap container, as www-data)
  */
@@ -26,7 +26,6 @@ use App\Services\GroupService;
 use App\Services\MapService;
 
 const SOURCE_NAME = 'Observium (testbed)';
-const MAP_NAME = 'Testbed';
 
 $config = new Config();
 $database = new Database($config);
@@ -69,21 +68,10 @@ if ($existing) {
     echo "Data source added: " . SOURCE_NAME . "\n";
 }
 
+// the demo maps: those of examples/maps, drawn from static values, and
+// the map of the simulated devices (weathermap/demo/testbed.conf, through
+// DEMO_MAPS_EXTRA_DIR), the same ones as the Maps page's demo button
 $maps = new MapService($database, $config);
-$names = array_column($maps->getAllMaps(), 'name');
-if (in_array(MAP_NAME, $names, true)) {
-    echo "Map already there: " . MAP_NAME . "\n";
-} else {
-    $id = $maps->createMap(['name' => MAP_NAME, 'width' => 900, 'height' => 560]);
-    $content = (string) $maps->getMapConfig($id);
-    $content = substr($content, 0, (int) strpos($content, '# Add your nodes and links below'));
-    $content = str_replace('SET box_1 legend 10 10', 'SET box_1 legend 10 40', $content);
-    $content .= (string) file_get_contents(__DIR__ . '/demo-map.conf');
-    $maps->saveMapConfig($id, $content);
-    echo "Map added: " . MAP_NAME . "\n";
-}
-
-// the demo maps of examples/maps, drawn from static values
 foreach ((new DemoMaps($maps, new GroupService($database)))->install() as $name => $added) {
     echo ($added ? 'Map added: ' : 'Map already there: ') . $name . "\n";
 }
