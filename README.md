@@ -76,9 +76,14 @@ or Observium:
 
 | Map | What it shows |
 |-----|---------------|
-| *France sites* | A geographic basemap with nodes placed by latitude and longitude; several sites in Paris, Lyon, Marseille and Toulouse merge into numbered clusters until you zoom in (in the viewer and the editor alike), with the city inset on hover; round badge nodes, pill labels, traffic flow, pulsing saturated links, sites in the side panel |
-| *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, link widths by speed, comments along curved links |
-| *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing links, long-haul links that curve with their comments, a speed legend |
+| *France sites* | A geographic basemap with nodes placed by latitude and longitude; several sites in Paris, Lyon, Marseille and Toulouse merge into numbered clusters until you zoom in (in the viewer and the editor alike), with the city inset on hover; round badge nodes, a colour-blind safe scale listed step by step, pill labels, small arrow heads, traffic flow, pulsing saturated links, sites in the side panel |
+| *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, a smooth scale with its gradient legend, link widths by speed with their card, small arrow heads, traffic flow and pulsing saturated links |
+| *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing traffic bars and pills, transit and peering link groups with the total traffic card, long-haul links that curve, focus areas, the Barlow Semi Condensed font |
+
+Each one uses a shipped font for every text (Inter, or Barlow Semi Condensed)
+and puts the status bar on the map instead of a timestamp. Adding the demo
+maps only adds the missing ones: delete an older demo map first to get its
+current version.
 
 An administrator adds them to a "Demo maps" group with *Add the demo maps*
 on the empty Maps page, *Add demo maps* in the ⋯ menu of the Maps page (shown
