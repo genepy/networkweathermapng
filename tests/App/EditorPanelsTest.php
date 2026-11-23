@@ -106,4 +106,16 @@ final class EditorPanelsTest extends TestCase
         $this->assertStringContainsString('<option value="web">', self::read('src/app/Views/editor/map_form.php'));
         $this->assertStringContainsString("'?open=basemap'", self::read('src/app/Controllers/MapManagementController.php'));
     }
+
+    public function testLongHelpGoesBehindInfoButtons(): void
+    {
+        // F69: section explanations and long help lines become i buttons (the existing tips)
+        $js = self::read('src/public/assets/js/editor-svg.js');
+        $this->assertStringContainsString('function tuckHelp(root)', $js);
+        $this->assertStringContainsString(".mapprops-explain:not([data-tucked])", $js);
+        $this->assertStringContainsString("span.hint:not([data-tucked]), .form-group > small.text-muted:not([data-tucked])", $js);
+        $this->assertStringContainsString("observe(box, { childList: true, subtree: true })", $js);
+        // the button has a name and the tip is announced
+        $this->assertStringContainsString("'aria-label': t('About :name', { name: name }), 'aria-describedby': text.id", $js);
+    }
 }

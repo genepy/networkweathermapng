@@ -3096,6 +3096,91 @@
         zone_labelpos: t('Which corner or side of the zone its label sits in. Drag the label of a single zone to put it anywhere else.')
     };
 
+    /**
+     * Long help goes behind i buttons (F69): the explanation of a section
+     * of the map properties next to its title, the help line of a field
+     * next to its name. The help element stays in the page, hidden, as
+     * the text of the tip, so code that updates it still does. Short
+     * hints (units, states) stay in view.
+     */
+    var HINT_MIN = 40;
+
+    function infoButton(text, name) {
+        if (!text.id) { text.id = 'tip-text-' + (++tipSeq); }
+        text.hidden = true;
+        text.classList.add('tip-text');
+        text.setAttribute('data-tucked', '');
+        return h('button', { type: 'button', 'class': 'info-tip', 'data-tip': text.id, 'aria-label': t('About :name', { name: name }), 'aria-describedby': text.id, text: 'i' });
+    }
+
+    /** The name of a label: its tip name, else its own text */
+    function labelName(label) {
+        var tn = label.querySelector('.tip-name > span');
+        if (tn) { return tn.textContent.trim(); }
+        for (var n = label.firstChild; n; n = n.nextSibling) {
+            if (n.nodeType === 3 && n.textContent.trim()) { return n.textContent.trim(); }
+        }
+        return label.textContent.trim().slice(0, 40);
+    }
+
+    function tuckHelp(root) {
+        if (!root || !root.querySelectorAll) { return; }
+        root.querySelectorAll('.mapprops-explain:not([data-tucked])').forEach(function (p) {
+            var sec = p.closest('details.map-sec');
+            var sum = sec ? sec.querySelector(':scope > summary') : null;
+            if (!sum || !sum.firstElementChild) { return; }
+            // one button per section; a section drawn again gives it its new text
+            var old = sum.querySelector('.info-tip');
+            if (old) {
+                infoButton(p, '');
+                old.setAttribute('data-tip', p.id);
+                old.setAttribute('aria-describedby', p.id);
+                return;
+            }
+            var name = sum.firstElementChild.textContent.trim();
+            sum.firstElementChild.after(infoButton(p, name));
+        });
+        // the help lines of the properties panels, and those of the Map panel's own fields
+        root.querySelectorAll('span.hint:not([data-tucked]), .form-group > small.text-muted:not([data-tucked])').forEach(function (hint) {
+            if (hint.textContent.trim().length < HINT_MIN) { return; }
+            var label = hint.closest('label');
+            if (!label) {
+                var prev = hint.previousElementSibling;
+                label = prev && prev.tagName === 'LABEL' ? prev : null;
+            }
+            if (!label && hint.parentNode.classList.contains('form-group')) {
+                label = hint.parentNode.querySelector(':scope > label');
+            }
+            if (!label || !label.firstChild) { return; }
+            var btn = infoButton(hint, labelName(label));
+            var tn = label.querySelector(':scope > .tip-name');
+            if (tn) { tn.appendChild(btn); return; }
+            // after the name of the label, before its control
+            var first = label.firstChild;
+            if (first.nodeType === 3 || (first.nodeType === 1 && !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(first.tagName))) {
+                var wrap = h('span', { 'class': 'tip-name' });
+                label.insertBefore(wrap, first);
+                wrap.appendChild(first);
+                wrap.appendChild(btn);
+            } else {
+                label.appendChild(btn);
+            }
+        });
+    }
+
+    (function watchHelp() {
+        var box = document.getElementById('inspector');
+        if (!box || !window.MutationObserver) { return; }
+        var pending = false;
+        new MutationObserver(function () {
+            if (pending) { return; }
+            pending = true;
+            // once the panel is drawn, before it is painted
+            Promise.resolve().then(function () { pending = false; tuckHelp(box); });
+        }).observe(box, { childList: true, subtree: true });
+        tuckHelp(box);
+    })();
+
     function showTip(btn) {
         var src = document.getElementById(btn.getAttribute('data-tip'));
         if (!src) { return; }
