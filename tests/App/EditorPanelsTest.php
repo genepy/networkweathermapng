@@ -118,4 +118,14 @@ final class EditorPanelsTest extends TestCase
         // the button has a name and the tip is announced
         $this->assertStringContainsString("'aria-label': t('About :name', { name: name }), 'aria-describedby': text.id", $js);
     }
+
+    public function testLinksFollowTheirNodeWhileItIsDragged(): void
+    {
+        // F71: no dashed preview; the link is drawn again live under the nodes
+        $js = self::read('src/public/assets/js/editor-svg.js');
+        $this->assertStringContainsString('function liveLinks(moved)', $js);
+        $this->assertStringContainsString("g.classList.toggle('drag-hidden', one);", $js);
+        $this->assertStringNotContainsString("el('polyline', { 'class': 'ghost', points: curvePoints(linkPath(l, moved)", $js);
+        $this->assertStringContainsString('#map g.drag-hidden { visibility: hidden; }', self::read('src/public/assets/css/editor-svg.css'));
+    }
 }

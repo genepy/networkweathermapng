@@ -726,14 +726,7 @@
         var drag = state.drag;
         var moved = drag && drag.type === 'move' && drag.started ? drag.moved : null;
 
-        // Links being dragged with their nodes
-        if (moved) {
-            state.links.forEach(function (l) {
-                if (moved.nodes[l.a] || moved.nodes[l.b]) {
-                    el('polyline', { 'class': 'ghost', points: curvePoints(linkPath(l, moved), l.viastyle !== 'angled') }, overlay);
-                }
-            });
-        }
+        // links dragged with their nodes follow them live in the map (liveLinks, F71)
 
         renderOverlaps(moved);
         renderClusterGroups();
@@ -1686,10 +1679,71 @@
             } else if (isFurniture(kind)) {
                 place(g, moved.furniture.indexOf(key(kind, name)) >= 0);
             } else if (kind === 'link') {
+                // a link between two moved nodes moves whole; a link with one
+                // moved end is drawn again live under the nodes (F71)
                 var l = state.links.get(name);
-                g.classList.toggle('dimmed', !!(l && (moved.nodes[l.a] || moved.nodes[l.b]) && shift));
+                var both = !!(l && moved.nodes[l.a] && moved.nodes[l.b]);
+                var one = !!(l && !both && (moved.nodes[l.a] || moved.nodes[l.b]) && shift);
+                place(g, both);
+                g.classList.toggle('drag-hidden', one);
+                g.classList.remove('dimmed');
             }
         });
+        liveLinks(shift ? moved : null);
+    }
+
+    /**
+     * The links with one moved end, while their node is dragged (F71): a
+     * line in the colour and width of each half of the link, under the
+     * nodes, from node to node through its bend points. The server draws
+     * the real link once the node is dropped.
+     */
+    function liveLinks(moved) {
+        var old = mapLayer.querySelector('g.drag-links');
+        if (old) { old.remove(); }
+        if (!moved) { return; }
+        var box = el('g', { 'class': 'drag-links' });
+        state.links.forEach(function (l) {
+            if (!(moved.nodes[l.a] || moved.nodes[l.b]) || (moved.nodes[l.a] && moved.nodes[l.b])) { return; }
+            var g = mapLayer.querySelector('g[data-kind="link"][data-name="' + CSS.escape(l.name) + '"]');
+            var arrows = g ? g.querySelectorAll('.wm-arrow') : [];
+            var colour = function (i) {
+                var a = arrows[Math.min(i, arrows.length - 1)];
+                var f = a ? a.getAttribute('fill') : null;
+                return f && f !== 'none' && f.indexOf('url(') !== 0 ? f : '#9aa3ad';
+            };
+            var w = arrows[0] ? 2 * (parseFloat(arrows[0].getAttribute('data-w')) || 2) : 4;
+            var pts = curveOf(linkPath(l, moved), l.viastyle !== 'angled').map(function (c) { return [c.x, c.y]; });
+            if (pts.length < 2) { return; }
+            var half = halfway(pts);
+            var oneway = arrows.length < 2;
+            [[pts.slice(0, half.i + 1).concat([half.p]), 0], [[half.p].concat(pts.slice(half.i + 1)), oneway ? 0 : 1]].forEach(function (part) {
+                el('polyline', {
+                    'class': 'drag-link', points: part[0].map(function (q) { return q[0] + ',' + q[1]; }).join(' '),
+                    // as thin as the links deep in a basemap (--wm-geo-k)
+                    stroke: colour(part[1]), style: 'stroke-width: calc(var(--wm-geo-k, 1) * ' + w + 'px)'
+                }, box);
+            });
+        });
+        var firstNode = mapLayer.querySelector('g[data-kind="node"]');
+        var parent = firstNode ? firstNode.parentNode : mapLayer;
+        parent.insertBefore(box, firstNode || null);
+    }
+
+    /** The point half way along a polyline, and the index of the segment it is on */
+    function halfway(pts) {
+        var len = 0, i;
+        for (i = 1; i < pts.length; i++) { len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); }
+        var left = len / 2;
+        for (i = 1; i < pts.length; i++) {
+            var d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+            if (d >= left && d > 0) {
+                var f = left / d;
+                return { i: i - 1, p: [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f] };
+            }
+            left -= d;
+        }
+        return { i: pts.length - 2, p: pts[pts.length - 1] };
     }
 
     function noMove() { return { dx: 0, dy: 0, nodes: {}, zones: [], furniture: [] }; }
