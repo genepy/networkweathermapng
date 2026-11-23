@@ -931,6 +931,15 @@ class MapService
             if (is_string($ds) && $ds !== '') {
                 $item['ds'] = $ds;
             }
+            // nothing feeds it (F66: no TARGET) or its source gave nothing
+            // (F67: why), for the hover card
+            $nodata = $link->data_state();
+            if ($nodata !== null) {
+                $item['nodata'] = $nodata;
+                if ($nodata === 'down') {
+                    $item['reason'] = (string) $link->data_reason ?: 'no-value';
+                }
+            }
             if (!self::countsInTotal($link)) {
                 // left out of the total traffic of the viewer's side panel
                 $item['total'] = false;

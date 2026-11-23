@@ -130,6 +130,10 @@ class WeatherMapLink extends WeatherMapItem {
 	var $drawn_labelmove = null;
 	// pixels across the link added to each label when the link is too short for both side by side
 	var $labels_across = array(0, 0);
+	// what fed the link at the last ReadData (F66, F67): null (data), 'none'
+	// (no TARGET) or 'down' (a TARGET but no value), and why it is down
+	var $data_state = null;
+	var $data_reason = '';
 
 	var $labeloffset_in;
 	var $labeloffset_out;
@@ -630,11 +634,40 @@ class WeatherMapLink extends WeatherMapItem {
 	}
 
 	/**
+	 * Whether the link shows no traffic because nothing feeds it: 'none'
+	 * when it has no TARGET (F66), 'down' when it has one but the last
+	 * ReadData got no value for it (F67), else null. Such a link is grey,
+	 * without bandwidth labels or flow; a down link carries a warning mark.
+	 */
+	function data_state() {
+		if (count($this->targets) == 0) {
+			return 'none';
+		}
+		return $this->data_state === 'down' ? 'down' : null;
+	}
+
+	/** The grey of a link without data: the 0 to 0 step of its scale, else light grey */
+	function idle_colour() {
+		$scales = $this->owner !== null && isset($this->owner->colours[$this->usescale]) ? $this->owner->colours[$this->usescale] : array();
+		foreach ($scales as $step) {
+			if ((!isset($step['special']) || $step['special'] == 0) && isset($step['bottom'], $step['top'])
+				&& $step['bottom'] == 0 && $step['top'] == 0 && isset($step['red1'])) {
+				return new Colour($step['red1'], $step['green1'], $step['blue1']);
+			}
+		}
+		return new Colour(192, 192, 192);
+	}
+
+	/**
 	 * The fill colours of the IN and OUT halves: the scale colour of each
 	 * direction, or for a single-colour link the colour of
 	 * max(in, out) on both.
 	 */
 	function fill_colours() {
+		if ($this->data_state() !== null) {
+			$grey = $this->idle_colour();
+			return array($grey, $grey);
+		}
 		if ($this->single_colour()) {
 			$colour = $this->colours[$this->busiest_direction()];
 			return array($colour, $colour);
@@ -718,6 +751,45 @@ class WeatherMapLink extends WeatherMapItem {
 			wimagefilledpolygon($image, bar_separator_stroke($x, $y, $ux, $uy, $w, $side), 4, $gd);
 		}
 		WeatherMapSvg::separator(null);
+	}
+
+	/**
+	 * The mark of a down link (F67): a small white pill with a warning
+	 * triangle, centred on ($x, $y). In the SVG it says where its centre
+	 * is, so the viewer draws it smaller deep in a basemap.
+	 */
+	function draw_down_mark($image, &$map, $x, $y) {
+		$svg = WeatherMapSvg::$active;
+		if ($svg) {
+			$svg->role = 'link-down';
+			$svg->at = array($x, $y);
+		}
+		$hw = 11;
+		$hh = 8;
+		$points = array();
+		$steps = 10;
+		for ($i = 0; $i <= $steps; $i++) {
+			$a = -M_PI / 2 + M_PI * $i / $steps;
+			$points[] = round($x + ($hw - $hh) + $hh * cos($a), 2);
+			$points[] = round($y + $hh * sin($a), 2);
+		}
+		for ($i = 0; $i <= $steps; $i++) {
+			$a = M_PI / 2 + M_PI * $i / $steps;
+			$points[] = round($x - ($hw - $hh) + $hh * cos($a), 2);
+			$points[] = round($y + $hh * sin($a), 2);
+		}
+		$n = count($points) / 2;
+		wimagefilledpolygon($image, $points, $n, myimagecolorallocate($image, 255, 255, 255));
+		wimagepolygon($image, $points, $n, myimagecolorallocate($image, 160, 166, 175));
+		// the triangle, amber, and its exclamation mark
+		wimagefilledpolygon($image, array($x, $y - 6, $x + 6.5, $y + 5, $x - 6.5, $y + 5), 3, myimagecolorallocate($image, 245, 158, 11));
+		$ink = myimagecolorallocate($image, 33, 37, 41);
+		wimagefilledpolygon($image, array($x - 0.9, $y - 3, $x + 0.9, $y - 3, $x + 0.6, $y + 0.8, $x - 0.6, $y + 0.8), 4, $ink);
+		wimagefilledpolygon($image, array($x - 0.9, $y + 2.2, $x + 0.9, $y + 2.2, $x + 0.9, $y + 3.8, $x - 0.9, $y + 3.8), 4, $ink);
+		if ($svg) {
+			$svg->role = null;
+			$svg->at = null;
+		}
 	}
 
 	function Draw($image, &$map) {
@@ -871,9 +943,11 @@ class WeatherMapLink extends WeatherMapItem {
 			$this->draw_bar_separator($image, max($link_in_width, $link_out_width));
 		}
 
-		// SET link_flow 1: the paths the viewer moves its spots along
+		// SET link_flow 1: the paths the viewer moves its spots along (none
+		// on a link that nothing feeds)
 		$svg = WeatherMapSvg::$active;
-		if ($svg && $svg->accepts($image)) {
+		$nodata = $this->data_state();
+		if ($svg && $svg->accepts($image) && $nodata === null) {
 			$svg->flow($this, $link_in_width, $link_out_width);
 		}
 
@@ -938,6 +1012,24 @@ class WeatherMapLink extends WeatherMapItem {
 		# imageline($image, $q3_x+20*cos(deg2rad($q3_angle)),$q3_y-20*sin(deg2rad($q3_angle)), $q3_x-20*cos(deg2rad($q3_angle)), $q3_y+20*sin(deg2rad($q3_angle)), $this->owner->selected );
 
 		# warn("$q1_angle $q3_angle\n");
+
+		// a link without data has no bandwidth labels; a down one has its
+		// warning mark where its arrows meet, drawn with the labels (F67)
+		if ($nodata !== null) {
+			if ($nodata == 'down' && $curvelength > 0) {
+				$at = $this->drawn_split !== null ? $this->drawn_split : $curvelength / 2;
+				list($mx, $my) = find_distance_coords_angle($this->curvepoints, $at);
+				if ($mx !== null) {
+					$args = array($mx, $my);
+					if (is_array($map->pending_bwlabels)) {
+						$map->pending_bwlabels[] = array($this, $args, 'down');
+					} else {
+						$this->draw_down_mark($image, $map, ...$args);
+					}
+				}
+			}
+			$q1_x = null;
+		}
 
 		if (!is_null($q1_x)) {
 			$outbound = array (

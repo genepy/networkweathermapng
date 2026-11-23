@@ -149,7 +149,7 @@ final class SvgRenderTest extends TestCase
     {
         $file = TESTS_OUTPUT . '/slanted.conf';
         file_put_contents($file, "WIDTH 300\nHEIGHT 300\nNODE a\n\tPOSITION 20 30\nNODE b\n\tPOSITION 270 250\n"
-            . "LINK DEFAULT\n\tWIDTH 3\n\tOUTLINECOLOR 255 255 255\nLINK ab\n\tNODES a b\n");
+            . "LINK DEFAULT\n\tWIDTH 3\n\tOUTLINECOLOR 255 255 255\nLINK ab\n\tNODES a b\n\tTARGET static:10M\n");
         $svg = \WeatherMapSvg::render($this->load($file));
         $this->assertSame(1, preg_match('/<g class="wm-link"[^>]*data-name="ab"[^>]*>\s*<polygon class="wm-arrow" points="([^"]+)"[^>]*stroke=/', $svg, $m), 'the arrow with its outline');
         $this->assertMatchesRegularExpression('/\d\.\d/', $m[1], 'fractional points');
@@ -619,7 +619,7 @@ final class SvgRenderTest extends TestCase
         $doc = new \DOMDocument();
         $this->assertTrue($doc->loadXML($svg));
         $this->assertStringContainsString('<filter id="wm-glow"', $svg);
-        $this->assertStringContainsString('.wm-link:not(.wm-hot):hover .wm-arrow{filter:url(#wm-glow)}', $svg);
+        $this->assertStringContainsString('.wm-link:not(.wm-hot):not(.wm-nodata):hover .wm-arrow{filter:url(#wm-glow)}', $svg);
 
         file_put_contents($file, $conf);
         $plain = $this->load($file);
@@ -1173,6 +1173,44 @@ final class SvgRenderTest extends TestCase
         // the two-way link keeps a green OUT half and a red IN half
         $this->assertSame([0, 255, 0], $rgb(95, 50));
         $this->assertSame([255, 0, 0], $rgb(305, 50));
+    }
+
+    public function testLinksWithoutDataAreGreyWithoutLabels(): void
+    {
+        $map = $this->load(TESTS_ROOT . '/fixtures/maps/nodata-links.conf');
+
+        $this->assertNull($map->links['fed']->data_state());
+        $this->assertNull($map->links['idle']->data_state(), 'zero traffic from a source is data');
+        $this->assertSame('none', $map->links['unfed']->data_state());
+        $this->assertSame('down', $map->links['down']->data_state());
+        $this->assertSame('no-value', $map->links['down']->data_reason);
+        $this->assertSame(1, (int) $map->nodata_links, 'only the down link counts as without data');
+
+        $svg = \WeatherMapSvg::render($map);
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($svg));
+        $xpath = new \DOMXPath($doc);
+        $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+        $group = static fn (string $name): string => '//s:g[@data-kind="link"][@data-name="' . $name . '"]';
+
+        $this->assertSame(1, $xpath->query($group('unfed') . '[contains(@class, "wm-nodata")]')->length);
+        $this->assertSame(0, $xpath->query($group('unfed') . '[contains(@class, "wm-down")]')->length);
+        $this->assertGreaterThan(0, $xpath->query($group('down') . '[contains(@class, "wm-down")]')->length);
+        $this->assertSame(0, $xpath->query($group('fed') . '[contains(@class, "wm-nodata")]')->length);
+
+        // grey (the 0 to 0 step is missing here: light grey), no labels, no flow
+        foreach (['unfed', 'down'] as $name) {
+            foreach ($xpath->query($group($name) . '/s:polygon[@class="wm-arrow"]') as $arrow) {
+                $this->assertSame('#c0c0c0', $arrow->getAttribute('fill'), "$name is grey");
+            }
+            $this->assertSame(0, $xpath->query($group($name) . '//*[contains(@class, "wm-bwlabel")]')->length, "$name has no labels");
+            $this->assertSame(0, $xpath->query($group($name) . '//*[contains(@class, "wm-flow")]')->length);
+        }
+        $this->assertGreaterThan(0, $xpath->query($group('idle') . '//*[contains(@class, "wm-bwlabel")]')->length);
+
+        // the down link carries its warning mark, the other ones none
+        $this->assertGreaterThan(0, $xpath->query($group('down') . '/*[@class="wm-link-down"][@data-at]')->length);
+        $this->assertSame(0, $xpath->query($group('unfed') . '/*[@class="wm-link-down"]')->length);
     }
 
     private function load(string $file): \WeatherMap

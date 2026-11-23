@@ -143,6 +143,21 @@ Data sources are configured via the web UI and stored in the database:
   red, the row says when it was tested, and *Request and response* shows the
   request sent and the answer received. The ⋯ menu edits or deletes it
 
+**Links without data.** A link drawn without traffic data says so on the map
+(PNG, SVG, viewer, kiosk):
+
+- **No data source**: the link has no `TARGET` (its own or from `LINK
+  DEFAULT`). It is grey (the colour of the `0 0` step of its scale, else light
+  grey), without bandwidth labels, flow or glow.
+- **Down**: the link has a `TARGET` but the last render got no value for it:
+  its data source is unreachable or failed to read it, or no source knows the
+  target, or the source has nothing for it. It is grey, without labels or
+  flow, with a small ⚠ mark where its arrows meet, and counts in the
+  status bar's warning (*n links without data*). A link whose source answers
+  0 is not down: it keeps the colour of 0 %.
+
+The hover card of such a link says why it has no data.
+
 
 ## Map Configuration
 

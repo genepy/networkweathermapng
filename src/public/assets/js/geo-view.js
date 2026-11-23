@@ -278,7 +278,7 @@
      */
     function labels(svg) {
         var out = [];
-        svg.querySelectorAll('.wm-bwlabel-in[data-at], .wm-bwlabel-out[data-at]').forEach(function (el) {
+        svg.querySelectorAll('.wm-bwlabel-in[data-at], .wm-bwlabel-out[data-at], .wm-link-down[data-at]').forEach(function (el) {
             var at = el.getAttribute('data-at').split(' ').map(Number);
             if (at.length !== 2 || !isFinite(at[0]) || !isFinite(at[1])) { return; }
             // how far the label follows its arrows as the nodes shrink (data-move)

@@ -1323,7 +1323,8 @@
             title: d.name, a: (d.labels && d.labels[0]) || d.a || '', b: (d.labels && d.labels[1]) || d.b || '', sites: sites, speed: d.speed || null,
             traffic: d.traffic || '', ds: d.traffic || d.graph ? '' : (d.ds || ''),
             graph: d.traffic ? '' : (d.graph || ''),
-            in: d.in, out: d.out, inpct: d.inpct, outpct: d.outpct, hint: hint
+            in: d.in, out: d.out, inpct: d.inpct, outpct: d.outpct, hint: hint,
+            nodata: d.nodata || '', reason: d.reason || ''
         }, e);
         return true;
     }

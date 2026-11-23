@@ -1203,6 +1203,33 @@ class WeatherMap extends WeatherMapBase {
 		$this->source_errors[$key]['links']++;
 	}
 
+	/** The items each data source failed to read so far in this render, by source */
+	function source_failures() {
+		$n = array();
+		foreach ($this->source_errors as $key => $error) {
+			$n[$key] = (int) $error['links'];
+		}
+		return $n;
+	}
+
+	/**
+	 * Why a link got no data, from the source failures before it was read:
+	 * source-down (its source is unreachable), source-error (its source
+	 * failed to read it) or no-value (nothing for its target, F67)
+	 */
+	function nodata_reason($before) {
+		$reason = 'no-value';
+		foreach ($this->source_failures() as $key => $n) {
+			if ($n > (isset($before[$key]) ? $before[$key] : 0)) {
+				if (!empty($this->source_errors[$key]['down'])) {
+					return 'source-down';
+				}
+				$reason = 'source-error';
+			}
+		}
+		return $reason;
+	}
+
 	/** Whether a source was found unreachable earlier in this render */
 	function source_down($key) {
 		return !empty($this->source_errors[$key]['down']);
@@ -1242,11 +1269,19 @@ class WeatherMap extends WeatherMapBase {
 				wm_debug("");
 				wm_debug("ReadData for $type $name: ");
 
+				if ($type == 'LINK') {
+					// what feeds the link, for its look (F66, F67): set below
+					$myobj->data_state = null;
+					$myobj->data_reason = '';
+				}
+
 				if (($type=='LINK' && isset($myobj->a)) || ($type=='NODE' && !is_null($myobj->x) ) ) {
 					if (count($myobj->targets)>0) {
 						$tindex = 0;
 						// a link none of whose targets answered counts as "without data"
 						$answered = false;
+						// the source errors before it, to tell why it got nothing
+						$failed_before = $this->source_failures();
 
 						foreach ($myobj->targets as $target) {
 							wm_debug("ReadData: New Target: $target[4]");
@@ -1273,6 +1308,11 @@ class WeatherMap extends WeatherMapBase {
 									$matched_by = $target[5];
 
 									list($in,$out,$datatime) =  $this->plugins['data'][ $target[5] ]->ReadData($targetstring, $this, $myobj);
+								} else {
+									// no data source knows the target: nothing for it (F67)
+									$matched_by = 'no data source';
+									$in = null;
+									$out = null;
 								}
 
 								if (($in === null) && ($out === null)) {
@@ -1329,11 +1369,18 @@ class WeatherMap extends WeatherMapBase {
 
 						if ($type == 'LINK' && !$answered) {
 							$this->nodata_links++;
+							// down (F67): its source failed (unreachable or an
+							// error), or it answered nothing for this target
+							$myobj->data_state = 'down';
+							$myobj->data_reason = $this->nodata_reason($failed_before);
 						}
 
 						wm_debug("ReadData complete for $type $name: $total_in $total_out");
 					} else {
 						wm_debug("ReadData: No targets for $type $name");
+						if ($type == 'LINK') {
+							$myobj->data_state = 'none';
+						}
 					}
 				} else {
 					wm_debug("ReadData: Skipping $type $name that looks like a template.");
@@ -1429,9 +1476,14 @@ class WeatherMap extends WeatherMapBase {
 			list($link, $args) = $label;
 
 			if ($svg) {
-				$svg->begin('link', $link->name, 'L' . $link->id);
+				$svg->begin('link', $link->name, 'L' . $link->id, false, false, $link->data_state());
 			}
 
+			// a link with a source but no data: its warning mark (F67)
+			if (!empty($label[2])) {
+				$link->draw_down_mark($image, $this, ...$args);
+				continue;
+			}
 			$this->DrawLabelRotated($image, ...$args);
 		}
 
@@ -3781,7 +3833,7 @@ class WeatherMap extends WeatherMapBase {
 								wm_debug("Drawing LINK ".$it->name);
 
 								if ($svg) {
-									$svg->begin('link', $it->name, 'L' . $it->id, WeatherMapSvg::isSaturated($this, $this->links[$it->name]));
+									$svg->begin('link', $it->name, 'L' . $it->id, WeatherMapSvg::isSaturated($this, $this->links[$it->name]), false, $this->links[$it->name]->data_state());
 								}
 
 								$this->links[$it->name]->Draw($image, $this);

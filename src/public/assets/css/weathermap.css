@@ -607,6 +607,8 @@ button.btn {
 .wm-hc-arrow { color: var(--wm-text-muted); font-weight: 400; }
 .wm-hc-sub { margin-top: 2px; color: var(--wm-text-muted); overflow-wrap: anywhere; }
 .wm-hc-now { margin-top: 8px; display: grid; gap: 3px; }
+.wm-hc-nodata { display: flex; gap: 6px; align-items: baseline; color: var(--wm-text-muted); }
+.wm-hc-nodata::before { content: "\26A0"; color: var(--wm-warning); }
 .wm-hc-rate { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
 .wm-hc-rate b { min-width: 9.5em; font-weight: 600; }
 .wm-hc-k { display: inline-block; min-width: 2.6em; font-weight: 700; font-size: 11px; letter-spacing: 0.04em; }
