@@ -262,4 +262,16 @@ final class BoxesTest extends TestCase
         $map = $this->load('SET box_1 legend 10 10');
         $this->assertStringNotContainsString('data-kind="status"', $this->svg($map), 'none without status_bar');
     }
+
+    /** F62: one list style, the step tags where the scale has them, the ranges elsewhere */
+    public function testTheListShowsTheTagsWhereThereAreSome(): void
+    {
+        $map = $this->load("SCALE DEFAULT 0 50 0 255 0 calm\nSCALE DEFAULT 50 100 255 0 0\nSET box_1 legend 10 10\nSET box_1_style list");
+        $svg = $this->svg($map);
+        $this->assertStringContainsString('>calm<', $svg);
+        $this->assertStringContainsString('>50-100%<', $svg, 'a step without a tag keeps its range');
+
+        $old = $this->load("SCALE DEFAULT 0 100 0 255 0 calm\nSET box_1 legend 10 10\nSET box_1_style tags");
+        $this->assertSame('list', \WeatherMapBoxes::all($old)['1']['style'], 'tags of older maps is the same list');
+    }
 }

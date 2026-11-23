@@ -282,7 +282,7 @@ SET box_3_width 240                # least width of the content
 SET box_4 speed 10 300             # the link widths by speed (link width table), as rounded lines
 SET box_2_note Data: Observium     # a small line under the content (credits, a source...)
 SET box_6 legend 10 40             # a legend card...
-SET box_6_style tags               # bar (gradient), list (one row per step) or tags (the step tags)
+SET box_6_style list               # bar (gradient) or list (one row per step: its tag, or its range)
 SET box_6_scale backbone           # ...of another scale than DEFAULT
 SET box_6_hidden 1                 # not drawn, its place and settings kept
 ```
