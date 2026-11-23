@@ -1413,6 +1413,8 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 
 			// round to the nearest integer (up OR down). We do this now
 			// so that GD doesn't just round everything down and make straight lines slightly off
+			// (the SVG gets the exact points, so its edges stay smooth)
+			$exactpoints = $finalpoints;
 			for ($i=0; $i<sizeof($finalpoints); $i++) {
 				$finalpoints[$i] = round($finalpoints[$i]);
 			}
@@ -1420,7 +1422,7 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 			WeatherMapSvg::linkShape($image, $curvepoints, $dir == OUT ? 0 : $totaldistance, $halfway, $widths[$dir], $arrowwidth[$dir], $arrowsize[$dir]);
 
 			if (!is_null($fillcolours[$dir])) {
-				wimagefilledpolygon($image, $finalpoints, count($finalpoints) / 2, $arrowsettings[4]);
+				wimagefilledpolygon($image, $finalpoints, count($finalpoints) / 2, $arrowsettings[4], $exactpoints);
 			} else {
 				wm_debug("Not drawing $linkname ($dir) fill because there is no fill colour");
 			}
@@ -1432,8 +1434,11 @@ function draw_straight($image, &$curvepoints, $widths, $outlinecolour, $fillcolo
 			wm_debug("Adding Poly imagemap for $areaname");
 
 			if (!is_null($outlinecolour)) {
-				wimagepolygon($image, $finalpoints, count($finalpoints) / 2, $arrowsettings[5]);
+				wm_smooth_edge($map, $image, $finalpoints, $arrowsettings[5], function () use ($image, $finalpoints, $arrowsettings, $exactpoints) {
+					wimagepolygon($image, $finalpoints, count($finalpoints) / 2, $arrowsettings[5], $exactpoints);
+				});
 			} else {
+				wm_smooth_edge($map, $image, $finalpoints, $arrowsettings[4]);
 				wm_debug("Not drawing $linkname ($dir) outline because there is no outline colour");
 			}
 
@@ -1594,8 +1599,11 @@ function draw_curve($image, &$curvepoints, $widths, $outlinecolour, $fillcolours
 		wm_debug("Adding Poly imagemap for $areaname");
 
 		if (!is_null($outlinecolour)) {
-			wimagepolygon($image, $there_points, count($there_points) / 2, $arrowsettings[$dir][5]);
+			wm_smooth_edge($map, $image, $there_points, $arrowsettings[$dir][5], function () use ($image, $there_points, $arrowsettings, $dir) {
+				wimagepolygon($image, $there_points, count($there_points) / 2, $arrowsettings[$dir][5]);
+			});
 		} else {
+			wm_smooth_edge($map, $image, $there_points, $arrowsettings[$dir][4]);
 			wm_debug("Not drawing $linkname ($dir) outline because there is no outline colour");
 		}
 
@@ -2238,7 +2246,34 @@ function wm_rounded_rect_points($x1, $y1, $x2, $y2, $r, $steps = 5) {
 	return $points;
 }
 
-function wimagepolygon($image, $points, $num_points, $color) {
+/**
+ * The edge of a link arrow in the PNG, anti-aliased so it does not look
+ * stair-stepped (F70). With $draw, the outline is drawn that way (and
+ * recorded for the SVG as usual); without it, the fill's own edge is
+ * smoothed with a 1 px anti-aliased line in the fill colour, for the PNG
+ * only. GD anti-aliases lines on truecolor images only.
+ */
+function wm_smooth_edge($map, $image, $points, $color, $draw = null) {
+	$aa = function_exists('imageantialias') && imageistruecolor($image) && $color !== null;
+	if ($aa) {
+		imageantialias($image, true);
+	}
+	if ($draw !== null) {
+		$draw();
+	} elseif ($aa && count($points) >= 6) {
+		$points = array_map('intval', array_map('round', $points));
+		if (version_compare(PHP_VERSION, '8.0', '>')) {
+			imagepolygon($image, $points, $color);
+		} else {
+			imagepolygon($image, $points, count($points) / 2, $color);
+		}
+	}
+	if ($aa) {
+		imageantialias($image, $map->get_hint('antialias') == 1);
+	}
+}
+
+function wimagepolygon($image, $points, $num_points, $color, $svg_points = null) {
 	if ($color === null) {
 		return;
 	}
@@ -2264,7 +2299,7 @@ function wimagepolygon($image, $points, $num_points, $color) {
 	metadump("POLY $num_points " . $pts . " $r $g $b $a");
 
 	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
-		WeatherMapSvg::$active->polygon(array_slice($points, 0, $num_points * 2), $color, false);
+		WeatherMapSvg::$active->polygon(array_slice($svg_points === null ? $points : $svg_points, 0, $num_points * 2), $color, false);
 	}
 
 	if (version_compare(PHP_VERSION, '8.0', '>')) {
@@ -2274,7 +2309,7 @@ function wimagepolygon($image, $points, $num_points, $color) {
 	}
 }
 
-function wimagefilledpolygon($image, $points, $num_points, $color) {
+function wimagefilledpolygon($image, $points, $num_points, $color, $svg_points = null) {
 	if ($color === null) {
 		return;
 	}
@@ -2301,7 +2336,7 @@ function wimagefilledpolygon($image, $points, $num_points, $color) {
 	metadump("FPOLY $num_points " . $pts . " $r $g $b $a");
 
 	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
-		WeatherMapSvg::$active->polygon(array_slice($points, 0, $num_points * 2), $color, true);
+		WeatherMapSvg::$active->polygon(array_slice($svg_points === null ? $points : $svg_points, 0, $num_points * 2), $color, true);
 	}
 
 	if (version_compare(PHP_VERSION, '8.0', '>')) {
