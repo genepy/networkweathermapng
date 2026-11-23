@@ -346,6 +346,9 @@ svg.i { width: var(--icon); height: var(--icon); flex: 0 0 auto; fill: none; str
 #map g[data-kind="link"] .wm-bwlabel-in, #map g[data-kind="link"] .wm-bwlabel-out { cursor: move; }
 #map g[data-kind="link"].locked .wm-bwlabel-in, #map g[data-kind="link"].locked .wm-bwlabel-out { cursor: pointer; }
 #map g.dimmed { opacity: .25; }
+/* a link with one end being dragged: drawn again live, under the nodes (F71) */
+#map g.drag-hidden { visibility: hidden; }
+#map .drag-link { fill: none; stroke-linecap: butt; stroke-linejoin: round; pointer-events: none; }
 /* every item under the pointer shows its outline with a small soft glow (as in the viewer);
    deep in a basemap it shrinks with the nodes and the links (--wm-geo-k, set by
    editor-svg.js), so it stays in proportion to them instead of growing with the zoom */
