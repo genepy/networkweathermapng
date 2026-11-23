@@ -915,7 +915,25 @@ class MapController extends BaseController
             exit;
         }
 
-        $format = $this->config->get('MAP_OUTPUT_FORMAT', 'png');
+        // SVG pictures (F63): the live SVG with its fonts; thumbnails and
+        // ?raster=1 (the viewer's fallback) stay a raster file
+        if (!$thumb && !$fast && $this->mapService->imageFormat() === 'svg' && (string) $this->getInput('raster', '0') !== '1') {
+            $svg = $this->mapService->svgFile($mapId);
+            if ($svg === null) {
+                http_response_code(404);
+                exit;
+            }
+            while (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            header('Content-Type: image/svg+xml; charset=utf-8');
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Content-Length: ' . strlen($svg));
+            echo $svg;
+            exit;
+        }
+
+        $format = $this->mapService->rasterFormat();
         if ($fast) {
             $this->mapService->renderMap($mapId, false, false);
             $base = $this->config->getOutputPath() . '/' . pathinfo($map['config_file'], PATHINFO_FILENAME) . '.fast';
@@ -949,7 +967,7 @@ class MapController extends BaseController
     }
 
     /** Media types of the image formats of Settings > Maps & rendering */
-    public const IMAGE_TYPES = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'gif' => 'image/gif'];
+    public const IMAGE_TYPES = ['svg' => 'image/svg+xml', 'png' => 'image/png', 'jpg' => 'image/jpeg', 'gif' => 'image/gif'];
 
     public function cycle(array $params): void
     {

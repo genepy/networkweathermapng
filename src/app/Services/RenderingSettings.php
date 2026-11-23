@@ -16,7 +16,8 @@ use App\Core\Database;
  */
 class RenderingSettings
 {
-    public const FORMATS = ['png', 'jpg', 'gif'];
+    /** svg first: the default (F63); the thumbnails stay PNG then */
+    public const FORMATS = ['svg', 'png', 'jpg', 'gif'];
     public const MIN_REFRESH = 10;
     public const MAX_REFRESH = 86400;
 
@@ -128,6 +129,6 @@ class RenderingSettings
 
     private static function fallback(string $key): string
     {
-        return $key === 'MAP_OUTPUT_FORMAT' ? 'png' : '300';
+        return $key === 'MAP_OUTPUT_FORMAT' ? 'svg' : '300';
     }
 }

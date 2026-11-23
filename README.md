@@ -123,7 +123,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `AUTH_ENABLED` | Enable authentication | `true` |
 | `ADMIN_USER` | Default admin username | `admin` |
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
-| `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`), until one is chosen in Settings > Maps & rendering | `png` |
+| `MAP_OUTPUT_FORMAT` | Image format (`svg`, `png`, `jpg`, `gif`; thumbnails and the offline picture stay PNG for `svg`), until one is chosen in Settings > Maps & rendering | `svg` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds (10 to 86400), until one is chosen in Settings > Maps & rendering | `300` |
 | `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the user menu | browser language |
 

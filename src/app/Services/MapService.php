@@ -485,7 +485,7 @@ class MapService
             return ['error' => 'Config file not found'];
         }
         
-        $format = $this->config->get('MAP_OUTPUT_FORMAT', 'png');
+        $format = $this->rasterFormat();
         $outputBase = pathinfo($map['config_file'], PATHINFO_FILENAME);
         $suffix = $readData ? '' : '.fast';
         $imagePath = $this->outputPath . '/' . $outputBase . $suffix . '.' . $format;
@@ -736,6 +736,26 @@ class MapService
     }
 
     /**
+     * The image format of the map pictures (Settings > Maps & rendering,
+     * MAP_OUTPUT_FORMAT): svg (the default, F63), png, jpg or gif
+     */
+    public function imageFormat(): string
+    {
+        $format = strtolower((string) $this->config->get('MAP_OUTPUT_FORMAT', 'svg'));
+        return in_array($format, RenderingSettings::FORMATS, true) ? $format : 'svg';
+    }
+
+    /**
+     * The format of the raster files the engine writes (the picture,
+     * thumbnails): the image format, or PNG when that is SVG
+     */
+    public function rasterFormat(): string
+    {
+        $format = $this->imageFormat();
+        return $format === 'svg' ? 'png' : $format;
+    }
+
+    /**
      * The picture of the map with live data (PNG, JPG or GIF, and its
      * thumbnail when $thumb), as liveRender() does for the SVG: the last
      * one while it is newer than the configuration and younger than the
@@ -754,7 +774,7 @@ class MapService
         }
 
         $base = $this->outputPath . '/' . pathinfo($map['config_file'], PATHINFO_FILENAME);
-        $format = $this->config->get('MAP_OUTPUT_FORMAT', 'png');
+        $format = $this->rasterFormat();
         $files = [$base . '.' . $format, $base . '.thumb.' . $format];
         $maxAge = (int) $this->config->get('MAP_REFRESH_INTERVAL', 300);
         $this->renderUnlessFresh($id, function () use ($files, $configPath, $maxAge): bool {

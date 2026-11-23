@@ -25,7 +25,7 @@ $refresh = $settings['MAP_REFRESH_INTERVAL'];
                     <option value="<?= $h($f) ?>" <?= $f === $format['value'] ? 'selected' : '' ?>><?= $h(strtoupper($f)) ?><?= $f === $format['default'] ? ' · ' . e__('default') : '' ?></option>
                     <?php endforeach; ?>
                 </select>
-                <small><?= e__('Format of the map pictures (the SVG view is not affected). Default: :value, from :var.', ['value' => strtoupper($format['default']), 'var' => 'MAP_OUTPUT_FORMAT']) ?></small>
+                <small><?= e__('Format of the map pictures and downloads (thumbnails stay PNG with SVG). Default: :value, from :var.', ['value' => strtoupper($format['default']), 'var' => 'MAP_OUTPUT_FORMAT']) ?></small>
             </div>
             <div class="form-group">
                 <label for="rendering-refresh"><?= e__('Refresh interval (seconds)') ?></label>

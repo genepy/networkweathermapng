@@ -571,7 +571,7 @@
             setTimeout(function () { showMessage(''); }, 6000);
         };
         img.onerror = function () { showMessage(t('The map could not be loaded.'), true); };
-        img.src = root.dataset.pngUrl + '?t=' + Date.now();
+        img.src = root.dataset.pngUrl + '&t=' + Date.now();
     }
 
     function load() {
