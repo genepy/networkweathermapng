@@ -59,7 +59,7 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
 <body class="app-shell">
     <a class="skip-link" href="#main"><?= e__('Skip to content') ?></a>
     <header class="app-bar">
-        <a class="app-logo" href="/" aria-label="NetworkWeathermapNG">
+        <a class="app-logo" href="/" aria-label="NetworkWeathermapNG" title="<?= htmlspecialchars(__('Version :v', ['v' => \App\Core\Version::label()])) ?>">
             <span class="app-logo-mark"><?= icon('map') ?></span>
             <span class="app-logo-text">NetworkWeathermapNG</span>
         </a>
@@ -127,6 +127,7 @@ $initial = $signedIn ? mb_strtoupper(mb_substr((string) $user['username'], 0, 1)
                 <button type="submit" class="um-item"><?= icon('arrow-left') ?><?= e__('Log out') ?></button>
             </form>
             <?php endif; ?>
+            <p class="um-version"><?= e__('Version :v', ['v' => \App\Core\Version::label()]) ?></p>
         </div>
     </header>
 

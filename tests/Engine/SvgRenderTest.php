@@ -144,6 +144,17 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $xpath->query('//s:g[@data-kind="legend"][@data-name="other"]//s:linearGradient')->length, 'a stepped scale keeps its steps');
     }
 
+    /** F70: a slanted straight link keeps its exact outline in the SVG, only GD gets whole pixels */
+    public function testASlantedLinkKeepsItsExactPointsInTheSvg(): void
+    {
+        $file = TESTS_OUTPUT . '/slanted.conf';
+        file_put_contents($file, "WIDTH 300\nHEIGHT 300\nNODE a\n\tPOSITION 20 30\nNODE b\n\tPOSITION 270 250\n"
+            . "LINK DEFAULT\n\tWIDTH 3\n\tOUTLINECOLOR 255 255 255\nLINK ab\n\tNODES a b\n");
+        $svg = \WeatherMapSvg::render($this->load($file));
+        $this->assertSame(1, preg_match('/<g class="wm-link"[^>]*data-name="ab"[^>]*>\s*<polygon class="wm-arrow" points="([^"]+)"[^>]*stroke=/', $svg, $m), 'the arrow with its outline');
+        $this->assertMatchesRegularExpression('/\d\.\d/', $m[1], 'fractional points');
+    }
+
     public function testSmoothBarInThePng(): void
     {
         $file = TESTS_OUTPUT . '/smooth-png.conf';

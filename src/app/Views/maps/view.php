@@ -50,7 +50,7 @@
          data-fullscreen="<?= $isFullscreen ? '1' : '0' ?>"
          data-normal-url="<?= htmlspecialchars($normalUrl) ?>"
          data-kiosk-url="<?= htmlspecialchars($svgFsUrl) ?>"
-         data-png-url="/map/<?= $mapId ?>/image"
+         data-png-url="/map/<?= $mapId ?>/image?raster=1"
          data-history="<?= !empty($history) ? '1' : '0' ?>"
          data-totals="<?= htmlspecialchars((string) ($totalsSource ?? 'none')) ?>"<?php if ($isKiosk): ?>
          data-kiosk="1" data-zoom="<?= (int) ($zoom ?? 0) ?>"<?php endif; ?>>
@@ -101,8 +101,10 @@
                 <div class="row-menu-items">
                     <button type="button" data-act="copy-kiosk"><?= icon('link') ?><?= e__('Copy kiosk link') ?></button>
                     <a href="/map/<?= $mapId ?>/svg/download" download="<?= htmlspecialchars($fileName) ?>.svg"><?= icon('download') ?><?= e__('Download as SVG') ?></a>
-                    <?php $imageFormat = (string) $config->get('MAP_OUTPUT_FORMAT', 'png'); $imageFormat = isset(\App\Controllers\MapController::IMAGE_TYPES[$imageFormat]) ? $imageFormat : 'png'; ?>
+                    <?php $imageFormat = (string) $config->get('MAP_OUTPUT_FORMAT', 'svg'); $imageFormat = isset(\App\Controllers\MapController::IMAGE_TYPES[$imageFormat]) ? $imageFormat : 'svg'; ?>
+                    <?php if ($imageFormat !== 'svg'): /* the SVG has its own entry above */ ?>
                     <a href="/map/<?= $mapId ?>/image" download="<?= htmlspecialchars($fileName . '.' . $imageFormat) ?>"><?= icon('download') ?><?= e__('Download as :format', ['format' => strtoupper($imageFormat)]) ?></a>
+                    <?php endif; ?>
                 </div>
             </details>
             <?php if ($canEdit): ?>

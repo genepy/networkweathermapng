@@ -61,7 +61,7 @@ class Config
             'ADMIN_PASSWORD' => 'admin',
             
             // Map settings
-            'MAP_OUTPUT_FORMAT' => 'png',
+            'MAP_OUTPUT_FORMAT' => 'svg',
             'MAP_THUMB_SIZE' => '250',
             'MAP_REFRESH_INTERVAL' => '300',
         ];

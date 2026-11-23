@@ -3878,7 +3878,7 @@
         out.push(row(t('Title'), title));
 
         var styles = {
-            legend: [['bar', t('Gradient bar')], ['list', t('List of colours')], ['tags', t('List with the step tags')]],
+            legend: [['bar', t('Gradient bar')], ['list', t('List of colours')]],
             total: [['graph', t('Value and graph')], ['plain', t('Value only')]]
         }[p.type];
         if (styles) {

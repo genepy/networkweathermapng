@@ -394,7 +394,7 @@ return [
     ':n seconds' => ':n secondes',
     'Refresh interval (seconds)' => 'Intervalle de rafraîchissement (secondes)',
     'default' => 'par défaut',
-    'Format of the map pictures (the SVG view is not affected). Default: :value, from :var.' => 'Format des images des cartes (la vue SVG n’est pas concernée). Par défaut : :value, d’après :var.',
+    'Format of the map pictures and downloads (thumbnails stay PNG with SVG). Default: :value, from :var.' => 'Format des images et téléchargements des cartes (les vignettes restent en PNG avec SVG). Par défaut : :value, d’après :var.',
     'How often the maps fetch new data and the views follow it. Default: :value, from :var.' => 'Fréquence à laquelle les cartes récupèrent de nouvelles données et les vues les suivent. Par défaut : :value, d’après :var.',
     'Saved in the application. The :file file or the Docker environment only gives the values of a new install, or of a setting left at its default.' => 'Enregistré dans l’application. Le fichier :file ou l’environnement Docker ne donne plus que les valeurs d’une nouvelle installation, ou d’un réglage laissé par défaut.',
     'Maps & rendering settings saved' => 'Réglages Cartes et rendu enregistrés',

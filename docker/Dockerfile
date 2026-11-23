@@ -77,6 +77,12 @@ WORKDIR /app
 # Copy application source
 COPY src/ /app/
 
+# The version shown in the interface (App\Core\Version): the VERSION file,
+# and the commit the image is built from (--build-arg APP_COMMIT=<sha>)
+COPY VERSION /app/VERSION
+ARG APP_COMMIT=""
+ENV APP_COMMIT=${APP_COMMIT}
+
 # Icons and backgrounds are kept in the data volume (see docker/init-data.sh)
 COPY docker/init-data.sh /usr/local/bin/weathermap-init
 RUN for dir in objects backgrounds; do \

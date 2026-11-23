@@ -13,7 +13,9 @@
  *   SET box_<id> <type> <x> <y>    type: total, legend, speed, updated, text
  *                                  (negative x or y count from the right or bottom edge)
  *   SET box_<id>_title <text>      title line ("-" for none; each type has a default)
- *   SET box_<id>_style <style>     legend: bar (gradient bar, 0% and 100%), list, or tags
+ *   SET box_<id>_style <style>     legend: bar (gradient bar, 0% and 100%) or list (each
+ *                                  step with its tag, or its range without one; tags,
+ *                                  of older maps, is the same list)
  *                                  (a list with the tag of each step)
  *                                  total: graph (value and small graph) or plain
  *   SET box_<id>_text <text>       text box: lines separated by \n, "label | value" puts
@@ -407,7 +409,8 @@ class WeatherMapBoxes {
 			case 'legend':
 				if ($box['style'] === 'list') {
 					$blocks = array();
-					foreach (self::scaleBands($map, $box['scale'], $box['tags']) as $band) {
+					// each step with its tag when it has one, its range otherwise (F62)
+					foreach (self::scaleBands($map, $box['scale'], true) as $band) {
 						list($w) = $map->myimagestringsize($font, $band[2]);
 						$blocks[] = array('band', $rowh, 24 + $w, $band);
 					}

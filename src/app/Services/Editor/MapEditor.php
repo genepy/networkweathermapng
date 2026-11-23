@@ -241,7 +241,7 @@ class MapEditor
                 $map->add_hint('box_' . $id, 'legend ' . $x . ' ' . $y);
                 $map->add_hint('box_' . $id . '_title', $text === '' ? '-' : $text);
                 if (!$bar) {
-                    $map->add_hint('box_' . $id . '_style', $style === 'tags' ? 'tags' : 'list');
+                    $map->add_hint('box_' . $id . '_style', 'list');
                 } else {
                     $map->add_hint('box_' . $id . '_width', (string) max(80, min(2000, $size)));
                 }
@@ -687,6 +687,10 @@ class MapEditor
                     $allowed = ['legend' => ['bar', 'list', 'tags'], 'total' => ['graph', 'plain']][$box['type']] ?? [];
                     if ($value !== '' && !in_array($value, $allowed, true)) {
                         throw new InvalidArgumentException(__('Unknown box style: :style', ['style' => $value]));
+                    }
+                    // one list (F62): it shows the step tags where the scale has them
+                    if ($value === 'tags') {
+                        $value = 'list';
                     }
                     break;
                 case 'rows':
@@ -2586,7 +2590,7 @@ class MapEditor
                     $found[$kind . ':' . $item]['props'] = [
                         'type' => $b['type'],
                         'title' => $b['title'],
-                        'style' => $b['tags'] ? 'tags' : $b['style'],
+                        'style' => $b['style'],
                         'text' => $b['text'],
                         'rows' => $b['rows'],
                         'width' => $b['width'],

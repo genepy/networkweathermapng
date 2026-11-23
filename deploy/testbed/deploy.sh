@@ -48,6 +48,9 @@ echo "Building the images (the first build takes a while on a Pi)"
 # the network.host entitlement. "docker compose build" cannot grant it, so its
 # build definition goes to buildx with the entitlements: host network, and
 # reading the repository root (Weathermap's build context).
+# the commit shown next to the version in the interface
+APP_COMMIT=$(git -C ../.. rev-parse --short HEAD 2>/dev/null || true)
+export APP_COMMIT
 bake_file=$(mktemp)
 compose build --print > "$bake_file"
 if ! docker buildx bake --allow=network.host --allow=fs.read="$(cd ../.. && pwd)" \

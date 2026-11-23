@@ -113,6 +113,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
 | `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Settings > Time zone | `UTC` |
+| `APP_COMMIT` | Commit the image was built from, shown next to the version (the `VERSION` file) in the user menu and on the logo; a build argument of `docker/Dockerfile`, set by the image workflow and the testbed | empty |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
 | `BASEMAP_SERVERS` | Tile servers a map's basemap may load from (space-separated URL prefixes), added to the default Content-Security-Policy. Same-site addresses (`/tiles/...`) are always allowed | `https://tiles.openfreemap.org` |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
@@ -122,7 +123,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `AUTH_ENABLED` | Enable authentication | `true` |
 | `ADMIN_USER` | Default admin username | `admin` |
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
-| `MAP_OUTPUT_FORMAT` | Image format (`png`, `jpg`, `gif`), until one is chosen in Settings > Maps & rendering | `png` |
+| `MAP_OUTPUT_FORMAT` | Image format (`svg`, `png`, `jpg`, `gif`; thumbnails and the offline picture stay PNG for `svg`), until one is chosen in Settings > Maps & rendering | `svg` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds (10 to 86400), until one is chosen in Settings > Maps & rendering | `300` |
 | `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the user menu | browser language |
 
@@ -281,7 +282,7 @@ SET box_3_width 240                # least width of the content
 SET box_4 speed 10 300             # the link widths by speed (link width table), as rounded lines
 SET box_2_note Data: Observium     # a small line under the content (credits, a source...)
 SET box_6 legend 10 40             # a legend card...
-SET box_6_style tags               # bar (gradient), list (one row per step) or tags (the step tags)
+SET box_6_style list               # bar (gradient) or list (one row per step: its tag, or its range)
 SET box_6_scale backbone           # ...of another scale than DEFAULT
 SET box_6_hidden 1                 # not drawn, its place and settings kept
 ```

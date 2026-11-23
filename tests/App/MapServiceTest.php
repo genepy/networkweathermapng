@@ -32,6 +32,26 @@ final class MapServiceTest extends TestCase
         $this->maps = new MapService($this->db, $config);
     }
 
+    public function testPicturesAreSvgByDefaultWithPngRasters(): void
+    {
+        $config = new Config();
+        $config->set('APP_ROOT', dirname(TESTS_ROOT) . '/src');
+        $config->set('DATA_ROOT', $this->data);
+        $maps = new MapService($this->db, $config);
+
+        $config->set('MAP_OUTPUT_FORMAT', 'svg');
+        $this->assertSame('svg', $maps->imageFormat());
+        $this->assertSame('png', $maps->rasterFormat());
+
+        $config->set('MAP_OUTPUT_FORMAT', 'JPG');
+        $this->assertSame('jpg', $maps->imageFormat());
+        $this->assertSame('jpg', $maps->rasterFormat());
+
+        $config->set('MAP_OUTPUT_FORMAT', 'bmp');
+        $this->assertSame('svg', $maps->imageFormat());
+        $this->assertSame('png', $maps->rasterFormat());
+    }
+
     public function testCreateCleansTheName(): void
     {
         $id = $this->maps->createMap(['name' => "Core\nNODE evil", 'width' => 'x']);

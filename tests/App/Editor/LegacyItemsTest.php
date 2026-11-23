@@ -74,7 +74,8 @@ final class LegacyItemsTest extends TestCase
         $this->assertSame('bar', $byScale['DEFAULT']['style']);
         $this->assertSame(300, $byScale['DEFAULT']['width']);
         $this->assertSame('list', $byScale['other']['style']);
-        $this->assertTrue($byScale['other']['tags']);
+        // one list (F62): it shows the step tags where the scale has them
+        $this->assertStringContainsString('_style list', $this->conf());
         $this->assertSame('Other', $byScale['other']['title']);
         $this->assertStringNotContainsString('KEYSTYLE', $this->conf());
     }

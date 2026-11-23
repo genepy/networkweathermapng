@@ -300,7 +300,6 @@ return [
     'Stretch to the map' => 'Étirer à la taille de la carte',
     'Seen where the background image does not cover the map.' => 'Visible là où l’image de fond ne couvre pas la carte.',
     'Colour' => 'Couleur',
-    'List with the step tags' => 'Liste avec les étiquettes des paliers',
     'Text colour' => 'Couleur du texte',
     'Box colour' => 'Couleur du cadre',
     'Box outline' => 'Bordure du cadre',
