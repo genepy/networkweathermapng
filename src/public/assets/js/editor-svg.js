@@ -398,6 +398,14 @@
     function updateView() {
         var w = canvas.clientWidth / state.zoom;
         var hh = canvas.clientHeight / state.zoom;
+        // on a basemap, the world covers the view from top to bottom:
+        // MapLibre would move its centre there, and the nodes with it (F64)
+        if (basemap && basemap.cfg && window.WMBasemap && state.model) {
+            var rows = window.WMBasemap.worldRows(basemap.cfg, state.model.map.height);
+            if (rows[1] - rows[0] >= hh) {
+                state.view.y = Math.max(rows[0], Math.min(rows[1] - hh, state.view.y));
+            }
+        }
         stage.setAttribute('viewBox', [state.view.x, state.view.y, w, hh].join(' '));
         syncBasemap();
         applyGeo();
@@ -410,9 +418,14 @@
         }
     }
 
+    /** The smallest zoom: on a basemap, no further out than it can follow (F64) */
+    function minZoom() {
+        return basemap && basemap.cfg && window.WMBasemap ? Math.max(0.1, window.WMBasemap.minScale(basemap.cfg, canvas.clientHeight)) : 0.1;
+    }
+
     function zoomAt(factor, mx, my) {
         // on a basemap, deeper as in the viewer: located nodes keep their size there
-        var z = Math.min(geoOn() ? window.WMGeo.MAX_ZOOM : 16, Math.max(0.1, state.zoom * factor));
+        var z = Math.min(geoOn() ? window.WMGeo.MAX_ZOOM : 16, Math.max(minZoom(), state.zoom * factor));
         if (mx === undefined) {
             mx = state.view.x + canvas.clientWidth / state.zoom / 2;
             my = state.view.y + canvas.clientHeight / state.zoom / 2;
@@ -428,7 +441,7 @@
             return;
         }
         var m = state.model.map, pad = 30;
-        state.zoom = Math.min((canvas.clientWidth - pad * 2) / m.width, (canvas.clientHeight - pad * 2) / m.height, 4);
+        state.zoom = Math.max(minZoom(), Math.min((canvas.clientWidth - pad * 2) / m.width, (canvas.clientHeight - pad * 2) / m.height, 4));
         state.view.x = -(canvas.clientWidth / state.zoom - m.width) / 2;
         state.view.y = -(canvas.clientHeight / state.zoom - m.height) / 2;
         updateView();

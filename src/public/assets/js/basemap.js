@@ -46,6 +46,27 @@
         return [w / 2 + (p[0] - c[0]) * size, h / 2 + (p[1] - c[1]) * size];
     }
 
+    /**
+     * The smallest view scale (screen pixels per map pixel) at which the
+     * basemap still follows the map on a viewport vh pixels high: MapLibre
+     * stops at zoom 0 and keeps the world at least as high as the
+     * viewport, so below it the nodes would leave their place (F64).
+     */
+    function minScale(cfg, vh) {
+        if (!cfg) return 0;
+        return Math.max(TILE, vh || 0) / (TILE * Math.pow(2, cfg.zoom));
+    }
+
+    /**
+     * The map rows [top, bottom] of the edges of the web map world (the
+     * poles of the Mercator square), for a frame and a canvas h pixels high
+     */
+    function worldRows(cfg, h) {
+        var size = TILE * Math.pow(2, cfg.zoom);
+        var top = h / 2 - world(cfg.center[0], cfg.center[1])[1] * size;
+        return [top, top + size];
+    }
+
     /** The point [lat, lon] under map pixels */
     function unproject(cfg, w, h, x, y) {
         var size = TILE * Math.pow(2, cfg.zoom);
@@ -402,6 +423,8 @@
         inset: inset,
         project: project,
         unproject: unproject,
+        minScale: minScale,
+        worldRows: worldRows,
         fitFrame: fitFrame,
         same: function (a, b) {
             return !!(a && b && sameFrame(a, b) && a.zoom === b.zoom

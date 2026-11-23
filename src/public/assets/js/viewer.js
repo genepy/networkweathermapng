@@ -114,7 +114,9 @@
     }
 
     function clampZ(z) {
-        return Math.min(B.cfg ? MAX_Z_BASEMAP : MAX_Z, Math.max(MIN_Z, z));
+        // on a basemap, no further out than it can follow (F64)
+        const min = B.cfg && window.WMBasemap ? Math.max(MIN_Z, window.WMBasemap.minScale(B.cfg, vpSize().h)) : MIN_Z;
+        return Math.min(B.cfg ? MAX_Z_BASEMAP : MAX_Z, Math.max(min, z));
     }
 
     function fitZ() {
@@ -151,6 +153,14 @@
         const margin = 40;
         S.tx = Math.min(vp.w - margin, Math.max(margin - mw, S.tx));
         S.ty = Math.min(vp.h - margin, Math.max(margin - mh, S.ty));
+        // on a basemap, the world covers the screen from top to bottom:
+        // MapLibre would move its centre there, and the nodes with it (F64)
+        if (B.cfg && window.WMBasemap) {
+            const rows = window.WMBasemap.worldRows(B.cfg, S.h);
+            if ((rows[1] - rows[0]) * S.z >= vp.h) {
+                S.ty = Math.min(-rows[0] * S.z, Math.max(vp.h - rows[1] * S.z, S.ty));
+            }
+        }
     }
 
     let frame = 0;
