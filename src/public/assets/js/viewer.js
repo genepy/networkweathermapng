@@ -430,7 +430,58 @@
         if (window.WMGeo) {
             window.WMGeo.thin(L.arrows, k);
             window.WMGeo.scaleLabels(L.labels, k);
+            reachClusters(true);
         }
+    }
+
+    /** The node each arrow starts from (the end of its link nearer its start), once the located nodes are known */
+    function arrowEnds() {
+        L.arrows.forEach(function (a) {
+            a.from = null;
+            if (a.sep || !a.el.closest) return;
+            const g = a.el.closest('g.wm-link[data-id]');
+            const e = g ? S.ends[g.getAttribute('data-id')] : null;
+            const na = e ? G.byName[e.a] : null, nb = e ? G.byName[e.b] : null;
+            if (!na && !nb) return;
+            const p = a.pts[0];
+            const da = na ? Math.hypot(na.x - p[0], na.y - p[1]) : Infinity;
+            const db = nb ? Math.hypot(nb.x - p[0], nb.y - p[1]) : Infinity;
+            a.from = (da <= db ? na : nb).name;
+        });
+    }
+
+    /**
+     * The links of a node in a cluster reach its badge: each arrow that
+     * starts from such a node starts from the centre of the cluster, or it
+     * would stop short of the badge (F64). `all` redraws every arrow that
+     * did, after the links were drawn thinner.
+     */
+    function reachClusters(all) {
+        if (!window.WMGeo) return;
+        const at = {};
+        G.clusters.forEach(function (c) {
+            c.nodes.forEach(function (n) { at[n.name] = c; });
+        });
+        const k = L.k;
+        L.arrows.forEach(function (a) {
+            const c = a.from ? at[a.from] : null;
+            if (!c) {
+                if (a.reached) {
+                    a.reached = false;
+                    const pts = k < 1 ? window.WMGeo.arrowOutline(window.WMGeo.reachNodes(a.pts, a.cut, k), a.w * k, a.aw * k, a.as * k) : null;
+                    a.el.setAttribute('points', pts || a.points);
+                }
+                return;
+            }
+            if (a.reached === c && !all) return;
+            const spine = (k < 1 ? window.WMGeo.reachNodes(a.pts, a.cut, k) : a.pts).slice();
+            spine.unshift([c.x, c.y]);
+            const pts = window.WMGeo.arrowOutline(spine, a.w * k, a.aw * k, a.as * k);
+            if (pts) {
+                a.el.setAttribute('points', pts);
+                a.reached = c;
+            }
+        });
     }
 
     // ---- Traffic flow (SET link_flow 1) ----
@@ -745,6 +796,7 @@
         if (!geoOn()) hideInset();
         G.key = null;
         G.z = 0;
+        arrowEnds();
         updateGeo();
     }
 
@@ -833,6 +885,7 @@
             return c;
         });
         G.nodes.forEach(function (n) { n.g.classList.toggle('wmv-clustered', hidden.has(n)); });
+        reachClusters(false);
         if (clusterBox) {
             clusterBox.replaceChildren.apply(clusterBox, G.clusters.map(function (c) { return c.el; }));
             G.clusters.forEach(function (c) {
