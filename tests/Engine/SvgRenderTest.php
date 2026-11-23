@@ -167,8 +167,12 @@ final class SvgRenderTest extends TestCase
             }
         }
         $this->assertGreaterThan(0, $y, 'a purple column in the middle of the bar');
+        // its ends are rounded: read the middle row of the 12 px bar
+        $y += 6;
         $left = imagecolorsforindex($im, imagecolorat($im, 14, $y));
         $right = imagecolorsforindex($im, imagecolorat($im, 210, $y));
+        $corner = imagecolorsforindex($im, imagecolorat($im, 12, $y - 6));
+        $this->assertSame([255, 255, 255], [$corner['red'], $corner['green'], $corner['blue']], 'the corner is rounded off');
         $this->assertGreaterThan($left['red'], $left['blue']);
         $this->assertGreaterThan($right['blue'], $right['red']);
     }

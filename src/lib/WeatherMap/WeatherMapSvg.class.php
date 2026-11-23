@@ -102,7 +102,7 @@ class WeatherMapSvg {
 	 * A GD rectangle. Only recorded for a map item (the furniture): the
 	 * canvas fill is reported by background().
 	 */
-	function rect($x1, $y1, $x2, $y2, $colour, $filled) {
+	function rect($x1, $y1, $x2, $y2, $colour, $filled, $radius = 0) {
 		if ($this->owner === null) {
 			return;
 		}
@@ -120,6 +120,7 @@ class WeatherMapSvg {
 			'y2'     => max($y1, $y2) + $dy,
 			'colour' => $rgba,
 			'filled' => $filled,
+			'radius' => $radius,
 		);
 	}
 
@@ -128,7 +129,7 @@ class WeatherMapSvg {
 	 * list of array(offset 0..1, array(r, g, b) or null), from 0% to 100%;
 	 * $direction is right, down or up. Recorded for a map item only.
 	 */
-	function gradient($x1, $y1, $x2, $y2, $stops, $direction = 'right') {
+	function gradient($x1, $y1, $x2, $y2, $stops, $direction = 'right', $radius = 0) {
 		if ($this->owner === null || !$stops) {
 			return;
 		}
@@ -142,6 +143,7 @@ class WeatherMapSvg {
 			'y2'        => max($y1, $y2) + $dy,
 			'stops'     => $stops,
 			'direction' => $direction,
+			'radius'    => $radius,
 		);
 	}
 
@@ -711,6 +713,13 @@ class WeatherMapSvg {
 
 			case 'rect':
 				// GD fills both end pixels; its outline is a 1 px line on them
+				if ($item['filled'] && !empty($item['radius'])) {
+					// rounded ends (legend speed lines): smooth edges
+					return sprintf('<rect x="%s" y="%s" width="%s" height="%s" rx="%s"%s/>',
+						self::num($item['x1']), self::num($item['y1']),
+						self::num($item['x2'] - $item['x1'] + 1), self::num($item['y2'] - $item['y1'] + 1),
+						self::num($item['radius']), self::paint('fill', $item['colour']));
+				}
 				if ($item['filled']) {
 					return sprintf('<rect x="%s" y="%s" width="%s" height="%s"%s shape-rendering="crispEdges"/>',
 						self::num($item['x1']), self::num($item['y1']),
@@ -754,9 +763,10 @@ class WeatherMapSvg {
 		}
 		$id = 'wm-scale-' . substr(md5(implode(',', $e) . $stops), 0, 10);
 		return sprintf('<defs><linearGradient id="%s" x1="%d" y1="%d" x2="%d" y2="%d">%s</linearGradient></defs>', $id, $e[0], $e[1], $e[2], $e[3], $stops)
-			. sprintf('<rect class="wm-scale-bar" x="%s" y="%s" width="%s" height="%s" fill="url(#%s)"/>',
+			. sprintf('<rect class="wm-scale-bar" x="%s" y="%s" width="%s" height="%s"%s fill="url(#%s)"/>',
 				self::num($item['x1']), self::num($item['y1']),
-				self::num($item['x2'] - $item['x1'] + 1), self::num($item['y2'] - $item['y1'] + 1), $id);
+				self::num($item['x2'] - $item['x1'] + 1), self::num($item['y2'] - $item['y1'] + 1),
+				empty($item['radius']) ? '' : ' rx="' . self::num($item['radius']) . '"', $id);
 	}
 
 	function nodeElements($n) {
