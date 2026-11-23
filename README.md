@@ -97,6 +97,10 @@ Maps that already have the name of a demo are left as they are, so running it
 again changes nothing. The testbed adds them too. Their files are in
 `src/examples/maps`: open one in the editor to see how a feature is set up.
 
+An installation can add its own demo maps: `DEMO_MAPS_EXTRA_DIR` names a
+folder of `.conf` files (the map name is each `TITLE`) that join the same
+group. The testbed uses it for its map of the simulated devices.
+
 ### Test deployment with Observium
 
 `deploy/testbed` runs Observium, Weathermap and a few simulated SNMP devices
@@ -125,6 +129,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `ADMIN_PASSWORD` | Default admin password | `admin` |
 | `MAP_OUTPUT_FORMAT` | Image format (`svg`, `png`, `jpg`, `gif`; thumbnails and the offline picture stay PNG for `svg`), until one is chosen in Settings > Maps & rendering | `svg` |
 | `MAP_REFRESH_INTERVAL` | Map refresh interval in seconds (10 to 86400), until one is chosen in Settings > Maps & rendering | `300` |
+| `DEMO_MAPS_EXTRA_DIR` | Folder of extra demo maps (`.conf`), added with the demo maps | none |
 | `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the user menu | browser language |
 
 ### Data sources (Zabbix and more)

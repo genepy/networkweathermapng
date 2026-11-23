@@ -25,8 +25,11 @@ On a Linux machine with Docker and the Compose plugin
 The first run builds the images (Observium is downloaded from observium.org;
 on a Raspberry Pi 4 the Weathermap image takes a while to compile), creates
 passwords in `~/.config/weathermap-testbed/env`, starts everything and adds
-to Weathermap the Observium data source, a map named **Testbed** and the
-demo maps of `src/examples/maps` (group *Demo maps*). Running
+to Weathermap the Observium data source and the demo maps (group *Demo
+maps*): those of `src/examples/maps` and **Testbed**, the map of the
+simulated devices (`weathermap/demo/testbed.conf`, through
+`DEMO_MAPS_EXTRA_DIR`), so the Maps page's demo button brings it back once
+deleted. Running
 it again updates the containers and keeps all data.
 
 | URL | Login |

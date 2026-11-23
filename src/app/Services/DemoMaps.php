@@ -7,11 +7,17 @@
  * draws without Zabbix or Observium. install() adds the demos that are not
  * there yet to a "Demo maps" group; a map that already has the name of a
  * demo is left as it is, so running it again changes nothing.
+ *
+ * An installation can add its own demos from an extra folder,
+ * DEMO_MAPS_EXTRA_DIR: the testbed adds the map of its simulated devices
+ * there, which reads its Observium source (F65).
  */
 
 declare(strict_types=1);
 
 namespace App\Services;
+
+use App\Core\Config;
 
 final class DemoMaps
 {
@@ -21,7 +27,15 @@ final class DemoMaps
         private MapService $maps,
         private GroupService $groups,
         private ?string $dir = null,
+        private ?string $extraDir = null,
     ) {
+    }
+
+    /** The extra demo folder of this installation (DEMO_MAPS_EXTRA_DIR), null when none */
+    public static function extraDir(): ?string
+    {
+        $dir = trim((string) Config::env('DEMO_MAPS_EXTRA_DIR'));
+        return $dir !== '' && is_dir($dir) ? $dir : null;
     }
 
     /** Folder of the demo configurations */
@@ -31,18 +45,25 @@ final class DemoMaps
     }
 
     /**
-     * The demo files, by map name (the TITLE of each file), sorted by file name.
+     * The demo files, by map name (the TITLE of each file), sorted by file
+     * name: the application's, then those of the extra folder.
      *
      * @return array<string, string> name => path
      */
     public function available(): array
     {
-        $files = glob(($this->dir ?? self::defaultDir()) . '/*.conf') ?: [];
-        sort($files);
         $demos = [];
-        foreach ($files as $file) {
-            $name = MapService::titleOf((string) file_get_contents($file)) ?? basename($file, '.conf');
-            $demos[$name] = $file;
+        foreach ([$this->dir ?? self::defaultDir(), $this->extraDir ?? self::extraDir()] as $dir) {
+            if ($dir === null) {
+                continue;
+            }
+            $files = glob($dir . '/*.conf') ?: [];
+            sort($files);
+            foreach ($files as $file) {
+                $name = MapService::titleOf((string) file_get_contents($file)) ?? basename($file, '.conf');
+                // a demo of the application keeps its name
+                $demos[$name] ??= $file;
+            }
         }
         return $demos;
     }

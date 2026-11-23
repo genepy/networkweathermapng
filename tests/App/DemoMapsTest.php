@@ -119,6 +119,47 @@ final class DemoMapsTest extends TestCase
         $this->assertCount(count($first), $maps->getAllMaps());
     }
 
+    public function testExtraFolderAddsItsDemos(): void
+    {
+        $data = TESTS_OUTPUT . '/demomaps-extra';
+        self::wipe($data);
+        mkdir($data . '/extra', 0775, true);
+        file_put_contents($data . '/extra/lab.conf', "WIDTH 400\nHEIGHT 300\nTITLE Lab devices\n");
+        // a demo of the application keeps its file
+        file_put_contents($data . '/extra/fabric.conf', "WIDTH 400\nHEIGHT 300\nTITLE Datacenter fabric\n");
+
+        $config = new Config();
+        $config->set('APP_ROOT', dirname(TESTS_ROOT) . '/src');
+        $config->set('DATA_ROOT', $data);
+        $config->set('DB_TYPE', 'sqlite');
+        $config->set('DB_PATH', $data . '/test.db');
+        $db = new Database($config);
+        $maps = new MapService($db, $config);
+        $groups = new GroupService($db);
+        $demos = new DemoMaps($maps, $groups, null, $data . '/extra');
+
+        $available = $demos->available();
+        $this->assertSame($data . '/extra/lab.conf', $available['Lab devices']);
+        $this->assertSame('Lab devices', array_key_last($available));
+        $this->assertStringStartsWith(DemoMaps::defaultDir(), $available['Datacenter fabric']);
+        $this->assertContains('Lab devices', $demos->missing());
+
+        $this->assertTrue($demos->install()['Lab devices']);
+        $this->assertNotContains('Lab devices', $demos->missing());
+        $this->assertFalse($demos->install()['Lab devices']);
+    }
+
+    public function testTestbedMapIsAFullMap(): void
+    {
+        $file = dirname(TESTS_ROOT) . '/deploy/testbed/weathermap/demo/testbed.conf';
+        $this->assertFileExists($file);
+        $conf = (string) file_get_contents($file);
+        $this->assertSame('Testbed', MapService::titleOf($conf));
+        $this->assertStringContainsString('SET box_1 legend', $conf);
+        $this->assertStringContainsString('updated:map:', $conf);
+        $this->assertStringContainsString('TARGET observium:', $conf);
+    }
+
     private static function wipe(string $dir): void
     {
         if (!is_dir($dir)) {
