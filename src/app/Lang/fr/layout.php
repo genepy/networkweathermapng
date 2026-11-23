@@ -36,4 +36,5 @@ return [
     'An unexpected error occurred. Please try again later.' => 'Une erreur inattendue s’est produite. Réessayez plus tard.',
     'This map does not exist any more, or its address is wrong.' => 'Cette carte n’existe plus, ou son adresse est erronée.',
     'Search maps, nodes, commands' => 'Rechercher cartes, nœuds, commandes',
+    'Version :v' => 'Version :v',
 ];

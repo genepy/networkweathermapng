@@ -155,6 +155,7 @@
 .um-who { display: flex; align-items: center; gap: var(--wm-space-3); padding: var(--wm-space-2); }
 .um-who strong { display: block; }
 .um-role { display: block; color: var(--wm-text-muted); font-size: var(--wm-text-sm); }
+.um-version { margin: var(--wm-space-2) 0 0; padding: var(--wm-space-1) var(--wm-space-2) 0; border-top: 1px solid var(--wm-border); color: var(--wm-text-muted); font-size: var(--wm-text-xs, 11px); }
 .um-row {
     display: flex;
     align-items: center;

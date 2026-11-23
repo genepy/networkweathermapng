@@ -107,6 +107,9 @@ services:
       context: ../..
       dockerfile: docker/Dockerfile
       network: host
+      args:
+        # the commit shown next to the version (deploy.sh sets it)
+        APP_COMMIT: ${APP_COMMIT:-}
     restart: unless-stopped
     depends_on:
       - observium

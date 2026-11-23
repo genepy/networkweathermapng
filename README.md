@@ -113,6 +113,7 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `APP_ENV` | Application environment | `production` |
 | `APP_DEBUG` | Enable debug mode | `false` |
 | `APP_TIMEZONE` | Application timezone, and the time zone of map dates until one is chosen in Settings > Time zone | `UTC` |
+| `APP_COMMIT` | Commit the image was built from, shown next to the version (the `VERSION` file) in the user menu and on the logo; a build argument of `docker/Dockerfile`, set by the image workflow and the testbed | empty |
 | `APP_CSP` | Content-Security-Policy sent with every page; `off` sends none | same-site resources only |
 | `BASEMAP_SERVERS` | Tile servers a map's basemap may load from (space-separated URL prefixes), added to the default Content-Security-Policy. Same-site addresses (`/tiles/...`) are always allowed | `https://tiles.openfreemap.org` |
 | `APP_KEY` | Key that encrypts data source passwords (`base64:` + 32 bytes, or any passphrase). Without it a key is created in `DATA_ROOT/app.key`: back it up with the database | generated |
