@@ -77,4 +77,8 @@ return [
     ':source unreachable: :links' => ':source injoignable : :links',
     ':source error: :links' => 'Erreur de :source : :links',
     'Data source not answering: :sources' => 'Source de données sans réponse : :sources',
+    'No data source: this link has no TARGET' => 'Pas de source de données : ce lien n’a pas de TARGET',
+    'No data: its data source cannot be reached' => 'Pas de données : sa source de données est injoignable',
+    'No data: its data source failed to read it' => 'Pas de données : sa source de données n’a pas pu le lire',
+    'No data: its data source has nothing for this link' => 'Pas de données : sa source de données n’a rien pour ce lien',
 ];

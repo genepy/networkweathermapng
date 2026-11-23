@@ -168,13 +168,15 @@ class WeatherMapSvg {
 	/**
 	 * Everything recorded until the next call belongs to this map item. A
 	 * map note (a node with SET editor_note 1) is drawn as a node with the
-	 * class wm-note too: the viewer leaves it out of "Find a node".
+	 * class wm-note too: the viewer leaves it out of "Find a node". A link
+	 * that nothing feeds has the class wm-nodata, wm-down too when its
+	 * source gave nothing (WeatherMapLink::data_state(), F66, F67).
 	 */
-	function begin($kind, $name = null, $id = null, $hot = false, $note = false) {
+	function begin($kind, $name = null, $id = null, $hot = false, $note = false, $nodata = null) {
 		if ($kind === null) {
 			$this->owner = null;
 		} else {
-			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot, 'note' => $note);
+			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot, 'note' => $note, 'nodata' => $nodata);
 		}
 		if ($hot) {
 			$this->hasHot = true;
@@ -212,7 +214,7 @@ class WeatherMapSvg {
 			. '<feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>'
 			. '<feComponentTransfer in="blur" result="soft"><feFuncA type="linear" slope="0.8"/></feComponentTransfer>'
 			. '<feMerge><feMergeNode in="soft"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' . "\n"
-			. "<style>\n.wm-map .wm-link:not(.wm-hot):hover .wm-arrow{filter:url(#wm-glow)}\n</style>";
+			. "<style>\n.wm-map .wm-link:not(.wm-hot):not(.wm-nodata):hover .wm-arrow{filter:url(#wm-glow)}\n</style>";
 	}
 
 	/**
@@ -610,8 +612,9 @@ class WeatherMapSvg {
 				}
 				if ($key !== null) {
 					$o = $item['owner'];
-					$out[] = sprintf('<g class="wm-%s%s%s" data-kind="%s" data-name="%s" data-id="%s">',
-						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', empty($o['note']) ? '' : ' wm-note', $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
+					$nodata = empty($o['nodata']) ? '' : ($o['nodata'] == 'down' ? ' wm-nodata wm-down' : ' wm-nodata');
+					$out[] = sprintf('<g class="wm-%s%s%s%s" data-kind="%s" data-name="%s" data-id="%s">',
+						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', empty($o['note']) ? '' : ' wm-note', $nodata, $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
 				}
 				$group = $key;
 			}

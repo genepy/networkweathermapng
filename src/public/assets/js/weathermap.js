@@ -906,6 +906,12 @@
             },
             show: function(info, e) {
                 const el = panel();
+                function noDataText(state, reason) {
+                    if (state === 'none') return t('No data source: this link has no TARGET');
+                    if (reason === 'source-down') return t('No data: its data source cannot be reached');
+                    if (reason === 'source-error') return t('No data: its data source failed to read it');
+                    return t('No data: its data source has nothing for this link');
+                }
                 const key = JSON.stringify(info);
                 clearTimeout(leaveTimer);
                 if (visible && key === lastKey) {
@@ -921,7 +927,9 @@
                 if (info.ds && !info.traffic) {
                     try { selection = JSON.parse(info.ds); } catch (err) { selection = null; }
                 }
-                const now = nowLine(t('IN'), 'wm-hc-in', info.in, info.inpct) + nowLine(t('OUT'), 'wm-hc-out', info.out, info.outpct);
+                // a link that nothing feeds says why instead of its values (F66, F67)
+                const nodata = info.nodata ? `<div class="wm-hc-nodata">${wmEsc(noDataText(info.nodata, info.reason))}</div>` : '';
+                const now = nodata || nowLine(t('IN'), 'wm-hc-in', info.in, info.inpct) + nowLine(t('OUT'), 'wm-hc-out', info.out, info.outpct);
                 const top = head(info);
                 const series = !!(info.traffic || selection);
 
