@@ -650,6 +650,7 @@
             .then(function (data) {
                 // first, so the view from the address may zoom as far as a basemap allows
                 if (data.status) setBasemap(data.status.basemap || null);
+                exportMenu();
                 setAreas(data.focus || null);
                 installSvg(data.svg, data.items);
                 // the kiosk has a layout of its own when the map sets one (SET kiosk_panels), with a side panel
@@ -2148,11 +2149,17 @@
             const el = panelEl(p.id);
             if (!el) return;
             let where = p.shown ? p.position : 'off';
+            // the total traffic card of the picture is left out of the live
+            // view (viewer.css): its panel shows it, fixed on the screen (F68)
+            if (p.id === 'total' && S.el && S.el.querySelector && S.el.querySelector('g.wm-box-total')
+                && (where === 'off' || (where === 'side' && ((kioskFrame && !D.kioskSide) || !panel)))) where = 'top-right';
             // a phone has no room for cards in the corners: they go in the panel sheet, the update time stays small
             if (phone && where !== 'off' && where !== 'side' && p.id !== 'updated') where = 'side';
             // no side panel in the kiosk, unless it has its own layout
             if (where === 'side' && ((kioskFrame && !D.kioskSide) || !panel)) where = 'off';
-            if (where === 'map' && !(p.at && p.at.length === 2)) where = 'bottom-left';
+            // the status bar placed on the map (F58) is drawn there in the
+            // pictures; the live view keeps it fixed in its corner (F68)
+            if (where === 'map') where = 'bottom-left';
             if (where === 'off') D.off.appendChild(el);
             else if (where === 'map') {
                 D.mapDock.appendChild(el);
@@ -2788,6 +2795,108 @@
             showArea(b.dataset.area === '' ? null : b.dataset.area, {zoom: true, animate: true});
         });
     }
+
+    // ------------------------------------------------------------------
+    // Export of a map on a basemap (F68): the server's SVG (with its cards:
+    // total traffic, update time, legends) over the basemap, which only the
+    // browser can draw. As SVG, the basemap is an image layer under it.
+
+    const exportPng = root.querySelector('[data-export="png"]');
+    const exportSvg = root.querySelector('[data-export="svg"]');
+    let exporting = false;
+
+    /** The PNG entry of the menu shows on a map with a basemap */
+    function exportMenu() {
+        if (exportPng) exportPng.hidden = !(B.cfg && window.WMBasemap && window.WMBasemap.snapshot);
+    }
+
+    function saveBlob(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    }
+
+    /** The map's SVG with its cards, its background see-through, and the basemap under it ([svg text, basemap canvas]) */
+    function exportParts(scale) {
+        const svgUrl = exportSvg ? exportSvg.getAttribute('href') : '/map/' + mapId + '/svg/download';
+        return Promise.all([
+            fetch(svgUrl, {credentials: 'same-origin'}).then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            }),
+            window.WMBasemap.snapshot(B.cfg, S.w, S.h, scale)
+        ]).then(function (parts) {
+            const doc = new DOMParser().parseFromString(parts[0], 'image/svg+xml');
+            const svg = doc.documentElement;
+            if (!svg || svg.nodeName.toLowerCase() !== 'svg') throw new Error('no svg');
+            svg.querySelectorAll('rect.wm-bg').forEach(function (r) { r.setAttribute('fill-opacity', '0'); });
+            return {doc: doc, svg: svg, base: parts[1]};
+        });
+    }
+
+    function runExport(kind) {
+        if (exporting || !B.cfg || !window.WMBasemap) return;
+        exporting = true;
+        const file = (exportPng && exportPng.dataset.file) || 'map';
+        showMessage(t('Preparing the picture with its basemap…'));
+        const scale = kind === 'png' ? 2 : 1;
+        exportParts(scale).then(function (p) {
+            if (kind === 'svg') {
+                const img = p.doc.createElementNS('http://www.w3.org/2000/svg', 'image');
+                img.setAttribute('x', '0');
+                img.setAttribute('y', '0');
+                img.setAttribute('width', String(S.w));
+                img.setAttribute('height', String(S.h));
+                img.setAttribute('href', p.base.toDataURL('image/png'));
+                img.setAttribute('class', 'wm-basemap');
+                p.svg.insertBefore(img, p.svg.firstChild);
+                saveBlob(new Blob([new XMLSerializer().serializeToString(p.doc)], {type: 'image/svg+xml'}), file + '.svg');
+                return null;
+            }
+            return new Promise(function (resolve, reject) {
+                const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(p.doc)], {type: 'image/svg+xml'}));
+                const over = new Image();
+                over.onload = function () {
+                    URL.revokeObjectURL(url);
+                    const c = p.base;
+                    c.getContext('2d').drawImage(over, 0, 0, c.width, c.height);
+                    c.toBlob(function (blob) {
+                        if (!blob) { reject(new Error('no picture')); return; }
+                        saveBlob(blob, file + '.png');
+                        resolve(null);
+                    }, 'image/png');
+                };
+                over.onerror = function () { URL.revokeObjectURL(url); reject(new Error('the map could not be drawn')); };
+                over.src = url;
+            });
+        }).then(function () {
+            showMessage('');
+        }).catch(function (err) {
+            if (window.console) console.warn('Export:', err && err.message ? err.message : err);
+            showMessage(t('The picture with its basemap could not be made'), true);
+            setTimeout(function () { showMessage(''); }, 6000);
+        }).then(function () {
+            exporting = false;
+        });
+    }
+
+    if (exportPng) exportPng.addEventListener('click', function (e) {
+        e.preventDefault();
+        closeMenus();
+        runExport('png');
+    });
+    if (exportSvg) exportSvg.addEventListener('click', function (e) {
+        // without a basemap, the server's file as it is
+        if (!B.cfg || !window.WMBasemap || !window.WMBasemap.snapshot) return;
+        e.preventDefault();
+        closeMenus();
+        runExport('svg');
+    });
 
     // ------------------------------------------------------------------
     // Toolbar and keyboard

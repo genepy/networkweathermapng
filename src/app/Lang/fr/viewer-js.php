@@ -81,4 +81,6 @@ return [
     'No data: its data source cannot be reached' => 'Pas de données : sa source de données est injoignable',
     'No data: its data source failed to read it' => 'Pas de données : sa source de données n’a pas pu le lire',
     'No data: its data source has nothing for this link' => 'Pas de données : sa source de données n’a rien pour ce lien',
+    'Preparing the picture with its basemap…' => 'Préparation de l’image avec son fond de carte…',
+    'The picture with its basemap could not be made' => 'L’image avec son fond de carte n’a pas pu être créée',
 ];
