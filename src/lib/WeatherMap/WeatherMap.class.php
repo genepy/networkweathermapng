@@ -1777,7 +1777,7 @@ class WeatherMap extends WeatherMapBase {
 	 * pixels per step in GD, one rectangle with a linear gradient in the SVG.
 	 * $direction: 'right' (0% on the left), 'down' (0% at the top) or 'up'.
 	 */
-	function DrawScaleBar($image, $x1, $y1, $x2, $y2, $scalename = 'DEFAULT', $direction = 'right') {
+	function DrawScaleBar($image, $x1, $y1, $x2, $y2, $scalename = 'DEFAULT', $direction = 'right', $radius = 0) {
 		$x1 = intval(round($x1));
 		$y1 = intval(round($y1));
 		$x2 = intval(round($x2));
@@ -1788,9 +1788,34 @@ class WeatherMap extends WeatherMapBase {
 			return;
 		}
 
+		// rounded ends: each pixel row (or column) is drawn on its own, inset
+		// at both ends of the bar to follow the curve
+		$thickness = $vertical ? $x2 - $x1 + 1 : $y2 - $y1 + 1;
+		$radius = max(0, min((float) $radius, $thickness / 2, $length / 2));
+		if ($radius >= 1) {
+			for ($i = 0; $i < $length; $i++) {
+				$p = 100 * $i / max(1, $length - 1);
+				if ($direction === 'up') {
+					$p = 100 - $p;
+				}
+				list($col) = $this->NewColourFromPercent(max($p, 0.0001), $scalename, '', true, false);
+				if (!$col->is_real()) {
+					continue;
+				}
+				$d = min($i, $length - 1 - $i) + 0.5;
+				$inset = $d < $radius ? (int) round($radius - sqrt(max(0, $radius * $radius - ($radius - $d) * ($radius - $d)))) : 0;
+				$gd = myimagecolorallocate($image, $col->r, $col->g, $col->b);
+				if ($vertical) {
+					imagefilledrectangle($image, $x1 + $inset, $y1 + $i, $x2 - $inset, $y1 + $i, $gd);
+				} else {
+					imagefilledrectangle($image, $x1 + $i, $y1 + $inset, $x1 + $i, $y2 - $inset, $gd);
+				}
+			}
+		}
+
 		$run = 0;
 		$last = null;
-		for ($i = 0; $i <= $length; $i++) {
+		for ($i = 0; $i <= $length && $radius < 1; $i++) {
 			$colour = null;
 			if ($i < $length) {
 				$p = 100 * $i / max(1, $length - 1);
@@ -1817,7 +1842,7 @@ class WeatherMap extends WeatherMapBase {
 		}
 
 		if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
-			WeatherMapSvg::$active->gradient($x1, $y1, $x2, $y2, $this->scale_stops($scalename), $direction);
+			WeatherMapSvg::$active->gradient($x1, $y1, $x2, $y2, $this->scale_stops($scalename), $direction, $radius);
 		}
 	}
 

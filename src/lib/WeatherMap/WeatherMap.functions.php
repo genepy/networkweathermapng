@@ -2124,6 +2124,38 @@ function wimagecreate($width,$height) {
 	return(imagecreate($width,$height));
 }
 
+/**
+ * A filled rectangle with rounded ends of $radius pixels (a pill when the
+ * radius is half its height), in the PNG and the SVG
+ */
+function wimagefilledroundedrect($image, $x1, $y1, $x2, $y2, $radius, $color) {
+	if ($color === null) {
+		return;
+	}
+	$radius = max(0, min((float) $radius, (abs($x2 - $x1) + 1) / 2, (abs($y2 - $y1) + 1) / 2));
+	if ($radius < 1) {
+		return wimagefilledrectangle($image, $x1, $y1, $x2, $y2, $color);
+	}
+	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
+		WeatherMapSvg::$active->rect((int) $x1, (int) $y1, (int) $x2, (int) $y2, $color, true, $radius);
+	}
+	// each pixel column (row for a tall one) inset at the ends to follow the
+	// curve, so the ends stay inside the rectangle
+	list($x1, $x2) = array((int) min($x1, $x2), (int) max($x1, $x2));
+	list($y1, $y2) = array((int) min($y1, $y2), (int) max($y1, $y2));
+	$wide = $x2 - $x1 >= $y2 - $y1;
+	$length = $wide ? $x2 - $x1 + 1 : $y2 - $y1 + 1;
+	for ($i = 0; $i < $length; $i++) {
+		$d = min($i, $length - 1 - $i) + 0.5;
+		$inset = $d < $radius ? (int) round($radius - sqrt(max(0, $radius * $radius - ($radius - $d) * ($radius - $d)))) : 0;
+		if ($wide) {
+			imagefilledrectangle($image, $x1 + $i, $y1 + $inset, $x1 + $i, $y2 - $inset, $color);
+		} else {
+			imagefilledrectangle($image, $x1 + $inset, $y1 + $i, $x2 - $inset, $y1 + $i, $color);
+		}
+	}
+}
+
 function wimagefilledrectangle( $image ,$x1, $y1, $x2, $y2, $color ) {
 	if ($color === null) {
 		return;

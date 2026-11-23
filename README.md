@@ -272,13 +272,13 @@ do not know them skip them):
 SET box_1 total 10 10              # type and position: total, legend, speed or text
 SET box_1_style graph              # total: graph (value and the last 24 h) or plain
 SET box_2 legend -10 -10           # negative x or y count from the right or bottom edge
-SET box_2_style bar                # legend: bar (the scale as a bar, 0% to 100%) or list
+SET box_2_style bar                # legend: bar (the scale as a rounded bar, 0% to 100%) or list
 SET box_3 text 600 20
 SET box_3_title Points of presence # "-" for no title; each type has a default
 SET box_3_text Amsterdam | 68\nParis | 37   # \n starts a row, "label | value" puts the value on the right
 SET box_3_rows sites               # rows from the map: sites (nodes per site) or sites_load (busiest link)
 SET box_3_width 240                # least width of the content
-SET box_4 speed 10 300             # the link widths by speed (link width table)
+SET box_4 speed 10 300             # the link widths by speed (link width table), as rounded lines
 SET box_2_note Data: Observium     # a small line under the content (credits, a source...)
 SET box_6 legend 10 40             # a legend card...
 SET box_6_style tags               # bar (gradient), list (one row per step) or tags (the step tags)

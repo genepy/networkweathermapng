@@ -510,7 +510,8 @@ class WeatherMapBoxes {
 			case 'speed':
 				$mid = $y + $height / 2;
 				$half = max(0.5, $data[1] / 2);
-				wimagefilledrectangle($image, $x, (int) round($mid - $half), $x + 36, (int) round($mid + $half - 1), $text);
+				// a line with rounded ends, as thick as the links of that speed
+				wimagefilledroundedrect($image, $x, (int) round($mid - $half), $x + 36, (int) round($mid + $half - 1), $half, $text);
 				$map->myimagestring($image, $font, $x + 48, (int) round($mid + $lineheight / 2), $data[2], $text);
 				return;
 
@@ -577,9 +578,9 @@ class WeatherMapBoxes {
 		}
 	}
 
-	/** The scale as a bar, smooth in the SVG (a linear gradient) */
+	/** The scale as a bar with rounded ends, smooth in the SVG (a linear gradient) */
 	static function drawBar($map, $image, $x, $y, $width, $height, $scale = 'DEFAULT') {
-		$map->DrawScaleBar($image, $x, $y, $x + $width - 1, $y + $height - 1, $scale);
+		$map->DrawScaleBar($image, $x, $y, $x + $width - 1, $y + $height - 1, $scale, 'right', $height / 2);
 	}
 
 	/** IN above the middle line and OUT under it, both on the same scale */
