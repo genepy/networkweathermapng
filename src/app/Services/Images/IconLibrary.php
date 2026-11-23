@@ -59,7 +59,7 @@ class IconLibrary
     }
 
     /** The themes drawn for the project, shown before the vendor sets */
-    private const FIRST_THEMES = ['net', 'classic', 'status', 'clouds', 'generic'];
+    private const FIRST_THEMES = ['net', 'classic', 'status', 'clouds', 'generic', 'animated'];
 
     /**
      * Themes, the project's own first and then by name, each with its icons:

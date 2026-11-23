@@ -194,7 +194,8 @@ class MapEditor
      *   viewer and kiosk hints no longer name a shown legend panel;
      * - one update time (F58): TIMEPOS, MINTIMEPOS, MAXTIMEPOS and the
      *   update time cards (SET box_<id> updated) are removed; when one of
-     *   them was shown, the status bar goes on the map at its place.
+     *   them was shown, the status bar goes on the map at its place;
+     * - the fan and the wind turbine icons moved to objects/animated/ (F59).
      *
      * The engine still draws the older legends of maps never opened in the
      * editor (not the timestamps). True when the map changed.
@@ -282,6 +283,16 @@ class MapEditor
 
         if (self::convertTimestamps($map)) {
             $changed = true;
+        }
+
+        // F59: the animated icons moved from objects/net/ to objects/animated/
+        foreach ($map->nodes as $node) {
+            $icon = (string) $node->iconfile;
+            $moved = \WeatherMapNode::movedIcon($icon);
+            if ($moved !== $icon) {
+                $node->iconfile = $moved;
+                $changed = true;
+            }
         }
 
         return $changed;

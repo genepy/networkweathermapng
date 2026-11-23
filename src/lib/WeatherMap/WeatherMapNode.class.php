@@ -62,6 +62,16 @@ class WeatherMapNode extends WeatherMapItem {
 	var $maphtml;
 	var $selected = 0;
 	var $iconfile, $iconscalew, $iconscaleh;
+
+	/**
+	 * The path of an icon that moved since it was shipped: the fan and the
+	 * wind turbine went from objects/net/ to objects/animated/ (F59). Maps
+	 * that still name the old path draw the icon from its new place until
+	 * the editor rewrites them.
+	 */
+	static function movedIcon($path) {
+		return (string) preg_replace('#(^|/)objects/net/(fan|wind-turbine)\.(png|svg)$#i', '$1objects/animated/$2.$3', (string) $path);
+	}
 	var $targets = array();
 	var $bandwidth_in, $bandwidth_out;
 	var $inpercent, $outpercent;
@@ -588,7 +598,7 @@ class WeatherMapNode extends WeatherMapItem {
 					wm_warn('gauge AICON not implemented yet [WMWARN99]');
 				}
 			} else {
-				$this->iconfile = $map->ProcessString($this->iconfile, $this);
+				$this->iconfile = WeatherMapNode::movedIcon($map->ProcessString($this->iconfile, $this));
 
 				// an SVG icon is drawn from its PNG twin (GD can't read SVG)
 				$icon_raster = WeatherMapSvg::rasterFor($this->iconfile);
