@@ -169,6 +169,67 @@
         return a && b && a.url === b.url && a.dark === b.dark && a.kind === b.kind && a.attribution === b.attribution;
     }
 
+    /**
+     * The basemap under a whole map of w x h pixels, at its frame, drawn
+     * off screen: resolves with a canvas `scale` times the size, for the
+     * export of a map with its basemap (F68). The server cannot draw
+     * vector tiles, so the picture is put together in the browser.
+     */
+    function snapshot(cfg, w, h, scale) {
+        scale = scale || 1;
+        return loadLibrary().then(function (lib) {
+            return new Promise(function (resolve, reject) {
+                var box = document.createElement('div');
+                box.setAttribute('aria-hidden', 'true');
+                box.style.cssText = 'position:fixed;left:-20000px;top:0;width:' + w + 'px;height:' + h + 'px;pointer-events:none;';
+                document.body.appendChild(box);
+                var map = null, done = false;
+                function finish(err, canvas) {
+                    if (done) return;
+                    done = true;
+                    clearTimeout(timer);
+                    try { if (map) map.remove(); } catch (e) { /* gone */ }
+                    box.remove();
+                    if (err) reject(err); else resolve(canvas);
+                }
+                var timer = setTimeout(function () { finish(new Error('The basemap took too long to draw')); }, 30000);
+                try {
+                    map = new lib.Map({
+                        container: box,
+                        style: styleOf(cfg, isDark()),
+                        interactive: false,
+                        attributionControl: false,
+                        fadeDuration: 0,
+                        preserveDrawingBuffer: true,
+                        pixelRatio: scale,
+                        minZoom: 0,
+                        maxZoom: 24,
+                        center: [cfg.center[1], cfg.center[0]],
+                        zoom: cfg.zoom
+                    });
+                } catch (e) {
+                    finish(e);
+                    return;
+                }
+                map.on('error', function (e) {
+                    if (!map.loaded()) finish(e && e.error ? e.error : new Error('The basemap could not be loaded'));
+                });
+                map.once('idle', function () {
+                    var out = document.createElement('canvas');
+                    out.width = Math.round(w * scale);
+                    out.height = Math.round(h * scale);
+                    try {
+                        out.getContext('2d').drawImage(map.getCanvas(), 0, 0, out.width, out.height);
+                    } catch (e) {
+                        finish(e);
+                        return;
+                    }
+                    finish(null, out);
+                });
+            });
+        });
+    }
+
     function create(container, cfg, opts) {
         opts = opts || {};
         var self = {config: cfg, map: null, failed: false, ready: false};
@@ -424,6 +485,7 @@
         project: project,
         unproject: unproject,
         minScale: minScale,
+        snapshot: snapshot,
         worldRows: worldRows,
         fitFrame: fitFrame,
         same: function (a, b) {

@@ -83,6 +83,9 @@ final class BoxesTest extends TestCase
             $this->assertStringContainsString('data-kind="box" data-name="' . $id . '" data-id="BOX:' . $id . '"', $svg);
         }
         $this->assertStringNotContainsString('data-name="5"', $svg, 'an update time card is read, not drawn (F58)');
+        // the type as a class: the viewer leaves the total card to its panel (F68)
+        $this->assertStringContainsString('<g class="wm-box wm-box-total" data-kind="box" data-name="2"', $svg);
+        $this->assertStringContainsString('<g class="wm-box wm-box-legend" data-kind="box" data-name="3"', $svg);
         $this->assertStringContainsString('>Points of presence<', $svg);
         $this->assertStringContainsString('>Amsterdam<', $svg);
         $this->assertStringContainsString('>68<', $svg);

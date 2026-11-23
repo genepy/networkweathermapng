@@ -171,12 +171,13 @@ class WeatherMapSvg {
 	 * class wm-note too: the viewer leaves it out of "Find a node". A link
 	 * that nothing feeds has the class wm-nodata, wm-down too when its
 	 * source gave nothing (WeatherMapLink::data_state(), F66, F67).
+	 * $class adds classes, such as the type of a card (wm-box-total).
 	 */
-	function begin($kind, $name = null, $id = null, $hot = false, $note = false, $nodata = null) {
+	function begin($kind, $name = null, $id = null, $hot = false, $note = false, $nodata = null, $class = '') {
 		if ($kind === null) {
 			$this->owner = null;
 		} else {
-			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot, 'note' => $note, 'nodata' => $nodata);
+			$this->owner = array('kind' => $kind, 'name' => $name, 'id' => $id, 'hot' => $hot, 'note' => $note, 'nodata' => $nodata, 'class' => (string) $class);
 		}
 		if ($hot) {
 			$this->hasHot = true;
@@ -613,6 +614,7 @@ class WeatherMapSvg {
 				if ($key !== null) {
 					$o = $item['owner'];
 					$nodata = empty($o['nodata']) ? '' : ($o['nodata'] == 'down' ? ' wm-nodata wm-down' : ' wm-nodata');
+					$nodata .= empty($o['class']) ? '' : ' ' . self::esc($o['class']);
 					$out[] = sprintf('<g class="wm-%s%s%s%s" data-kind="%s" data-name="%s" data-id="%s">',
 						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', empty($o['note']) ? '' : ' wm-note', $nodata, $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
 				}

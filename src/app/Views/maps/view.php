@@ -100,7 +100,9 @@
                 <summary class="wmv-icon-btn" title="<?= e__('More actions') ?>" aria-label="<?= e__('More actions') ?>"><?= icon('ellipsis') ?></summary>
                 <div class="row-menu-items">
                     <button type="button" data-act="copy-kiosk"><?= icon('link') ?><?= e__('Copy kiosk link') ?></button>
-                    <a href="/map/<?= $mapId ?>/svg/download" download="<?= htmlspecialchars($fileName) ?>.svg"><?= icon('download') ?><?= e__('Download as SVG') ?></a>
+                    <a href="/map/<?= $mapId ?>/svg/download" download="<?= htmlspecialchars($fileName) ?>.svg" data-export="svg"><?= icon('download') ?><?= e__('Download as SVG') ?></a>
+                    <?php /* a map on a basemap: the PNG is put together in the browser, with the basemap (F68) */ ?>
+                    <button type="button" data-export="png" data-file="<?= htmlspecialchars($fileName) ?>" hidden><?= icon('download') ?><?= e__('Download as PNG') ?></button>
                     <?php $imageFormat = (string) $config->get('MAP_OUTPUT_FORMAT', 'svg'); $imageFormat = isset(\App\Controllers\MapController::IMAGE_TYPES[$imageFormat]) ? $imageFormat : 'svg'; ?>
                     <?php if ($imageFormat !== 'svg'): /* the SVG has its own entry above */ ?>
                     <a href="/map/<?= $mapId ?>/image" download="<?= htmlspecialchars($fileName . '.' . $imageFormat) ?>"><?= icon('download') ?><?= e__('Download as :format', ['format' => strtoupper($imageFormat)]) ?></a>

@@ -979,6 +979,8 @@
 .wmv-dock-map[hidden] { display: none; }
 .wmv-dock-map > .wmv-status { position: static; max-width: none; white-space: nowrap; }
 .wmv-stage g[data-kind="status"] { display: none; }
+/* the total traffic card of the picture: its live panel takes its place, fixed on the screen (F68) */
+.wmv-stage g.wm-box-total { display: none; }
 .wmv-dock > .wmv-sites { flex: 0 1 auto; min-height: 0; }
 .wmv-dock .wmv-site-list { min-height: 0; max-height: 36vh; }
 /* the update time in the side panel: a line of the panel, not a card */

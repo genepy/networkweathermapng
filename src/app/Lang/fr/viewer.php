@@ -19,6 +19,7 @@ return [
     'Copy kiosk link' => 'Copier le lien kiosque',
     'Download as :format' => 'Télécharger en :format',
     'Download as SVG' => 'Télécharger en SVG',
+    'Download as PNG' => 'Télécharger en PNG',
     'Collapse every site' => 'Replier tous les sites',
     'Expand every site' => 'Déplier tous les sites',
 

@@ -236,7 +236,9 @@ class WeatherMapBoxes {
 				continue;
 			}
 			if ($svg) {
-				$svg->begin('box', $id, 'BOX:' . $id);
+				// its type as a class: the viewer leaves out the total traffic card,
+				// which its own panel shows (F68)
+				$svg->begin('box', $id, 'BOX:' . $id, false, false, null, 'wm-box-' . $box['type']);
 			}
 			self::draw($map, $image, $box);
 		}

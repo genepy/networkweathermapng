@@ -361,6 +361,12 @@ CONF);
         $this->assertStringNotContainsString('<area', $view);
         $this->assertStringContainsString('/svg/download', $view);
         $this->assertStringContainsString('/image" download=', $view);
+        // a map on a basemap downloads with it, put together in the browser (F68)
+        $this->assertStringContainsString('data-export="png"', $view);
+        $viewer = (string) file_get_contents($root . '/src/public/assets/js/viewer.js');
+        $this->assertStringContainsString('WMBasemap.snapshot(B.cfg, S.w, S.h, scale)', $viewer);
+        $this->assertStringContainsString('preserveDrawingBuffer: true', (string) file_get_contents($root . '/src/public/assets/js/basemap.js'));
+        $this->assertStringContainsString('.wmv-stage g.wm-box-total { display: none; }', (string) file_get_contents($root . '/src/public/assets/css/viewer.css'));
 
         $index = (string) file_get_contents($root . '/src/app/Views/maps/index.php');
         $this->assertStringNotContainsString('mode=preview', $index);

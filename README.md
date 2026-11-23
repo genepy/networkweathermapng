@@ -377,11 +377,22 @@ The live view shows the sites of the map, its total traffic and the update
 time (with the most loaded link); the legend is a card drawn on the map
 (`SET box_<id> legend`). The map chooses
 which ones are shown and where: in the side panel, or in a corner of the
-map, in their order. The status bar can also sit on the map itself, at a
-point of the picture: it then moves and zooms with the map, the PNG and SVG
-pictures draw it there (update time, zone, most loaded link and the data
-sources that failed), and the editor shows it as a map item that moves like
-the title. Otherwise the PNG and SVG pictures do not change.
+map, in their order. They stay fixed on the screen: they do not move or
+zoom with the map. The status bar can also be placed on the map, at a point
+of the picture: the PNG and SVG pictures draw it there (update time, zone,
+most loaded link and the data sources that failed), the editor shows it as a
+map item that moves like the title, and the live view keeps it fixed at the
+bottom left. A total traffic card of the picture (`SET box_<id> total`) is
+left out of the live view, where the total panel shows it (at the top right
+when the map does not show that panel). Otherwise the PNG and SVG pictures
+do not change.
+
+On a map with a basemap, the viewer's ⋯ menu downloads the map with its
+basemap: *Download as PNG* puts the basemap and the picture (with its cards:
+total traffic, update time, legends) together in the browser, and *Download
+as SVG* adds the basemap as an image layer under the picture. The server
+cannot draw the vector tiles of a basemap: its pictures (`/map/{id}/image`,
+thumbnails) keep the cards without the basemap.
 
 ```
 SET viewer_panels total:top-right sites:side updated:bottom-left:hidden
