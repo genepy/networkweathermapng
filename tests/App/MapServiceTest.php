@@ -84,8 +84,9 @@ final class MapServiceTest extends TestCase
     {
         $conf = (string) $this->maps->getMapConfig($this->maps->createMap(['name' => 'Audit test']));
         $this->assertStringContainsString("TIMEPOS -1 -1\n", $conf);
-        // F58: the status bar is on the map, bottom left
-        $this->assertMatchesRegularExpression('/^SET viewer_panels .*updated:map:10,\d+$/m', $conf);
+        // F74: the status bar stays in the bottom left corner of the viewer
+        $this->assertMatchesRegularExpression('/^SET viewer_panels sites:side total:side updated:bottom-left$/m', $conf);
+        $this->assertStringNotContainsString('updated:map', $conf);
 
         $svg = $this->svgOf($conf);
         $title = $svg->query('//s:g[@data-kind="title"]/s:text')->item(0);
@@ -166,6 +167,59 @@ final class MapServiceTest extends TestCase
         $this->maps->liveImage($id);
         clearstatcache();
         $this->assertGreaterThan(time() - 5, filemtime($image));
+    }
+
+    /** F74: the downloads always show the status bar, the picture only where the map places it */
+    public function testDownloadsShowTheStatusBar(): void
+    {
+        $id = $this->maps->createMap(['name' => 'Export']);
+        $status = static function (string $svg): array {
+            $doc = new \DOMDocument();
+            $doc->loadXML($svg);
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+            $g = $xpath->query('//s:g[@data-kind="status"]')->item(0);
+            return $g instanceof \DOMElement ? [$g->getAttribute('display'), $xpath->query('.//s:text', $g)->length] : [null, 0];
+        };
+
+        // in a corner of the viewer: hidden in the picture, shown in the download
+        [$display, $texts] = $status((string) $this->maps->svgFile($id));
+        $this->assertSame('none', $display, 'the picture keeps it hidden');
+        $this->assertGreaterThan(0, $texts);
+        [$display, $texts] = $status((string) $this->maps->svgFile($id, true));
+        $this->assertSame('', $display, 'the download shows it');
+        $this->assertGreaterThan(0, $texts);
+
+        // on the map: shown in both, at its place
+        $file = $this->data . '/configs/' . $this->maps->getMap($id)['config_file'];
+        file_put_contents($file, str_replace('updated:bottom-left', 'updated:map:30,200', (string) file_get_contents($file)));
+        touch($file, time() + 5);
+        clearstatcache();
+        $this->assertSame('', $status((string) $this->maps->svgFile($id))[0]);
+        $this->assertSame('', $status((string) $this->maps->svgFile($id, true))[0]);
+    }
+
+    /** F74: the bar of a download goes to its place on the map, else bottom left */
+    public function testTheStatusBarOfAnExport(): void
+    {
+        $map = new \WeatherMap();
+        $map->width = 800;
+        $map->height = 600;
+        $this->assertNull(MapService::statusBar($map, 'UTC', '24h'));
+        $bar = MapService::statusBar($map, 'UTC', '24h', 0, true);
+        $this->assertNotNull($bar);
+        $this->assertTrue($bar['export'] ?? false);
+        $this->assertSame([10, 560], [$bar['x'], $bar['y']]);
+
+        $map->add_hint('viewer_panels', 'updated:map:30,200:hidden');
+        $bar = MapService::statusBar($map, 'UTC', '24h', 0, true);
+        $this->assertNotNull($bar);
+        $this->assertSame([30, 200], [$bar['x'], $bar['y']], 'a hidden bar keeps its place');
+
+        $map->add_hint('viewer_panels', 'updated:map:30,200');
+        $bar = MapService::statusBar($map, 'UTC', '24h', 0, true);
+        $this->assertNotNull($bar);
+        $this->assertArrayNotHasKey('export', $bar, 'on the map: the picture draws it too');
     }
 
     private function svgOf(string $conf): \DOMXPath

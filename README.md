@@ -151,7 +151,9 @@ Data sources are configured via the web UI and stored in the database:
   grey), without bandwidth labels, flow or glow.
 - **Down**: the link has a `TARGET` but the last render got no value for it:
   its data source is unreachable or failed to read it, or no source knows the
-  target, or the source has nothing for it. It is grey, without labels or
+  target, or the source has nothing for it. An Observium port whose status
+  is down (`ifOperStatus` down or lowerLayerDown) is down too, even when it
+  still gives counters. It is grey, without labels or
   flow, with a small ⚠ mark where its arrows meet, and counts in the
   status bar's warning (*n links without data*). A link whose source answers
   0 is not down: it keeps the colour of 0 %.
@@ -387,6 +389,12 @@ left out of the live view, where the total panel shows it (at the top right
 when the map does not show that panel). Otherwise the PNG and SVG pictures
 do not change.
 
+The downloads of the viewer (*Download as SVG*, and the *Download as PNG*
+the browser builds from it) always show the status bar: at its place when
+the map puts it on the map (even hidden there), otherwise at the bottom left
+of the picture. The pictures (`/map/{id}/image`), the thumbnails and the
+kiosk draw it only where the map places it.
+
 On a map with a basemap, the viewer's ⋯ menu downloads the map with its
 basemap: *Download as PNG* puts the basemap and the picture (with its cards:
 total traffic, update time, legends) together in the browser, and *Download
@@ -397,6 +405,7 @@ thumbnails) keep the cards without the basemap.
 ```
 SET viewer_panels total:top-right sites:side updated:bottom-left:hidden
 SET viewer_panels sites:side total:side updated:map:10,460
+SET viewer_panels sites:side total:side updated:bottom-left
 ```
 
 Each panel is `<id>:<position>`, with `:hidden` when it is not shown. The
@@ -404,8 +413,9 @@ ids are `sites`, `total` and `updated` (a `legend` entry of an older map is
 read and left out; the editor gives such a map a legend card when it opens
 it, if the viewer showed the legend and the map has no card); the positions are `side`,
 `top-left`, `top-right`, `bottom-left` and `bottom-right`, and for the
-status bar `map:<x>,<y>` (the top left corner of the bar on the map; a new
-map puts it at the bottom left, inside the map). The order is the
+status bar `map:<x>,<y>` (the top left corner of the bar on the map). A new
+map writes the last line: the status bar in the bottom left corner of the
+viewer, and at the bottom left of the downloads. The order is the
 order in the side panel, and in a corner that holds more than one. A panel
 left out takes its usual place. Without the hint the sites and the total
 are in the side panel and the update time at the bottom left.
@@ -1000,7 +1010,7 @@ left; without JavaScript the same forms are pages of their own.
 - Hovering a link shows its card: the link speed as a badge (its `BANDWIDTH`, `10G`), "A ↔ B" with the link name and the sites of its ends (`SET site`), the current IN and OUT rates with their load, and, when the link reads a data source (set up with the editor's picker, or an Observium port `TARGET`), its traffic over *1 day*, *1 week* or *1 month* with IN above the middle line and OUT below it, the peak and the average of the period. The graph is drawn with uPlot: the pointer on it shows the time and the IN and OUT values at that moment, dragging across it zooms on that part of the period (the peak and average then follow it), and a double-click or *Reset zoom* shows the whole period again. The period you pick is remembered in the browser; the card waits a moment when the pointer leaves the link so you can reach the switch. The series come from `/map/{id}/link/{linkId}/traffic?range=day|week|month` (at most 360 averaged points, cached 5 minutes; Zabbix sends its hourly trends for a week or a month). A link with an `OVERLIBGRAPH` shows that picture instead (about 40 % of the window width, 500 to 1400 px). Clicking a link opens its INFOURL in a new tab; a node opens its card, with *Open its page*.
 - The view follows new data every `MAP_REFRESH_INTERVAL` seconds and right away after an edit, keeping the zoom. The SVG is cached next to the PNG (`DATA_ROOT/output/<map>.svg`, with the state summary in `<map>.json`) and drawn again in the same pass as the PNG.
 - **History**: when a map is recorded (Settings > Recording: off for every map until switched on, and the admin can turn recording off for all), its viewer has a **Live** / **Last 24 h** switch (`H`; the hours follow the retention): a player goes through the frames of the last hours (play/pause with Space, a time slider, speed 1× to 10×, **Live** or Esc to come back), and the badge next to the name says *Playback*. A background recorder (`php bin/record.php`) draws each recorded map with live data every interval (5 minutes by default) and keeps the frames for the retention time (24 hours by default) in `DATA_ROOT/recordings/<map id>/`, about 1 to 20 KB each. The recorder only runs while at least one map is recorded: it exits as soon as no map is left (or recording is turned off), and the application starts it again when a map is switched on in Settings > Recording or when a recorded map is viewed. Only one recorder runs at a time. In the Docker image, supervisor also starts it at boot; it exits at once when there is nothing to record. Outside Docker, the same start on demand works as long as PHP may run `exec`; otherwise run `php bin/record.php --once` from cron every minute.
-- **Fullscreen** (`F`) puts the map on the whole screen with the current zoom; the controls fade out after 3 seconds without movement and come back with the mouse, a touch or a key; Esc or `F` leaves it. *Copy kiosk link* copies the address of the fullscreen page (`/map/{id}?fullscreen=1`, with the current view) for a NOC wall: it opens fitted to the screen without the application bar, with its basemap. There is one viewer: the old picture views (`?view=png`, `?mode=preview`) open it. The PNG is made only for *Download PNG* and the thumbnails; *Download as SVG* saves the live map as a standalone SVG file (`/map/{id}/svg/download`, the map's fonts inside it; a basemap is not part of the file).
+- **Fullscreen** (`F`) puts the map on the whole screen with the current zoom; the controls fade out after 3 seconds without movement and come back with the mouse, a touch or a key; Esc or `F` leaves it. *Copy kiosk link* copies the address of the fullscreen page (`/map/{id}?fullscreen=1`, with the current view) for a NOC wall: it opens fitted to the screen without the application bar, with its basemap. There is one viewer: the old picture views (`?view=png`, `?mode=preview`) open it. The PNG is made only for *Download PNG* and the thumbnails; *Download as SVG* saves the live map as a standalone SVG file (`/map/{id}/svg/download`, the map's fonts inside it, with the status bar at its place or bottom left; a basemap is not part of the file).
 - **Kiosk** (`/cycle`, or `/cycle?group=N` for one group): the maps one after the other, each for its own time (Settings > Kiosk), drawn as SVG by the map viewer in a frame (`/map/{id}?kiosk=1`: no toolbar, fitted or at the kiosk's zoom, basemap and hover cards as in the live view; the next map loads behind the current one). The map fills the page; a thin bar at the top fills up until the next map; the controls at the bottom (previous, pause, next, the map name and its rank, fullscreen) fade out after 3 seconds without movement. Keys: left and right arrows, Space to pause, `F` for fullscreen. `/cycle?fullscreen=1` opens it without the application bar.
 
 ## Command palette

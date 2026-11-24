@@ -46,4 +46,7 @@ return [
     '1 result' => '1 résultat',
     ':n results' => ':n résultats',
     'The search could not be loaded' => 'La recherche n’a pas pu être chargée',
+
+    // Info buttons for long help (F73)
+    'About :name' => 'À propos de : :name',
 ];

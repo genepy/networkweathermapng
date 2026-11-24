@@ -102,6 +102,24 @@ final class SourceFailureTest extends TestCase
         $failed = MapService::failedSources($map);
         $this->assertSame([['name' => 'Observium', 'error' => 'SQLSTATE[HY000] [2002] Connection refused', 'down' => true, 'links' => 3]], $failed);
     }
+
+    public function testALinkOnAPortThatIsDownIsDown(): void
+    {
+        $svc = new FakeObservium();
+        $svc->fail = false;
+        $svc->down = ['observium:port:bc'];
+        $conf = self::CONF;
+        foreach (['ab' => ['a', 'b'], 'bc' => ['b', 'c']] as $name => [$x, $y]) {
+            $conf .= "LINK {$name}\n\tNODES {$x} {$y}\n\tBANDWIDTH 1G\n\tTARGET observium:port:{$name}\n";
+        }
+        $map = $this->read($conf, 'WeatherMapDataSource_observium', $svc);
+
+        $this->assertNull($map->links['ab']->data_state());
+        $this->assertSame('down', $map->links['bc']->data_state(), 'F72: counters, but the port is down');
+        $this->assertSame('interface-down', $map->links['bc']->data_reason);
+        $this->assertSame(1, $map->nodata_links);
+        $this->assertSame([], $map->source_errors);
+    }
 }
 
 /** A Zabbix source answering 100 Mbit/s in and 50 out, or failing as told */
@@ -153,6 +171,10 @@ final class FakeZabbix
 final class FakeObservium
 {
     public int $calls = 0;
+    /** false: it answers 1 Mbit/s each way */
+    public bool $fail = true;
+    /** @var list<string> the targets whose port is down */
+    public array $down = [];
 
     public function getSource(int $id): ?array
     {
@@ -162,7 +184,15 @@ final class FakeObservium
     public function readObserviumTarget(string $target, ?int $sourceId = null): ?array
     {
         $this->calls++;
+        if (!$this->fail) {
+            return [1e6, 1e6];
+        }
         throw new \RuntimeException('SQLSTATE[HY000] [2002] Connection refused');
+    }
+
+    public function observiumTargetDown(string $target, ?int $sourceId = null): bool
+    {
+        return in_array($target, $this->down, true);
     }
 
     public function observiumPageForTarget(string $target, ?int $sourceId = null): ?string

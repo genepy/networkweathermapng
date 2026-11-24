@@ -16,6 +16,10 @@
  * Links marked data-drawer open their page in the drawer; its form is posted
  * the usual way. The drawer fires "wm:drawer-load" once its content is in.
  *
+ *   WMUI.tuckHelp(root), WMUI.watchHelp(box)
+ *                               long help behind i buttons (.info-tip), whose
+ *                               tip shows on hover, focus or a tap
+ *
  * Toasts already in the page (flash messages written by the server in
  * #wm-toasts) get their close button and time out like the others.
  * Texts come from window.WM_T (the ui-js catalogue), English otherwise.
@@ -243,7 +247,177 @@
         }
     }
 
-    window.WMUI = { toast: toast, confirm: confirmDialog, drawer: drawer, time: formatTime, clockOptions: clockOptions };
+    // ------------------------------------------------------------------
+    // Info tips (F24, F69, F73): an i button (.info-tip, data-tip = the id
+    // of its text) shows its text in a bubble on hover, on keyboard focus
+    // and on a tap. tuckHelp(root) puts the long help of a panel behind such
+    // buttons: the explanation of a section of the map properties next to
+    // its title, a help line of a field next to the field's name. The help
+    // element stays in the page, hidden, as the text of its tip, so code
+    // that updates it still does. Short hints, notes and warnings stay.
+
+    var HINT_MIN = 40;
+    var tipSeq = 0, bubble = null, bubbleFor = null;
+
+    function fmt(s, params) {
+        return t(s).replace(/:(\w+)/g, function (m, k) { return params && k in params ? params[k] : m; });
+    }
+
+    function infoButton(text, name) {
+        if (!text.id) { text.id = 'ui-tip-' + (++tipSeq); }
+        text.hidden = true;
+        text.classList.add('tip-text');
+        text.setAttribute('data-tucked', '');
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'info-tip';
+        b.setAttribute('data-tip', text.id);
+        b.setAttribute('aria-label', fmt('About :name', { name: name }));
+        b.setAttribute('aria-describedby', text.id);
+        b.textContent = 'i';
+        return b;
+    }
+
+    /** The name of a label: its tip name, its bold name, else its own text */
+    function labelName(label) {
+        var tn = label.querySelector('.tip-name > span, strong');
+        if (tn) { return tn.textContent.trim(); }
+        for (var n = label.firstChild; n; n = n.nextSibling) {
+            if (n.nodeType === 3 && n.textContent.trim()) { return n.textContent.trim(); }
+        }
+        return label.textContent.trim().slice(0, 40);
+    }
+
+    function tuckHelp(root) {
+        if (!root || !root.querySelectorAll) { return; }
+        root.querySelectorAll('.mapprops-explain:not([data-tucked])').forEach(function (p) {
+            var sec = p.closest('details.map-sec');
+            var sum = sec ? sec.querySelector(':scope > summary') : null;
+            if (!sum || !sum.firstElementChild) { return; }
+            // one button per section; a section drawn again gives it its new text
+            var old = sum.querySelector('.info-tip');
+            if (old) {
+                infoButton(p, '');
+                old.setAttribute('data-tip', p.id);
+                old.setAttribute('aria-describedby', p.id);
+                return;
+            }
+            sum.firstElementChild.after(infoButton(p, sum.firstElementChild.textContent.trim()));
+        });
+        // the help lines of the editor's panels, and those of the Map panel's fields
+        root.querySelectorAll('span.hint:not([data-tucked]), .form-group > small.text-muted:not([data-tucked]), label small.text-muted:not([data-tucked]), fieldset > small.text-muted:not([data-tucked])').forEach(function (hint) {
+            if (hint.textContent.trim().length < HINT_MIN) { return; }
+            var parent = hint.parentNode;
+            // a choice between radio buttons: next to its question
+            if (parent.tagName === 'FIELDSET') {
+                var legend = parent.querySelector(':scope > legend');
+                if (legend) { legend.appendChild(infoButton(hint, legend.textContent.trim().slice(0, 40))); }
+                return;
+            }
+            var label = hint.closest('label');
+            if (!label) {
+                var prev = hint.previousElementSibling;
+                label = prev && prev.tagName === 'LABEL' ? prev : null;
+            }
+            if (!label && parent.classList.contains('form-group')) {
+                label = parent.querySelector(':scope > label');
+            }
+            if (!label || !label.firstChild) { return; }
+            var btn = infoButton(hint, labelName(label));
+            var tn = label.querySelector(':scope > .tip-name');
+            if (tn) { tn.appendChild(btn); return; }
+            // a switch: after its bold name
+            var strong = label.querySelector('strong');
+            if (strong) { strong.after(' ', btn); return; }
+            // after the name of the label, before its control
+            var first = label.firstChild;
+            if (first.nodeType === 3 || (first.nodeType === 1 && !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(first.tagName))) {
+                var wrap = document.createElement('span');
+                wrap.className = 'tip-name';
+                label.insertBefore(wrap, first);
+                wrap.appendChild(first);
+                wrap.appendChild(btn);
+            } else {
+                label.appendChild(btn);
+            }
+        });
+    }
+
+    /** Tuck the help of a box now and whenever it is drawn again */
+    function watchHelp(box) {
+        if (!box) { return; }
+        tuckHelp(box);
+        if (!window.MutationObserver) { return; }
+        var pending = false;
+        new MutationObserver(function () {
+            if (pending) { return; }
+            pending = true;
+            // once the panel is drawn, before it is painted
+            Promise.resolve().then(function () { pending = false; tuckHelp(box); });
+        }).observe(box, { childList: true, subtree: true });
+    }
+
+    function showTip(btn) {
+        var src = document.getElementById(btn.getAttribute('data-tip'));
+        if (!src) { return; }
+        if (!bubble) {
+            bubble = document.createElement('div');
+            bubble.id = 'info-bubble';
+            bubble.setAttribute('role', 'tooltip');
+            bubble.hidden = true;
+            document.body.appendChild(bubble);
+        }
+        bubble.textContent = src.textContent;
+        bubble.hidden = false;
+        bubbleFor = btn;
+        var r = btn.getBoundingClientRect(), b = bubble.getBoundingClientRect();
+        var left = Math.max(8, Math.min(r.left + r.width / 2 - b.width / 2, window.innerWidth - b.width - 8));
+        var top = r.bottom + 6;
+        if (top + b.height > window.innerHeight - 8) { top = r.top - b.height - 6; }
+        bubble.style.left = left + 'px';
+        bubble.style.top = Math.max(8, top) + 'px';
+    }
+
+    function hideTip() {
+        if (bubble) { bubble.hidden = true; }
+        bubbleFor = null;
+    }
+
+    function tipButton(target) {
+        return target && target.closest ? target.closest('.info-tip') : null;
+    }
+
+    document.addEventListener('mouseover', function (evt) {
+        var b = tipButton(evt.target);
+        if (b && b !== bubbleFor) { showTip(b); }
+    });
+    document.addEventListener('mouseout', function (evt) {
+        var b = tipButton(evt.target);
+        if (b && b === bubbleFor && !b.contains(evt.relatedTarget) && document.activeElement !== b) { hideTip(); }
+    });
+    document.addEventListener('focusin', function (evt) {
+        var b = tipButton(evt.target);
+        if (b) { showTip(b); } else if (bubbleFor) { hideTip(); }
+    });
+    document.addEventListener('focusout', function (evt) {
+        if (bubbleFor && evt.target === bubbleFor) { hideTip(); }
+    });
+    // a tap shows it too (touch screens have no hover); never a label click
+    document.addEventListener('click', function (evt) {
+        var b = tipButton(evt.target);
+        if (b) { evt.preventDefault(); showTip(b); }
+    });
+    // the panel scrolls (also when focus brings the button into view): follow the button
+    document.addEventListener('scroll', function () {
+        if (!bubbleFor || !bubble || bubble.hidden) { return; }
+        if (document.contains(bubbleFor)) { showTip(bubbleFor); } else { hideTip(); }
+    }, true);
+
+    window.WMUI = {
+        toast: toast, confirm: confirmDialog, drawer: drawer, time: formatTime, clockOptions: clockOptions,
+        tuckHelp: tuckHelp, watchHelp: watchHelp, hideTip: hideTip,
+        tipShown: function () { return !!(bubble && !bubble.hidden); }
+    };
 
     function ready() {
         document.querySelectorAll('#wm-toasts .wm-toast').forEach(arm);

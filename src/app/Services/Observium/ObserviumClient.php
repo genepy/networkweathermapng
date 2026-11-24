@@ -188,6 +188,23 @@ final class ObserviumClient implements DataSourceClientInterface
     }
 
     /**
+     * Whether the port behind a TARGET string reports itself down
+     * (ifOperStatus down or lowerLayerDown, F72): its link then shows as
+     * down even though the port still gives counters. The port row is the
+     * one readTarget() read, so this costs no query.
+     */
+    public function targetDown(string $target): bool
+    {
+        $parsed = ObserviumTarget::parse($target);
+        if (!$parsed || $parsed->kind !== ObserviumTarget::PORT) {
+            return false;
+        }
+        $port = $this->portFor($parsed);
+
+        return $port !== null && !empty($port['down']);
+    }
+
+    /**
      * Observium's web page for a TARGET string: the port page for a port,
      * the device page for a device status. Null without a base URL in the
      * source settings, or when Observium does not know the target.

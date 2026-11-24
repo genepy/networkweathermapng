@@ -31,6 +31,17 @@ final class ObserviumClientTest extends TestCase
         $this->assertNull($client->readTarget('observium:port:404'));
     }
 
+    public function testAPortThatIsDownIsTold(): void
+    {
+        $client = $this->client();
+
+        $this->assertFalse($client->targetDown('observium:port:10'));
+        $this->assertTrue($client->targetDown('observium:port:11'), 'ifOperStatus down (F72)');
+        $this->assertTrue($client->targetDown('observium:host:core-rtr1:if:xe-0/0/2'));
+        $this->assertFalse($client->targetDown('observium:port:404'), 'an unknown port is not down');
+        $this->assertFalse($client->targetDown('observium:host:paris-sw1:status'), 'device status targets are unchanged');
+    }
+
     public function testRrdIsUsedWhenTheDatabaseHasNoRate(): void
     {
         $rrd = new RrdReader('/rrd', 'rrdcached:42217', runner: function (array $command): string {

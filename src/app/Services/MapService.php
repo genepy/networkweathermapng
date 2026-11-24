@@ -548,9 +548,10 @@ class MapService
                     }
                 }
             
-                // the status bar placed on the map (F58): drawn with the values of this render
+                // the status bar placed on the map (F58): drawn with the values of this render;
+                // elsewhere, in the SVG for the downloads only (F74)
                 $zone = TimezoneService::fromConfig($this->db, $this->config)->forMap($id);
-                $wmap->status_bar = self::statusBar($wmap, $zone, $clock);
+                $wmap->status_bar = self::statusBar($wmap, $zone, $clock, null, true);
 
                 // Write the image
                 // The SVG is collected during the same drawing pass as the PNG
@@ -1026,13 +1027,22 @@ class MapService
      * in the map's zone and clock, the most loaded link, and a line for the
      * data sources that failed. Null when the bar is not on the map.
      *
-     * @return array{x: int, y: int, lines: list<string>, note: string}|null
+     * $forExport (F74): a bar that is not on the map is still given, marked
+     * 'export', at ViewerPanels::exportPlace(): the downloads of the viewer
+     * show it, the picture and the viewer do not.
+     *
+     * @return array{x: int, y: int, lines: list<string>, note: string, export?: bool}|null
      */
-    public static function statusBar(\WeatherMap $wmap, string $zone, string $clock, ?int $now = null): ?array
+    public static function statusBar(\WeatherMap $wmap, string $zone, string $clock, ?int $now = null, bool $forExport = false): ?array
     {
         $at = ViewerPanels::statusAt($wmap);
+        $export = false;
         if ($at === null) {
-            return null;
+            if (!$forExport) {
+                return null;
+            }
+            $at = ViewerPanels::exportPlace($wmap);
+            $export = true;
         }
         $max = null;
         foreach ($wmap->links as $link) {
@@ -1059,7 +1069,7 @@ class MapService
                 $max === null ? __('No data') : __('Max load :pct % (:link)', ['pct' => (int) round($max[0]), 'link' => $max[1]]),
             ],
             'note' => implode(' · ', $warnings),
-        ];
+        ] + ($export ? ['export' => true] : []);
     }
 
     /**
@@ -1343,14 +1353,19 @@ class MapService
      * The live SVG of a map as a file that stands on its own (Download as
      * SVG): the map's fonts are put inside it instead of being fetched from
      * this server. Null when the map cannot be drawn.
+     *
+     * $download (Download as SVG, and the PNG the viewer builds from it):
+     * the status bar is always there, at its place or bottom left (F74).
+     * The picture (/map/{id}/image) keeps it only where the map places it.
      */
-    public function svgFile(int $id): ?string
+    public function svgFile(int $id, bool $download = false): ?string
     {
         $result = $this->liveRender($id);
         if ($result === null) {
             return null;
         }
-        return self::inlineFonts($result['svg'], $id, fn (int $n): ?string => $this->fontFile($id, $n));
+        $svg = $download ? \WeatherMapSvg::showForExport($result['svg']) : $result['svg'];
+        return self::inlineFonts($svg, $id, fn (int $n): ?string => $this->fontFile($id, $n));
     }
 
     /**
@@ -1502,9 +1517,6 @@ class MapService
         $fontRegular = self::DEFAULT_FONT;
         $fontBold = self::DEFAULT_FONT_BOLD;
         [$titleX, $titleY] = Editor\MapEditor::TITLE_PLACE;
-        // the status bar (update time, most loaded link) on the map, bottom left (F58)
-        $statusX = ViewerPanels::STATUS_MARGIN[0];
-        $statusY = max(0, $height - ViewerPanels::STATUS_MARGIN[1]);
 
         // New map > On a web map: the starter basemap under the canvas
         $basemap = '';
@@ -1538,10 +1550,10 @@ TITLEFONT 13
 TIMEFONT 11
 KEYFONT 10
 
-# No timestamp card: the status bar shows the update time, here on the map
-# (bottom left), as the viewer, the kiosk and the pictures draw it
+# No timestamp card: the status bar shows the update time, in the bottom
+# left corner of the viewer; the downloads draw it at the bottom left
 TIMEPOS -1 -1
-SET viewer_panels sites:side total:side updated:map:{$statusX},{$statusY}
+SET viewer_panels sites:side total:side updated:bottom-left
 
 # Default scale, smooth: each step fades into the next one, so a link takes
 # the colour of its exact load and the legend card is one continuous bar

@@ -126,6 +126,22 @@ final class ViewerPanels
         return null;
     }
 
+    /**
+     * Where the downloads of the viewer draw the status bar (F74): its place
+     * on the map when it has one, shown or hidden, otherwise bottom left.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function exportPlace(\WeatherMap $map): array
+    {
+        foreach (self::of($map) as $p) {
+            if ($p['id'] === self::STATUS && $p['position'] === self::ON_MAP && isset($p['at'])) {
+                return $p['at'];
+            }
+        }
+        return self::statusPlace($map);
+    }
+
     /** Where a status bar put on the map without a place goes: bottom left, inside the map */
     public static function statusPlace(\WeatherMap $map): array
     {

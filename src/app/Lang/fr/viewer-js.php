@@ -83,4 +83,5 @@ return [
     'No data: its data source has nothing for this link' => 'Pas de données : sa source de données n’a rien pour ce lien',
     'Preparing the picture with its basemap…' => 'Préparation de l’image avec son fond de carte…',
     'The picture with its basemap could not be made' => 'L’image avec son fond de carte n’a pas pu être créée',
+    'Down: its interface reports itself down' => 'Hors service : son interface se déclare down',
 ];

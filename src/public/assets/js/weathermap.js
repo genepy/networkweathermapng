@@ -910,6 +910,7 @@
                     if (state === 'none') return t('No data source: this link has no TARGET');
                     if (reason === 'source-down') return t('No data: its data source cannot be reached');
                     if (reason === 'source-error') return t('No data: its data source failed to read it');
+                    if (reason === 'interface-down') return t('Down: its interface reports itself down');
                     return t('No data: its data source has nothing for this link');
                 }
                 const key = JSON.stringify(info);

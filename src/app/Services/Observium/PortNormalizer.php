@@ -34,6 +34,8 @@ final class PortNormalizer
             'in_rate' => self::rate($row['ifInOctets_rate'] ?? null),
             'out_rate' => self::rate($row['ifOutOctets_rate'] ?? null),
             'up' => strtolower((string) ($row['ifOperStatus'] ?? '')) === 'up',
+            // the interface reports itself down (F72): unknown or missing is not down
+            'down' => in_array(strtolower((string) ($row['ifOperStatus'] ?? '')), ['down', 'lowerlayerdown'], true),
         ];
     }
 
