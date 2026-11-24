@@ -829,3 +829,18 @@ input[type="color"]::-moz-color-swatch { border: 0; border-radius: 3px; box-shad
 .wm-colour .wmc-swatch[aria-pressed="true"] { outline: 2px solid var(--wm-accent); outline-offset: 1px; }
 .wm-colour .wmc-swatch:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) { .wm-colour .wmc-swatch:hover { transform: none; } }
+
+/* Info bubbles (F24, F73): an i button after a name holds its long help, in the editor and the Map panel */
+.tip-name { display: inline-flex; align-items: center; gap: 4px; }
+button.info-tip {
+    flex: 0 0 auto; width: 16px; height: 16px; padding: 0; margin: 0 0 0 4px; border-radius: 50%;
+    border: 1px solid var(--wm-border); vertical-align: middle;
+    font: italic 600 11px/14px Georgia, serif; color: var(--wm-text-muted); background: transparent; cursor: help;
+}
+button.info-tip:hover, button.info-tip:focus-visible { color: var(--wm-accent); border-color: var(--wm-accent); }
+#info-bubble {
+    position: fixed; z-index: 1000; max-width: 280px; padding: 6px 9px; border-radius: 6px;
+    background: var(--wm-text); color: var(--wm-surface); font-size: 12px; line-height: 1.4;
+    box-shadow: 0 4px 14px #0003; pointer-events: none;
+}
+#info-bubble[hidden] { display: none; }

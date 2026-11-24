@@ -110,13 +110,21 @@ final class EditorPanelsTest extends TestCase
     public function testLongHelpGoesBehindInfoButtons(): void
     {
         // F69: section explanations and long help lines become i buttons (the existing tips)
-        $js = self::read('src/public/assets/js/editor-svg.js');
+        // F73: the helper lives in ui.js, shared by the editor and the Map panel
+        $js = self::read('src/public/assets/js/ui.js');
         $this->assertStringContainsString('function tuckHelp(root)', $js);
         $this->assertStringContainsString(".mapprops-explain:not([data-tucked])", $js);
         $this->assertStringContainsString("span.hint:not([data-tucked]), .form-group > small.text-muted:not([data-tucked])", $js);
         $this->assertStringContainsString("observe(box, { childList: true, subtree: true })", $js);
+        $this->assertStringContainsString("tuckHelp: tuckHelp", $js);
         // the button has a name and the tip is announced
-        $this->assertStringContainsString("'aria-label': t('About :name', { name: name }), 'aria-describedby': text.id", $js);
+        $this->assertStringContainsString("b.setAttribute('aria-label', fmt('About :name', { name: name }));", $js);
+        $this->assertStringContainsString("b.setAttribute('aria-describedby', text.id);", $js);
+        // the editor watches its panel; the Map panel (drawer, Maps page) tucks its own help
+        $this->assertStringContainsString('window.WMUI.watchHelp(document.getElementById(\'inspector\'))', self::read('src/public/assets/js/editor-svg.js'));
+        $this->assertStringContainsString('window.WMUI.tuckHelp(form)', self::read('src/public/assets/js/map-settings.js'));
+        // the look is not tied to the editor
+        $this->assertStringContainsString("\nbutton.info-tip {", self::read('src/public/assets/css/ui.css'));
     }
 
     public function testLinksFollowTheirNodeWhileItIsDragged(): void

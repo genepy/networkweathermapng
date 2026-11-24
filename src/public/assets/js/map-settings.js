@@ -79,6 +79,8 @@
         form.dataset.ready = '1';
         setupTabs(form);
         setupConflict(form);
+        // long help behind i buttons, as in the editor (ui.js, F73)
+        if (window.WMUI && window.WMUI.tuckHelp) window.WMUI.tuckHelp(form);
         // in the editor's panel (no drawer around it), Cancel puts the fields back
         form.addEventListener('click', function (e) {
             const cancel = e.target.closest ? e.target.closest('[data-ms-close]') : null;

@@ -649,7 +649,6 @@ return [
     'Link speed' => 'Débit des liens',
 
     // Info bubbles that explain the options (F24)
-    'About :name' => 'À propos de : :name',
     'Counted: the traffic of the link adds to the total traffic of the map, in the side panel of the live view. Left out: for a link whose traffic is already counted on other links, such as a backbone link.' => 'Compté : le trafic du lien s’ajoute au trafic total de la carte, dans le panneau latéral de la vue en direct. Exclu : pour un lien dont le trafic est déjà compté sur d’autres liens, comme un lien de cœur de réseau.',
     'Curved: the link bends smoothly through its bend points. Straight segments: straight lines from point to point, with sharp corners.' => 'Courbe : le lien passe en douceur par ses points de courbure. Segments droits : des lignes droites d’un point à l’autre, avec des angles vifs.',
     'Both ways: each half of the link shows one direction, with its own colour, label and arrow toward the node the traffic goes to. One way: a single arrow from the first node to the second, with one label, in the colour of the busiest direction.' => 'Dans les deux sens : chaque moitié du lien montre un sens, avec sa propre couleur, son étiquette et sa flèche vers le nœud où va le trafic. Dans un seul sens : une seule flèche du premier nœud vers le second, avec une étiquette, dans la couleur du sens le plus chargé.',
