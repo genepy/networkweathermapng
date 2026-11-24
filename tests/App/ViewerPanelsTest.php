@@ -249,6 +249,14 @@ final class ViewerPanelsTest extends TestCase
         return $this->withHint($value);
     }
 
+    public function testDownloadsPlaceTheStatusBar(): void
+    {
+        // F74: at its place on the map, even hidden; otherwise bottom left
+        $this->assertSame([20, 400], ViewerPanels::exportPlace($this->withParsed('updated:map:20,400:hidden')));
+        $this->assertSame([10, 460], ViewerPanels::exportPlace($this->withParsed('updated:bottom-left')), 'bottom left, inside the 800x500 map');
+        $this->assertSame([10, 460], ViewerPanels::exportPlace($this->withParsed('updated:side:hidden')));
+    }
+
     public function testPlacingAndHidingTheStatusBar(): void
     {
         $map = $this->read();

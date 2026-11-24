@@ -191,6 +191,18 @@ class WeatherMapSvg {
 	 */
 	const SATURATED = 80;
 
+	/**
+	 * The class of a group drawn for the downloads only (F74: the status
+	 * bar of a map that keeps it in a corner of the viewer). The group is
+	 * hidden; showForExport() shows it.
+	 */
+	const EXPORT_ONLY = 'wm-export-only';
+
+	/** The SVG of a map with its download-only groups shown */
+	static function showForExport($svg) {
+		return str_replace(' ' . self::EXPORT_ONLY . '" display="none"', ' ' . self::EXPORT_ONLY . '"', $svg);
+	}
+
 	static function isSaturated($map, $link) {
 		return (string) $map->get_hint('traffic_pulse') === '1'
 			&& max((float) $link->inpercent, (float) $link->outpercent) >= self::SATURATED;
@@ -615,8 +627,9 @@ class WeatherMapSvg {
 					$o = $item['owner'];
 					$nodata = empty($o['nodata']) ? '' : ($o['nodata'] == 'down' ? ' wm-nodata wm-down' : ' wm-nodata');
 					$nodata .= empty($o['class']) ? '' : ' ' . self::esc($o['class']);
-					$out[] = sprintf('<g class="wm-%s%s%s%s" data-kind="%s" data-name="%s" data-id="%s">',
-						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', empty($o['note']) ? '' : ' wm-note', $nodata, $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
+					$hidden = !empty($o['class']) && $o['class'] === self::EXPORT_ONLY ? ' display="none"' : '';
+					$out[] = sprintf('<g class="wm-%s%s%s%s"%s data-kind="%s" data-name="%s" data-id="%s">',
+						$o['kind'], empty($o['hot']) ? '' : ' wm-hot', empty($o['note']) ? '' : ' wm-note', $nodata, $hidden, $o['kind'], self::esc($o['name']), self::esc((string) $o['id']));
 				}
 				$group = $key;
 			}

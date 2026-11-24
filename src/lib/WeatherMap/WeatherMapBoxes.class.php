@@ -252,20 +252,33 @@ class WeatherMapBoxes {
 	 * The status bar on the map (WeatherMap::$status_bar, F58): a card with
 	 * the update time and the most loaded link, and a muted line for a data
 	 * source that failed. Its image map area is STATUS.
+	 *
+	 * A bar marked 'export' (F74: the map keeps it in a corner of the
+	 * viewer) is for the downloads only: it is drawn in the SVG, hidden
+	 * (WeatherMapSvg::EXPORT_ONLY), and not on the picture.
 	 */
 	static function drawStatus($map, $image) {
 		$bar = $map->status_bar;
 		if (!is_array($bar) || !isset($bar['x'], $bar['y']) || empty($bar['lines'])) {
 			return;
 		}
+		$export = !empty($bar['export']);
 		$svg = WeatherMapSvg::$active;
+		if ($export && !$svg) {
+			return;
+		}
 		if ($svg) {
-			$svg->begin('status', '', 'STATUS');
+			$svg->begin('status', '', 'STATUS', false, false, null, $export ? WeatherMapSvg::EXPORT_ONLY : '');
+		}
+		if ($export) {
+			// the picture stays as it is: the card goes on a scratch image the SVG records
+			$image = imagecreatetruecolor(1, 1);
+			$svg->adopt($image, 0, 0);
 		}
 		self::draw($map, $image, array(
 			'id' => 'status', 'type' => 'text', 'x' => max(0, (int) $bar['x']), 'y' => max(0, (int) $bar['y']),
 			'title' => '', 'text' => implode("\n", array_map(function ($l) { return str_replace('|', '/', (string) $l); }, $bar['lines'])),
-			'note' => isset($bar['note']) ? (string) $bar['note'] : '', 'area' => 'STATUS',
+			'note' => isset($bar['note']) ? (string) $bar['note'] : '', 'area' => $export ? '' : 'STATUS',
 		));
 	}
 
@@ -367,7 +380,9 @@ class WeatherMapBoxes {
 		}
 
 		$area = $box['area'] === null ? 'BOX:' . $box['id'] : $box['area'];
-		$map->imap->addArea('Rectangle', $area, '', array($x, $y, $x + $boxw, $y + $boxh));
+		if ($area !== '') {
+			$map->imap->addArea('Rectangle', $area, '', array($x, $y, $x + $boxw, $y + $boxh));
+		}
 		return array($x, $y, $x + $boxw, $y + $boxh);
 	}
 

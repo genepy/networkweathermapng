@@ -227,7 +227,7 @@ class MapController extends BaseController
             return;
         }
         $map = $this->getMap($mapId);
-        $svg = $map ? $this->mapService->svgFile($mapId) : null;
+        $svg = $map ? $this->mapService->svgFile($mapId, true) : null;
         if ($svg === null) {
             http_response_code(404);
             return;
