@@ -356,6 +356,12 @@ class DataSourceService
         return $client?->readTarget($target);
     }
 
+    /** Whether the Observium port behind a TARGET string reports itself down (F72). */
+    public function observiumTargetDown(string $target, ?int $sourceId = null): bool
+    {
+        return (bool) $this->observiumClient($sourceId)?->targetDown($target);
+    }
+
     /** Interface speed in bit/s behind an Observium TARGET string. */
     public function observiumSpeedForTarget(string $target, ?int $sourceId = null): ?int
     {

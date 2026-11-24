@@ -1372,7 +1372,8 @@ class WeatherMap extends WeatherMapBase {
 							// down (F67): its source failed (unreachable or an
 							// error), or it answered nothing for this target
 							$myobj->data_state = 'down';
-							$myobj->data_reason = $this->nodata_reason($failed_before);
+							// a data source may have said why (interface-down, F72)
+							$myobj->data_reason = $myobj->data_reason !== '' ? $myobj->data_reason : $this->nodata_reason($failed_before);
 						}
 
 						wm_debug("ReadData complete for $type $name: $total_in $total_out");

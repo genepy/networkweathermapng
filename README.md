@@ -151,7 +151,9 @@ Data sources are configured via the web UI and stored in the database:
   grey), without bandwidth labels, flow or glow.
 - **Down**: the link has a `TARGET` but the last render got no value for it:
   its data source is unreachable or failed to read it, or no source knows the
-  target, or the source has nothing for it. It is grey, without labels or
+  target, or the source has nothing for it. An Observium port whose status
+  is down (`ifOperStatus` down or lowerLayerDown) is down too, even when it
+  still gives counters. It is grey, without labels or
   flow, with a small ⚠ mark where its arrows meet, and counts in the
   status bar's warning (*n links without data*). A link whose source answers
   0 is not down: it keeps the colour of 0 %.

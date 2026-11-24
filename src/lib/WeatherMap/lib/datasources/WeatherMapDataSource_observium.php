@@ -153,6 +153,15 @@ class WeatherMapDataSource_observium extends WeatherMapDataSource
             return array(NULL, NULL, $data_time);
         }
 
+        // a port that reports itself down gives no data, whatever its
+        // counters say: its link shows as down (F72)
+        if (method_exists($this->svc, 'observiumTargetDown') && $this->svc->observiumTargetDown((string) $targetstring, $sourceId)) {
+            if (isset($item->data_reason)) {
+                $item->data_reason = 'interface-down';
+            }
+            return array(NULL, NULL, $data_time);
+        }
+
         wm_debug("Observium ReadData: Returning ({$values[0]}, {$values[1]}, $data_time)");
 
         return array($values[0], $values[1], $data_time);
