@@ -99,6 +99,11 @@ visual change.
 - Do not try browser tests when no browser or running app is available. List
   instead what the maintainer should check on the testbed (light and dark
   themes, phone width).
+- GitHub GraphQL is refused: `gh pr create` and `gh issue list` fail. Use
+  the REST API (`gh api repos/genepy/networkweathermapng/pulls -f title=…
+  -f head=… -f base=main -F draft=true`, `…/issues`, `…/pulls/<n>/merge`).
+  Pushing a tag or deleting a remote branch may be refused: say so, do not
+  insist.
 
 ## Docker and testbed gotchas
 
@@ -117,10 +122,11 @@ visual change.
 1. One thread works through the whole todo in order (lowest task number
    first, skipping issues marked on hold). Issues are the todo: each one
    names the files concerned and the expected result.
-2. Group 2 or 3 small or related tasks in one PR. For each PR: branch,
-   push, open a draft PR with `Closes #<issue>` for each task.
+2. Group 2 or 3 small or related tasks in one PR. For each PR: branch
+   `claude/<slug>`, push, open a draft PR with `Closes #<issue>` for each
+   task.
 3. Implement, keep the PR description current, mark it ready.
-4. Wait for green CI, review your own diff, merge it yourself, check the
+4. Wait for green CI, review your own diff (`ponytail-review`), merge it yourself, check the
    issues are closed, delete the branch. No separate review thread. Post a
    short update to the maintainer after each merge, then take the next task.
 5. The thread auto-compacts its context. If it stalls or grows too large,
@@ -129,6 +135,27 @@ visual change.
 
 Conversations with the maintainer are in French; code, commits, PRs, issues
 and docs are in English.
+
+## Model choice for subagents
+
+Every subagent starts on a cheaper model: `.claude/settings.json` sets
+`CLAUDE_CODE_SUBAGENT_MODEL` to `sonnet`. Choose per task with the Agent
+tool's `model` parameter, in every subagent you start:
+
+- `haiku` for simple, mechanical work: searching the code or the docs,
+  listing files or callers, reading CI logs, checking links, the
+  translation check, summarising a long output.
+- `sonnet` (the default) for proofreading a doc or a diff, a first-pass
+  review, writing an issue or a PR description, a small edit repeated
+  across files, adding French translations.
+- `opus` as soon as the task needs real reasoning: a design choice, a bug
+  whose cause is unclear, the map engine (`src/lib/WeatherMap/`), the
+  config parser or the editor's config edits, authentication and CSRF.
+  When a subagent on a cheaper model comes back unsure, wrong or stuck,
+  rerun it on the stronger model instead of retrying the same one.
+
+A subagent starts without this conversation: give it the exact files and
+the expected result, and check what it returns before acting on it.
 
 ## graphify
 
@@ -140,3 +167,16 @@ Use `graphify-out/wiki/index.md` for navigation when present, and
 `graphify-out/GRAPH_REPORT.md` only for broad architecture review. After
 changing code, run `graphify update .`. A large diff of
 `graphify-out/graph.json` in a PR is expected; do not flag it.
+
+## Ponytail
+
+At the start of every coding task, load the `ponytail` skill at the `full`
+level and follow it for the rest of the session, until the maintainer says
+"stop ponytail", "normal mode" or `/ponytail off` (`/ponytail lite|full|ultra`
+switches the level). The Ponytail plugin is enabled in
+`.claude/settings.json`. Use `ponytail-review` for a code review,
+`ponytail-audit` for a whole-repo audit, `ponytail-debt` for the list of
+`shortcut:` comments. If the skill is not available, apply its rules
+anyway: the smallest change that fully solves the task, reuse before
+adding, no dependency for a few lines, one test for non-trivial logic, and
+end the reply with what was skipped and any risk.
