@@ -724,4 +724,5 @@ return [
     'The update time and the most loaded link, with a warning when a data source failed: the viewer and the kiosk show it here, live, and the pictures (PNG, SVG) draw it with the values of their render. The editor shows the values of its own drawing.' => 'L’heure de mise à jour et le lien le plus chargé, avec un avertissement quand une source de données a échoué : le visualiseur et le kiosque la montrent ici, en direct, et les images (PNG, SVG) la dessinent avec les valeurs de leur rendu. L’éditeur montre les valeurs de son propre dessin.',
     'Viewer panels…' => 'Panneaux du visualiseur…',
     'Animated' => 'Animées',
+    'Datacenter' => 'Centre de données',
 ];

@@ -41,6 +41,11 @@ re-explore the repository. Keep it short and up to date.
 - Demo maps: `src/examples/maps/*.conf`, installed by `Services/DemoMaps.php`
   (`bin/demo-maps.php`, or `POST /editor/maps/demos` from the Maps page),
   plus `DEMO_MAPS_EXTRA_DIR` (the testbed map, `deploy/testbed/weathermap/demo/`).
+  The datacenter cooling and power demos use the icons in `objects/animated/` (CSS keyframes) and
+  `objects/datacenter/`. An animated icon's still PNG twin rides along as
+  `data-still` in the SVG, swapped in by `stillIcons()` in `viewer.js` for
+  reduced motion. PNG twins of new SVG icons: render them at 64 px (e.g.
+  Playwright with `reducedMotion: 'reduce'`), then `php src/bin/icons-manifest.php`.
 - Data sources: `Services/Observium/`, `ZabbixService.php`, `src/lib/Zabbix/`.
 - Total traffic graph (side panel, total box, kiosk): `Services/TotalTrafficSeries.php`
   decides its source (recorded frames, demo day for static data, or none),

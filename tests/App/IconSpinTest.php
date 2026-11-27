@@ -59,6 +59,45 @@ final class IconSpinTest extends TestCase
         }
     }
 
+    /** The datacenter icons: animated ones with CSS keyframes, still ones beside them */
+    public function testTheShippedDatacenterIconsAreClean(): void
+    {
+        $root = dirname(TESTS_ROOT) . '/src/public/';
+        $icons = [
+            'animated' => ['pump', 'chiller', 'cooling-tower', 'crah', 'generator', 'ups'],
+            'datacenter' => ['utility-feed', 'transformer', 'switchboard', 'pdu', 'it-room', 'heat-exchanger', 'groundwater-well', 'thermometer'],
+        ];
+        foreach ($icons as $theme => $names) {
+            foreach ($names as $name) {
+                $file = $root . 'objects/' . $theme . '/' . $name . '.svg';
+                $svg = (string) file_get_contents($file);
+                $this->assertSame(trim($svg), trim((new SvgSanitizer())->sanitize($svg)), "$name passes the sanitizer as it is");
+                $this->assertSame($theme === 'animated', \WeatherMapSvg::isAnimated($file), "$name moves only in the Animated theme");
+                $this->assertFileExists($root . 'objects/' . $theme . '/' . $name . '.png', 'with its PNG twin');
+                $this->assertContains('objects/' . $theme . '/' . $name . '.png', IconLibrary::shippedIcons());
+            }
+        }
+    }
+
+    /** The viewer cannot stop an animation inside an image: the SVG carries the still twin */
+    public function testAnAnimatedIconCarriesItsStillTwin(): void
+    {
+        $still = function (string $context): ?string {
+            $doc = new \DOMDocument();
+            $this->assertTrue($doc->loadXML(\WeatherMapSvg::render($this->load($context))));
+            $xpath = new \DOMXPath($doc);
+            $xpath->registerNamespace('s', 'http://www.w3.org/2000/svg');
+            $icon = $xpath->query('//s:g[@data-name="a"]/s:image[@class="wm-icon"]')->item(0);
+            $this->assertInstanceOf(\DOMElement::class, $icon);
+            return $icon->hasAttribute('data-still') ? $icon->getAttribute('data-still') : null;
+        };
+        $this->assertStringStartsWith('data:image/png;base64,', (string) $still('viewer'));
+        $this->assertNull($still('editor'), 'the editor already draws the still PNG');
+
+        $js = (string) file_get_contents(dirname(TESTS_ROOT) . '/src/public/assets/js/viewer.js');
+        $this->assertStringContainsString('stillIcons(svg)', $js);
+    }
+
     public function testTheViewerTurnsTheIconWithTheBusiestLink(): void
     {
         $map = $this->load('viewer');
@@ -130,7 +169,7 @@ final class IconSpinTest extends TestCase
     public function testTheAnimatedThemeComesAfterTheProjectThemes(): void
     {
         $themes = array_column((new IconLibrary(dirname(TESTS_ROOT) . '/src/public'))->themes(), 'theme');
-        $this->assertSame(['net', 'classic', 'status', 'clouds', 'generic', 'animated'], array_slice($themes, 0, 6));
+        $this->assertSame(['net', 'classic', 'status', 'clouds', 'generic', 'animated', 'datacenter'], array_slice($themes, 0, 7));
         $js = (string) file_get_contents(dirname(TESTS_ROOT) . '/src/public/assets/js/editor-icons.js');
         $this->assertStringContainsString("animated: t('Animated')", $js);
     }

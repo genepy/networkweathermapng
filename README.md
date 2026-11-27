@@ -70,13 +70,15 @@ limited to 64 MB.
 
 ### Demo maps
 
-Three demo maps show what a map can do, with traffic from fixed values (the
+Five demo maps show what a map can do, with traffic from fixed values (the
 static data source, `TARGET static:<in>:<out>`), so they draw without Zabbix
 or Observium:
 
 | Map | What it shows |
 |-----|---------------|
 | *France sites* | A geographic basemap with nodes placed by latitude and longitude; several sites in Paris, Lyon, Marseille and Toulouse merge into numbered clusters until you zoom in (in the viewer and the editor alike), with the city inset on hover; round badge nodes, a colour-blind safe scale listed step by step, pill labels, small arrow heads, traffic flow, pulsing saturated links, sites in the side panel |
+| *Datacenter cooling* | A datacenter cooling plant read like a network: cooling towers, chillers (N+1, one on standby), groundwater free cooling (well pumps, plate heat exchanger, reinjection well), chilled water loops A and B and two CRAH units per IT room; each link is a pipe loaded in % of its design flow, temperature probes at the points that matter, animated icons (pumps, fans, cooling towers) |
+| *Datacenter power* | The A and B power paths of a datacenter: utility feeds (20 kV), transformers, generators, main low voltage switchboards, UPS, and one PDU per path in each IT room; one-way feeders loaded in % of their rating, utility feed B lost and its generators carrying path B, animated generators and UPS |
 | *Datacenter fabric* | Leaf and spine with border routers and racks, vector (SVG) icons, zones, a smooth scale with its gradient legend, link widths by speed with their card, small arrow heads, traffic flow and pulsing saturated links |
 | *ISP backbone* | Core, transit and peering routers in points of presence, Night theme with glowing traffic bars and pills, transit and peering link groups with the total traffic card, long-haul links that curve, focus areas, the Barlow Semi Condensed font |
 
@@ -902,10 +904,16 @@ thumbnails use the still PNG twin, and so does the editor, so nothing moves
 while editing. `objects/animated/fan` and `objects/animated/wind-turbine`
 are shipped examples, in the *Animated* theme of the Icons panel (a map
 that still names their former place, `objects/net/`, draws them, and the
-editor rewrites the path when it opens the map). Uploaded SVG icons keep their animations, but an animation of a
+editor rewrites the path when it opens the map), with datacenter equipment:
+`pump`, `chiller`, `cooling-tower`, `crah` (fans turning), `generator`
+(smoke and a pulsing bolt) and `ups` (charging battery). Their still
+companions are in the *Datacenter* theme (`objects/datacenter/`): utility
+feed, transformer, switchboard, PDU, IT room, heat exchanger, groundwater
+well and temperature probe. Uploaded SVG icons keep their animations, but an animation of a
 link (`href`), of a `style` or of an event attribute is removed. An
-animation inside an icon cannot be slowed by the page: a visitor who asked
-for less motion still sees it, so keep such icons calm.
+animation inside an icon cannot be slowed by the page, so the SVG output
+carries the still PNG twin of each animated icon (`data-still`): the live
+view and the kiosk show it instead to a visitor who asked for less motion.
 
 **Icons turning with the traffic.** `SET icon_spin 1` on a node (*Spin with
 traffic* in the node panel) makes the live view and the kiosk turn its

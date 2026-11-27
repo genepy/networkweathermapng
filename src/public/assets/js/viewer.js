@@ -354,6 +354,19 @@
         });
     }
 
+    /**
+     * An icon that moves by itself (an animated SVG) cannot be stopped by
+     * the page: for a visitor who asked for less motion, show its still
+     * PNG twin instead (data-still, written by the engine).
+     */
+    function stillIcons(svg) {
+        const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        svg.querySelectorAll('image.wm-icon[data-still]').forEach(function (icon) {
+            if (!icon.hasAttribute('data-moving')) icon.setAttribute('data-moving', icon.getAttribute('href') || '');
+            icon.setAttribute('href', icon.getAttribute(reduce ? 'data-still' : 'data-moving'));
+        });
+    }
+
     function installSvg(text, items) {
         const tpl = document.createElement('template');
         tpl.innerHTML = text;
@@ -366,6 +379,7 @@
 
         S.items = items || {};
         spinIcons(svg);
+        stillIcons(svg);
         S.sites = {};
         Object.keys(S.items).forEach(function (id) {
             const d = S.items[id];
@@ -617,7 +631,11 @@
         root.classList.toggle('wmv-tab-hidden', document.hidden);
     });
     if (reduceMotion) {
-        const onMotion = function () { stopFlow(); startFlow(); };
+        const onMotion = function () {
+            stopFlow();
+            startFlow();
+            if (S.el) stillIcons(S.el);
+        };
         if (reduceMotion.addEventListener) reduceMotion.addEventListener('change', onMotion);
         else if (reduceMotion.addListener) reduceMotion.addListener(onMotion);
     }
