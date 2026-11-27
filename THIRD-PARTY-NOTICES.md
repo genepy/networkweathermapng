@@ -154,9 +154,9 @@ official Alpine and Python images.
 ## Data sources this application talks to
 
 Observium (Community under QPL-1.0, Subscription under its commercial terms)
-and Zabbix (AGPL-3.0 since 7.0, GPL-2.0 before) are separate products. The
-application only reads them through their API, database or RRD files and
-contains none of their code.
+Zabbix (AGPL-3.0 since 7.0, GPL-2.0 before) and Prometheus (Apache-2.0) are
+separate products. The application only reads them through their API,
+database or RRD files and contains none of their code.
 
 ## Map tiles
 
