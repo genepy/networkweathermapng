@@ -830,6 +830,12 @@ class WeatherMapNode extends WeatherMapItem {
 					'w' => imagesx($icon_im), 'h' => imagesy($icon_im),
 					'href' => !empty($icon_vector) ? WeatherMapSvg::dataUri($icon_vector) : WeatherMapSvg::gdToDataUri($icon_im),
 				);
+				// an icon that moves by itself carries its still PNG twin: the
+				// viewer shows it to visitors who asked for less motion, since
+				// the animation inside an image cannot be stopped by the page
+				if (!empty($icon_vector) && WeatherMapSvg::isAnimated($icon_vector)) {
+					$this->svgparts['icon']['still'] = WeatherMapSvg::gdToDataUri($icon_im);
+				}
 				// an icon alone: its label is the tooltip
 				if ($this->iconalone) {
 					$this->svgparts['icon']['title'] = $this->proclabel;
