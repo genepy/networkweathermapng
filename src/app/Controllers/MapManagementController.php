@@ -11,6 +11,7 @@ namespace App\Controllers;
 
 use App\Services\Basemap;
 use App\Services\DemoMaps;
+use App\Services\DisplayLinks;
 use App\Services\GroupService;
 use App\Services\KioskService;
 use App\Services\MapService;
@@ -482,5 +483,61 @@ class MapManagementController extends BaseController
             return self::DEFAULT_RETURN;
         }
         return $url;
+    }
+
+    /** GET: the display links of a map (F81), for the Map panel */
+    public function displayLinks(array $params): void
+    {
+        $mapId = $this->displayLinkMap($params);
+        $this->json(['success' => true, 'links' => (new DisplayLinks($this->database))->forMap($mapId)]);
+    }
+
+    /**
+     * POST {label, expires (YYYY-MM-DD, optional)}: makes a display link;
+     * the answer carries its address, shown this once
+     */
+    public function createDisplayLink(array $params): void
+    {
+        $mapId = $this->displayLinkMap($params);
+        $body = $this->getJsonInput() + $_POST;
+        $expires = trim((string) ($body['expires'] ?? ''));
+        $expiresAt = null;
+        if ($expires !== '') {
+            $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $expires, new \DateTimeZone(TimezoneService::fromConfig($this->database, $this->config)->forMap($mapId)));
+            if ($date === false) {
+                $this->json(['success' => false, 'error' => __('Invalid date: :value', ['value' => $expires])], 400);
+                return;
+            }
+            // valid through the whole day
+            $expiresAt = $date->modify('+1 day')->getTimestamp();
+        }
+        try {
+            $made = (new DisplayLinks($this->database))->create($mapId, (string) ($body['label'] ?? ''), $expiresAt, (int) ($this->auth->user()['id'] ?? 0) ?: null);
+        } catch (\InvalidArgumentException $e) {
+            $this->json(['success' => false, 'error' => $e->getMessage()], 400);
+            return;
+        }
+        // the page adds its own origin
+        $this->json(['success' => true, 'link' => $made['link'], 'path' => DisplayLinks::path($made['token'])]);
+    }
+
+    /** POST: revokes a display link of the map */
+    public function revokeDisplayLink(array $params): void
+    {
+        $mapId = $this->displayLinkMap($params);
+        $done = (new DisplayLinks($this->database))->revoke($mapId, (int) ($params['linkId'] ?? 0));
+        $this->json(['success' => $done], $done ? 200 : 404);
+    }
+
+    /** The map of a display link request, once the user may edit it; else answers and stops */
+    private function displayLinkMap(array $params): int
+    {
+        $this->requireEditor();
+        $mapId = (int) ($params['id'] ?? 0);
+        if (!$this->auth->canEditMap($mapId) || !$this->mapService->getMap($mapId)) {
+            $this->json(['success' => false, 'error' => __('Map not found')], 404);
+            exit;
+        }
+        return $mapId;
     }
 }

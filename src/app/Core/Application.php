@@ -99,6 +99,18 @@ class Application
         $this->router->get('/palette', 'MapController@palette');
         
         // Map cycling
+        // display links (F81): a map for a wall screen, without signing in
+        $this->router->get('/display/{token}', 'DisplayController@page');
+        $this->router->get('/display/{token}/svg', 'DisplayController@svg');
+        $this->router->get('/display/{token}/status', 'DisplayController@status');
+        $this->router->get('/display/{token}/totals', 'DisplayController@totals');
+        $this->router->get('/display/{token}/version', 'DisplayController@version');
+        $this->router->get('/display/{token}/font/{n}', 'DisplayController@font');
+        $this->router->get('/display/{token}/link/{linkId}/traffic', 'DisplayController@linkTraffic');
+        $this->router->get('/display/{token}/link/{linkId}/graph', 'DisplayController@linkGraph');
+        $this->router->get('/map/{id}/display-links', 'MapManagementController@displayLinks');
+        $this->router->post('/map/{id}/display-links', 'MapManagementController@createDisplayLink');
+        $this->router->post('/map/{id}/display-links/{linkId}/revoke', 'MapManagementController@revokeDisplayLink');
         $this->router->get('/cycle', 'MapController@cycle');
         $this->router->get('/cycle/{group}', 'MapController@cycle');
         
@@ -248,6 +260,25 @@ class Application
         );
     }
 
+    /**
+     * The frame-ancestors of the display pages: 'self' by default, else the
+     * origins of DISPLAY_FRAME_ANCESTORS (spaces or commas between them;
+     * * for any site).
+     */
+    public static function frameAncestors(?string $setting): string
+    {
+        $out = ["'self'"];
+        foreach (preg_split('/[\s,]+/', trim((string) $setting)) ?: [] as $origin) {
+            if ($origin === '*') {
+                return '*';
+            }
+            if (preg_match('#^https?://[A-Za-z0-9.*-]+(:\d+)?$#', $origin)) {
+                $out[] = $origin;
+            }
+        }
+        return implode(' ', array_unique($out));
+    }
+
     private function sendSecurityHeaders(): void
     {
         if (headers_sent()) {
@@ -258,8 +289,14 @@ class Application
         if ($csp === '') {
             $csp = self::defaultCsp(\App\Services\Basemap::origins($this->config));
         }
+        // a display link (F81) may be shown in a frame of the sites DISPLAY_FRAME_ANCESTORS names
+        $path = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/');
+        $ancestors = str_starts_with($path, '/display/') ? self::frameAncestors(Config::env('DISPLAY_FRAME_ANCESTORS')) : "'self'";
         if (strtolower($csp) !== 'off') {
-            header('Content-Security-Policy: ' . $csp);
+            header('Content-Security-Policy: ' . str_replace("frame-ancestors 'self'", 'frame-ancestors ' . $ancestors, $csp));
+        }
+        if ($ancestors === "'self'") {
+            header('X-Frame-Options: SAMEORIGIN');
         }
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: same-origin');

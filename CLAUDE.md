@@ -37,6 +37,12 @@ re-explore the repository. Keep it short and up to date.
   or `/editor/edit/<id>?open=<section>` opens one (e.g. `basemap`).
 - Kiosk / cycle: `KioskService`, `Views/maps/cycle.php`, `assets/js/kiosk.js`,
   admin page `Views/admin/kiosk.php`.
+- Display links (`/display/<token>`, kiosk view without sign-in):
+  `Services/DisplayLinks.php` (table `display_links`, token hash, rate
+  limit), `DisplayController` (extends `MapController`, overrides
+  `canView()`; the viewer reads its routes from `data-base`), the Map
+  panel list in `map-settings.js`. Framing: `DISPLAY_FRAME_ANCESTORS`,
+  `Application::frameAncestors()`.
 - Maps page: `MapManagementController`, `Views/maps/index.php`, `maplist.js`.
 - Demo maps: `src/examples/maps/*.conf`, installed by `Services/DemoMaps.php`
   (`bin/demo-maps.php`, or `POST /editor/maps/demos` from the Maps page),

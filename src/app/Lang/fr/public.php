@@ -99,4 +99,9 @@ return [
     'Moved to position :pos of :total in :group' => 'Déplacée en position :pos sur :total dans :group',
     'The new order could not be saved' => 'Le nouvel ordre n’a pas pu être enregistré',
     'Data source not answering: :sources' => 'Source de données sans réponse : :sources',
+    // Display links (F81)
+    'Too many requests' => 'Trop de requêtes',
+    'This display link is used too often. It works again in a few minutes.' => 'Ce lien d’affichage est utilisé trop souvent. Il fonctionnera de nouveau dans quelques minutes.',
+    'Display link not found' => 'Lien d’affichage introuvable',
+    'This display link does not exist, was revoked or has expired. Ask for a new one.' => 'Ce lien d’affichage n’existe pas, a été révoqué ou a expiré. Demandez-en un nouveau.',
 ];

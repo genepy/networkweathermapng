@@ -14,9 +14,11 @@
     $canEdit = $auth->canEdit();
     $historyHours = isset($historyHours) ? (int) $historyHours : 24;
     $fileName = \App\Controllers\MapController::downloadName((string) $map['name']);
+    // a display link (F81, DisplayController): the page reads its map under /display/<token>
+    $displayBase = isset($display) ? (string) $display : '';
 ?>
 <?php if ($isFullscreen): ?>
-<?php $theme = in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''; ?>
+<?php $theme = $displayBase !== '' ? (string) ($displayTheme ?? '') : (in_array($_COOKIE['theme'] ?? '', ['light', 'dark'], true) ? $_COOKIE['theme'] : ''); ?>
 <!DOCTYPE html>
 <html lang="<?= \App\Core\I18n::locale() ?>" data-clock="<?= htmlspecialchars((string) ($pageClock ?? ''), ENT_QUOTES) ?>"<?= $theme ? ' data-theme="' . $theme . '"' : '' ?>>
 <head>
@@ -52,7 +54,8 @@
          data-kiosk-url="<?= htmlspecialchars($svgFsUrl) ?>"
          data-png-url="/map/<?= $mapId ?>/image?raster=1"
          data-history="<?= !empty($history) ? '1' : '0' ?>"
-         data-totals="<?= htmlspecialchars((string) ($totalsSource ?? 'none')) ?>"<?php if ($isKiosk): ?>
+         data-totals="<?= htmlspecialchars((string) ($totalsSource ?? 'none')) ?>"<?php if ($displayBase !== ''): ?>
+         data-base="<?= htmlspecialchars($displayBase) ?>"<?php endif; ?><?php if ($isKiosk): ?>
          data-kiosk="1" data-zoom="<?= (int) ($zoom ?? 0) ?>"<?php endif; ?>>
         <div class="wmv-viewport" tabindex="0" role="application" aria-label="<?= htmlspecialchars(__('Map :name, zoom with the wheel, drag to move', ['name' => $mapTitle])) ?>">
             <div class="wmv-basemap" hidden></div>
