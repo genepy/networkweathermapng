@@ -1213,6 +1213,22 @@ final class SvgRenderTest extends TestCase
         $this->assertSame(0, $xpath->query($group('unfed') . '/*[@class="wm-link-down"]')->length);
     }
 
+    /** F82: a link wider than its badges stops inside them, and its flow starts where it comes out */
+    public function testWideLinksStopInsideTheirNodes(): void
+    {
+        $file = TESTS_OUTPUT . '/wide-ends.conf';
+        file_put_contents($file, "SET link_flow 1\n" . (string) file_get_contents(TESTS_ROOT . '/fixtures/maps/wide-link-ends.conf'));
+        $map = $this->load($file);
+        $svg = \WeatherMapSvg::render($map);
+        // badge a (r 12, centre 80 80), link ab 16 px half wide: cut where 80 % of r is covered
+        $cuts = $map->links['ab']->drawn_cuts;
+        $this->assertGreaterThan(0, $cuts[OUT]);
+        $this->assertLessThan(12, $cuts[OUT]);
+        $this->assertGreaterThan(0, $cuts[IN]);
+        $this->assertMatchesRegularExpression('/class="wm-flow" data-dir="out" data-load="60" data-width="16" d="M(8[1-9]|9[01]) 80L/', $svg);
+        $this->assertMatchesRegularExpression('/class="wm-flow" data-dir="in" data-load="30" data-width="16" d="M(29[0-9]|28[89]) 80L/', $svg);
+    }
+
     private function load(string $file): \WeatherMap
     {
         $map = new \WeatherMap();

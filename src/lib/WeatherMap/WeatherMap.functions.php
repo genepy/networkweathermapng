@@ -1026,14 +1026,35 @@ function point_in_shapes($x, $y, $shapes, $slack = 0.5) {
  * node) the link may start so that its square end, $halfwidth on either
  * side of the spine, is still hidden under the node ($shapes, from
  * WeatherMapNode::cover_shapes). 0 when the end is not under the node
- * (an end moved off it, or a link wider than the node); never more than
- * $max.
+ * (an end moved off it); never more than $max. A link wider than the
+ * node stops where 80 % of the node's own half size is still covered.
  */
 function link_end_cut($points, $shapes, $halfwidth, $max) {
 	$n = count($points);
 	if ($n < 2 || !$shapes || $max <= 0) {
 		return 0;
 	}
+	$best = link_end_cut_at($points, $shapes, $halfwidth, $max);
+	if ($best > 0) {
+		return $best;
+	}
+	// F82: a link as wide as the node or wider cannot hide its square end;
+	// it still stops inside the node, where most of its end is covered,
+	// rather than at the centre with its corners out past the node
+	$inner = 0;
+	foreach ($shapes as $s) {
+		$inner = max($inner, $s[0] == 'circle' ? $s[3] : min($s[3] - $s[1], $s[4] - $s[2]) / 2);
+	}
+	$lateral = 0.8 * $inner;
+	if ($lateral > 0 && $lateral < $halfwidth) {
+		return link_end_cut_at($points, $shapes, $lateral, $max);
+	}
+	return 0;
+}
+
+/** link_end_cut() for one half width: the furthest cut that keeps both corners under the shapes, 0 when none */
+function link_end_cut_at($points, $shapes, $halfwidth, $max) {
+	$n = count($points);
 	$best = -1;
 	$i = 0;
 	for ($s = 0; $s <= $max; $s += 1) {
