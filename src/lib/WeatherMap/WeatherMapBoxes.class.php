@@ -349,12 +349,16 @@ class WeatherMapBoxes {
 		$text = $box['colour'] === null ? $map->colours['DEFAULT']['KEYTEXT']['gdref1'] : $box['colour'];
 		$muted = self::muted($image, $text, $bg);
 
-		$card = wm_rounded_rect_points($x, $y, $x + $boxw, $y + $boxh, min(self::RADIUS, $boxh / 2));
+		$radius = min(self::RADIUS, $boxh / 2);
+		$card = wm_rounded_rect_points($x, $y, $x + $boxw, $y + $boxh, $radius);
+		// F77: the SVG gets smooth corners (more points, not rounded to whole
+		// pixels), or the polygon of the PNG reads as cut corners when zoomed
+		$svgCard = wm_rounded_rect_points($x, $y, $x + $boxw, $y + $boxh, $radius, 16, false);
 		if (!is_none($bg)) {
-			wimagefilledpolygon($image, $card, count($card) / 2, $bg['gdref1']);
+			wimagefilledpolygon($image, $card, count($card) / 2, $bg['gdref1'], $svgCard);
 		}
 		if (!is_none($outline)) {
-			wimagepolygon($image, $card, count($card) / 2, $outline['gdref1']);
+			wimagepolygon($image, $card, count($card) / 2, $outline['gdref1'], $svgCard);
 		}
 
 		$cx = $x + $pad;

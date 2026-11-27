@@ -138,6 +138,14 @@ final class EditorPanelsTest extends TestCase
         $this->assertStringContainsString('maxX = Math.min(maxX, d.right - 8);', $js);
     }
 
+    public function testMapPanelTabsWrapInsteadOfHiding(): void
+    {
+        // F78: a narrow panel puts the last tabs on a second row, never out of reach
+        $css = self::read('src/public/assets/css/ui.css');
+        $this->assertMatchesRegularExpression('/\.ms-tabs \{[^}]*flex-wrap: wrap;/', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.ms-tabs \{[^}]*overflow-x: auto/', $css);
+    }
+
     public function testLinksFollowTheirNodeWhileItIsDragged(): void
     {
         // F71: no dashed preview; the link is drawn again live under the nodes

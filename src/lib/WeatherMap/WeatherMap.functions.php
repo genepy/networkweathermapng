@@ -2227,7 +2227,7 @@ function wimageline($image, $x1, $y1, $x2, $y2, $color) {
  * The corners of a rectangle with rounded corners, as a flat list of
  * points for wimagefilledpolygon() / wimagepolygon().
  */
-function wm_rounded_rect_points($x1, $y1, $x2, $y2, $r, $steps = 5) {
+function wm_rounded_rect_points($x1, $y1, $x2, $y2, $r, $steps = 5, $round = true) {
 	$r = max(0, min($r, ($x2 - $x1) / 2, ($y2 - $y1) / 2));
 	$corners = array(
 		array($x2 - $r, $y1 + $r, -90),
@@ -2239,8 +2239,10 @@ function wm_rounded_rect_points($x1, $y1, $x2, $y2, $r, $steps = 5) {
 	foreach ($corners as $c) {
 		for ($i = 0; $i <= $steps; $i++) {
 			$a = deg2rad($c[2] + 90 * $i / $steps);
-			$points[] = (int) round($c[0] + $r * cos($a));
-			$points[] = (int) round($c[1] + $r * sin($a));
+			$px = $c[0] + $r * cos($a);
+			$py = $c[1] + $r * sin($a);
+			$points[] = $round ? (int) round($px) : round($px, 2);
+			$points[] = $round ? (int) round($py) : round($py, 2);
 		}
 	}
 	return $points;
@@ -2299,7 +2301,7 @@ function wimagepolygon($image, $points, $num_points, $color, $svg_points = null)
 	metadump("POLY $num_points " . $pts . " $r $g $b $a");
 
 	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
-		WeatherMapSvg::$active->polygon(array_slice($svg_points === null ? $points : $svg_points, 0, $num_points * 2), $color, false);
+		WeatherMapSvg::$active->polygon($svg_points === null ? array_slice($points, 0, $num_points * 2) : $svg_points, $color, false);
 	}
 
 	if (version_compare(PHP_VERSION, '8.0', '>')) {
@@ -2336,7 +2338,7 @@ function wimagefilledpolygon($image, $points, $num_points, $color, $svg_points =
 	metadump("FPOLY $num_points " . $pts . " $r $g $b $a");
 
 	if (WeatherMapSvg::$active && WeatherMapSvg::$active->accepts($image)) {
-		WeatherMapSvg::$active->polygon(array_slice($svg_points === null ? $points : $svg_points, 0, $num_points * 2), $color, true);
+		WeatherMapSvg::$active->polygon($svg_points === null ? array_slice($points, 0, $num_points * 2) : $svg_points, $color, true);
 	}
 
 	if (version_compare(PHP_VERSION, '8.0', '>')) {
