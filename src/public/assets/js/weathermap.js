@@ -60,15 +60,12 @@
          * Format bits per second
          */
         formatBps: function(bps, decimals = 2) {
-            if (bps === 0) return '0 bps';
-            
-            const k = 1000;
-            const dm = decimals < 0 ? 0 : decimals;
-            const sizes = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps'];
-            
-            const i = Math.floor(Math.log(bps) / Math.log(k));
-            
-            return parseFloat((bps / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+            return wmFormatRate(bps, 'bps', decimals);
+        },
+
+        /** A rate with its unit: 4.27 Gbps, 1.5 kW (see wmFormatRate) */
+        formatRate: function(value, units, decimals = 2) {
+            return wmFormatRate(value, units, decimals);
         },
         
         /**
@@ -119,16 +116,6 @@
         return el;
     }
 
-    function wmFormatNum(n) {
-        if (!isFinite(n)) return '-';
-        const abs = Math.abs(n);
-        if (abs >= 1e12) return (n / 1e12).toFixed(2) + 'T';
-        if (abs >= 1e9) return (n / 1e9).toFixed(2) + 'G';
-        if (abs >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-        if (abs >= 1e3) return (n / 1e3).toFixed(2) + 'K';
-        return n.toFixed(2);
-    }
-
     /** A link speed as a short badge: 10G, 100M, 2.5G */
     function wmFormatSpeed(bps) {
         const n = Number(bps);
@@ -142,10 +129,47 @@
         return String(Math.round(n));
     }
 
-    /** The unit shown after a rate: bit/s for the bps of the data sources */
+    /** The unit of a value: bps for the bits per second of the data sources */
     function wmUnit(units) {
         const u = String(units || '').trim();
-        return (u === '' || u.toLowerCase() === 'bps') ? 'bit/s' : u;
+        return (u === '' || /^(bps|bits?\/s)$/i.test(u)) ? 'bps' : u;
+    }
+
+    const wmNumberFormats = {};
+
+    /** A number in the interface language (4,27 in French), up to `digits` decimals */
+    function wmLocaleNum(n, digits) {
+        const key = String(digits);
+        if (!wmNumberFormats[key]) {
+            const lang = document.documentElement.lang || undefined;
+            try {
+                wmNumberFormats[key] = new Intl.NumberFormat(lang, {maximumFractionDigits: digits});
+            } catch (e) {
+                wmNumberFormats[key] = new Intl.NumberFormat(undefined, {maximumFractionDigits: digits});
+            }
+        }
+        return wmNumberFormats[key].format(n);
+    }
+
+    /**
+     * A rate as people write it (F80): the number, a space, then the prefix
+     * and the unit: 950 bps, 12.5 kbps, 4.27 Gbps, the same words as the
+     * cards of the map (WeatherMapBoxes::rate()). Another unit keeps its own
+     * name after the prefix (1.5 kW, 42 %).
+     */
+    function wmFormatRate(value, units, digits) {
+        const n = Number(value);
+        if (value === null || value === undefined || value === '' || !isFinite(n)) return '–';
+        const unit = wmUnit(units);
+        const d = digits === undefined ? 2 : Math.max(0, digits);
+        // percentages and temperatures are never 1.2 k%
+        if (unit === '%' || /^°/.test(unit)) return wmLocaleNum(n, d) + ' ' + unit;
+        const steps = [[1e12, 'T'], [1e9, 'G'], [1e6, 'M'], [1e3, 'k']];
+        const abs = Math.abs(n);
+        for (let i = 0; i < steps.length; i++) {
+            if (abs >= steps[i][0]) return wmLocaleNum(n / steps[i][0], d) + ' ' + steps[i][1] + unit;
+        }
+        return wmLocaleNum(n, d) + ' ' + unit;
     }
 
     function wmEsc(s) {
@@ -323,8 +347,8 @@
             ticks += `<line class="wm-hc-grid" x1="${x(tt).toFixed(1)}" x2="${x(tt).toFixed(1)}" y1="${padT}" y2="${H - padB}"/>`
                 + `<text class="wm-hc-axis" x="${x(tt).toFixed(1)}" y="${H - 6}" text-anchor="middle">${wmEsc(wmTimeLabel(tt, range, data.tz))}</text>`;
         }
-        // the scale; the unit is in the peak and average lines
-        const top = wmFormatNum(max);
+        // the scale
+        const top = wmFormatRate(max, data.units, 1);
         return `<svg class="wm-hc-chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${wmEsc(t('IN above, OUT below'))}">
             ${ticks}
             <line class="wm-hc-zero" x1="${padL}" x2="${W - padR}" y1="${mid}" y2="${mid}"/>
@@ -341,7 +365,7 @@
 
     /** Peak and average of the period (or of the part from `min` to `max` seconds), under the graph */
     function wmTrafficStats(data, min, max) {
-        const unit = wmUnit(data.units);
+        const units = data.units;
         const lo = isFinite(min) ? min : -Infinity;
         const hi = isFinite(max) ? max : Infinity;
         const stat = function (all) {
@@ -354,8 +378,8 @@
         const cell = function (label, cls, s) {
             if (!s) return '';
             return `<div class="wm-hc-stat"><span class="wm-hc-k ${cls}">${wmEsc(label)}</span>`
-                + `<span>${wmEsc(t('Peak'))} <b>${wmFormatNum(s.peak)} ${wmEsc(unit)}</b></span>`
-                + `<span>${wmEsc(t('Average'))} <b>${wmFormatNum(s.avg)} ${wmEsc(unit)}</b></span></div>`;
+                + `<span>${wmEsc(t('Peak'))} <b>${wmEsc(wmFormatRate(s.peak, units))}</b></span>`
+                + `<span>${wmEsc(t('Average'))} <b>${wmEsc(wmFormatRate(s.avg, units))}</b></span></div>`;
         };
         return cell(t('IN'), 'wm-hc-in', stat(data.in)) + cell(t('OUT'), 'wm-hc-out', stat(data.out));
     }
@@ -542,7 +566,7 @@
         const aligned = wmAlign(data);
 
         const value = function (v) {
-            return v === null || v === undefined ? '–' : wmFormatNum(Math.abs(v)) + ' ' + unit;
+            return v === null || v === undefined ? '–' : wmFormatRate(Math.abs(v), unit);
         };
         const zoomed = function (u) {
             return u.scales.x.min > from + 1 || u.scales.x.max < to - 1;
@@ -600,10 +624,10 @@
                     }
                 },
                 {
-                    stroke: muted, font: font, space: 28, size: 52,
+                    stroke: muted, font: font, space: 28, size: 68,
                     grid: {stroke: grid, width: 1}, ticks: {show: false},
-                    // 500M rather than 500.00M
-                    values: function (u, splits) { return splits.map(s => wmFormatNum(Math.abs(s)).replace(/\.?0+(?=[KMGT]?$)/, '')); }
+                    // 500 Mbps, 1.5 Gbps
+                    values: function (u, splits) { return splits.map(s => wmFormatRate(Math.abs(s), unit, 1)); }
                 }
             ],
             hooks: {
@@ -868,7 +892,7 @@
             const p = (pct !== null && pct !== undefined && isFinite(Number(pct))) ? `<span class="wm-hc-pct">${Math.round(Number(pct))} %</span>` : '';
             const bar = p ? `<span class="wm-hc-bar"><span class="${cls}" style="width:${Math.max(0, Math.min(100, Number(pct)))}%"></span></span>` : '';
             return `<div class="wm-hc-rate"><span class="wm-hc-k ${cls}">${wmEsc(label)}</span>`
-                + `<b>${wmFormatNum(Number(value))} bit/s</b>${bar}${p}</div>`;
+                + `<b>${wmEsc(wmFormatRate(Number(value), 'bps'))}</b>${bar}${p}</div>`;
         }
 
         function head(info) {

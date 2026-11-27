@@ -47,4 +47,17 @@ final class TrafficChartAssetsTest extends TestCase
         $this->assertStringContainsString('class="wmv-card-traffic" hidden', self::read('src/app/Views/maps/view.php'));
         $this->assertStringContainsString('WM.trafficPanel(', self::read('src/public/assets/js/viewer.js'));
     }
+
+    public function testRatesReadAsGbpsLikeTheMapCards(): void
+    {
+        // F80: 4.27 Gbps (prefix with the unit), not 4.27G bit/s, in the interface language
+        $script = self::read('src/public/assets/js/weathermap.js');
+        $this->assertStringContainsString('function wmFormatRate(value, units, digits)', $script);
+        $this->assertStringContainsString("' ' + steps[i][1] + unit", $script);
+        $this->assertStringContainsString('new Intl.NumberFormat(lang', $script);
+        $this->assertStringNotContainsString('bit/s</b>', $script);
+        $this->assertStringNotContainsString('wmFormatNum(', $script);
+        // the cards of the map use the same words
+        $this->assertSame('4.3 Gbps', \WeatherMapBoxes::rate(4.3e9, 1000));
+    }
 }
