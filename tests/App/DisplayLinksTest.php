@@ -66,8 +66,9 @@ final class DisplayLinksTest extends TestCase
         $this->assertSame([DisplayLinks::OK, 3], $this->links->resolve($expiring['token'], self::NOW + 3599));
         $this->assertSame([DisplayLinks::UNKNOWN, 0], $this->links->resolve($expiring['token'], self::NOW + 3600));
 
+        // newest first
         $states = array_column($this->links->forMap(3, self::NOW + 3600), 'state', 'label');
-        $this->assertSame(['a' => 'revoked', 'b' => 'expired'], $states);
+        $this->assertSame(['b' => 'expired', 'a' => 'revoked'], $states);
     }
 
     public function testAnExpiryInThePastIsRefused(): void
