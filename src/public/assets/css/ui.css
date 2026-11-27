@@ -839,8 +839,11 @@ button.info-tip {
 }
 button.info-tip:hover, button.info-tip:focus-visible { color: var(--wm-accent); border-color: var(--wm-accent); }
 #info-bubble {
-    position: fixed; z-index: 1000; max-width: 280px; padding: 6px 9px; border-radius: 6px;
+    position: fixed; z-index: 1000; max-width: min(280px, calc(100vw - 16px)); margin: 0; padding: 6px 9px; border-radius: 6px;
     background: var(--wm-text); color: var(--wm-surface); font-size: 12px; line-height: 1.4;
     box-shadow: 0 4px 14px #0003; pointer-events: none;
 }
 #info-bubble[hidden] { display: none; }
+/* F76: a help line tucked behind an i button is the text of its tip, never
+   shown in the page, whatever display a form rule gives it */
+.tip-text[hidden], [data-tucked][hidden] { display: none !important; }
