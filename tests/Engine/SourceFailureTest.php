@@ -120,6 +120,31 @@ final class SourceFailureTest extends TestCase
         $this->assertSame(1, $map->nodata_links);
         $this->assertSame([], $map->source_errors);
     }
+
+    public function testPrometheusTargets(): void
+    {
+        $svc = new FakePrometheus();
+        $conf = self::CONF
+            . "LINK ab\n\tNODES a b\n\tBANDWIDTH 1G\n\tTARGET prometheus:4:host:10.0.0.1:161:if:xe-0/0/1\n"
+            . "LINK bc\n\tNODES b c\n\tBANDWIDTH 1G\n\tTARGET prometheus:4:host:10.0.0.1:161:if:xe-0/0/2\n"
+            . "LINK ca\n\tNODES c a\n\tBANDWIDTH 1G\n\tTARGET prometheus:4:query\n"
+            . "\tSET prometheus_in sum(rate(x[5m])) * 8\n\tSET prometheus_out sum(rate(y[5m])) * 8\n";
+        $map = $this->read($conf, 'WeatherMapDataSource_prometheus', $svc);
+
+        $this->assertEqualsWithDelta(300e6, (float) $map->links['ab']->bandwidth_in, 1);
+        $this->assertSame('down', $map->links['bc']->data_state(), 'F72: the interface is down');
+        $this->assertSame('interface-down', $map->links['bc']->data_reason);
+        $this->assertEqualsWithDelta(7e6, (float) $map->links['ca']->bandwidth_out, 1);
+        $this->assertSame(['in' => 'sum(rate(x[5m])) * 8', 'out' => 'sum(rate(y[5m])) * 8'], $svc->queries);
+        $this->assertSame([], $map->source_errors);
+
+        $svc->error = 'Cannot reach Prometheus at http://prom:9090/api/v1/query (curl: Connection refused)';
+        $map = $this->read($conf, 'WeatherMapDataSource_prometheus', $svc);
+        $this->assertSame(3, $map->nodata_links);
+        $failed = MapService::failedSources($map);
+        $this->assertSame('Lab Prometheus', $failed[0]['name']);
+        $this->assertTrue($failed[0]['down']);
+    }
 }
 
 /** A Zabbix source answering 100 Mbit/s in and 50 out, or failing as told */
@@ -203,5 +228,53 @@ final class FakeObservium
     public function observiumSpeedForTarget(string $target, ?int $sourceId = null): ?int
     {
         return null;
+    }
+}
+
+/** A Prometheus source (through DataSourceService::prometheusSelection) */
+final class FakePrometheus
+{
+    public ?string $error = null;
+    public array $queries = [];
+
+    public function getSource(int $id): array
+    {
+        return ['id' => $id, 'name' => 'Lab Prometheus'];
+    }
+
+    public function prometheusSelection(string $target, array $hints = []): ?array
+    {
+        $parsed = \App\Services\Prometheus\PrometheusTarget::parse($target, $hints);
+        if ($parsed === null) {
+            return null;
+        }
+        unset($parsed['source']);
+        $selection = ['sourceId' => 4];
+        if (isset($parsed['host'])) {
+            return $selection + ['hostId' => $parsed['host'], 'interfaceId' => $parsed['interface']];
+        }
+        return $selection + $parsed;
+    }
+
+    public function getLinkSpeed(int $sourceId, array $selection): ?int
+    {
+        return null;
+    }
+
+    public function getLinkBandwidthCurrent(int $sourceId, array $selection): array
+    {
+        if ($this->error !== null) {
+            throw new \RuntimeException($this->error);
+        }
+        if (isset($selection['in'])) {
+            $this->queries = ['in' => $selection['in'], 'out' => $selection['out']];
+            return ['in' => 3e6, 'out' => 7e6];
+        }
+        return ['in' => 300e6, 'out' => 100e6];
+    }
+
+    public function linkDown(int $sourceId, array $selection): bool
+    {
+        return ($selection['interfaceId'] ?? '') === 'xe-0/0/2';
     }
 }

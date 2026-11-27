@@ -2,7 +2,7 @@
  * NetworkWeathermapNG - the Settings space (UI redesign step 6).
  *
  * - Data source form (on its page or in the drawer): the chosen type shows
- *   only its own fields, and the URL is required for Zabbix only.
+ *   only its own fields, and the URL is required for Zabbix and Prometheus.
  * - Data source rows: Test checks the connection on the row; the state dot,
  *   the "tested" time and the message are updated in place, with the request
  *   and response under "Request and response".
@@ -25,7 +25,7 @@
         if (!type) return;
         function update() {
             form.setAttribute('data-type', type.value);
-            if (url) url.required = type.value === 'zabbix';
+            if (url) url.required = type.value === 'zabbix' || type.value === 'prometheus';
         }
         type.addEventListener('change', update);
         update();

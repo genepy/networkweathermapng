@@ -33,7 +33,7 @@ final class LicenseNoticesTest extends TestCase
     {
         $root = dirname(TESTS_ROOT);
         $notices = (string) file_get_contents($root . '/THIRD-PARTY-NOTICES.md');
-        $ownCode = ['WeatherMapDataSource_observium.php', 'WeatherMapDataSource_zabbix.php'];
+        $ownCode = ['WeatherMapDataSource_observium.php', 'WeatherMapDataSource_zabbix.php', 'WeatherMapDataSource_prometheus.php'];
 
         foreach (glob($root . '/src/lib/WeatherMap/lib/datasources/*.php') as $path) {
             if (in_array(basename($path), $ownCode, true)) {

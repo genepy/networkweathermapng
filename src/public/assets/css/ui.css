@@ -670,8 +670,9 @@ form.set-panel > .set-foot { position: sticky; bottom: 0; z-index: 5; background
 .ds-form .form-row { display: flex; gap: var(--wm-space-3); }
 .ds-form .form-row .form-group { flex: 1; min-width: 0; }
 .ds-form .form-row .form-group-small { flex: 0 0 110px; }
-.ds-form[data-type="zabbix"] .only-observium,
-.ds-form:not([data-type="zabbix"]) .only-zabbix { display: none; }
+.ds-form:not([data-type="observium"]) .only-observium,
+.ds-form:not([data-type="zabbix"]) .only-zabbix,
+.ds-form:not([data-type="prometheus"]) .only-prometheus { display: none; }
 .wm-drawer .set-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
 .wm-drawer .set-body { flex: 1; min-height: 0; overflow-y: auto; }
 .wm-drawer .set-head { border-bottom: 0; padding-bottom: var(--wm-space-2); }

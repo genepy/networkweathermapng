@@ -39,11 +39,12 @@ $formAction = $action === 'create' ? '/admin/data-sources/create' : '/admin/data
         </div>
         
         <div class="form-group">
-            <label for="url">URL <span class="only-zabbix">*</span></label>
+            <label for="url">URL <span class="only-zabbix">*</span><span class="only-prometheus">*</span></label>
             <input type="url" id="url" name="url"
                    value="<?= htmlspecialchars($source['url'] ?? '') ?>"
                    placeholder="https://monitoring.example.com">
             <small class="only-zabbix"><?= e__('Base URL of the Zabbix server (without /api_jsonrpc.php)') ?></small>
+            <small class="only-prometheus"><?= e__('Base URL of Prometheus, VictoriaMetrics or Thanos (without /api/v1), e.g. http://prometheus:9090') ?></small>
             <small class="only-observium"><?= e__('Base URL of Observium. With an API token or a user below, Weathermap reads Observium through its API (Professional and Enterprise editions). Leave the credentials empty to read the database instead (all editions, Community included). The URL is also used for links to port pages.') ?></small>
         </div>
         
@@ -77,6 +78,40 @@ $formAction = $action === 'create' ? '/admin/data-sources/create' : '/admin/data
                        placeholder="<?= e__('API token') ?>">
                 <small class="only-zabbix"><?= e__('For Zabbix 5.4+, you can use an API token instead of username/password') ?></small>
                 <small class="only-observium"><?= e__('Observium API token, sent as a Bearer token') ?></small>
+                <small class="only-prometheus"><?= e__('Sent as a Bearer token. Without a token, a username and password are sent as basic auth; leave all empty when Prometheus asks for none.') ?></small>
+            </div>
+        </fieldset>
+
+        <fieldset class="form-fieldset only-prometheus">
+            <legend><?= e__('Prometheus metrics') ?></legend>
+            <small><?= e__('Interfaces are read from the IF-MIB counters of snmp_exporter: ifHCInOctets and ifHCOutOctets, with ifHighSpeed and ifOperStatus.') ?></small>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="prom_host_label"><?= e__('Host label') ?></label>
+                    <input type="text" id="prom_host_label" name="settings[host_label]" value="<?= $setting('host_label') ?>" placeholder="instance">
+                </div>
+                <div class="form-group">
+                    <label for="prom_interface_label"><?= e__('Interface label') ?></label>
+                    <input type="text" id="prom_interface_label" name="settings[interface_label]" value="<?= $setting('interface_label') ?>" placeholder="ifName">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="prom_filter"><?= e__('Extra label filter') ?></label>
+                    <input type="text" id="prom_filter" name="settings[filter]" value="<?= $setting('filter') ?>" placeholder='job="snmp"' spellcheck="false">
+                </div>
+                <div class="form-group form-group-small">
+                    <label for="prom_rate_window"><?= e__('Rate window') ?></label>
+                    <input type="text" id="prom_rate_window" name="settings[rate_window]" value="<?= $setting('rate_window') ?>" placeholder="5m">
+                </div>
+            </div>
+            <small><?= e__('The filter is added to every query, as PromQL label matchers. The rate window should be at least twice the scrape interval.') ?></small>
+            <div class="form-group" style="margin-top: 15px">
+                <label class="checkbox-label">
+                    <input type="hidden" name="settings[verify_tls]" value="0">
+                    <input type="checkbox" name="settings[verify_tls]" value="1" <?= ($settings['verify_tls'] ?? true) ? 'checked' : '' ?>>
+                    <?= e__('Verify the HTTPS certificate') ?>
+                </label>
             </div>
         </fieldset>
 

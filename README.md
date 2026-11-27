@@ -135,13 +135,14 @@ a self-hosted runner. See [deploy/testbed/README.md](deploy/testbed/README.md).
 | `DEMO_MAPS_EXTRA_DIR` | Folder of extra demo maps (`.conf`), added with the demo maps | none |
 | `APP_LOCALE` | Default interface language (`en`, `fr`, or any folder of `src/app/Lang/`) when no language was chosen in the user menu | browser language |
 
-### Data sources (Zabbix and more)
+### Data sources (Zabbix, Observium, Prometheus)
 
 Data sources are configured via the web UI and stored in the database:
 
 - Go to **Settings → Data sources** and click **Add data source**
-- Add your Zabbix API endpoint and credentials in the panel that opens on the
-  right; the type you choose only shows its own fields
+- Add your Zabbix API endpoint, Observium or Prometheus server and its
+  credentials in the panel that opens on the right; the type you choose only
+  shows its own fields
 - **Test** on the source's row checks the connection: the dot turns green or
   red, the row says when it was tested, and *Request and response* shows the
   request sent and the answer received. The ⋯ menu edits or deletes it
@@ -154,7 +155,7 @@ Data sources are configured via the web UI and stored in the database:
   grey), without bandwidth labels, flow or glow.
 - **Down**: the link has a `TARGET` but the last render got no value for it:
   its data source is unreachable or failed to read it, or no source knows the
-  target, or the source has nothing for it. An Observium port whose status
+  target, or the source has nothing for it. An Observium or Prometheus port whose status
   is down (`ifOperStatus` down or lowerLayerDown) is down too, even when it
   still gives counters. It is grey, without labels or
   flow, with a small ⚠ mark where its arrows meet, and counts in the
@@ -595,6 +596,44 @@ of them:
 
 With Docker on the Observium server, uncomment the Observium volumes in
 `docker/docker-compose.yml` and use `host.docker.internal` as database host.
+
+### Prometheus TARGET Formats
+
+Weathermap reads Prometheus, or a server with the same HTTP API
+(VictoriaMetrics, Thanos, Mimir). Interfaces come from the IF-MIB counters of
+`snmp_exporter` (module `if_mib`): `ifHCInOctets` and `ifHCOutOctets` for the
+traffic, `ifHighSpeed` (or `ifSpeed`) for `BANDWIDTH auto` and the picker, and
+`ifOperStatus` for an interface that is down.
+
+| Format | Description |
+|--------|-------------|
+| `prometheus:4:host:core-rtr1:if:xe-0/0/1` | An interface: the source (its id or its name), the value of the host label, the value of the interface label |
+| `prometheus:4:query:<in PromQL>\|<out PromQL>` | Any two expressions, in bit/s (power, temperature, a sum...): the `\|` between them is the first one outside quotes |
+| `prometheus:4:query` | The same, with the expressions in `SET prometheus_in` and `SET prometheus_out` on the link: easier for a query with spaces |
+
+```
+LINK core-paris
+	TARGET prometheus:4:host:core-rtr1:if:xe-0/0/1
+LINK uplinks
+	TARGET prometheus:prom:query
+	SET prometheus_in sum(rate(ifHCInOctets{ifAlias=~"uplink.*"}[5m])) * 8
+	SET prometheus_out sum(rate(ifHCOutOctets{ifAlias=~"uplink.*"}[5m])) * 8
+```
+
+Add the source in **Settings → Data sources** with the type *Prometheus*:
+
+- the URL (`http://prometheus:9090`, without `/api/v1`);
+- an API token (sent as a Bearer token), or a user and password (basic auth),
+  or nothing;
+- the host label (`instance` by default) and the interface label (`ifName` by
+  default), as your `snmp_exporter` relabelling sets them;
+- an extra label filter added to every query, such as `job="snmp"`;
+- the rate window (`5m` by default, at least twice the scrape interval).
+
+The editor's picker lists the hosts and their interfaces and fills in the
+TARGET and the bandwidth. The hover card and its graph read the history with
+`query_range`, without recording the map. Each host is read with a few queries
+per render, for all its interfaces at once.
 
 ## Map editor
 
