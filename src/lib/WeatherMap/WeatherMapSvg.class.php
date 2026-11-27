@@ -262,9 +262,17 @@ class WeatherMapSvg {
 		// where the arrows meet, on the visible part of the link (WeatherMapLink::hidden_ends)
 		$split = $oneway ? $total : ($link->drawn_split !== null ? (float) $link->drawn_split : $total * max(0, min(100, (float) $link->splitpos)) / 100);
 
-		$runs = array(array('out', 0, $split, $link->outpercent, $out_width));
+		// F82: from where the link comes out of its node, so the spot (and
+		// its glow) never travels under a node and shows around its edge
+		$cuts = is_array($link->drawn_cuts) ? $link->drawn_cuts : array(OUT => 0, IN => 0);
+		$end = $total - max(0, (float) $cuts[IN]);
+		$start = min($oneway ? $end : $split, max(0, (float) $cuts[OUT]));
 		if (!$oneway) {
-			$runs[] = array('in', $total, $split, $link->inpercent, $in_width);
+			$end = max($split, $end);
+		}
+		$runs = array(array('out', $start, $oneway ? $end : $split, $link->outpercent, $out_width));
+		if (!$oneway) {
+			$runs[] = array('in', $end, $split, $link->inpercent, $in_width);
 		}
 		foreach ($runs as $run) {
 			$spine = self::spine($points, $run[1], $run[2]);

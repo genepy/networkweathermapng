@@ -537,10 +537,14 @@
             g.appendChild(stop);
         });
         defs.appendChild(g);
-        // the glow around the spot: fades out across the link and along it
+        // the glow around the spot (F83, a small comet): fades out across
+        // the link and along it, brighter towards the head (the spot runs
+        // along +x), white with a low opacity so it reads on any colour
         const halo = document.createElementNS(SVG_NS, 'radialGradient');
         halo.id = 'wmv-flow-halo';
-        [['0', '0.5'], ['0.6', '0.3'], ['1', '0']].forEach(function (s) {
+        halo.setAttribute('cx', '0.55');
+        halo.setAttribute('fx', '0.7');
+        [['0', '0.55'], ['0.35', '0.32'], ['0.7', '0.1'], ['1', '0']].forEach(function (s) {
             const stop = document.createElementNS(SVG_NS, 'stop');
             stop.setAttribute('offset', s[0]);
             stop.setAttribute('stop-color', '#fff');
@@ -569,23 +573,26 @@
             const long = Math.min(len / 3, Math.max(16, half * 6));
             // px per second: a quiet link crawls, a full one runs
             const speed = 18 + 1.6 * Math.min(load, 100);
-            // a bar as wide as the link, and a soft glow a little past its
-            // edges so the link looks less flat
-            const extra = Math.max(1.5, half * 0.2);
+            // a bar as wide as the link, and a soft glow that spills about
+            // half the link's half width past each edge (at least 3 px), a
+            // little longer than the bar: a small comet, like Nine IX
+            const extra = Math.max(3, half * 0.5);
             const dot = document.createElementNS(SVG_NS, 'g');
             dot.setAttribute('class', 'wmv-flow-dot');
             dot.setAttribute('pointer-events', 'none');
-            [[half + extra, 'url(#wmv-flow-halo)'], [half, 'url(#wmv-flow-glow)']].forEach(function (r) {
+            [[half + extra, long * 1.3, 'url(#wmv-flow-halo)'], [half, long, 'url(#wmv-flow-glow)']].forEach(function (r) {
                 const rect = document.createElementNS(SVG_NS, 'rect');
-                rect.setAttribute('x', String(-long / 2));
+                rect.setAttribute('x', String(-r[1] / 2));
                 rect.setAttribute('y', String(-r[0]));
-                rect.setAttribute('width', String(long));
+                rect.setAttribute('width', String(r[1]));
                 rect.setAttribute('height', String(r[0] * 2));
-                rect.setAttribute('fill', r[1]);
+                rect.setAttribute('fill', r[2]);
                 dot.appendChild(rect);
             });
             path.after(dot);
-            F.dots.push({el: dot, pts: pts, len: len, fade: long / 2, speed: speed, phase: (k * 0.618) % 1, at: 1});
+            // the path starts where the link comes out of its node (F82):
+            // the glow fades in and out over the length it spills past the bar
+            F.dots.push({el: dot, pts: pts, len: len, fade: long * 0.65, speed: speed, phase: (k * 0.618) % 1, at: 1});
         });
         startFlow();
     }
