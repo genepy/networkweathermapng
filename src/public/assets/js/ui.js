@@ -365,13 +365,23 @@
             bubble.id = 'info-bubble';
             bubble.setAttribute('role', 'tooltip');
             bubble.hidden = true;
-            document.body.appendChild(bubble);
         }
+        // F75: a modal <dialog> (drawer, palette) sits in the browser's top
+        // layer, above any z-index of the page: the bubble goes inside it
+        var host = btn.closest('dialog[open]') || document.body;
+        if (bubble.parentNode !== host) { host.appendChild(bubble); }
         bubble.textContent = src.textContent;
         bubble.hidden = false;
         bubbleFor = btn;
         var r = btn.getBoundingClientRect(), b = bubble.getBoundingClientRect();
-        var left = Math.max(8, Math.min(r.left + r.width / 2 - b.width / 2, window.innerWidth - b.width - 8));
+        // inside the viewport, and inside the dialog when there is one
+        var minX = 8, maxX = window.innerWidth - 8;
+        if (host !== document.body) {
+            var d = host.getBoundingClientRect();
+            minX = Math.max(minX, d.left + 8);
+            maxX = Math.min(maxX, d.right - 8);
+        }
+        var left = Math.max(minX, Math.min(r.left + r.width / 2 - b.width / 2, maxX - b.width));
         var top = r.bottom + 6;
         if (top + b.height > window.innerHeight - 8) { top = r.top - b.height - 6; }
         bubble.style.left = left + 'px';

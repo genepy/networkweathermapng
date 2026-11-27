@@ -127,6 +127,17 @@ final class EditorPanelsTest extends TestCase
         $this->assertStringContainsString("\nbutton.info-tip {", self::read('src/public/assets/css/ui.css'));
     }
 
+    public function testTuckedHelpIsNeverShownAndBubblesOpenAboveDialogs(): void
+    {
+        // F76: form rules give help lines display: block; a tucked one stays hidden
+        $css = self::read('src/public/assets/css/ui.css');
+        $this->assertStringContainsString('.tip-text[hidden], [data-tucked][hidden] { display: none !important; }', $css);
+        // F75: a modal dialog is in the top layer, so the bubble goes inside it
+        $js = self::read('src/public/assets/js/ui.js');
+        $this->assertStringContainsString("var host = btn.closest('dialog[open]') || document.body;", $js);
+        $this->assertStringContainsString('maxX = Math.min(maxX, d.right - 8);', $js);
+    }
+
     public function testLinksFollowTheirNodeWhileItIsDragged(): void
     {
         // F71: no dashed preview; the link is drawn again live under the nodes
