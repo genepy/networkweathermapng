@@ -129,6 +129,37 @@ final class ApiBackend implements ObserviumBackend
         return null;
     }
 
+    /**
+     * The API (v0) lists no groups: the editor asks for the group's id, or
+     * a list of ports, with this way of reading Observium.
+     */
+    public function portGroups(): ?array
+    {
+        return null;
+    }
+
+    /**
+     * The ports of a group through the ports endpoint's group_id filter.
+     * An API that ignores the filter answers every port: then groups
+     * cannot be read this way.
+     */
+    public function groupPortIds(int $groupId): ?array
+    {
+        $all = $this->entities($this->get('ports/', ['group_id' => $groupId, 'fields' => 'port_id']), 'ports');
+        $ids = [];
+        foreach ($all as $row) {
+            if (isset($row['port_id'])) {
+                $ids[] = (int) $row['port_id'];
+            }
+        }
+        $every = $this->entities($this->get('ports/', ['fields' => 'port_id']), 'ports');
+        if ($ids !== [] && count($ids) >= count($every)) {
+            return null;
+        }
+
+        return array_values(array_unique($ids));
+    }
+
     /** @return array<int, array> */
     private function allDevices(): array
     {

@@ -240,6 +240,117 @@ final class ObserviumClient implements DataSourceClientInterface
         return $port ? $this->getBandwidthData(['interfaceId' => $port['port_id']], $minutes) : [];
     }
 
+    /**
+     * The port groups of Observium (F79), null when it offers none here
+     * (Community edition, or the API, which lists no groups).
+     *
+     * @return list<array{group_id: int, name: string, ports: int}>|null
+     */
+    public function portGroups(): ?array
+    {
+        return $this->backend()->portGroups();
+    }
+
+    /**
+     * The port ids a total traffic source counts (TrafficTotalSource):
+     * its list of ports, or the members of its port group, named by id or
+     * by name. Throws with a message for the status bar when the group
+     * cannot be read or is unknown.
+     *
+     * @param array{group?: string, ports?: list<int>} $source
+     * @return list<int>
+     */
+    public function sourcePorts(array $source): array
+    {
+        if (!isset($source['group'])) {
+            return array_values(array_map('intval', (array) ($source['ports'] ?? [])));
+        }
+        $group = trim((string) $source['group']);
+        $id = ctype_digit($group) ? (int) $group : null;
+        if ($id === null) {
+            $groups = $this->backend()->portGroups();
+            if ($groups === null) {
+                throw new \RuntimeException('Observium offers no port groups here: name the group by its id, or list the ports');
+            }
+            foreach ($groups as $g) {
+                if (strcasecmp($g['name'], $group) === 0) {
+                    $id = $g['group_id'];
+                    break;
+                }
+            }
+            if ($id === null) {
+                throw new \RuntimeException(sprintf('No Observium port group named "%s"', $group));
+            }
+        }
+        $ports = $this->backend()->groupPortIds($id);
+        if ($ports === null) {
+            throw new \RuntimeException('Observium port groups cannot be read here: list the ports instead');
+        }
+        if ($ports === []) {
+            throw new \RuntimeException(sprintf('The Observium port group %s has no ports', $group));
+        }
+
+        return $ports;
+    }
+
+    /**
+     * The current traffic summed over ports: in and out in bit/s (null when
+     * no port gave a rate), and how many ports gave one.
+     *
+     * @param list<int> $portIds
+     * @return array{in: float|null, out: float|null, links: int}
+     */
+    public function totalNow(array $portIds): array
+    {
+        $in = null;
+        $out = null;
+        $count = 0;
+        foreach ($portIds as $id) {
+            $port = $this->backend()->port((int) $id);
+            $rates = $port ? $this->rates($port) : null;
+            if ($rates === null) {
+                continue;
+            }
+            $in = ($in ?? 0.0) + $rates[0];
+            $out = ($out ?? 0.0) + $rates[1];
+            $count++;
+        }
+
+        return ['in' => $in, 'out' => $out, 'links' => $count];
+    }
+
+    /**
+     * The traffic summed over ports for the last $minutes, from their RRD
+     * files: [time, in, out] oldest first. Observium writes every port at
+     * the same step, so the points of the ports share their times.
+     *
+     * @param list<int> $portIds
+     * @return list<array{0: int, 1: float, 2: float}>
+     */
+    public function totalHistory(array $portIds, int $minutes): array
+    {
+        $rrd = $this->rrd();
+        if ($rrd === null) {
+            throw new \RuntimeException('The Observium RRD files cannot be read: set their folder or rrdcached in the data source');
+        }
+        $sum = [];
+        foreach ($portIds as $id) {
+            $port = $this->backend()->port((int) $id);
+            if (!$port || $port['hostname'] === '' || !$rrd->available($port['hostname'], $port['ifIndex'])) {
+                continue;
+            }
+            foreach ($rrd->series($port['hostname'], $port['ifIndex'], $minutes) as $p) {
+                $t = (int) $p['time'];
+                $sum[$t] ??= [$t, 0.0, 0.0];
+                $sum[$t][1] += $p['in'];
+                $sum[$t][2] += $p['out'];
+            }
+        }
+        ksort($sum);
+
+        return array_values($sum);
+    }
+
     public static function devicePage(string $base, int $deviceId): string
     {
         return sprintf('%s/device/device=%d/', rtrim($base, '/'), $deviceId);

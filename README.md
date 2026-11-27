@@ -348,6 +348,29 @@ direction worked out on every point of the period. Long periods are
 averaged down for the small graph ("Aggregated data"); a click on the graph
 opens it larger, where dragging across it zooms in. The PNG and SVG card
 keeps a still version: the last day, with its 95th percentile and peak.
+
+The total can count something else than the links drawn on the map, such
+as the interconnection and peering ports of an ISP (*Total traffic* in the
+*Viewer & kiosk* tab of the map panel):
+
+```
+SET traffic_total_source links                          # the links (default)
+SET traffic_total_source observium:group:Interconnect   # an Observium port group, by name or id
+SET traffic_total_source observium:ports:1201,1202,1340 # Observium port ids
+SET traffic_group_source_ix_peering observium:group:12  # the "IX peering" group tab
+```
+
+The tab of a link group takes its own source with
+`traffic_group_source_<group>`, the group name in lower case with every run
+of other characters than letters and digits written `_`. Such a total and
+its day, week and month graph are read from the first active Observium data
+source (current rates, and the RRD files for the history), so the map needs
+no recording. Port groups are a feature of Observium Professional: they are
+read from its database; through the API, or with the Community edition,
+name the group by its id (API) or list the ports. A source that cannot be
+read shows in the status bar like a failed data source, and the total then
+has no value (it never falls back to the sum of the links).
+
 Every card takes the legend
 colours (`KEYBGCOLOR`, `KEYOUTLINECOLOR`, `KEYTEXTCOLOR`) and `KEYFONT`
 (*Map items* in the map panel). In the editor, the *Map items* tiles of the

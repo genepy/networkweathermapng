@@ -320,4 +320,7 @@ return [
     'Unknown text style: :style' => 'Style de texte inconnu : :style',
     'Unknown note: :name' => 'Texte inconnu : :name',
     'Only a text box can become plain text' => 'Seul un encadré de texte peut devenir du texte simple',
+    'Invalid source of the total traffic: :value' => 'Source du trafic total invalide : :value',
+    'Observium port group :group' => 'groupe de ports Observium :group',
+    'Observium ports :ports' => 'ports Observium :ports',
 ];

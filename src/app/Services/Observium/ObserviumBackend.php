@@ -33,4 +33,20 @@ interface ObserviumBackend
     public function port(int $portId): ?array;
 
     public function portByName(string $hostname, string $interface): ?array;
+
+    /**
+     * The port groups (F79), each ['group_id' => int, 'name' => string,
+     * 'ports' => int], by name; null when this edition or this way of
+     * reading Observium has none (groups are a Professional feature).
+     *
+     * @return list<array{group_id: int, name: string, ports: int}>|null
+     */
+    public function portGroups(): ?array;
+
+    /**
+     * The port ids of a port group, null when groups cannot be read.
+     *
+     * @return list<int>|null
+     */
+    public function groupPortIds(int $groupId): ?array;
 }

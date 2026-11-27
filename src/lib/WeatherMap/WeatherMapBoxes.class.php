@@ -696,6 +696,10 @@ class WeatherMapBoxes {
 
 	/** The sum of the IN and OUT rates of the links that count in the total (not SET traffic_total 0) */
 	static function trafficTotal($map) {
+		// the application took the total from elsewhere (F79)
+		if (is_array($map->traffic_totals) && isset($map->traffic_totals[''])) {
+			return array($map->traffic_totals['']['in'], $map->traffic_totals['']['out']);
+		}
 		$in = null;
 		$out = null;
 		foreach ($map->links as $link) {

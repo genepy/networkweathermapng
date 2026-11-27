@@ -60,6 +60,28 @@ final class DatabaseBackendTest extends TestCase
         $this->assertSame([10, 11], array_column($ports, 'port_id'));
     }
 
+    public function testPortGroupsOfObserviumProfessional(): void
+    {
+        // Community has no groups tables: no groups, not an error
+        $this->assertNull((new DatabaseBackend($this->observium(true)))->portGroups());
+        $this->assertNull((new DatabaseBackend($this->observium(true)))->groupPortIds(1));
+
+        $pdo = $this->observium(true);
+        $pdo->exec('CREATE TABLE `groups` (group_id INTEGER PRIMARY KEY, entity_type TEXT, group_name TEXT)');
+        $pdo->exec('CREATE TABLE group_table (group_id INTEGER, entity_type TEXT, entity_id INTEGER)');
+        $pdo->exec("INSERT INTO `groups` VALUES (1, 'port', 'Peering'), (2, 'device', 'Routers'), (3, 'port', 'Empty')");
+        // port 12 is deleted
+        $pdo->exec("INSERT INTO group_table VALUES (1, 'port', 11), (1, 'port', 10), (1, 'port', 12), (2, 'device', 1)");
+        $backend = new DatabaseBackend($pdo);
+
+        $this->assertSame([
+            ['group_id' => 3, 'name' => 'Empty', 'ports' => 0],
+            ['group_id' => 1, 'name' => 'Peering', 'ports' => 3],
+        ], $backend->portGroups());
+        $this->assertSame([10, 11], $backend->groupPortIds(1));
+        $this->assertSame([], $backend->groupPortIds(3));
+    }
+
     private function observium(bool $ratesInPorts): PDO
     {
         $pdo = new PDO('sqlite::memory:');

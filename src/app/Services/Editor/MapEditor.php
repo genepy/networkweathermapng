@@ -13,6 +13,7 @@ namespace App\Services\Editor;
 
 use App\Services\Basemap;
 use App\Services\FocusAreas;
+use App\Services\TrafficTotalSource;
 use App\Services\ViewerPanels;
 
 use InvalidArgumentException;
@@ -2040,6 +2041,9 @@ class MapEditor
                 } else {
                     unset($map->hints['link_flow']);
                 }
+            } elseif ($key === TrafficTotalSource::HINT) {
+                // what the total traffic counts (F79): the links, or Observium ports
+                TrafficTotalSource::set($map, '', $value);
             } elseif ($key === ViewerPanels::HINT) {
                 // which panels the viewer and the kiosk show, and where
                 ViewerPanels::set($map, $value);
@@ -2325,6 +2329,7 @@ class MapEditor
             'cluster_mode' => Basemap::clusterMode($map),
             'viewer_panels' => ViewerPanels::of($map),
             'kiosk_panels' => ViewerPanels::kioskModel($map),
+            'traffic_total_source' => (string) ($map->hints[TrafficTotalSource::HINT] ?? ''),
         ];
     }
 

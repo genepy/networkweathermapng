@@ -103,6 +103,23 @@ class ApiController extends BaseController
         }
     }
     
+    /**
+     * GET: the port groups of the first active Observium source, for the
+     * total traffic source of the editor (F79). supported is false when
+     * Observium offers none here (Community edition, or the API).
+     */
+    public function observiumPortGroups(array $params): void
+    {
+        $this->requireAuth();
+
+        try {
+            $groups = $this->dataSourceService->observiumPortGroups();
+            $this->json(['success' => true, 'supported' => $groups !== null, 'data' => $groups ?? []]);
+        } catch (\Exception $e) {
+            $this->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function dataSourceItems(array $params): void
     {
         $this->requireAuth();

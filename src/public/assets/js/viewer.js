@@ -1144,6 +1144,8 @@
             max.title = fmt('Most loaded link: :link (:pct %)', {link: status.link || '', pct: status.max});
         }
         showSourceWarning(status);
+        // F79: group tabs counted from Observium rather than their links
+        P.groupTotals = status.group_totals && typeof status.group_totals === 'object' ? status.group_totals : null;
         showTotal(status.total);
         dockSizes();
     }
@@ -1754,6 +1756,7 @@
 
     /** The traffic now of the links of a group, from the items of the map (as MapService::trafficTotal) */
     function groupNow(group) {
+        if (P.groupTotals && P.groupTotals[group]) return P.groupTotals[group];
         let vin = null, vout = null, links = 0;
         Object.keys(S.items).forEach(function (id) {
             const it = S.items[id];

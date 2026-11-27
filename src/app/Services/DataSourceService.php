@@ -383,6 +383,56 @@ class DataSourceService
     }
 
     /**
+     * The port groups of the first active Observium source (F79), null when
+     * it offers none. Throws when there is no Observium source.
+     *
+     * @return list<array{group_id: int, name: string, ports: int}>|null
+     */
+    public function observiumPortGroups(): ?array
+    {
+        return $this->totalClient()->portGroups();
+    }
+
+    /**
+     * The current total of a TrafficTotalSource: in, out (bit/s) and the
+     * number of ports that gave a rate. Throws with a message for the
+     * status bar when it cannot be read.
+     *
+     * @param array{kind: string, group?: string, ports?: list<int>} $source
+     * @return array{in: float|null, out: float|null, links: int}
+     */
+    public function sourceTotal(array $source): array
+    {
+        $client = $this->totalClient();
+
+        return $client->totalNow($client->sourcePorts($source));
+    }
+
+    /**
+     * The history of a TrafficTotalSource over the last $minutes:
+     * [time, in, out] oldest first.
+     *
+     * @param array{kind: string, group?: string, ports?: list<int>} $source
+     * @return list<array{0: int, 1: float, 2: float}>
+     */
+    public function sourceHistory(array $source, int $minutes): array
+    {
+        $client = $this->totalClient();
+
+        return $client->totalHistory($client->sourcePorts($source), $minutes);
+    }
+
+    private function totalClient(): ObserviumClient
+    {
+        $client = $this->observiumClient(null);
+        if ($client === null) {
+            throw new \RuntimeException('No active Observium data source');
+        }
+
+        return $client;
+    }
+
+    /**
      * The monitoring tool's page for a link set up with the editor's
      * picker: the port page in Observium, the host's latest data in Zabbix.
      * Null when the source has no URL.
