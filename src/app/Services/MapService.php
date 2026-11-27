@@ -530,6 +530,8 @@ class MapService
                 // Read data from data sources
                 if ($readData) {
                     $wmap->ReadData();
+                    // F79: a total counted from Observium rather than the links
+                    $wmap->traffic_totals = $this->sourceTotals($wmap);
                 }
 
                 // the graph of the total traffic boxes: the recorded totals of
@@ -541,7 +543,15 @@ class MapService
                         'period' => __('Last :hours h', ['hours' => 24]),
                     ];
                     $wmap->box_series = $this->recordedTotals($id);
-                    if (!$this->isRecorded($id) && TotalTrafficSeries::staticOnly(TotalTrafficSeries::mapTargets($wmap))) {
+                    $totalSource = TrafficTotalSource::forMap($wmap)[''] ?? null;
+                    if ($readData && $totalSource !== null) {
+                        // the total comes from Observium: so does its graph
+                        try {
+                            $wmap->box_series = (new DataSourceService($this->db))->sourceHistory($totalSource, 1440);
+                        } catch (\Throwable) {
+                            $wmap->box_series = [];
+                        }
+                    } elseif (!$this->isRecorded($id) && TotalTrafficSeries::staticOnly(TotalTrafficSeries::mapTargets($wmap))) {
                         $total = self::linkTotals($wmap);
                         $wmap->box_series = TotalTrafficSeries::demo($total['in'], $total['out']);
                         $wmap->box_series_note = __('Demo data');
@@ -866,7 +876,8 @@ class MapService
                 'link' => $summary['link'] ?? null,
                 'time' => $summary['time'] ?? time(),
                 'scale' => $summary['scale'] ?? [],
-                'total' => self::trafficTotal((array) ($summary['items'] ?? [])),
+                'total' => $summary['total'] ?? self::trafficTotal((array) ($summary['items'] ?? [])),
+                'group_totals' => $summary['group_totals'] ?? null,
                 'basemap' => $summary['basemap'] ?? null,
             ],
         ];
@@ -1005,7 +1016,12 @@ class MapService
             'link' => $max['link'] ?? null,
             'level' => self::loadLevel($max === null ? null : $max['pct']),
             'scale' => self::scaleStops($wmap),
-            'total' => self::trafficTotal($items),
+            // the sum of the links, or what SET traffic_total_source counts (F79)
+            'total' => is_array($wmap->traffic_totals) && isset($wmap->traffic_totals[''])
+                ? self::publicTotal($wmap->traffic_totals[''])
+                : self::trafficTotal($items),
+            // the group tabs counted from elsewhere than their links, by group
+            'group_totals' => self::groupTotals($wmap),
             // the geographic basemap the viewer draws under the map, or null
             'basemap' => Basemap::of($wmap),
             // the parts of the map the viewer and the kiosk can put forward, or null
@@ -1122,6 +1138,63 @@ class MapService
     {
         $site = $node->hints['site'] ?? '';
         return is_scalar($site) ? trim(preg_replace('/\s+/u', ' ', (string) $site) ?? '') : '';
+    }
+
+    /**
+     * The totals of a map whose total or group tabs count something else
+     * than their links (SET traffic_total_source, F79), by tab, null when
+     * none does. A source that cannot be read is told in the status bar,
+     * and its total has no value: never the sum of the links instead.
+     *
+     * @return array<string, array{in: float|null, out: float|null, links: int}>|null
+     */
+    private function sourceTotals(\WeatherMap $wmap): ?array
+    {
+        $sources = TrafficTotalSource::forMap($wmap);
+        if ($sources === []) {
+            return null;
+        }
+        $service = new DataSourceService($this->db);
+        $out = [];
+        foreach ($sources as $tab => $source) {
+            try {
+                $out[$tab] = $service->sourceTotal($source);
+            } catch (\Throwable $e) {
+                $name = $tab === '' ? __('Total traffic') : __('Total traffic') . ' · ' . $tab;
+                $wmap->source_failed('total:' . $tab, $name . ' (' . TrafficTotalSource::label($source) . ')', $e->getMessage(), true);
+                $out[$tab] = ['in' => null, 'out' => null, 'links' => 0];
+            }
+        }
+        return $out;
+    }
+
+    /** @return array{in: float|null, out: float|null, links: int} */
+    private static function publicTotal(array $total): array
+    {
+        return [
+            'in' => is_numeric($total['in'] ?? null) ? (float) $total['in'] : null,
+            'out' => is_numeric($total['out'] ?? null) ? (float) $total['out'] : null,
+            'links' => (int) ($total['links'] ?? 0),
+        ];
+    }
+
+    /**
+     * The group tabs whose total comes from elsewhere (F79), for the viewer
+     *
+     * @return array<string, array{in: float|null, out: float|null, links: int}>|null
+     */
+    private static function groupTotals(\WeatherMap $wmap): ?array
+    {
+        if (!is_array($wmap->traffic_totals)) {
+            return null;
+        }
+        $out = [];
+        foreach ($wmap->traffic_totals as $tab => $total) {
+            if ((string) $tab !== '' && is_array($total)) {
+                $out[(string) $tab] = self::publicTotal($total);
+            }
+        }
+        return $out === [] ? null : $out;
     }
 
     /**

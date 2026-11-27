@@ -104,6 +104,48 @@ final class DatabaseBackend implements ObserviumBackend
         return null;
     }
 
+    /**
+     * Observium Professional keeps groups in `groups` (entity_type port for
+     * port groups) and their members in group_table; Community has neither.
+     */
+    public function portGroups(): ?array
+    {
+        try {
+            $rows = $this->rows(
+                "SELECT g.group_id, g.group_name, COUNT(t.entity_id) AS ports
+                 FROM `groups` g LEFT JOIN group_table t ON t.group_id = g.group_id AND t.entity_type = 'port'
+                 WHERE g.entity_type = 'port'
+                 GROUP BY g.group_id, g.group_name
+                 ORDER BY g.group_name",
+                []
+            );
+        } catch (\PDOException) {
+            return null;
+        }
+
+        return array_map(static fn(array $r): array => [
+            'group_id' => (int) $r['group_id'],
+            'name' => (string) $r['group_name'],
+            'ports' => (int) $r['ports'],
+        ], $rows);
+    }
+
+    public function groupPortIds(int $groupId): ?array
+    {
+        try {
+            $rows = $this->rows(
+                "SELECT t.entity_id FROM group_table t JOIN ports p ON p.port_id = t.entity_id
+                 WHERE t.group_id = ? AND t.entity_type = 'port' AND p.deleted = 0
+                 ORDER BY t.entity_id",
+                [$groupId]
+            );
+        } catch (\PDOException) {
+            return null;
+        }
+
+        return array_values(array_unique(array_map(static fn(array $r): int => (int) $r['entity_id'], $rows)));
+    }
+
     private function portRows(string $where, array $params): array
     {
         $columns = 'p.port_id, p.device_id, p.ifIndex, p.ifName, p.ifDescr, p.ifAlias, p.ifSpeed, p.ifHighSpeed, p.ifOperStatus, d.hostname';

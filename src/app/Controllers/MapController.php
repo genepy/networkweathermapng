@@ -19,6 +19,7 @@ use App\Services\TimezoneService;
 use App\Services\ClockFormat;
 use App\Services\TotalTrafficSeries;
 use App\Services\TrafficSeries;
+use App\Services\TrafficTotalSource;
 
 class MapController extends BaseController
 {
@@ -312,6 +313,62 @@ class MapController extends BaseController
      */
     private function totalRows(int $mapId, string $period, string $group, int $now): array
     {
+        // F79: a tab whose total comes from Observium shows Observium's history
+        $sources = TrafficTotalSource::fromConfig((string) $this->mapService->getMapConfig($mapId));
+        if ($sources === []) {
+            return $this->linkTotalRows($mapId, $period, $group, $now);
+        }
+        $all = array_fill_keys(array_keys(TotalTrafficSeries::PERIODS), true);
+        $none = array_fill_keys(array_keys(TotalTrafficSeries::PERIODS), false);
+        $wanted = $group;
+        [$linkSource, $rows, $groups, $group, $periods] = $this->linkTotalRows($mapId, $period, $group, $now);
+        $groups = array_values(array_unique(array_merge($groups, array_values(array_filter(array_map('strval', array_keys($sources)))))));
+        natcasesort($groups);
+        $groups = array_values($groups);
+        $tab = in_array($wanted, $groups, true) ? $wanted : '';
+        if (!isset($sources[$tab])) {
+            return [$linkSource, $rows, $groups, $group, $periods];
+        }
+        $rows = $this->sourceRows($mapId, $tab, $sources[$tab], $period, $now);
+        return [TotalTrafficSeries::SOURCE, $rows, $groups, $tab, $rows === [] ? $none : $all];
+    }
+
+    /**
+     * The history of a total counted from Observium (F79), cached five
+     * minutes like the link graphs; [] when it cannot be read (the status
+     * bar tells why).
+     *
+     * @param array{kind: string, group?: string, ports?: list<int>} $source
+     * @return list<array{0: int, 1: float|null, 2: float|null}>
+     */
+    private function sourceRows(int $mapId, string $tab, array $source, string $period, int $now): array
+    {
+        $dir = $this->config->getOutputPath() . '/graphs';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $file = sprintf('%s/map_%d_total_%s_%s.json', $dir, $mapId, md5($tab . "\0" . TrafficTotalSource::format($source)), $period);
+        $cached = is_file($file) && $now - (int) filemtime($file) < 300 ? json_decode((string) file_get_contents($file), true) : null;
+        if (is_array($cached)) {
+            return $cached;
+        }
+        try {
+            $rows = $this->dataSourceService->sourceHistory($source, intdiv(TotalTrafficSeries::PERIODS[$period], 60));
+        } catch (\Throwable) {
+            $rows = [];
+        }
+        @file_put_contents($file, json_encode($rows));
+        return $rows;
+    }
+
+    /**
+     * The rows of the total traffic graph from the links of the map, as
+     * totalRows() returns them.
+     *
+     * @return array{0: string, 1: list<array{0: int, 1: float|null, 2: float|null}>, 2: list<string>, 3: string, 4: array<string, bool>}
+     */
+    private function linkTotalRows(int $mapId, string $period, string $group, int $now): array
+    {
         $recording = $this->recording();
         if ($recording->canPlay($mapId)) {
             $groups = $recording->totalGroups($mapId, $now);
@@ -320,7 +377,7 @@ class MapController extends BaseController
             return [TotalTrafficSeries::RECORDED, $rows, $groups, $group, TotalTrafficSeries::periods($rows, $now)];
         }
         $none = array_fill_keys(array_keys(TotalTrafficSeries::PERIODS), false);
-        $live = $this->totalsSource($mapId) === TotalTrafficSeries::DEMO ? $this->mapService->liveRender($mapId) : null;
+        $live = $this->linkTotalsSource($mapId, $this->mapService->getMapConfig($mapId)) === TotalTrafficSeries::DEMO ? $this->mapService->liveRender($mapId) : null;
         if ($live === null) {
             return [TotalTrafficSeries::NONE, [], [], '', $none];
         }
@@ -336,8 +393,18 @@ class MapController extends BaseController
     /** Where the total traffic graph of a map comes from: recorded, demo or none */
     private function totalsSource(int $mapId): string
     {
+        $config = $this->mapService->getMapConfig($mapId);
+        // F79: some tab counts Observium ports, which have their own history
+        if ($config !== null && TrafficTotalSource::fromConfig($config) !== []) {
+            return TotalTrafficSeries::SOURCE;
+        }
+        return $this->linkTotalsSource($mapId, $config);
+    }
+
+    /** Where the graph of a total of links comes from: recorded, demo or none */
+    private function linkTotalsSource(int $mapId, ?string $config): string
+    {
         $recorded = $this->recording()->canPlay($mapId);
-        $config = $recorded ? null : $this->mapService->getMapConfig($mapId);
         return TotalTrafficSeries::source(
             $recorded,
             $config !== null && TotalTrafficSeries::staticOnly(TotalTrafficSeries::configTargets($config))
@@ -467,6 +534,8 @@ class MapController extends BaseController
             'scale' => $summary['scale'] ?? [],
             // frames recorded before the total existed: work it out from their items
             'total' => $summary['total'] ?? MapService::trafficTotal((array) ($summary['items'] ?? [])),
+            // the group tabs counted from elsewhere than their links (F79)
+            'group_totals' => $summary['group_totals'] ?? null,
             'basemap' => $summary['basemap'] ?? null,
             // the data sources that failed in this render (F49): name, unreachable, links without data;
             // the error text itself stays in the log (it may name internal hosts)

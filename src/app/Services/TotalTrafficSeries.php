@@ -29,6 +29,8 @@ final class TotalTrafficSeries
     public const RECORDED = 'recorded';
     public const DEMO = 'demo';
     public const NONE = 'none';
+    /** F79: the total, or a group tab, counts Observium ports (TrafficTotalSource), with their history */
+    public const SOURCE = 'source';
 
     /** Hours shown by the demo curve */
     public const DEMO_HOURS = 24;

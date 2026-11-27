@@ -66,6 +66,7 @@ App features store their settings as map hints, each parsed by one service:
 | `link_look`, `link_bar_separator`, `link_bar_outline` (map or link) | `WeatherMapLink::look()` / `bar_colour()`, `MapEditor::setBarHint()` |
 | `icon_spin` (node) | `MapService::spinsWithTraffic()`, `spinIcons()` in `viewer.js` |
 | `traffic_group`, `traffic_total` (link) | `Services/TotalTrafficSeries.php`, `MapService::trafficTotal()` |
+| `traffic_total_source`, `traffic_group_source_<group>` (map) | `Services/TrafficTotalSource.php`, `MapService::sourceTotals()`, `MapController::totalRows()` |
 | `box_<id>` (and `_title`, `_style`, `_text`, `_rows`, `_width`, `_note`, `_scale`, `_hidden`) | `WeatherMapBoxes`, `MapEditor::setBox()` |
 | `link_glow`, `node_style`, `link_flow`, `traffic_*`, `cluster*`, `geo`, `site`, `box_*`, `editor_note*` | grep `SET <name>` in `src/app/Services` and `src/lib/WeatherMap` |
 

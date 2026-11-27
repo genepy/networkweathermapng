@@ -235,6 +235,13 @@ class WeatherMap extends WeatherMapBase {
 	/** The texts of the total traffic graph: p95, peak and period (WeatherMapBoxes::SERIES_LABELS) */
 	var $box_series_labels = null;
 	/**
+	 * The total traffic when the application takes it from elsewhere than
+	 * the links (F79, SET traffic_total_source): by tab ('' the total),
+	 * array('in' => ?float, 'out' => ?float, 'links' => int); null to sum
+	 * the links
+	 */
+	var $traffic_totals = null;
+	/**
 	 * The status bar drawn on the map (F58): null for none, or
 	 * array('x' => left, 'y' => top, 'lines' => list of texts, 'note' => a
 	 * muted line or ''). The application sets it from SET viewer_panels

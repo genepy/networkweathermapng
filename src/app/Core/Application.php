@@ -158,6 +158,7 @@ class Application
         $this->router->get('/api/data-sources/{sourceId}/hosts/{hostId}/items', 'ApiController@dataSourceItems');
         $this->router->get('/api/data-sources/{sourceId}/hosts/{hostId}/bandwidths', 'ApiController@dataSourceBandwidths');
         $this->router->get('/api/data-sources/{sourceId}/link-bandwidth', 'ApiController@dataSourceLinkBandwidth');
+        $this->router->get('/api/observium/port-groups', 'ApiController@observiumPortGroups');
         
         // Authentication
         $this->router->get('/login', 'AuthController@loginForm');

@@ -97,6 +97,29 @@ final class ObserviumClientTest extends TestCase
         $this->assertSame([], $this->client($rrd)->bandwidthDataForTarget('observium:host:core-rtr1:status'));
     }
 
+    /** F79: the total traffic of a list of ports, now and over time */
+    public function testTotalsOfPorts(): void
+    {
+        $client = $this->client();
+        // port 11 gives no rate (and no RRD): left out of the count
+        $this->assertSame(['in' => 800.0, 'out' => 1600.0, 'links' => 1], $client->totalNow([10, 11, 99]));
+        $this->assertSame([10, 11], $client->sourcePorts(['kind' => 'observium', 'ports' => [10, 11]]));
+
+        $rrd = new RrdReader('/rrd', 'rrdcached:42217', runner: static function (array $command): string {
+            return in_array('core-rtr1/port-1.rrd', $command, true)
+                ? "INOCTETS OUTOCTETS\n\n1760000000: 1.0e+03 2.0e+03\n1760000300: 3.0e+03 4.0e+03\n"
+                : "INOCTETS OUTOCTETS\n\n1760000300: 1.0e+03 1.0e+03\n";
+        });
+        $this->assertSame([[1760000000, 8000.0, 16000.0], [1760000300, 32000.0, 40000.0]], $this->client($rrd)->totalHistory([10, 11], 60));
+    }
+
+    public function testGroupsNeedObserviumProfessional(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('no port groups');
+        $this->client()->sourcePorts(['kind' => 'observium', 'group' => 'Peering']);
+    }
+
     public function testPagesOfPickedLinks(): void
     {
         $observium = ['type' => 'observium', 'url' => 'https://obs.example'];

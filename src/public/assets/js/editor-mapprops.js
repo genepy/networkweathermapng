@@ -544,8 +544,104 @@
                 return ed.focusPane ? ed.focusPane() : [];
             case 'panels':
                 return panelsPane(p);
+            case 'total':
+                return totalPane(p);
         }
         return [];
+    }
+
+    /**
+     * What the total traffic counts (F79, SET traffic_total_source, see
+     * TrafficTotalSource.php): the links of the map, an Observium port
+     * group, or a list of Observium ports. Group tabs take their own
+     * source with SET traffic_group_source_<group> in the configuration.
+     */
+    function totalSource(value) {
+        var m = /^observium:(group|ports):(.+)$/i.exec(String(value || '').trim());
+        return m ? { kind: m[1].toLowerCase(), value: m[2].trim() } : { kind: 'links', value: '' };
+    }
+
+    function totalPane(p) {
+        var now = totalSource(p.traffic_total_source);
+        var kind = h('select', { 'aria-label': t('Total traffic counts') }, [
+            ['links', t('The links of the map')], ['group', t('An Observium port group')], ['ports', t('Observium ports')]
+        ].map(function (o) { return h('option', { value: o[0], text: o[1], selected: o[0] === now.kind }); }));
+        var group = h('select', { 'aria-label': t('Port group') });
+        var groupId = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: t('Group id'), value: now.kind === 'group' ? now.value : '' });
+        var ports = h('input', { type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: '1201, 1202, 1340', value: now.kind === 'ports' ? now.value : '' });
+        var note = h('span', { 'class': 'hint', text: '' });
+        var groupRow = h('div', {}, [field(t('Port group'), group), field(t('Port group'), groupId)]);
+        var portsRow = field(t('Port ids'), ports, t('The Observium ids of the ports, separated by commas: interconnection and peering ports, for example.'));
+        var loaded = false;
+
+        function value() {
+            if (kind.value === 'group') {
+                var g = group.closest('label').hidden ? groupId.value.trim() : group.value;
+                return g ? 'observium:group:' + g : null;
+            }
+            if (kind.value === 'ports') {
+                var list = ports.value.split(/[\s,]+/).filter(function (x) { return /^\d+$/.test(x); });
+                return list.length ? 'observium:ports:' + list.join(',') : null;
+            }
+            return 'links';
+        }
+
+        function save() {
+            var v = value();
+            if (v === null) { return; }
+            var box = kind.closest('.map-sec'), m = ed.state.model && ed.state.model.map;
+            var props = { traffic_total_source: v === 'links' ? '' : v };
+            if (box) { showSummary(box, Object.assign({}, m && m.props, props)); }
+            sendProps(props).then(function () { if (box) { showSummary(box); } });
+        }
+
+        function loadGroups() {
+            if (loaded) { return; }
+            loaded = true;
+            group.replaceChildren(h('option', { value: '', text: t('Loading…') }));
+            fetch('/api/observium/port-groups', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || !data.success) { throw new Error(data && data.error ? data.error : ''); }
+                    if (!data.supported) {
+                        // Community edition, or the API: no list of groups
+                        group.closest('label').hidden = true;
+                        groupId.closest('label').hidden = false;
+                        note.textContent = t('This Observium offers no list of port groups (groups are a feature of Observium Professional, read from its database). Type the id of the group, or list the ports.');
+                        return;
+                    }
+                    group.replaceChildren(h('option', { value: '', text: t('Choose a group') }));
+                    data.data.forEach(function (g) {
+                        group.appendChild(h('option', { value: g.name, text: t(':name (:n ports)', { name: g.name, n: g.ports }), selected: now.kind === 'group' && (g.name === now.value || String(g.group_id) === now.value) }));
+                    });
+                    note.textContent = '';
+                })
+                .catch(function (e) {
+                    group.closest('label').hidden = true;
+                    groupId.closest('label').hidden = false;
+                    note.textContent = t('The port groups could not be read: :error', { error: e.message || t('no Observium data source') });
+                });
+        }
+
+        function show() {
+            groupRow.hidden = kind.value !== 'group';
+            portsRow.hidden = kind.value !== 'ports';
+            note.hidden = kind.value === 'links';
+            if (kind.value === 'group') { loadGroups(); }
+        }
+
+        groupId.closest('label').hidden = true;
+        kind.addEventListener('change', function () { show(); if (kind.value === 'links') { save(); } });
+        group.addEventListener('change', save);
+        groupId.addEventListener('change', save);
+        ports.addEventListener('change', save);
+        show();
+        return [
+            h('p', { 'class': 'mapprops-explain', text: t('By default the total traffic of the side panel, the total traffic card and the kiosk is the sum of the links of the map. It can count Observium ports instead, such as the interconnection and peering ports of an ISP, with their own history: no recording needed.') }),
+            field(t('Total traffic counts'), kind),
+            groupRow, portsRow, note,
+            h('span', { 'class': 'hint', text: t('A link group tab takes its own source with SET traffic_group_source_<group> in the configuration (see the README).') })
+        ];
     }
 
     /** The panels of the viewer and the kiosk (SET viewer_panels and kiosk_panels, see ViewerPanels.php) */
@@ -722,6 +818,11 @@
                 try { return new URL(p.basemap, location.href).hostname; } catch (e) { return p.basemap; }
             case 'fonts': return String(Object.keys(ed.state.model.font_info || {}).length);
             case 'focus': return ed.focusSummary ? ed.focusSummary() : '';
+            case 'total': {
+                var src = totalSource(p.traffic_total_source);
+                return src.kind === 'group' ? t('Observium group :group', { group: src.value })
+                    : src.kind === 'ports' ? t(':n Observium ports', { n: src.value.split(/[\s,]+/).filter(Boolean).length }) : t('Links of the map');
+            }
             case 'panels': {
                 var shown = (p.viewer_panels || []).filter(function (x) { return x.shown; }).length;
                 return t(':shown of :total shown', { shown: shown, total: (p.viewer_panels || []).length });
@@ -733,7 +834,7 @@
     var SECTIONS = [
         ['appearance', t('Background colour and theme')], ['basemap', t('Basemap')], ['title', t('Title')], ['legend', t('Map items')],
         ['scale', t('Link colours')], ['links', t('Link defaults')], ['fonts', t('Fonts')],
-        ['focus', t('Focus areas')], ['panels', t('Viewer panels')]
+        ['focus', t('Focus areas')], ['panels', t('Viewer panels')], ['total', t('Total traffic')]
     ];
 
     function loadFolds() {
@@ -800,7 +901,7 @@
     }
 
     /** The sections of the Viewer & kiosk tab of the Map panel; the others are on its Look tab */
-    var VIEWER_SECTIONS = ['panels', 'focus'];
+    var VIEWER_SECTIONS = ['panels', 'focus', 'total'];
 
     /** The tab of the Map panel (map_settings.php) that holds a section */
     function tabOf(id) {
