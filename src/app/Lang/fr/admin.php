@@ -424,4 +424,15 @@ return [
     'Add the demo maps' => 'Ajouter les cartes de démo',
     'The demo maps show what a map can do, with traffic that needs no data source.' => 'Les cartes de démo montrent ce que peut faire une carte, avec un trafic qui ne demande aucune source de données.',
     'To try the application, add the demo maps: their traffic needs no data source.' => 'Pour essayer l’application, ajoutez les cartes de démo : leur trafic ne demande aucune source de données.',
+    // Display links (F81)
+    'Invalid date: :value' => 'Date invalide : :value',
+    'The expiry date is already past' => 'La date d’expiration est déjà passée',
+    'Display links' => 'Liens d’affichage',
+    'A display link opens this map full screen, without signing in, on a wall screen or in a frame of another tool. Anyone who has the address sees the map: revoke a link you no longer use.' => 'Un lien d’affichage ouvre cette carte en plein écran, sans connexion, sur un écran mural ou dans un cadre d’un autre outil. Toute personne qui a l’adresse voit la carte : révoquez un lien que vous n’utilisez plus.',
+    'e.g. NOC wall' => 'ex. mur du NOC',
+    'Expires on (optional)' => 'Expire le (facultatif)',
+    'Create a display link' => 'Créer un lien d’affichage',
+    'Address of the new link' => 'Adresse du nouveau lien',
+    'Copy the address' => 'Copier l’adresse',
+    'This address is shown only once. Copy it now.' => 'Cette adresse n’est affichée qu’une fois. Copiez-la maintenant.',
 ];

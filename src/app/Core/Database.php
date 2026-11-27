@@ -89,6 +89,7 @@ class Database
             'data_sources',
             'data_source_cache',
             'user_shortcuts',
+            'display_links',
         ];
         
         $missing = array_diff($required, $existing);
@@ -198,6 +199,21 @@ CREATE TABLE IF NOT EXISTS user_shortcuts (
     binding VARCHAR(255) NOT NULL,
     PRIMARY KEY (user_id, action)
 );
+
+-- Display links of a map: a wall screen opens it without signing in (App\\Services\\DisplayLinks)
+CREATE TABLE IF NOT EXISTS display_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    map_id INTEGER NOT NULL,
+    token_hash VARCHAR(64) NOT NULL UNIQUE,
+    label VARCHAR(100) NOT NULL DEFAULT '',
+    expires_at INTEGER,
+    revoked INTEGER NOT NULL DEFAULT 0,
+    created_by INTEGER,
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER,
+    window_start INTEGER NOT NULL DEFAULT 0,
+    window_count INTEGER NOT NULL DEFAULT 0
+)
 SQL;
         
         $statements = explode(';', $schema);

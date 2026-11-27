@@ -49,4 +49,18 @@ return [
 
     // Info buttons for long help (F73)
     'About :name' => 'À propos de : :name',
+    // Display links (F81)
+    'The request failed' => 'La requête a échoué',
+    'No display link yet' => 'Aucun lien d’affichage pour l’instant',
+    'Display link :n' => 'Lien d’affichage :n',
+    'Made :date' => 'Créé le :date',
+    'Revoked' => 'Révoqué',
+    'Expired' => 'Expiré',
+    'Expires :date' => 'Expire le :date',
+    'Last used :date' => 'Dernière utilisation le :date',
+    'Never used' => 'Jamais utilisé',
+    'Revoke' => 'Révoquer',
+    'Revoke this display link? Screens that use it stop showing the map.' => 'Révoquer ce lien d’affichage ? Les écrans qui l’utilisent n’afficheront plus la carte.',
+    'Display link revoked' => 'Lien d’affichage révoqué',
+    'Address copied' => 'Adresse copiée',
 ];

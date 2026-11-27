@@ -192,6 +192,11 @@ class MapService
 
         $this->db->delete('user_map_permissions', 'map_id = ?', [$id]);
         $this->db->delete('settings', 'map_id = ?', [$id]);
+        try {
+            (new DisplayLinks($this->db))->forgetMap($id);
+        } catch (\Throwable) {
+            // a database from before display links (F81)
+        }
         return $this->db->delete('maps', 'id = ?', [$id]) > 0;
     }
 

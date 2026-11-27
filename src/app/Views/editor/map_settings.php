@@ -151,6 +151,27 @@ $names = static fn (array $list): string => $h(implode(', ', $list));
             <?php if ($isAdmin): ?>
             <p class="text-muted ms-note"><?= e__('Defaults for every map:') ?> <a href="/admin/timezone"><?= e__('Time zone') ?></a> · <a href="/admin/kiosk"><?= e__('Kiosk mode') ?></a></p>
             <?php endif; ?>
+            <div class="form-group ms-display-links" data-display-links="/map/<?= $id ?>/display-links" data-zone="<?= $h($s['timezone'] ?: $s['defaultZone']) ?>">
+                <h4><?= e__('Display links') ?></h4>
+                <small class="text-muted"><?= e__('A display link opens this map full screen, without signing in, on a wall screen or in a frame of another tool. Anyone who has the address sees the map: revoke a link you no longer use.') ?></small>
+                <div class="form-pair">
+                    <label><?= e__('Label') ?>
+                        <input type="text" class="form-control" data-dl-label maxlength="100" placeholder="<?= e__('e.g. NOC wall') ?>">
+                    </label>
+                    <label><?= e__('Expires on (optional)') ?>
+                        <input type="date" class="form-control" data-dl-expires>
+                    </label>
+                </div>
+                <p><button type="button" class="wm-btn" data-dl-create><?= icon('plus') ?><span><?= e__('Create a display link') ?></span></button></p>
+                <div class="ms-dl-made" data-dl-made hidden>
+                    <label><?= e__('Address of the new link') ?>
+                        <input type="text" class="form-control" readonly data-dl-url>
+                    </label>
+                    <p><button type="button" class="wm-btn" data-dl-copy><span><?= e__('Copy the address') ?></span></button></p>
+                    <p class="ms-note"><?= e__('This address is shown only once. Copy it now.') ?></p>
+                </div>
+                <ul class="ms-dl-list" data-dl-list></ul>
+            </div>
             <div data-ms-slot="display">
                 <p class="ms-note"><?= e__('The panels of the viewer and the kiosk, and the focus areas, are set in the editor.') ?>
                     <a href="<?= $h($editorUrl('panels')) ?>"><?= e__('Open in the editor') ?></a></p>

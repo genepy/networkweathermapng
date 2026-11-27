@@ -539,6 +539,15 @@
 .ms-note { margin: var(--wm-space-2) 0 0; font-size: var(--wm-text-sm); line-height: 1.5; }
 .ms-warn { color: var(--wm-warning-text); }
 
+/* display links (F81) */
+.ms-display-links h4 { margin: 0 0 var(--wm-space-1); font-size: var(--wm-text-md); }
+.ms-dl-made { margin-top: var(--wm-space-3); }
+.ms-dl-made input { font-family: var(--wm-font-mono); }
+.ms-dl-list { list-style: none; margin: var(--wm-space-3) 0 0; padding: 0; }
+.ms-dl-item { display: flex; flex-wrap: wrap; align-items: center; gap: var(--wm-space-2); padding: var(--wm-space-2) 0; border-top: 1px solid var(--wm-border); }
+.ms-dl-item small { flex: 1 1 12rem; margin: 0; }
+.ms-dl-revoked strong, .ms-dl-expired strong { text-decoration: line-through; opacity: .7; }
+
 .ms-switch, .form-group > .ms-switch { display: flex; align-items: flex-start; gap: var(--wm-space-3); cursor: pointer; font-weight: 400; }
 .ms-switch > span { display: flex; flex-direction: column; gap: 2px; }
 .ms-switch small { margin: 0; }

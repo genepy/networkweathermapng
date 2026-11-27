@@ -391,7 +391,7 @@ class MapController extends BaseController
     }
 
     /** Where the total traffic graph of a map comes from: recorded, demo or none */
-    private function totalsSource(int $mapId): string
+    protected function totalsSource(int $mapId): string
     {
         $config = $this->mapService->getMapConfig($mapId);
         // F79: some tab counts Observium ports, which have their own history
@@ -511,7 +511,7 @@ class MapController extends BaseController
         $this->json(['success' => true, 'favourite' => $on]);
     }
 
-    private function canView(int $mapId): bool
+    protected function canView(int $mapId): bool
     {
         return !$this->config->isAuthEnabled() || $this->auth->canViewMap($mapId);
     }
@@ -571,10 +571,9 @@ class MapController extends BaseController
      */
     public function version(array $params): void
     {
-        $this->requireAuth();
-
         $mapId = (int) ($params['id'] ?? 0);
-        if (!$this->auth->canViewMap($mapId)) {
+        // a display link (F81) opens its own map without signing in
+        if (!$this->canView($mapId)) {
             $this->json(['error' => 'Forbidden'], 403);
             return;
         }
@@ -657,7 +656,7 @@ class MapController extends BaseController
      */
     private function linkSource(int $mapId, int $linkId): array
     {
-        if ($this->config->isAuthEnabled() && !$this->auth->canViewMap($mapId)) {
+        if (!$this->canView($mapId)) {
             http_response_code(403);
             exit;
         }
@@ -745,7 +744,7 @@ class MapController extends BaseController
         }
     }
 
-    private function timezones(): TimezoneService
+    protected function timezones(): TimezoneService
     {
         return TimezoneService::fromConfig($this->database, $this->config);
     }
@@ -1101,7 +1100,7 @@ class MapController extends BaseController
         );
     }
     
-    private function getMap(int $id): ?array
+    protected function getMap(int $id): ?array
     {
         return $this->database->queryOne(
             "SELECT m.*, g.name as group_name 

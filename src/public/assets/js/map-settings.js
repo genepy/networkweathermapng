@@ -17,6 +17,10 @@
  *   drawn title may follow a new name.
  * - Choosing between a name and a drawn title that differ fills the Name
  *   field with the chosen one.
+ * - Display links (F81, data-display-links on the Viewer & kiosk tab): the
+ *   list of the map's links, a button that makes one (its address is shown
+ *   once, with a copy button) and a Revoke button per active link. These
+ *   fields have no name: they are not sent with the form.
  */
 (function () {
     'use strict';
@@ -74,11 +78,134 @@
         });
     }
 
+    function setupDisplayLinks(form) {
+        const box = form.querySelector('[data-display-links]');
+        if (!box) return;
+        const base = box.dataset.displayLinks;
+        const zone = box.dataset.zone || undefined;
+        const list = box.querySelector('[data-dl-list]');
+        const label = box.querySelector('[data-dl-label]');
+        const expires = box.querySelector('[data-dl-expires]');
+        const create = box.querySelector('[data-dl-create]');
+        const made = box.querySelector('[data-dl-made]');
+        const url = box.querySelector('[data-dl-url]');
+        const copy = box.querySelector('[data-dl-copy]');
+
+        function when(seconds) {
+            return window.WMUI && WMUI.time ? WMUI.time(seconds, {zone: zone, date: true}) : new Date(seconds * 1000).toLocaleString();
+        }
+        function toast(message, kind) {
+            if (window.WMUI) WMUI.toast(message, kind);
+        }
+        function call(path, body) {
+            return fetch(base + path, {
+                method: body ? 'POST' : 'GET',
+                credentials: 'same-origin',
+                headers: body ? {Accept: 'application/json', 'Content-Type': 'application/json'} : {Accept: 'application/json'},
+                body: body ? JSON.stringify(body) : undefined
+            }).then(function (r) {
+                return r.json().catch(function () { return {success: false}; });
+            }).then(function (data) {
+                if (!data.success) throw new Error(data.error || t('The request failed'));
+                return data;
+            });
+        }
+        function show(links) {
+            list.textContent = '';
+            if (!links.length) {
+                const none = document.createElement('li');
+                none.className = 'text-muted';
+                none.textContent = t('No display link yet');
+                list.appendChild(none);
+                return;
+            }
+            links.forEach(function (link) {
+                const li = document.createElement('li');
+                li.className = 'ms-dl-item ms-dl-' + link.state;
+                const name = document.createElement('strong');
+                name.textContent = link.label || t('Display link :n').replace(':n', link.id);
+                const facts = [t('Made :date').replace(':date', when(link.created_at))];
+                if (link.state === 'revoked') facts.push(t('Revoked'));
+                else if (link.state === 'expired') facts.push(t('Expired'));
+                else if (link.expires_at) facts.push(t('Expires :date').replace(':date', when(link.expires_at)));
+                facts.push(link.last_used_at ? t('Last used :date').replace(':date', when(link.last_used_at)) : t('Never used'));
+                const info = document.createElement('small');
+                info.className = 'text-muted';
+                info.textContent = facts.join(' · ');
+                li.appendChild(name);
+                li.appendChild(document.createTextNode(' '));
+                li.appendChild(info);
+                if (link.state === 'active') {
+                    const revoke = document.createElement('button');
+                    revoke.type = 'button';
+                    revoke.className = 'wm-btn wm-btn-danger ms-dl-revoke';
+                    revoke.textContent = t('Revoke');
+                    revoke.addEventListener('click', function () { revokeLink(link); });
+                    li.appendChild(revoke);
+                }
+                list.appendChild(li);
+            });
+        }
+        function refresh() {
+            return call('').then(function (data) { show(data.links || []); }).catch(function (err) {
+                list.textContent = '';
+                const li = document.createElement('li');
+                li.className = 'text-muted';
+                li.textContent = err.message;
+                list.appendChild(li);
+            });
+        }
+        function revokeLink(link) {
+            const ask = window.WMUI && WMUI.confirm
+                ? WMUI.confirm({message: t('Revoke this display link? Screens that use it stop showing the map.'), confirm: t('Revoke'), danger: true})
+                : Promise.resolve(window.confirm(t('Revoke this display link? Screens that use it stop showing the map.')));
+            ask.then(function (yes) {
+                if (!yes) return;
+                call('/' + encodeURIComponent(link.id) + '/revoke', {}).then(function () {
+                    toast(t('Display link revoked'), 'success');
+                    refresh();
+                }).catch(function (err) { toast(err.message, 'error'); });
+            });
+        }
+        function make() {
+            create.disabled = true;
+            call('', {label: label.value, expires: expires.value}).then(function (data) {
+                url.value = location.origin + data.path;
+                made.hidden = false;
+                url.focus();
+                url.select();
+                label.value = '';
+                expires.value = '';
+                refresh();
+            }).catch(function (err) {
+                toast(err.message, 'error');
+            }).then(function () { create.disabled = false; });
+        }
+
+        create.addEventListener('click', make);
+        // Enter in the label makes the link instead of saving the panel
+        label.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); make(); }
+        });
+        copy.addEventListener('click', function () {
+            url.select();
+            const done = function () { toast(t('Address copied'), 'success'); };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url.value).then(done, function () { document.execCommand('copy'); done(); });
+            } else {
+                document.execCommand('copy');
+                done();
+            }
+        });
+        refresh();
+    }
+
     function setup(form) {
         if (form.dataset.ready) return;
         form.dataset.ready = '1';
         setupTabs(form);
         setupConflict(form);
+        setupDisplayLinks(form);
         // long help behind i buttons, as in the editor (ui.js, F73)
         if (window.WMUI && window.WMUI.tuckHelp) window.WMUI.tuckHelp(form);
         // in the editor's panel (no drawer around it), Cancel puts the fields back

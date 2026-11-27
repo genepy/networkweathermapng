@@ -66,8 +66,10 @@
         return standalone || document.fullscreenElement === root;
     }
     const refreshMs = Math.max(30, parseInt(root.dataset.refresh || '300', 10)) * 1000;
-    const svgUrl = '/map/' + mapId + '/svg';
-    const versionUrl = '/map/' + mapId + '/version';
+    // the map's routes; a display link (F81) reads them under /display/<token>
+    const mapBase = root.dataset.base || ('/map/' + mapId);
+    const svgUrl = mapBase + '/svg';
+    const versionUrl = mapBase + '/version';
 
     // Below this on-screen size, link bandwidth labels are hidden
     const LABEL_MIN_PX = 7;
@@ -1810,7 +1812,7 @@
         const key = totalsQuery();
         if (P.totals && P.totalsKey === key && Date.now() - P.totalsAt < refreshMs) return;
         P.totalsBusy = true;
-        fetch('/map/' + mapId + '/totals?' + key, {cache: 'no-store', credentials: 'same-origin'})
+        fetch(mapBase + '/totals?' + key, {cache: 'no-store', credentials: 'same-origin'})
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 P.totals = data && Array.isArray(data.frames) ? data.frames : [];
@@ -1974,7 +1976,7 @@
         if (totalZoom) totalZoom.clear();
         totalZoom = WM.trafficPanel(box, {range: P.period});
         if (!dlg.open) dlg.showModal();
-        totalZoom.show({info: {traffic: '/map/' + mapId + '/totals?format=series' + (P.group ? '&group=' + encodeURIComponent(P.group) : '')}, selection: null});
+        totalZoom.show({info: {traffic: mapBase + '/totals?format=series' + (P.group ? '&group=' + encodeURIComponent(P.group) : '')}, selection: null});
     }
 
     function closeTotalZoom() {
