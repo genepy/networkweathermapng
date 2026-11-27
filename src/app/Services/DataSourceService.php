@@ -12,6 +12,8 @@ use App\Core\Config;
 use App\Core\Database;
 use App\Core\SecretBox;
 use App\Services\Observium\ObserviumClient;
+use App\Services\Prometheus\PrometheusClient;
+use App\Services\Prometheus\PrometheusTarget;
 
 class DataSourceException extends \Exception
 {
@@ -312,13 +314,48 @@ class DataSourceService
         }
     }
 
-    /** Interface speed in bit/s for a link picked from a Zabbix source */
+    /** Interface speed in bit/s for a link picked from a Zabbix or Prometheus source */
     public function getLinkSpeed(int $sourceId, array $selection): ?int
     {
         $source = $this->getSource($sourceId);
         $client = $source ? $this->getClient($source) : null;
 
-        return $client instanceof ZabbixClient ? $client->getInterfaceSpeed($selection) : null;
+        return $client instanceof ZabbixClient || $client instanceof PrometheusClient ? $client->getInterfaceSpeed($selection) : null;
+    }
+
+    /** Whether the interface of a Prometheus selection reports itself down (F72) */
+    public function linkDown(int $sourceId, array $selection): bool
+    {
+        $source = $this->getSource($sourceId);
+        $client = $source ? $this->getClient($source) : null;
+
+        return $client instanceof PrometheusClient && $client->interfaceDown($selection);
+    }
+
+    /**
+     * The selection a Prometheus TARGET reads (F84): its source id plus
+     * {hostId, interfaceId} or {in, out}; null when the string is not one,
+     * or names no active Prometheus source. $hints are the item's SET
+     * hints (prometheus_in, prometheus_out).
+     *
+     * @param array<string, mixed> $hints
+     */
+    public function prometheusSelection(string $target, array $hints = []): ?array
+    {
+        $parsed = PrometheusTarget::parse($target, $hints);
+        if ($parsed === null) {
+            return null;
+        }
+        $ref = $parsed['source'];
+        $source = ctype_digit($ref) ? $this->getSource((int) $ref) : $this->getSourceByName($ref);
+        if (!$source || ($source['type'] ?? '') !== 'prometheus' || (int) ($source['active'] ?? 0) !== 1) {
+            return null;
+        }
+        $selection = ['sourceId' => (int) $source['id']];
+        if (isset($parsed['host'])) {
+            return $selection + ['hostId' => $parsed['host'], 'interfaceId' => (string) $parsed['interface']];
+        }
+        return $selection + ['in' => (string) $parsed['in'], 'out' => (string) $parsed['out']];
     }
 
     private function getClient(array $source): ?DataSourceClientInterface
@@ -333,6 +370,7 @@ class DataSourceService
         $client = match ($source['type']) {
             'zabbix' => new ZabbixClient($source, $this),
             'observium' => new ObserviumClient($source, $this),
+            'prometheus' => new PrometheusClient($source, $this),
             default => null,
         };
 

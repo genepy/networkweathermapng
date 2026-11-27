@@ -20,7 +20,10 @@ class AdminController extends BaseController
     private const DATA_SOURCE_TYPES = [
         'zabbix' => 'Zabbix API',
         'observium' => 'Observium (API, MySQL or RRD)',
+        'prometheus' => 'Prometheus (or VictoriaMetrics, Thanos)',
     ];
+
+    private const PROMETHEUS_SETTINGS = ['host_label', 'interface_label', 'filter', 'rate_window', 'verify_tls'];
 
     private const OBSERVIUM_SETTINGS = [
         'mode', 'install_path', 'db_host', 'db_port', 'db_name', 'db_user', 'db_password', 'db_socket',
@@ -619,11 +622,19 @@ class AdminController extends BaseController
      */
     private function dataSourceSettings(string $type, array $current): array
     {
+        $posted = is_array($_POST['settings'] ?? null) ? $_POST['settings'] : [];
+        if ($type === 'prometheus') {
+            $settings = [];
+            foreach (self::PROMETHEUS_SETTINGS as $key) {
+                $settings[$key] = trim((string) ($posted[$key] ?? ''));
+            }
+            $settings['verify_tls'] = $settings['verify_tls'] !== '0';
+            return $settings;
+        }
         if ($type !== 'observium') {
             return $current;
         }
 
-        $posted = is_array($_POST['settings'] ?? null) ? $_POST['settings'] : [];
         $settings = [];
         foreach (self::OBSERVIUM_SETTINGS as $key) {
             $settings[$key] = trim((string) ($posted[$key] ?? ''));
@@ -649,8 +660,8 @@ class AdminController extends BaseController
             $password = $_POST['password'] ?? '';
             $apiToken = trim($_POST['api_token'] ?? '');
             
-            if (empty($name) || ($type === 'zabbix' && empty($url))) {
-                $this->flash('error', $type === 'zabbix' ? __('Name and URL are required') : __('Name is required'));
+            if (empty($name) || (in_array($type, ['zabbix', 'prometheus'], true) && empty($url))) {
+                $this->flash('error', in_array($type, ['zabbix', 'prometheus'], true) ? __('Name and URL are required') : __('Name is required'));
                 $this->redirect('/admin/data-sources/create');
                 return;
             }
@@ -711,8 +722,8 @@ class AdminController extends BaseController
             $apiToken = trim($_POST['api_token'] ?? '');
             $active = isset($_POST['active']) ? 1 : 0;
             
-            if (empty($name) || ($type === 'zabbix' && empty($url))) {
-                $this->flash('error', $type === 'zabbix' ? __('Name and URL are required') : __('Name is required'));
+            if (empty($name) || (in_array($type, ['zabbix', 'prometheus'], true) && empty($url))) {
+                $this->flash('error', in_array($type, ['zabbix', 'prometheus'], true) ? __('Name and URL are required') : __('Name is required'));
                 $this->redirect('/admin/data-sources/edit/' . $id);
                 return;
             }

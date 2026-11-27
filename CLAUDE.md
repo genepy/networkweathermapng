@@ -52,7 +52,10 @@ re-explore the repository. Keep it short and up to date.
   `data-still` in the SVG, swapped in by `stillIcons()` in `viewer.js` for
   reduced motion. PNG twins of new SVG icons: render them at 64 px (e.g.
   Playwright with `reducedMotion: 'reduce'`), then `php src/bin/icons-manifest.php`.
-- Data sources: `Services/Observium/`, `ZabbixService.php`, `src/lib/Zabbix/`.
+- Data sources: `DataSourceService.php` (`getClient()` picks the client by
+  type; the Zabbix client lives there), `Services/Observium/`,
+  `Services/Prometheus/` (TARGET forms in `PrometheusTarget`), engine plugins in
+  `src/lib/WeatherMap/lib/datasources/`.
 - Total traffic graph (side panel, total box, kiosk): `Services/TotalTrafficSeries.php`
   decides its source (recorded frames, demo day for static data, or none),
   served by `/map/{id}/totals` (`?period=day|week|month&group=<name>`, or
@@ -73,6 +76,7 @@ App features store their settings as map hints, each parsed by one service:
 | `icon_spin` (node) | `MapService::spinsWithTraffic()`, `spinIcons()` in `viewer.js` |
 | `traffic_group`, `traffic_total` (link) | `Services/TotalTrafficSeries.php`, `MapService::trafficTotal()` |
 | `traffic_total_source`, `traffic_group_source_<group>` (map) | `Services/TrafficTotalSource.php`, `MapService::sourceTotals()`, `MapController::totalRows()` |
+| `prometheus_in`, `prometheus_out` (link, with `TARGET prometheus:<source>:query`) | `Services/Prometheus/PrometheusTarget.php` |
 | `box_<id>` (and `_title`, `_style`, `_text`, `_rows`, `_width`, `_note`, `_scale`, `_hidden`) | `WeatherMapBoxes`, `MapEditor::setBox()` |
 | `link_glow`, `node_style`, `link_flow`, `traffic_*`, `cluster*`, `geo`, `site`, `box_*`, `editor_note*` | grep `SET <name>` in `src/app/Services` and `src/lib/WeatherMap` |
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Core\Config;
 use App\Services\Observium\ObserviumTarget;
+use App\Services\Prometheus\PrometheusTarget;
 
 /**
  * MapService - Handles all map-related operations
@@ -1358,7 +1359,8 @@ class MapService
 
     /**
      * Whether linkGraph can draw a link's traffic: it was set up with the
-     * editor's picker, or its TARGET names an Observium port.
+     * editor's picker, or its TARGET names an Observium port or reads
+     * Prometheus (F84).
      */
     public static function hasTrafficHistory(object $link): bool
     {
@@ -1367,7 +1369,20 @@ class MapService
             return true;
         }
 
-        return self::observiumPortTarget($link) !== null;
+        return self::observiumPortTarget($link) !== null || self::prometheusTarget($link) !== null;
+    }
+
+    /** The first TARGET of a link that reads Prometheus (F84) */
+    public static function prometheusTarget(object $link): ?string
+    {
+        foreach ((array) ($link->targets ?? []) as $target) {
+            $string = (string) preg_replace('/^-?(\d+(\.\d+)?\*)?/', '', trim((string) ($target[4] ?? '')));
+            if (PrometheusTarget::parse($string, (array) ($link->hints ?? [])) !== null) {
+                return $string;
+            }
+        }
+
+        return null;
     }
 
     /** The first TARGET of a link that names an Observium port */

@@ -686,6 +686,10 @@ class MapController extends BaseController
         if (!is_array($selection) || empty($selection['sourceId'])) {
             $selection = null;
         }
+        // a hand-written Prometheus TARGET (F84) carries its own selection
+        if (!$selection && $targetLink && ($prometheus = MapService::prometheusTarget($targetLink)) !== null) {
+            $selection = $this->dataSourceService->prometheusSelection($prometheus, (array) $targetLink->hints);
+        }
         $observiumTarget = $targetLink && !$selection ? MapService::observiumPortTarget($targetLink) : null;
         if (!$selection && $observiumTarget === null) {
             http_response_code(404);

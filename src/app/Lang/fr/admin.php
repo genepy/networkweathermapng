@@ -435,4 +435,15 @@ return [
     'Address of the new link' => 'Adresse du nouveau lien',
     'Copy the address' => 'Copier l’adresse',
     'This address is shown only once. Copy it now.' => 'Cette adresse n’est affichée qu’une fois. Copiez-la maintenant.',
+    // Prometheus data source (F84)
+    'Base URL of Prometheus, VictoriaMetrics or Thanos (without /api/v1), e.g. http://prometheus:9090' => 'URL de base de Prometheus, VictoriaMetrics ou Thanos (sans /api/v1), ex. http://prometheus:9090',
+    'Sent as a Bearer token. Without a token, a username and password are sent as basic auth; leave all empty when Prometheus asks for none.' => 'Envoyé comme jeton Bearer. Sans jeton, un utilisateur et un mot de passe sont envoyés en authentification basique ; laissez tout vide si Prometheus n’en demande pas.',
+    'Prometheus metrics' => 'Métriques Prometheus',
+    'Interfaces are read from the IF-MIB counters of snmp_exporter: ifHCInOctets and ifHCOutOctets, with ifHighSpeed and ifOperStatus.' => 'Les interfaces sont lues dans les compteurs IF-MIB de snmp_exporter : ifHCInOctets et ifHCOutOctets, avec ifHighSpeed et ifOperStatus.',
+    'Host label' => 'Label de l’hôte',
+    'Interface label' => 'Label de l’interface',
+    'Extra label filter' => 'Filtre de labels supplémentaire',
+    'Rate window' => 'Fenêtre du débit',
+    'The filter is added to every query, as PromQL label matchers. The rate window should be at least twice the scrape interval.' => 'Le filtre est ajouté à chaque requête, sous forme de sélecteurs de labels PromQL. La fenêtre du débit doit valoir au moins deux fois l’intervalle de collecte.',
+    'Verify the HTTPS certificate' => 'Vérifier le certificat HTTPS',
 ];

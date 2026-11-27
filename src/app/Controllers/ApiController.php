@@ -125,7 +125,7 @@ class ApiController extends BaseController
         $this->requireAuth();
         
         $sourceId = (int) ($params['sourceId'] ?? 0);
-        $hostId = $params['hostId'] ?? '';
+        $hostId = rawurldecode((string) ($params['hostId'] ?? '')); // a Prometheus host may hold ":" or "/"
         $search = $this->getInput('search', '');
         
         if ($sourceId <= 0 || empty($hostId)) {
@@ -148,7 +148,7 @@ class ApiController extends BaseController
         $this->requireAuth();
         
         $sourceId = (int) ($params['sourceId'] ?? 0);
-        $hostId = $params['hostId'] ?? '';
+        $hostId = rawurldecode((string) ($params['hostId'] ?? '')); // a Prometheus host may hold ":" or "/"
         
         if ($sourceId <= 0 || empty($hostId)) {
             $this->json(['success' => false, 'error' => __('Data source ID and host ID required')], 400);
@@ -170,7 +170,7 @@ class ApiController extends BaseController
         $this->requireAuth();
 
         $sourceId = (int) ($params['sourceId'] ?? 0);
-        $hostId = $params['hostId'] ?? '';
+        $hostId = rawurldecode((string) ($params['hostId'] ?? '')); // a Prometheus host may hold ":" or "/"
 
         if ($sourceId <= 0 || empty($hostId)) {
             $this->json(['success' => false, 'error' => __('Data source ID and host ID required')], 400);
