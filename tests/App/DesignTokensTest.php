@@ -105,6 +105,20 @@ final class DesignTokensTest extends TestCase
         $this->assertGreaterThan(0, $checked);
     }
 
+    public function testWideScreensUseTheWholeWidth(): void
+    {
+        // F85: one token for the page width; above 1400 px the pages stretch
+        $tokens = self::tokens()['light'];
+        $this->assertSame('none', $tokens['--wm-page-max'] ?? null);
+        $this->assertArrayHasKey('--wm-page-gutter', $tokens);
+        $root = dirname(TESTS_ROOT) . '/src/public/assets/css/';
+        $main = (string) file_get_contents($root . 'weathermap.css');
+        $this->assertMatchesRegularExpression('/@media \(min-width: 1400px\) \{\s*\.main-content \{\s*max-width: var\(--wm-page-max/', $main);
+        $ui = (string) file_get_contents($root . 'ui.css');
+        $this->assertMatchesRegularExpression('/@media \(min-width: 1400px\) \{\s*\.settings-shell \{ max-width: var\(--wm-page-max/', $ui);
+        $this->assertStringContainsString('.set-panel .form-card { max-width: var(--wm-form-max, 640px);', $ui);
+    }
+
     /** @return array{light: array<string, string>, dark: array<string, string>} */
     private static function tokens(): array
     {
