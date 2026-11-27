@@ -702,6 +702,7 @@ button.btn {
 .wm-hc-reset:hover { background: var(--wm-hover); }
 .wm-hc-reset:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 1px; }
 .wm-hc-stats { margin-top: 4px; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.wm-hc-demo { margin: 4px 0 0; font-size: 11px; font-style: italic; color: var(--wm-text-muted, #666); }
 .wm-hc-stat { display: flex; gap: 12px; flex-wrap: wrap; color: var(--wm-text-muted); }
 .wm-hc-stat b { color: var(--wm-text); font-weight: 600; }
 .wm-hc-picture { display: block; width: 100%; height: auto; margin-top: 8px; border-radius: 4px; }

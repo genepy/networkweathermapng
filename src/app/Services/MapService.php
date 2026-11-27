@@ -588,7 +588,9 @@ class MapService
                 self::writeAtomic($svgPath, (string) $collector->toSvg());
 
                 if ($readData) {
-                    $summary = self::summarize($wmap, $id);
+                    // F40: the links of a demo map get a generated history in the hover card
+                    $demo = !$this->isRecorded($id) && TotalTrafficSeries::staticOnly(TotalTrafficSeries::mapTargets($wmap));
+                    $summary = self::summarize($wmap, $id, $demo);
                     self::writeAtomic($statusPath, (string) json_encode($summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
                 }
             
@@ -904,7 +906,12 @@ class MapService
             && trim((string) $node->iconfile) !== '';
     }
 
-    public static function summarize(\WeatherMap $wmap, ?int $mapId = null): array
+    /**
+     * The summary of a drawn map for the viewer. $demoTraffic: the map is a
+     * demo (static links only, not recorded), whose links get a traffic
+     * route anyway (F40, TotalTrafficSeries::linkDemo()).
+     */
+    public static function summarize(\WeatherMap $wmap, ?int $mapId = null, bool $demoTraffic = false): array
     {
         $max = null;
         $items = [];
@@ -976,6 +983,9 @@ class MapService
             if (!isset($urls['graph']) && $mapId !== null && self::hasTrafficHistory($link)) {
                 $urls['graph'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/graph';
                 // the IN/OUT series the hover card draws for a day, a week or a month
+                $urls['traffic'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/traffic';
+            } elseif ($demoTraffic && $mapId !== null && !isset($urls['graph']) && ($item['in'] !== null || $item['out'] !== null)) {
+                // a generated day, week or month, marked as demo data (F40)
                 $urls['traffic'] = '/map/' . $mapId . '/link/' . (int) $link->id . '/traffic';
             }
             $items['L' . $link->id] = $item + $urls;

@@ -126,11 +126,12 @@ final class TotalTrafficSeries
      * A generated period of total traffic (a day by default) that ends on
      * the current totals: low at night and at the weekend, high in the
      * evening, with a little noise that depends only on the time, so the
-     * curve does not change between two refreshes.
+     * curve does not change between two refreshes. $seed varies the noise
+     * (a link's own curve, F40); '' is the map's total.
      *
      * @return list<array{0: int, 1: float|null, 2: float|null}>
      */
-    public static function demo(?float $in, ?float $out, ?int $now = null, string $period = 'day'): array
+    public static function demo(?float $in, ?float $out, ?int $now = null, string $period = 'day', string $seed = ''): array
     {
         if ($in === null && $out === null) {
             return [];
@@ -146,13 +147,41 @@ final class TotalTrafficSeries
             $f = self::shape($t) / $last;
             $rows[] = [
                 $t,
-                $in === null ? null : round($in * $f * self::noise($t, 1, $step)),
-                $out === null ? null : round($out * $f * self::noise($t, 2, $step)),
+                $in === null ? null : round($in * $f * self::noise($t, $seed === '' ? '1' : $seed . '/1', $step)),
+                $out === null ? null : round($out * $f * self::noise($t, $seed === '' ? '2' : $seed . '/2', $step)),
             ];
         }
         // the last point is the traffic the map shows now
         $rows[count($rows) - 1] = [$end, $in, $out];
         return $rows;
+    }
+
+    /**
+     * The demo traffic of one link of a demo map for the hover card (F40):
+     * its own generated curve, ending on its static IN and OUT, in the
+     * format of TrafficSeries::fromBandwidthData(), marked as demo data.
+     * Null when the link has no value.
+     *
+     * @return array{range: string, from: int, to: int, units: string, in: list<array{0: int, 1: float}>, out: list<array{0: int, 1: float}>, demo: true}|null
+     */
+    public static function linkDemo(?float $in, ?float $out, string $range, int $now, int $linkId): ?array
+    {
+        $range = TrafficSeries::range($range);
+        $rows = self::demo($in, $out, $now, $range, 'L' . $linkId);
+        if ($rows === []) {
+            return null;
+        }
+        $data = [];
+        foreach (['in' => 1, 'out' => 2] as $dir => $col) {
+            $series = [];
+            foreach ($rows as $row) {
+                if ($row[$col] !== null) {
+                    $series[] = ['t' => $row[0], 'v' => (float) $row[$col]];
+                }
+            }
+            $data[$dir] = ['units' => 'bps', 'series' => $series];
+        }
+        return TrafficSeries::fromBandwidthData($data, $range, $now) + ['demo' => true];
     }
 
     /** A period name the graph knows, the day otherwise */
@@ -348,7 +377,7 @@ final class TotalTrafficSeries
     }
 
     /** A factor around 1 (±6 %) that depends only on the time and the direction */
-    private static function noise(int $time, int $seed, int $step = self::DEMO_STEP): float
+    private static function noise(int $time, string $seed, int $step = self::DEMO_STEP): float
     {
         $n = crc32($seed . ':' . intdiv($time, $step));
         return 0.94 + 0.12 * (($n % 1000) / 999);
