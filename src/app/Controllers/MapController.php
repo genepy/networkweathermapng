@@ -381,7 +381,7 @@ class MapController extends BaseController
         if ($live === null) {
             return [TotalTrafficSeries::NONE, [], [], '', $none];
         }
-        $items = (array) ($live['items'] ?? []);
+        $items = (array) ($live['summary']['items'] ?? []);
         $groups = MapService::trafficGroups($items);
         $group = in_array($group, $groups, true) ? $group : '';
         $total = MapService::trafficTotal($items, $group === '' ? null : $group);
@@ -709,6 +709,10 @@ class MapController extends BaseController
         $mapId = (int) ($params['id'] ?? 0);
         $linkId = (int) ($params['linkId'] ?? 0);
         $range = TrafficSeries::range((string) $this->getInput('range', 'day'));
+        if ($this->canView($mapId) && $this->linkTotalsSource($mapId, $this->mapService->getMapConfig($mapId)) === TotalTrafficSeries::DEMO) {
+            $this->demoLinkTraffic($mapId, $linkId, $range);
+            return;
+        }
         [$selection, $observiumTarget] = $this->linkSource($mapId, $linkId);
 
         $cacheDir = $this->config->getOutputPath() . '/graphs';
@@ -736,6 +740,25 @@ class MapController extends BaseController
 
         header('Cache-Control: private, max-age=300');
         $this->json($cached + ['tz' => $this->timezones()->forMap($mapId)]);
+    }
+
+    /**
+     * The hover card traffic of a link of a demo map (F40): a generated
+     * period ending on the link's static IN and OUT, marked as demo data.
+     */
+    private function demoLinkTraffic(int $mapId, int $linkId, string $range): void
+    {
+        $live = $this->mapService->liveRender($mapId);
+        $item = (array) ($live['summary']['items']['L' . $linkId] ?? []);
+        $in = is_numeric($item['in'] ?? null) ? (float) $item['in'] : null;
+        $out = is_numeric($item['out'] ?? null) ? (float) $item['out'] : null;
+        $series = ($item['kind'] ?? '') === 'link' ? TotalTrafficSeries::linkDemo($in, $out, $range, time(), $linkId) : null;
+        if ($series === null) {
+            $this->json(['error' => 'Not found'], 404);
+            return;
+        }
+        header('Cache-Control: private, max-age=300');
+        $this->json($series + ['tz' => $this->timezones()->forMap($mapId)]);
     }
 
     /** @return list<string> the demo maps that are not there yet, [] when they cannot be read */

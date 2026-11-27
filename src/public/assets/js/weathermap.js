@@ -756,7 +756,9 @@
             box.innerHTML = wmRangeButtons(range)
                 + `<div class="wm-hc-plot" role="img" aria-label="${wmEsc(t('IN above, OUT below'))}"></div>`
                 + '<div class="wm-hc-readout" aria-live="off"></div>'
-                + `<div class="wm-hc-stats">${wmTrafficStats(data)}</div>`;
+                + `<div class="wm-hc-stats">${wmTrafficStats(data)}</div>`
+                // a generated history of a demo map (F40, TotalTrafficSeries::linkDemo)
+                + (data.demo ? `<p class="wm-hc-demo">${wmEsc(t('Demo data'))}</p>` : '');
             const plot = box.querySelector('.wm-hc-plot');
             let U = null;
             try { U = await wmLoadUplot(); } catch (e) { U = null; }

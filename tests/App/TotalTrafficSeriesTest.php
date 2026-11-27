@@ -142,4 +142,43 @@ class TotalTrafficSeriesTest extends TestCase
         $this->assertSame(40, mb_strlen(TotalTrafficSeries::group(str_repeat('é', 60))));
         $this->assertSame('day', TotalTrafficSeries::period('year'));
     }
+    public function testEachDemoLinkHasItsOwnCurve(): void
+    {
+        $now = 1_700_000_000;
+        $a = TotalTrafficSeries::linkDemo(4e8, 1e8, 'week', $now, 3);
+        $b = TotalTrafficSeries::linkDemo(4e8, 1e8, 'week', $now, 4);
+
+        $this->assertTrue($a['demo']);
+        $this->assertSame('week', $a['range']);
+        $this->assertSame('bps', $a['units']);
+        $this->assertSame($now - 604800, $a['from']);
+        $this->assertSame([$a['in'][count($a['in']) - 1][0], 4e8], $a['in'][count($a['in']) - 1], 'it ends on the link\'s value');
+        $this->assertNotSame($a['in'], $b['in'], 'each link its own noise');
+        $this->assertSame($a, TotalTrafficSeries::linkDemo(4e8, 1e8, 'week', $now, 3), 'the same curve between two refreshes');
+        $this->assertSame('day', TotalTrafficSeries::linkDemo(1e6, 1e6, 'bogus', $now, 3)['range']);
+        $this->assertNull(TotalTrafficSeries::linkDemo(null, null, 'day', $now, 3));
+        // the total of the map keeps its curve
+        $this->assertSame(TotalTrafficSeries::demo(4e9, 2e9, $now), TotalTrafficSeries::demo(4e9, 2e9, $now, 'day', ''));
+    }
+
+    public function testTheLinksOfADemoMapGetATrafficRoute(): void
+    {
+        $file = TESTS_OUTPUT . '/demo-link-traffic.conf';
+        file_put_contents($file, "WIDTH 300\nHEIGHT 200\nNODE a\n\tPOSITION 50 50\nNODE b\n\tPOSITION 250 50\n"
+            . "LINK a-b\n\tNODES a b\n\tBANDWIDTH 1G\n\tTARGET static:200M:50M\n");
+        $wmap = new \WeatherMap();
+        ob_start();
+        try {
+            $wmap->ReadConfig($file);
+            $wmap->ReadData();
+        } finally {
+            ob_end_clean();
+        }
+        $id = 'L' . $wmap->links['a-b']->id;
+
+        $demo = \App\Services\MapService::summarize($wmap, 7, true)['items'][$id];
+        $this->assertSame('/map/7/link/' . $wmap->links['a-b']->id . '/traffic', $demo['traffic']);
+        $this->assertArrayNotHasKey('graph', $demo, 'the card only needs the series');
+        $this->assertArrayNotHasKey('traffic', \App\Services\MapService::summarize($wmap, 7)['items'][$id], 'not on a recorded or mixed map');
+    }
 }
