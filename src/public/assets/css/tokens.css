@@ -91,6 +91,13 @@
     --wm-text-lg: 16px;
     --wm-text-xl: 22px;
 
+    /* Page width (F85): pages up to --wm-page-narrow wide keep their
+       centred column; wider screens use the whole window, with side room
+       that grows with it. Forms keep a readable line length. */
+    --wm-page-max: none;
+    --wm-page-gutter: clamp(16px, 3vw, 48px);
+    --wm-form-max: 640px;
+
     /* Motion */
     --wm-duration: 160ms;
     --wm-ease: ease-out;

@@ -586,6 +586,11 @@
 /* Settings (step 6): side navigation in groups, each page a panel; the
    forms of data sources, users and groups open in the drawer */
 .settings-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--wm-space-5); align-items: start; max-width: 1200px; margin: 0 auto; }
+/* F85: wide screens keep the navigation on the left and the page next to
+   it, as wide as the window (lists of data sources, users, groups) */
+@media (min-width: 1400px) {
+    .settings-shell { max-width: var(--wm-page-max, none); grid-template-columns: 248px minmax(0, 1fr); gap: var(--wm-space-6); }
+}
 .settings-nav { position: sticky; top: var(--wm-space-4); padding-top: var(--wm-space-2); }
 .settings-nav-group + .settings-nav-group { margin-top: var(--wm-space-5); }
 .settings-nav-title { margin: 0 0 var(--wm-space-1); padding: 0 var(--wm-space-3); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--wm-text-muted); }
@@ -619,7 +624,7 @@ form.set-panel > .set-foot { position: sticky; bottom: 0; z-index: 5; background
 .set-empty .icon { width: 32px; height: 32px; }
 .set-empty p { margin: var(--wm-space-2) 0 0; }
 .set-empty strong { color: var(--wm-text); }
-.set-panel .form-card { max-width: 640px; padding: 0; border: 0; background: none; }
+.set-panel .form-card { max-width: var(--wm-form-max, 640px); padding: 0; border: 0; background: none; }
 .set-panel .data-table-container { overflow-x: auto; }
 .set-panel > .data-table-container .data-table th:first-child,
 .set-panel > .data-table-container .data-table td:first-child { padding-left: var(--wm-panel-pad); }

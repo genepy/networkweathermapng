@@ -72,6 +72,15 @@ a:hover {
     margin: 0 auto;
 }
 
+/* F85: on screens wider than 1400 px, lists and grids use the whole width */
+@media (min-width: 1400px) {
+    .main-content {
+        max-width: var(--wm-page-max, none);
+        padding-left: var(--wm-page-gutter, 48px);
+        padding-right: var(--wm-page-gutter, 48px);
+    }
+}
+
 /* Buttons */
 .btn {
     display: inline-block;
