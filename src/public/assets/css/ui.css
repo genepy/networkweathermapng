@@ -515,7 +515,9 @@
 .ms-close:focus-visible { outline: 2px solid var(--wm-focus); outline-offset: 2px; }
 .ms-close .icon { width: 18px; height: 18px; }
 
-.ms-tabs { display: flex; gap: var(--wm-space-1); padding: 0 var(--wm-space-5); border-bottom: 1px solid var(--wm-border); overflow-x: auto; scrollbar-width: none; }
+/* F78: the tabs wrap onto a second row when the panel is too narrow, so
+   none is hidden (the editor's inspector, the drawer, a phone) */
+.ms-tabs { display: flex; flex-wrap: wrap; column-gap: var(--wm-space-1); row-gap: 0; padding: 0 var(--wm-space-5); border-bottom: 1px solid var(--wm-border); }
 .ms-tabs[hidden] { display: none; }
 .ms-tabs button {
     flex: none; padding: var(--wm-space-3) var(--wm-space-3); border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;

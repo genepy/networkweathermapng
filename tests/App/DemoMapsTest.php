@@ -36,6 +36,37 @@ final class DemoMapsTest extends TestCase
         $this->assertGreaterThanOrEqual(3, count(self::demoProvider()));
     }
 
+    /**
+     * F77: in a scale drawn as a gradient, each band starts with the colour
+     * the band below ends with, or the legend shows a hard break (a stepped
+     * scale, all flat bands, is fine)
+     */
+    #[DataProvider('demoProvider')]
+    public function testDemoGradientScalesAreContinuous(string $file): void
+    {
+        $bands = [];
+        foreach (file($file, FILE_IGNORE_NEW_LINES) ?: [] as $line) {
+            $f = preg_split('/\s+/', trim($line)) ?: [];
+            // SCALE <name> <min> <max> r g b [r g b], the 0 0 band (idle) aside
+            if ($f[0] !== 'SCALE' || ((float) $f[2] === 0.0 && (float) $f[3] === 0.0)) {
+                continue;
+            }
+            $from = array_slice($f, 4, 3);
+            $bands[] = [$from, count($f) >= 10 ? array_slice($f, 7, 3) : $from, $line];
+        }
+        $gradient = false;
+        foreach ($bands as $band) {
+            $gradient = $gradient || $band[0] !== $band[1];
+        }
+        if (!$gradient) {
+            $this->addToAssertionCount(1);
+            return;
+        }
+        for ($i = 1; $i < count($bands); $i++) {
+            $this->assertSame($bands[$i - 1][1], $bands[$i][0], basename($file) . ': ' . $bands[$i][2]);
+        }
+    }
+
     #[DataProvider('demoProvider')]
     public function testDemoDrawsFromStaticValues(string $file): void
     {
